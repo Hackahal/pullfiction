@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { EditorController } from "./controller";
+import { parsePlan } from "./domain";
 import { BrowserNameplates } from "./BrowserNameplates";
 import { actorNameplateEnabled, nameplateShortcut } from "./nameplate-model";
 import type { Engine, RawReplay, NativeFrame } from "./types";
@@ -118,5 +119,33 @@ test("Trash and boss preferences independently reach native frames and browser p
     ),
     false,
   );
+  // An icon-only boss must keep its category through plan validation and reopening.
+  const boss = c.getSnapshot().replay!.actors.find((a) => a.name === "Boss")!;
+  boss.class = "NPC";
+  boss.icon = "Boss";
+  c.planFromMoment();
+  const saved = parsePlan(JSON.stringify(c.getSnapshot().plan));
+  const standalone = new EditorController();
+  standalone.editPlan(saved);
+  standalone.setWorkspaceMode("plan");
+  standalone.setActiveStep(c.getSnapshot().activeStep, false);
+  standalone.attachEngine({
+    set_annotations() {},
+    set_replay_frame(json: string) {
+      frame = JSON.parse(json);
+    },
+  } as unknown as Engine);
+  assert.equal(standalone.getSnapshot().replay, null);
+  assert.equal(
+    standalone.sceneActors().find((a) => a.name === "Boss")?.icon,
+    "Boss",
+  );
+  standalone.setOption("trashNameplates", false);
+  standalone.setOption("bossNameplates", true);
+  assert.equal(frame.find((a) => a.name === "Boss")?.nameplate, true);
+  standalone.setOption("trashNameplates", true);
+  standalone.setOption("bossNameplates", false);
+  assert.equal(frame.find((a) => a.name === "Boss")?.nameplate, false);
+  standalone.stop();
   c.stop();
 });

@@ -1985,6 +1985,7 @@ export class EditorController {
             key: snapshot.actors[i].key,
             name: snapshot.actors[i].name,
             class: snapshot.actors[i].class,
+            icon: snapshot.actors[i].icon,
             type: snapshot.actors[i].type,
             id: 0,
             instance: 1,
@@ -2093,6 +2094,7 @@ export class EditorController {
               key: a.key,
               name: a.name,
               class: a.class ?? "",
+              icon: a.icon ?? null,
               type: a.type,
               position: [
                 p.pos[0],

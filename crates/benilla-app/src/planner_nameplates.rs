@@ -104,6 +104,7 @@ fn drive(
     let friendly=player||body.friendly;
     let enabled=world.control.nameplates.unwrap_or(false);
     let name_only=friendly&&(!enabled||!world.control.friendly_nameplates.unwrap_or(true));
+    if !friendly&&(!enabled||!body.nameplate||!world.control.enemy_nameplates.unwrap_or(true)){continue;}
     // Keep the client's ordinary names when a name-only label cannot be placed.
     if !name_only { world.plates.0.insert(entity); }
     if body.health_known&&store.0.unit_health().unwrap_or(0)==0{continue;}
@@ -113,7 +114,6 @@ fn drive(
     if screen.x<0.||screen.y<0.||screen.x>viewport.x||screen.y>viewport.y{continue;}
     let selected=world.selection.guid==Some(guid.0);
     if name_only { name_only_entities.insert(guid.0,entity); }
-    if !friendly&&(!enabled||!body.nameplate||!world.control.enemy_nameplates.unwrap_or(true)){continue;}
     let color=crate::planner_unit_colors::nameplate_color(player,store.0.unit_class().unwrap_or(0),body.estimated,body.friendly);
     let mut auras:Vec<_>=body.plate_auras.iter().filter(|a|store.0.unit_aura_ids().any(|id|id==a.spell)).filter(|a|!friendly||selected||a.debuff).collect();
     auras.sort_by_key(|a|(!a.debuff,a.spell));auras.truncate(if friendly&&!selected{2}else{4});

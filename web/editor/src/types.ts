@@ -43,6 +43,7 @@ export interface PlannedActor {
   key: string;
   name: string;
   class: string;
+  icon?: string | null;
   type: string;
   position: Point;
   recorded?: Point;
