@@ -3183,3 +3183,36 @@ test("range attachment to an untouched reference NPC survives materialization an
   assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
   c.stop();
 });
+
+test("standalone reference comparison sends recorded poses to native frames and restores unchanged planned edits", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(469);
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c.sceneActors()[0],
+    original = c.actorPose(actor)!;
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  c.transformSelection(90);
+  c.render();
+  const planned = structuredClone(
+    c.snapshot()!.actors.find((a) => a.key === actor.key)!,
+  );
+  const snapshot = structuredClone(c.snapshot());
+  const native = () => f.frame.find((a) => a.key === actor.key)!;
+  assert.notDeepEqual(planned.position, original.pos);
+  assert.notEqual(planned.facing, original.facing);
+  assert.deepEqual(native().position, planned.position);
+  assert.equal(native().facing, planned.facing);
+  c.setCompareRecorded(true);
+  assert.deepEqual(native().position, original.pos);
+  assert.equal(native().facing, original.facing);
+  assert.deepEqual(c.actorPose(actor)!.pos, native().position);
+  assert.deepEqual(c.snapshot(), snapshot);
+  c.setCompareRecorded(false);
+  assert.deepEqual(native().position, planned.position);
+  assert.equal(native().facing, planned.facing);
+  assert.deepEqual(c.snapshot(), snapshot);
+  c.stop();
+});
