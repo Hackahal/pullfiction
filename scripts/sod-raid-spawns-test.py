@@ -148,7 +148,7 @@ class SoDReferenceTests(unittest.TestCase):
     def test_shipped_portal_references_retain_registration_and_uncertainty(self):
         value = json.loads((ROOT / 'third_party/raid-spawns/sod.json').read_text(encoding='utf-8'))
         scarlet = value['maps']['2856']
-        registration, = scarlet['registrations']
+        registration = next(r for r in scarlet['registrations'] if r['sourceFloor'] == 2)
         self.assertEqual(registration['id'], 'scarlet-floor2-portals')
         self.assertEqual(registration['kind'], 'portal-registration-approximate')
         self.assertEqual(registration['mappingVersion'], 539)
@@ -188,6 +188,74 @@ class SoDReferenceTests(unittest.TestCase):
         self.assertIn('database/seeders/dungeondata/classic/scarlet_enclave/2/dungeon_floor_switch_markers.json', paths)
         self.assertFalse(any('log' in path.lower() or 'event' in path.lower() for path in paths))
 
+    def test_room_similarity_has_independent_multianchor_and_holdout_solution(self):
+        # Deliberately asymmetric anchor layout: native=(3+4i)*source+(100-200i).
+        coefficients = spawns.room_similarity_registration([[0, 0], [0, 2], [3, 0], [-1, 4]],
+            [[100, -200], [106, -192], [88, -191], [116, -187]])
+        for key, expected in {'real': 3, 'imaginary': 4, 'offsetX': 100, 'offsetY': -200}.items():
+            self.assertAlmostEqual(coefficients[key], expected, places=10)
+        self.assertEqual(spawns.registered_position(coefficients, 5, 6), [98, -161, None])
+        with self.assertRaisesRegex(spawns.SourceError, 'three paired'):
+            spawns.room_similarity_registration([[0, 0]], [[1, 2]])
+        with self.assertRaisesRegex(spawns.SourceError, 'distinct'):
+            spawns.room_similarity_registration([[0, 0]] * 3, [[1, 2], [2, 3], [4, 5]])
+
+    def test_reviewed_room_facts_reject_changed_bytes_and_invalid_metadata(self):
+        original = spawns.REGISTRATION_PATH.read_bytes()
+        def attempt(value, message):
+            data = json.dumps(value).encode()
+            with tempfile.TemporaryDirectory() as tmp, patch.object(spawns, 'REGISTRATION_SHA256', hashlib.sha256(data).hexdigest()):
+                path = Path(tmp) / 'facts.json'; path.write_bytes(data)
+                with self.assertRaisesRegex(spawns.SourceError, message):
+                    spawns.load_room_registrations(path)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'facts.json'; path.write_bytes(original + b' ')
+            with self.assertRaisesRegex(spawns.SourceError, 'content mismatch'):
+                spawns.load_room_registrations(path)
+        value = json.loads(original); value['mapID'] = 533
+        attempt(value, 'source identity')
+        value = json.loads(original); value['registrations'][0]['sourceImages'][0]['sha256'] = 'bad'
+        attempt(value, 'image identities')
+        value = json.loads(original); value['registrations'][0]['anchors'][0]['nativeGroup'] = 'other:13'
+        attempt(value, 'landmark')
+        value = json.loads(original); value['registrations'][0]['holdouts'][0]['nativePosition'][0] += 100
+        attempt(value, 'residual boundary')
+
+    def test_shipped_room_registration_preserves_source_and_uncertainty(self):
+        value = json.loads((ROOT / 'third_party/raid-spawns/sod.json').read_text())
+        registrations, identity = spawns.load_room_registrations()
+        self.assertEqual(value['registrationFacts'], identity)
+        self.assertEqual(identity['sha256'], spawns.REGISTRATION_SHA256)
+        scarlet = value['maps']['2856']
+        approximate = [r for r in scarlet['placements'] if r['kind'] == 'map-registered-reference']
+        self.assertEqual(len(approximate), 68)
+        self.assertEqual({floor: sum(r['floor'] == floor for r in approximate) for floor in (4, 5)}, {4: 53, 5: 15})
+        for row in approximate:
+            registration = registrations[row['floor']]
+            self.assertEqual(row['registration'], registration['id'])
+            self.assertEqual(row['precision'], 'room-map-registration-approximate')
+            self.assertEqual(row['confidence'], 'room-map-registration-approximate')
+            self.assertEqual(row['position'], spawns.registered_position(registration['coefficients'], *row['sourcePosition']))
+            self.assertIsNone(row['position'][2]); self.assertIsNone(row['facing'])
+        # Independently recomputed with the QA worker's NumPy least-squares fit.
+        expected_bosses = {240795: [2820.4438, -5987.1443], 243021: [2792.0108, -5847.2664],
+                           241518: [2924.9712, -6025.5110]}
+        for actor in approximate:
+            if actor['entry'] in expected_bosses:
+                self.assertEqual(actor['position'][:2], expected_bosses[actor['entry']])
+        self.assertEqual(registrations[4]['anchors'][0]['nativeGroup'], '61687674:13')
+        self.assertEqual(registrations[4]['anchors'][0]['sourcePixel'], [255, 358])
+        self.assertEqual(registrations[5]['anchors'][0]['sourcePixel'], [779, 486])
+        self.assertEqual(registrations[4]['validation']['geometryScreen']['wmoFloorHits'], 53)
+        self.assertEqual(registrations[5]['validation']['geometryScreen']['wmoFloorHits'], 11)
+        self.assertEqual([r['id'] for r in registrations[5]['validation']['geometryScreen']['nearEdgeReferences']],
+                         ['94288', '94289', '94294', '94301'])
+        for registration in registrations.values():
+            self.assertIn('not authoritative server spawns', registration['uncertainty'])
+            self.assertGreaterEqual(len(registration['anchors']), 3)
+            self.assertGreaterEqual(len(registration['holdouts']), 1)
+            self.assertLessEqual(registration['validation']['holdoutMaxErrorYards'], registration['maximumResidualYards'])
+
     def test_shipped_counts_coordinates_and_provenance(self):
         value = json.loads((ROOT / 'third_party/raid-spawns/sod.json').read_text(encoding='utf-8'))
         self.assertEqual(value['schema'], 1)
@@ -198,7 +266,7 @@ class SoDReferenceTests(unittest.TestCase):
                           for row in value['sourceFiles']}, spawns.SOURCE_FILES)
         self.assertEqual(set(value['maps']), {'90', '531', '2856'})
         expected = {'90': (304, 294, 2, 292, 0), '531': (442, 164, 0, 164, 0),
-                    '2856': (539, 662, 0, 594, 68)}
+                    '2856': (539, 662, 0, 662, 0)}
         for key, counts in expected.items():
             row = value['maps'][key]
             self.assertEqual((row['mappingVersion'], row['sourceCount'], row['excludedFriendly'],
@@ -211,8 +279,8 @@ class SoDReferenceTests(unittest.TestCase):
                 self.assertIsNone(actor['position'][2])
                 self.assertIsNone(actor['facing'])
                 self.assertGreater(actor['displayID'], 0)
-        self.assertEqual({r['floor'] for r in value['maps']['2856']['placements']}, {1, 2})
-        self.assertEqual({r['floor'] for r in value['maps']['2856']['unplaced']}, {4, 5})
+        self.assertEqual({r['floor'] for r in value['maps']['2856']['placements']}, {1, 2, 4, 5})
+        self.assertEqual(value['maps']['2856']['unplaced'], [])
         self.assertNotIn(7998, {r['entry'] for r in value['maps']['90']['placements']})
         self.assertNotIn(7850, {r['entry'] for r in value['maps']['90']['placements']})
 

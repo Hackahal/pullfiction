@@ -136,4 +136,64 @@ export class ReplayFloorGeometry {
       ? (roomFloor?.z ?? inside ?? structure ?? best)
       : best;
   }
+
+  /** Approximate map pins can fall just outside a room boundary. Keep their XY,
+   * but use a nearby structural edge's height instead of unrelated terrain.
+   * Exact structural intersections always retain the normal room-floor query.
+   */
+  nearbyStructureHeight(x: number, y: number, hint: number, radius: number) {
+    if (![x, y, hint, radius].every(Number.isFinite) || radius <= 0) return;
+    const ids = new Set(this.broad);
+    for (
+      let cx = Math.floor((x - radius) / CELL);
+      cx <= Math.floor((x + radius) / CELL);
+      cx++
+    )
+      for (
+        let cy = Math.floor((y - radius) / CELL);
+        cy <= Math.floor((y + radius) / CELL);
+        cy++
+      )
+        for (const id of this.columns.get(`${cx}:${cy}`) ?? []) ids.add(id);
+    let best: { distance: number; z: number; score: number } | undefined;
+    for (const id of ids) {
+      const { a, ab, ac, nz, structure, interior, room } = this.triangles[id];
+      if (!structure) continue;
+      const u = ((x - a[0]) * ac[1] - (y - a[1]) * ac[0]) / nz;
+      const v = (ab[0] * (y - a[1]) - ab[1] * (x - a[0])) / nz;
+      if (u >= -1e-5 && v >= -1e-5 && u + v <= 1.00001) return;
+      const b = a.map((value, i) => value + ab[i]) as Point,
+        c = a.map((value, i) => value + ac[i]) as Point;
+      for (const [from, to] of [
+        [a, b],
+        [b, c],
+        [c, a],
+      ]) {
+        const dx = to[0] - from[0],
+          dy = to[1] - from[1];
+        const length = dx * dx + dy * dy;
+        if (!length) continue;
+        const t = Math.max(
+          0,
+          Math.min(1, ((x - from[0]) * dx + (y - from[1]) * dy) / length),
+        );
+        const distance = Math.hypot(x - from[0] - t * dx, y - from[1] - t * dy);
+        const z = from[2] + t * (to[2] - from[2]);
+        if (
+          distance > radius ||
+          (interior && room !== undefined && z > room + 0.01)
+        )
+          continue;
+        const score =
+          interior && room !== undefined ? room - z : Math.abs(z - hint);
+        if (
+          !best ||
+          distance < best.distance - 1e-5 ||
+          (Math.abs(distance - best.distance) <= 1e-5 && score < best.score)
+        )
+          best = { distance, z, score };
+      }
+    }
+    return best?.z;
+  }
 }

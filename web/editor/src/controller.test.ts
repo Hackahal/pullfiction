@@ -3424,3 +3424,60 @@ test("standalone SoD reference grounding respects its own level hint in stacked 
   assert.equal(actor.spawn!.position[2], null);
   c.stop();
 });
+
+test("approximate room pins keep authored XY and nearby floor height through native frames and plan edits", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(2856, true, "sod");
+  c.setWorkspaceMode("plan");
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  const [x, y] = actor.spawn!.position;
+  const setGeometry = (edge: number) => {
+    const rectangle = (z: number, left: number, room: boolean) => ({
+      area: room ? "room" : "terrain",
+      interior: room,
+      vertices: [
+        [left, y - 5, z],
+        [x + 10, y - 5, z],
+        [x + 10, y + 5, z],
+        [left, y + 5, z],
+      ] as [number, number, number][],
+      indices: [0, 1, 2, 0, 2, 3],
+    });
+    (c as any).loadedFloors.set(
+      2856,
+      new ReplayFloorGeometry(
+        [rectangle(330, x - 10, false), rectangle(185, x + edge, true)],
+        [{ id: "room", name: "chapel", height: 186 }],
+      ),
+    );
+    c.render();
+  };
+  setGeometry(1);
+  assert.deepEqual(c.actorPose(actor)?.pos, [x, y, 185]);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, false);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 185);
+  assert.deepEqual(actor.spawn!.position, [x, y, null]);
+  actor.spawn!.referenceKind = "sod-reference";
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 330);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, true);
+  actor.spawn!.referenceKind = "map-registered-reference";
+  setGeometry(4);
+  assert.equal(c.actorPose(actor)?.pos[2], 330);
+  setGeometry(-1);
+  assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, true);
+  setGeometry(1);
+  c.setSnapBypass(true);
+  assert.equal(c.beginActorDrag(actor.key, [x, y, 185]), true);
+  c.finishDrawing();
+  c.selectActor(actor.key);
+  c.nudgeActors(0, 0.1);
+  assert.deepEqual(c.actorPose(actor)?.pos, [x, y + 0.1, 185]);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, false);
+  assert.deepEqual(actor.spawn!.position, [x, y, null]);
+  c.stop();
+});

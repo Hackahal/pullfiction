@@ -61,15 +61,26 @@ test("SoD maps use explicit SoD data or a disclosed Classic baseline without ide
   }
   assert.equal(referenceRaidActors(90, "sod", {}).length, 292);
   assert.equal(referenceRaidActors(531, "sod", {}).length, 164);
-  assert.equal(referenceRaidActors(2856, "sod", {}).length, 594);
-  assert.equal(referenceCoverage(2856, "sod").unplaced, 68);
-  assert.equal(referenceCoverage(2856, "sod").approximate, 220);
+  assert.equal(referenceRaidActors(2856, "sod", {}).length, 662);
+  assert.equal(referenceCoverage(2856, "sod").unplaced, 0);
+  assert.equal(referenceCoverage(2856, "sod").approximate, 288);
   assert.equal(
     referenceRaidActors(2856, "sod", {}).filter(
       (a) => a.spawn?.confidence === "approximate",
     ).length,
-    220,
+    288,
   );
+  const rooms = referenceRaidActors(2856, "sod", {}).filter(
+    (a) => a.spawn?.referenceKind === "map-registered-reference",
+  );
+  assert.equal(rooms.length, 68);
+  assert.ok(rooms.every((a) => a.spawn?.confidence === "approximate"));
+  assert.ok(rooms.every((a) => a.spawn?.position[2] === null));
+  assert.match(
+    referenceSpawnNotice(2856, "sod"),
+    /662 placements, 288 approximate/,
+  );
+  assert.doesNotMatch(referenceSpawnNotice(2856, "sod"), /not mapped/);
   assert.deepEqual(referenceRaidActors(90, "vanilla", {}), []);
   assert.deepEqual(referenceRaidActors(1, "sod", {}), []);
   assert.match(referenceSpawnNotice(409, "vanilla"), /reference spawns/);

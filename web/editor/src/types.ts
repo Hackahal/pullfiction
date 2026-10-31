@@ -148,7 +148,8 @@ export interface SpawnPlacement {
     | "classic-baseline"
     | "classic-reference"
     | "guide-reference"
-    | "portal-registered-reference";
+    | "portal-registered-reference"
+    | "map-registered-reference";
   facing: number;
   distance: number | null;
   confidence: "near" | "approximate" | "unobserved";

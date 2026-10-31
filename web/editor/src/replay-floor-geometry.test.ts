@@ -67,3 +67,26 @@ test("room metadata is optional and invalid or unrelated levels cannot affect a 
     assert.equal(geometry.height(10, 10, 12, true), 10);
   }
 });
+
+test("approximate room pins use a nearby walkable edge only outside exact structure and within tolerance", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      floor(330),
+      floor(173, true, 10),
+      floor(185, true, 10),
+      floor(200, true, 10),
+    ],
+    [{ id: "room", name: "chapel", height: 186 }],
+  );
+  assert.equal(geometry.height(9, 1, 125, true), 330);
+  assert.equal(geometry.nearbyStructureHeight(9, 1, 125, 3), 185);
+  assert.equal(geometry.nearbyStructureHeight(6, 1, 125, 3), undefined);
+  assert.equal(geometry.nearbyStructureHeight(11, 1, 125, 3), undefined);
+  assert.equal(geometry.height(11, 1, 125, true), 185);
+  assert.equal(geometry.nearbyStructureHeight(NaN, 1, 125, 3), undefined);
+  assert.equal(geometry.nearbyStructureHeight(9, 1, 125, 0), undefined);
+  assert.equal(
+    new ReplayFloorGeometry([floor(330)]).nearbyStructureHeight(9, 1, 125, 3),
+    undefined,
+  );
+});

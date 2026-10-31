@@ -1,0 +1,380 @@
+{
+  "schema": 1,
+  "mapID": 2856,
+  "mappingVersion": 539,
+  "sourceRevision": "9046aea1a824fa8f8a5caa9c651cad088b826a73",
+  "sourceImageRetrievedDate": "2026-10-31",
+  "sourceImageProvenance": "Public authored route floor images observed through the normal Keystone.guru UI. Images are unversioned; exact retrieved bytes identified below. Images and client geometry are excluded from this numeric facts file.",
+  "publicRouteURL": "https://keystone.guru/route/scarlet-enclave/Xq07Vlu/scarlet-enclave/1",
+  "nativeSource": {
+    "product": "wow_classic_era",
+    "version": "1.15.9.70576",
+    "buildKey": "5604ce35a8644bdcf0e26c1daf979c15",
+    "mapID": 2856,
+    "mapName": "Scarlet Enclave",
+    "wmoPlacementID": 61687674,
+    "geometryExportSHA256": "82a6dd5a10e3b2d501cd0785fd6022e50bb42ae9ffd39842953a339808dc6ded",
+    "method": "Independently exported retained client WMO floor triangle landmarks; factual numeric positions only. No combat log inputs."
+  },
+  "registrations": [
+    {
+      "id": "scarlet-floor4-rooms",
+      "sourceFloor": 4,
+      "method": "room-center similarity registration",
+      "sourceImageDimensions": [
+        1536,
+        1024
+      ],
+      "sourceImages": [
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/0_0.webp",
+          "sha256": "9dd6409a65c0669978e753a8a52799832bc5ded69458ea9d69649da420dd681f"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/0_1.webp",
+          "sha256": "a6c6689e500cfd0dc1dd19c0b96467c60c916eb310c096d2eca60db608fa9ea5"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/0_2.webp",
+          "sha256": "fd5fca0ac3c94ea8955b8892bd2b5d1e8570f5459d0b2112480a7af5a714e2c5"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/0_3.webp",
+          "sha256": "5a4dd1e7999a3fbf36d40e54a90dc189dd0e05a1cfde68fb87bddbc267e7b70b"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/1_0.webp",
+          "sha256": "bf2af6b367c4fd38c15240792be3b5b1006672caa297bf1ddb82813cb6b71989"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/1_1.webp",
+          "sha256": "d9020f7cd42953100c4b64bfc6af28060eb803d502841442ff1d4bd8ce7655c4"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/1_2.webp",
+          "sha256": "cecb32955c433e3307899df903d476515eb3a126a0556a7f871584a20dc93b01"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/1_3.webp",
+          "sha256": "66a814156af1cac9bd9b46b4cbb3e7ae3b46ee27fc230e846e7ea37c8b07e6c2"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/2_0.webp",
+          "sha256": "57d640600133d603422996f659082e063ddd6fb2db1f8758c745e1af704a6d7b"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/2_1.webp",
+          "sha256": "c7d1a7e8453698c091c4f73dc754d76889bd8e05e13ff0e723f23b13dce9d46c"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/2_2.webp",
+          "sha256": "c323a6713b4e6340531842fbbefea73058f479fc2f68a06a81276ed8c58272e6"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/2_3.webp",
+          "sha256": "d038144974865f11ae5aa65833d993e3c995635f2cc50b713a31909cd0728c58"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/3_0.webp",
+          "sha256": "41d724c8edf7847a8e21725a853df4e2935e02ba99028a7013010618236d8142"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/3_1.webp",
+          "sha256": "b57d76b0b382ddbdbd361147fb82c6f3b5024e59fee44bfa177a299d9128585f"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/3_2.webp",
+          "sha256": "19c7f0881c01f784be8690a5f9572babf4c2f4bef2e1e2636def6ff5ae9b7411"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/4/2/3_3.webp",
+          "sha256": "b37c4498c934cd395514cd141f279f996e766c4a74e88c958ddf6ce560ea186d"
+        }
+      ],
+      "anchors": [
+        {
+          "id": "floor4-west",
+          "label": "west",
+          "sourcePixel": [
+            255,
+            358
+          ],
+          "nativePosition": [
+            2789.9652452063083,
+            -5847.692405176259
+          ],
+          "nativeGroup": "61687674:13"
+        },
+        {
+          "id": "floor4-east",
+          "label": "east",
+          "sourcePixel": [
+            566,
+            384
+          ],
+          "nativePosition": [
+            2754.379891859913,
+            -5947.65267613193
+          ],
+          "nativeGroup": "61687674:11"
+        },
+        {
+          "id": "floor4-small",
+          "label": "small",
+          "sourcePixel": [
+            715,
+            408
+          ],
+          "nativePosition": [
+            2733.5343094368654,
+            -5995.179797594738
+          ],
+          "nativeGroup": "61687674:12"
+        },
+        {
+          "id": "floor4-torture",
+          "label": "torture",
+          "sourcePixel": [
+            455,
+            165
+          ],
+          "nativePosition": [
+            2837.759074610744,
+            -5930.920357898251
+          ],
+          "nativeGroup": "61687674:15"
+        }
+      ],
+      "holdouts": [
+        {
+          "id": "floor4-heroes",
+          "label": "heroes",
+          "sourcePixel": [
+            629,
+            190
+          ],
+          "nativePosition": [
+            2813.6128830253674,
+            -5984.70574731464
+          ],
+          "nativeGroup": "61687674:24"
+        },
+        {
+          "id": "floor4-visitors",
+          "label": "visitors",
+          "sourcePixel": [
+            337,
+            628
+          ],
+          "nativePosition": [
+            2694.121134779186,
+            -5850.038346996915
+          ],
+          "nativeGroup": "61687674:18"
+        }
+      ],
+      "maximumResidualYards": 3,
+      "uncertainty": "Approximate room-map planning references, not authoritative server spawns. Registration errors measure matched image/room landmarks only; they do not measure server spawn accuracy. Authored enemy points are transformed unchanged; native Z and facing remain unknown.",
+      "validation": {
+        "placementCount": 53,
+        "independentFitAnchors": 4,
+        "independentHoldouts": 2,
+        "scope": "Unique room footprints, doorways and pillar arrangements independently checked against native WMO boundaries. No log positions used as registration or spawn inputs.",
+        "approximateRegistrationUncertaintyYards": 3,
+        "geometryScreen": {
+          "pointCount": 53,
+          "wmoFloorHits": 53,
+          "nearEdgeReferences": []
+        }
+      }
+    },
+    {
+      "id": "scarlet-floor5-rooms",
+      "sourceFloor": 5,
+      "method": "six pillar center similarity registration",
+      "sourceImageDimensions": [
+        1536,
+        1024
+      ],
+      "sourceImages": [
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/0_0.webp",
+          "sha256": "29313b7741318784bab05cd7cfe31ff66b6b12debefd526f72e5e4722ab43aec"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/0_1.webp",
+          "sha256": "42d2ff37cd7713a941a88f68d75881d6ed1d055511430cea679de87a948d4f16"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/0_2.webp",
+          "sha256": "e1af00b9e95ccea46995b2189dee3fad4f6a6354d95f95707a7364d1669b9ae7"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/0_3.webp",
+          "sha256": "3655d6c715f908b41c4adbf3f8a7b5ac0b35e903393a9475695efa67e4c5b0c7"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/1_0.webp",
+          "sha256": "f3776e5391e974710a912baae84944e4ff51b7cda564a76338ddc2c50bc4150b"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/1_1.webp",
+          "sha256": "02e184b54c684782875a0eb4319883dd7f9610ef1e4f0726ea4a15b37febc0dc"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/1_2.webp",
+          "sha256": "de39fb9e2f1f7719101a28edefd30646cdd01d22e7fd50904c114de745be03ef"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/1_3.webp",
+          "sha256": "b6c5769edd306705958f9dfddc400760d57e65f250d600f58037f11d1cdf0d10"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/2_0.webp",
+          "sha256": "9b8c963a19799c26e8cce9769f9a4e478717bd554cce538d0a4317e248c1846c"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/2_1.webp",
+          "sha256": "f527521af44a9c36b80bd29c1a9ccc1c01095430ae55d87f76be674d017bea60"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/2_2.webp",
+          "sha256": "2dc8b86d71a3b2ef1afe2d1d09fc96e8a9ca6f1cff070e68bd8d3852a7ffc11c"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/2_3.webp",
+          "sha256": "568461ad240ce67d844b3691e2424396edbc9cc89bb02ee14cf0ec84db072b2c"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/3_0.webp",
+          "sha256": "0a6939c42404931e5767ab84e4affdcc684418c546af21f45d5b9098a0b74c93"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/3_1.webp",
+          "sha256": "5533896bbc1c2d3f6e7e1d5813cfc1804a0f50249b8462557ceb52a24e071015"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/3_2.webp",
+          "sha256": "1286e5bd72886f632e582afceac03892f530c10e44b75c5866d237a3a47a3af5"
+        },
+        {
+          "url": "https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/5/2/3_3.webp",
+          "sha256": "2a3603c65f4168ca8f6d802224b0a8a59f296ff382d17bde420ff90077bbcbdf"
+        }
+      ],
+      "anchors": [
+        {
+          "id": "floor5-northwest-column",
+          "label": "northwest-column",
+          "sourcePixel": [
+            779,
+            486
+          ],
+          "nativePosition": [
+            2955.70445,
+            -5964.0816
+          ],
+          "nativeGroup": "61687674:14"
+        },
+        {
+          "id": "floor5-northeast-column",
+          "label": "northeast-column",
+          "sourcePixel": [
+            974,
+            486
+          ],
+          "nativePosition": [
+            2946.04075,
+            -6000.1993
+          ],
+          "nativeGroup": "61687674:14"
+        },
+        {
+          "id": "floor5-southwest-column",
+          "label": "southwest-column",
+          "sourcePixel": [
+            777,
+            605
+          ],
+          "nativePosition": [
+            2933.18475,
+            -5958.0295
+          ],
+          "nativeGroup": "61687674:14"
+        },
+        {
+          "id": "floor5-southeast-column",
+          "label": "southeast-column",
+          "sourcePixel": [
+            972,
+            605
+          ],
+          "nativePosition": [
+            2923.51015,
+            -5994.1331
+          ],
+          "nativeGroup": "61687674:14"
+        }
+      ],
+      "holdouts": [
+        {
+          "id": "floor5-north-middle-column",
+          "label": "north-middle-column",
+          "sourcePixel": [
+            878,
+            486
+          ],
+          "nativePosition": [
+            2950.87825,
+            -5982.14675
+          ],
+          "nativeGroup": "61687674:14"
+        },
+        {
+          "id": "floor5-south-middle-column",
+          "label": "south-middle-column",
+          "sourcePixel": [
+            878,
+            605
+          ],
+          "nativePosition": [
+            2928.34765,
+            -5976.08055
+          ],
+          "nativeGroup": "61687674:14"
+        }
+      ],
+      "maximumResidualYards": 3,
+      "uncertainty": "Approximate room-map planning references, not authoritative server spawns. Registration errors measure matched image/room landmarks only; they do not measure server spawn accuracy. Authored enemy points are transformed unchanged; native Z and facing remain unknown. Four of 15 authored references miss the exported WMO floor by 0.091 to 1.694 yards; their authored XY is retained without snapping.",
+      "validation": {
+        "placementCount": 15,
+        "independentFitAnchors": 4,
+        "independentHoldouts": 2,
+        "scope": "Unique room footprints, doorways and pillar arrangements independently checked against native WMO boundaries. No log positions used as registration or spawn inputs.",
+        "approximateRegistrationUncertaintyYards": 3,
+        "geometryScreen": {
+          "pointCount": 15,
+          "wmoFloorHits": 11,
+          "nearEdgeReferences": [
+            {
+              "id": "94288",
+              "distanceYards": 0.090955
+            },
+            {
+              "id": "94289",
+              "distanceYards": 0.885032
+            },
+            {
+              "id": "94294",
+              "distanceYards": 1.693523
+            },
+            {
+              "id": "94301",
+              "distanceYards": 0.538235
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

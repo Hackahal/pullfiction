@@ -16,7 +16,11 @@ type ReferenceRow = {
   position: [number, number, number | null];
   facing: number | null;
   floor?: number;
-  kind?: "sod-reference" | "portal-registered-reference" | "guide-reference";
+  kind?:
+    | "sod-reference"
+    | "portal-registered-reference"
+    | "map-registered-reference"
+    | "guide-reference";
   displaySourceURL?: string;
 };
 const maps = reference.maps as unknown as Record<string, ReferenceRow[]>;
@@ -57,7 +61,9 @@ export function referenceCoverage(map: number, version: GameVersion) {
       sourceURL: sod.sourceURL,
       unplaced: source.unplaced.length,
       approximate: source.placements.filter(
-        (row) => row.kind === "portal-registered-reference",
+        (row) =>
+          row.kind === "portal-registered-reference" ||
+          row.kind === "map-registered-reference",
       ).length,
     };
   }
@@ -184,6 +190,7 @@ export function referenceRaidActors(
         distance: null,
         confidence:
           row.kind === "portal-registered-reference" ||
+          row.kind === "map-registered-reference" ||
           row.kind === "guide-reference"
             ? "approximate"
             : "unobserved",

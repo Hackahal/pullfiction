@@ -23,7 +23,7 @@ SoD layout. Counts exclude two friendly Gnomeregan records.
 | Ruins of Ahn'Qiraj | 509 | 316 | Classic baseline | The explicit SoD mapping export contains zero placements |
 | Temple of Ahn'Qiraj | 531 | 164 | Explicit SoD mapping 442 | Source map coverage does not establish live patrol phases |
 | Naxxramas | 533 | 852 | Classic baseline | SoD changes need corrections; the separate WotLK-derived mapping is not used |
-| Scarlet Enclave | 2856 | 594 | 374 mapped exterior references and 220 approximate portal-registered references | 68 references on later interior maps lack enough registration anchors |
+| Scarlet Enclave | 2856 | 662 | 374 exterior references, 220 portal approximations, and 68 room-map approximations | Map registrations are approximate; four chapel pins lie within 1.7 yards of a room edge |
 
 Classic BFD boss identities and patrol alternatives are removed before adding
 the seven SoD boss references. Data from an explicit SoD mapping replaces the
@@ -95,8 +95,29 @@ Mason's reference lies on a beach between two ship complexes, consistent with
 his own SoD guide. Of 220 references, 37 have unresolved exported-floor
 ambiguities. The local floor export omits general M2 collision, so those
 references are approximate planning points rather than certified walkable
-spawn locations. The later monastery and chapel maps each have only one
-transition anchor and no native bounds; their 68 references stay unplaced.
+spawn locations.
+
+The monastery and chapel maps have no native bounds and only one transition
+anchor each. Their 53 and 15 references use independent room-map registration.
+`scarlet-registration.json` contains reviewed numeric landmarks, the retained
+client build and WMO identities, and URLs and hashes for 32 public floor-map
+tiles. Each registration fits four room or pillar landmarks and checks two
+additional landmarks excluded from the fit. Maximum holdout errors are 1.363
+yards for the monastery and 0.578 yards for the chapel. Native boundary overlays
+also match the maps' rooms, pillars, stairs and connecting corridors. The
+three-yard acceptance tolerance measures map alignment, not server spawn
+accuracy. No NPC positions or combat-log observations are fit anchors.
+
+All 53 monastery pins and 11 chapel pins intersect the exported native WMO at
+their transformed XY. Four chapel pins lie 0.091–1.694 yards outside a WMO edge.
+The catalog preserves those XY coordinates without snapping and keeps source Z
+and facing null. For these approximate map references, runtime grounding can
+use a structural edge within three yards when the exact column has no walkable
+structure. That inferred height passes through the existing native frame
+without a second terrain snap. Exact room intersections, other reference types
+and log actors keep their existing grounding behavior. User edits retain the
+same treatment near an edge. Overlapping room levels remain an approximation
+where the authored map does not distinguish their altitude.
 
 The upstream project publishes no attached software license. This package
 contains a factual numeric reference projection with attribution, not its
@@ -110,7 +131,10 @@ python3 scripts/sod-raid-spawns.py \
 	--output third_party/raid-spawns/sod.json
 ```
 
-The generator validates pinned input hashes before parsing. A downloaded cache
+The generator validates pinned input hashes before parsing, including the
+reviewed registration facts. Regeneration requires the public numeric source
+checkout and the included facts file; images and client geometry are not build
+or generation inputs. A downloaded cache
 may also contain a source manifest, which is checked when present. Builds use
 the reviewed JSON and do not fetch external data.
 

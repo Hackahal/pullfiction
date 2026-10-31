@@ -2126,21 +2126,40 @@ export class EditorController {
             actor.spawn.floorHint === undefined,
           )
         : undefined;
+      const nearbyHeight =
+        actor.spawn.referenceKind === "map-registered-reference"
+          ? geometry?.nearbyStructureHeight(pose.pos[0], pose.pos[1], hint, 3)
+          : undefined;
       return {
         ...pose,
-        pos: [pose.pos[0], pose.pos[1], height ?? hint] as [
+        nearbyGround: nearbyHeight !== undefined,
+        pos: [pose.pos[0], pose.pos[1], nearbyHeight ?? height ?? hint] as [
           number,
           number,
           number,
         ],
       };
     }
+    const plannedPosition = planned
+      ? this.state.compareRecorded
+        ? (planned.recorded ?? planned.position)
+        : planned.position
+      : undefined;
     return planned
       ? {
           ...(pose ?? {}),
-          pos: this.state.compareRecorded
-            ? (planned.recorded ?? planned.position)
-            : planned.position,
+          pos: plannedPosition!,
+          nearbyGround:
+            !this.state.replay &&
+            actor.spawn?.referenceKind === "map-registered-reference" &&
+            this.loadedFloors
+              .get(this.state.plan.mapId)
+              ?.nearbyStructureHeight(
+                plannedPosition![0],
+                plannedPosition![1],
+                plannedPosition![2],
+                3,
+              ) !== undefined,
           facing: this.state.compareRecorded
             ? (planned.recordedFacing ?? planned.facing)
             : planned.facing,
@@ -4576,11 +4595,13 @@ export class EditorController {
       this.localFiles,
       this.browserBridge,
       [
-        ...referenceRaidActors(
-          plan.mapId,
-          plan.gameVersion,
-          this.referenceModels[plan.gameVersion],
-        ),
+        ...(plan.steps.some((step) => !step.snapshot?.report)
+          ? referenceRaidActors(
+              plan.mapId,
+              plan.gameVersion,
+              this.referenceModels[plan.gameVersion],
+            )
+          : []),
         ...plan.steps.flatMap((step) => step.snapshot?.actors ?? []),
       ].map((actor) => ({
         player: actor.type === "Player",
@@ -5848,7 +5869,14 @@ export class EditorController {
         ? this.sceneActors().flatMap((actor) => {
             const pose = this.actorPose(actor);
             if (!pose || pose.dead) return [];
-            return [{ ...actor, position: pose.pos, facing: pose.facing }];
+            return [
+              {
+                ...actor,
+                position: pose.pos,
+                facing: pose.facing,
+                ground: !("nearbyGround" in pose && pose.nearbyGround),
+              },
+            ];
           })
         : [];
       if (!actors.length && !this.standaloneFrame) return;
@@ -5865,7 +5893,7 @@ export class EditorController {
             display: a.displayID ?? null,
             scale: a.scale ?? 1,
             position: a.position,
-            ground: true,
+            ground: a.ground,
             floor_hint: a.position[2],
             facing: a.facing,
             speed: 0,

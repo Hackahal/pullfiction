@@ -16,6 +16,9 @@ import re
 SOURCE_REVISION = "9046aea1a824fa8f8a5caa9c651cad088b826a73"
 SOURCE_ROOT = "https://github.com/RaiderIO/keystone.guru"
 SOD_VERSION = 10
+REGISTRATION_PATH = Path(__file__).resolve().parent.parent / "third_party/raid-spawns/scarlet-registration.json"
+# Pins reviewed factual room landmarks and image identities, not image/client bytes.
+REGISTRATION_SHA256 = "9999f5b447b0adf23df5b28843565c9667460a2e6cc73049f4933dfc2ee503f4"
 DUNGEONS = {
     "90": ("gnomeregan_sod", "identity"),
     "531": ("temple_of_ahnqiraj_classic", "rotated"),
@@ -154,14 +157,36 @@ def similarity_registration(source_points: list[list], native_points: list[list]
             'offsetX': offset.real, 'offsetY': offset.imag}
 
 
-def registered_position(coefficients: dict, lat: float, lng: float) -> list:
+
+def room_similarity_registration(source_points: list[list], native_points: list[list]) -> dict:
+    """Least-squares similarity for independently matched public room landmarks."""
+    if len(source_points) < 3 or len(source_points) != len(native_points):
+        raise SourceError('Room registration requires at least three paired anchors')
+    if not all(len(point) == 2 and all(finite_number(v) for v in point)
+               for point in source_points + native_points):
+        raise SourceError('Room registration anchors must be finite coordinate pairs')
+    source = [complex(point[1], point[0]) for point in source_points]
+    native = [complex(*point) for point in native_points]
+    center_source, center_native = sum(source) / len(source), sum(native) / len(native)
+    denominator = sum(abs(point - center_source) ** 2 for point in source)
+    if denominator < 1e-9:
+        raise SourceError('Room registration anchors must be distinct')
+    coefficient = sum((a - center_source).conjugate() * (b - center_native)
+                      for a, b in zip(source, native)) / denominator
+    if abs(coefficient) < 1e-9:
+        raise SourceError('Room registration native anchors must be distinct')
+    offset = center_native - coefficient * center_source
+    return {'real': coefficient.real, 'imaginary': coefficient.imag,
+            'offsetX': offset.real, 'offsetY': offset.imag}
+
+def registered_position(coefficients: dict, lat: float, lng: float, *, rounding=True) -> list:
     if not all(finite_number(v) for v in [lat, lng, *coefficients.values()]):
         raise SourceError('Portal registration values must be finite')
     value = complex(coefficients['real'], coefficients['imaginary']) * complex(lng, lat)
     value += complex(coefficients['offsetX'], coefficients['offsetY'])
     if not all(abs(v) < 20000 for v in (value.real, value.imag)):
         raise SourceError('Registered reference position is outside supported bounds')
-    return [round(value.real, 4), round(value.imag, 4), None]
+    return [round(value.real, 4), round(value.imag, 4), None] if rounding else [value.real, value.imag, None]
 
 
 def scarlet_floor2_registration(dungeon: dict, mapping_id: int, markers: dict[int, list[dict]]) -> dict:
@@ -198,6 +223,75 @@ def scarlet_floor2_registration(dungeon: dict, mapping_id: int, markers: dict[in
             'validation': {'bossLandmarks': 3, 'geometryAmbiguities': 37, 'placementCount': 220,
                            'scope': 'Coarse region plausibility only; exact initial positions are unverified.'}}
 
+
+
+def load_room_registrations(path: Path = REGISTRATION_PATH) -> tuple[dict[int, dict], dict]:
+    """Validate reviewed numeric facts; no image, client geometry or log inputs."""
+    data = path.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != REGISTRATION_SHA256:
+        raise SourceError('Reviewed Scarlet registration facts content mismatch')
+    facts = json.loads(data)
+    if (facts.get('schema') != 1 or facts.get('mapID') != 2856
+            or facts.get('mappingVersion') != 539 or facts.get('sourceRevision') != SOURCE_REVISION
+            or facts.get('nativeSource', {}).get('wmoPlacementID') != 61687674
+            or facts.get('nativeSource', {}).get('mapID') != 2856
+            or facts.get('nativeSource', {}).get('buildKey') != '5604ce35a8644bdcf0e26c1daf979c15'
+            or facts.get('nativeSource', {}).get('version') != '1.15.9.70576'
+            or not re.fullmatch(r'[a-f0-9]{64}', facts.get('nativeSource', {}).get('geometryExportSHA256', ''))):
+        raise SourceError('Reviewed Scarlet registration source identity mismatch')
+    rows = facts.get('registrations', [])
+    if [row.get('sourceFloor') for row in rows] != [4, 5]:
+        raise SourceError('Reviewed room registrations must identify Scarlet floors 4 and 5')
+    result = {}
+    for row in rows:
+        floor = row['sourceFloor']
+        if row.get('id') != f'scarlet-floor{floor}-rooms':
+            raise SourceError('Reviewed room registration identity mismatch')
+        images = row.get('sourceImages', [])
+        expected_urls = {f'https://assets.keystone.guru/tiles_webp/classic/scarlet_enclave/{floor}/2/{x}_{y}.webp'
+                         for x in range(4) for y in range(4)}
+        if (len(images) != 16 or {image.get('url') for image in images} != expected_urls
+                or any(not re.fullmatch(r'[a-f0-9]{64}', image.get('sha256', '')) for image in images)):
+            raise SourceError('Reviewed source image identities are incomplete')
+        anchors, holdouts = row.get('anchors', []), row.get('holdouts', [])
+        if len(anchors) < 3 or not holdouts:
+            raise SourceError('Room registration requires anchors and independent holdouts')
+        identities = set()
+        for anchor in anchors + holdouts:
+            identity = anchor.get('id')
+            group = anchor.get('nativeGroup', '')
+            pixel, native = anchor.get('sourcePixel', []), anchor.get('nativePosition', [])
+            if (not isinstance(identity, str) or not identity or identity in identities
+                    or not re.fullmatch(r'61687674:(?:[0-9]|[12][0-9]|3[0-6])', group)
+                    or len(pixel) != 2 or len(native) != 2
+                    or not all(finite_number(v) for v in pixel + native)
+                    or not (0 <= pixel[0] <= 1536 and 0 <= pixel[1] <= 1024)
+                    or not (2500 < native[0] < 3100 and -6200 < native[1] < -5700)):
+                raise SourceError('Reviewed room landmark is invalid or duplicated')
+            identities.add(identity)
+            anchor['sourcePosition'] = [-pixel[1] / 4, pixel[0] / 4]
+        coefficients = room_similarity_registration([a['sourcePosition'] for a in anchors],
+                                                    [a['nativePosition'] for a in anchors])
+        residuals = []
+        for anchor in anchors + holdouts:
+            projected = registered_position(coefficients, *anchor['sourcePosition'], rounding=False)
+            error = math.hypot(projected[0] - anchor['nativePosition'][0], projected[1] - anchor['nativePosition'][1])
+            anchor['residualYards'] = round(error, 6)
+            if anchor in anchors:
+                residuals.append(error)
+        fit_rmse = math.sqrt(sum(error ** 2 for error in residuals) / len(residuals))
+        holdout_max = max(anchor['residualYards'] for anchor in holdouts)
+        limit = row.get('maximumResidualYards')
+        if not finite_number(limit) or not 0 < limit <= 15 or max(residuals + [holdout_max]) > limit:
+            raise SourceError('Reviewed room registration exceeds its residual boundary')
+        result[floor] = {**row, 'kind': 'room-map-registration-approximate',
+                         'mappingVersion': 539, 'coefficients': coefficients,
+                         'sourceCoordinateSystem': 'Source image 1536x1024; sourcePosition=[-pixelY/4,pixelX/4]=[lat,lng]',
+                         'validation': {**row.get('validation', {}), 'fitRMSEYards': round(fit_rmse, 6),
+                                        'holdoutMaxErrorYards': holdout_max},
+                         'nativeSource': facts['nativeSource']}
+    return result, {'path': 'third_party/raid-spawns/scarlet-registration.json', 'sha256': digest}
 
 def project_map(dungeon: dict, versions: list[dict], npcs: dict[int, dict],
                 names: dict[int, str], enemies: dict[int, list[dict]], axes: str,
@@ -240,9 +334,11 @@ def project_map(dungeon: dict, versions: list[dict], npcs: dict[int, dict],
                 placement = {**actor, 'boss': npc.get('classification_id') == 3,
                              'position': position, 'facing': None, 'kind': 'sod-reference'}
                 if registration is not None:
-                    placement.update({'kind': 'portal-registered-reference',
-                                      'confidence': 'portal-registration-approximate',
+                    placement.update({'kind': 'portal-registered-reference' if registration['kind'] == 'portal-registration-approximate' else 'map-registered-reference',
+                                      'confidence': registration['kind'],
                                       'registration': registration['id'], 'sourcePosition': [lat, lng]})
+                    if registration['kind'] == 'room-map-registration-approximate':
+                        placement['precision'] = registration['kind']
                 placements.append(placement)
     return {'kind': 'sod-reference', 'mappingVersion': mapping['id'],
             'sourceCount': source_count, 'excludedFriendly': excluded_friendly,
@@ -253,6 +349,7 @@ def project_map(dungeon: dict, versions: list[dict], npcs: dict[int, dict],
 
 def generate(source_dir: Path) -> dict:
     files = load_source(source_dir)
+    room_registrations, registration_facts = load_room_registrations()
     def table(name):
         return json.loads(files['database/seeders/dungeondata/' + name + '.json'].decode('utf-8'))
     dungeons = table('dungeons')
@@ -273,13 +370,13 @@ def generate(source_dir: Path) -> dict:
             markers = {index: json.loads(files[
                 f'database/seeders/dungeondata/classic/{key}/{index}/dungeon_floor_switch_markers.json'
             ].decode('utf-8')) for index in (1, 2)}
-            registrations = {2: scarlet_floor2_registration(dungeon, mapping['id'], markers)}
+            registrations = {2: scarlet_floor2_registration(dungeon, mapping['id'], markers), **room_registrations}
         maps[map_id] = project_map(dungeon, versions, npcs, names, enemies, axes, registrations)
     return {'schema': 1, 'ruleset': 'sod', 'provider': 'Keystone.guru',
             'sourceRevision': SOURCE_REVISION, 'sourceURL': f'{SOURCE_ROOT}/tree/{SOURCE_REVISION}',
             'sourceFiles': [{'path': path, 'sha256': identities['sha256'], 'gitBlob': identities['gitBlob']}
                             for path, identities in sorted(SOURCE_FILES.items())],
-            'maps': maps}
+            'registrationFacts': registration_facts, 'maps': maps}
 
 
 def main():
