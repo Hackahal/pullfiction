@@ -1,3 +1,7 @@
+import type {
+  WclSpeedCategory,
+  WclSpeedSelection,
+} from "./speedrun-world-record";
 import { actorNameplateEnabled } from "./nameplate-model";
 import {
   createClientFolderAccess,
@@ -1267,6 +1271,24 @@ export class EditorController {
     return this.requireBrowserLogs().guild(
       search,
       this.state.gameVersion,
+      signal,
+    );
+  }
+  speedCategory(version: GameVersion, map: number, signal?: AbortSignal) {
+    return this.requireBrowserLogs().speedCategory(version, map, signal);
+  }
+  speedWorldRecord(
+    version: GameVersion,
+    map: number,
+    category: WclSpeedCategory,
+    selection: WclSpeedSelection,
+    signal?: AbortSignal,
+  ) {
+    return this.requireBrowserLogs().speedWorldRecord(
+      version,
+      map,
+      category,
+      selection,
       signal,
     );
   }

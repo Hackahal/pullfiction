@@ -9,6 +9,7 @@ export const paneIds = [
   "events",
   "playbook",
   "run",
+  "speedrun",
 ] as const;
 export type PaneId = (typeof paneIds)[number];
 export type Edge = "left" | "right" | "top" | "bottom";
@@ -71,13 +72,14 @@ export function defaultDock(): DockNode {
     ratio: 0.25,
     a: { pane: "playbook" },
     b: {
-      axis: "column",
-      ratio: 0.74,
-      a: coreDock(),
-      b: { pane: "run" },
+      axis: "row",
+      ratio: 0.72,
+      a: { axis: "column", ratio: 0.74, a: coreDock(), b: { pane: "run" } },
+      b: { pane: "speedrun" },
     },
   };
 }
+
 function containsPane(node: DockNode, pane: PaneId): boolean {
   return "pane" in node
     ? node.pane === pane
@@ -148,15 +150,26 @@ export function parseDock(value: string | null): DockNode {
         b = prunePages(node.b);
       return a && b ? { ...node, a, b } : (a ?? b);
     }
+    // Insert the new timer beside Scene inside the restored tree. Wrapping the
+    // root would hide the legacy v1 shape before migrateFullHeightLeft sees it.
+    function addTimer(node: DockNode): DockNode {
+      if ("pane" in node)
+        return node.pane === "scene"
+          ? { axis: "row", ratio: 0.72, a: node, b: { pane: "speedrun" } }
+          : node;
+      return { ...node, a: addTimer(node.a), b: addTimer(node.b) };
+    }
     let restored: DockNode = prunePages(n) ?? defaultDock();
     for (const pane of paneIds)
       if (!ids.has(pane))
         restored =
-          pane === "run"
-            ? { axis: "column", ratio: 0.74, a: restored, b: { pane } }
-            : pane === "playbook"
-              ? { axis: "row", ratio: 0.25, a: { pane }, b: restored }
-              : { axis: "row", ratio: 0.7, a: restored, b: { pane } };
+          pane === "speedrun"
+            ? addTimer(restored)
+            : pane === "run"
+              ? { axis: "column", ratio: 0.74, a: restored, b: { pane } }
+              : pane === "playbook"
+                ? { axis: "row", ratio: 0.25, a: { pane }, b: restored }
+                : { axis: "row", ratio: 0.7, a: restored, b: { pane } };
     return restored;
   } catch {
     return defaultDock();

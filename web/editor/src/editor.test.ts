@@ -249,14 +249,53 @@ test("Retired Pages never reopens from old visibility preferences while Edits re
 
 test("Saved v1 workspaces upgrade the left column once; v2 restores later custom pane placements", () => {
   const saved = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
-  const root = defaultDock();
-  if ("pane" in root || "pane" in root.b) throw Error("Expected main area");
+  // A real v1 shape, independent of the current default tree and new panes.
   const legacy = {
     axis: "column",
     ratio: 0.7,
-    a: { axis: "row", ratio: 0.3, a: root.a, b: root.b.a },
-    b: root.b.b,
-  } as typeof root;
+    a: {
+      axis: "row",
+      ratio: 0.3,
+      a: { pane: "playbook" },
+      b: {
+        axis: "column",
+        ratio: 0.6,
+        a: {
+          axis: "row",
+          ratio: 0.65,
+          a: { pane: "scene" },
+          b: {
+            axis: "row",
+            ratio: 0.6,
+            a: { pane: "analysis" },
+            b: {
+              axis: "column",
+              ratio: 0.5,
+              a: { pane: "inspector" },
+              b: {
+                axis: "column",
+                ratio: 0.5,
+                a: { pane: "healing" },
+                b: {
+                  axis: "column",
+                  ratio: 0.5,
+                  a: { pane: "resources" },
+                  b: { pane: "events" },
+                },
+              },
+            },
+          },
+        },
+        b: {
+          axis: "row",
+          ratio: 0.5,
+          a: { pane: "damage" },
+          b: { pane: "timeline" },
+        },
+      },
+    },
+    b: { pane: "run" },
+  } as ReturnType<typeof defaultDock>;
   const visible = new Set<PaneId>(["scene", "playbook", "run"]);
   const render = (current: string | null, old: string | null) => {
     Object.defineProperty(globalThis, "localStorage", {
