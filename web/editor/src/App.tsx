@@ -1,3 +1,4 @@
+import { CommunityLinks } from "./CommunityLinks";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
 import { EditsPanel } from "./EditsPanel";
@@ -826,6 +827,7 @@ export function App({ controller }: { controller: EditorController }) {
           </span>
           <div className="menu-spacer" />
           <span>{state.status}</span>
+          <CommunityLinks />
         </footer>
         {state.notice && (
           <div role="status" className="toast">

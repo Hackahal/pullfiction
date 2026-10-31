@@ -1,3 +1,4 @@
+import { CommunityLinks } from "./CommunityLinks";
 import { useEffect, useRef, useState } from "react";
 import type { EditorController } from "./controller";
 import type { Snapshot, GameVersion, Fight } from "./types";
@@ -161,6 +162,7 @@ export function Library({
             Find logs
           </button>
         </nav>
+        <CommunityLinks />
         <button
           className="library-return"
           disabled={state.busy}

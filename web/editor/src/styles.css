@@ -383,11 +383,27 @@ a {
   color: #6d747d;
   font-size: 11px;
 }
-.statusbar > span:last-child {
+.statusbar > span:last-of-type {
   max-width: 45%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+.community-links {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 16px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.community-links a:hover {
+  color: #f0dfba;
+  text-decoration: underline;
+}
+.community-links a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 .inspector {
   height: 100%;
