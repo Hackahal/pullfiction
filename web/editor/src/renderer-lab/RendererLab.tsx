@@ -8,6 +8,7 @@ import {
   type LabSample,
 } from "./runner";
 import type { RendererCase } from "./cases";
+import { RendererViewport } from "./RendererViewport";
 import "./renderer-lab.css";
 export function RendererLab({ controller }: { controller: EditorController }) {
   const state = useSyncExternalStore(
@@ -20,9 +21,13 @@ export function RendererLab({ controller }: { controller: EditorController }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [repeat, setRepeat] = useState(true);
+  const [fixtureJson, setFixtureJson] = useState("");
   const active = useRef<AbortController | null>(null);
   useEffect(() => {
-    void controller.boot();
+    void controller.boot().then(() => {
+      if (new URL(location.href).searchParams.has("local-source"))
+        return controller.openClient([], false);
+    });
     return () => {
       active.current?.abort();
       controller.stop();
@@ -139,23 +144,45 @@ export function RendererLab({ controller }: { controller: EditorController }) {
           repeats
         </output>
       </section>
+      <details>
+        <summary>Paste fixture JSON</summary>
+        <label>
+          Renderer fixture JSON
+          <textarea
+            aria-label="Renderer fixture JSON"
+            value={fixtureJson}
+            onChange={(e) => setFixtureJson(e.target.value)}
+            disabled={busy}
+            rows={6}
+            spellCheck={false}
+          />
+        </label>
+        <button
+          disabled={busy || !fixtureJson.trim()}
+          onClick={() => {
+            try {
+              setCases(validateBatch(JSON.parse(fixtureJson)));
+              setError("");
+            } catch (err) {
+              setError(String(err));
+            }
+          }}
+        >
+          Apply fixture JSON
+        </button>
+      </details>
       <p className="renderer-lab-boundary">
         Local assets only. Isolated asset fixtures use the known Molten Core
         entry stage. No logs, gameplay or official-client process. A capture is
         rendering evidence; visual correctness remains a separate check.
       </p>
       {error && <p role="alert">{error}</p>}
-      <div className="renderer-lab-stage">
-        <canvas
-          id="benilla"
-          tabIndex={0}
-          aria-label="Renderer fixture viewport"
-        />
+      <RendererViewport>
         {(!state.ready || state.clientNeedsFiles) &&
           !state.clientPromptHidden && (
             <BrowserClient state={state} controller={controller} />
           )}
-      </div>
+      </RendererViewport>
       <details>
         <summary>Queued cases ({cases.length})</summary>
         <ol>

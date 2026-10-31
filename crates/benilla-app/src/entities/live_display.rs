@@ -398,6 +398,74 @@ mod tests {
     }
 
     #[test]
+    fn creature_object_scale_updates_drive_each_entity_transform() {
+        let mut app = App::new();
+        app.init_resource::<Time>();
+        app.add_message::<DisplaySwapped>();
+        app.add_systems(Update, (refresh_live_display, tick_scale_ease).chain());
+        let units: Vec<_> = [(114765, 0.5_f32), (15345, 4.0), (15509, 7.5)]
+            .into_iter()
+            .map(|(display, scale)| {
+                let entity = app
+                    .world_mut()
+                    .spawn((
+                        VisualAttached,
+                        Guid(u64::from(display)),
+                        NetEntity {
+                            kind: EntityKind::Unit,
+                            display_id: Some(display),
+                            scale: 1.0,
+                        },
+                        ObjectStore(benilla_protocol::ObjectFields::from_pairs(&[
+                            (4, scale.to_bits()),
+                            (131, display),
+                        ])),
+                        AppliedDisplay(Some(display)),
+                        Transform::default(),
+                    ))
+                    .id();
+                (entity, scale)
+            })
+            .collect();
+
+        app.update();
+        for &(entity, scale) in &units {
+            assert_eq!(app.world().get::<NetEntity>(entity).unwrap().scale, scale);
+            assert_eq!(
+                app.world().get::<Transform>(entity).unwrap().scale,
+                Vec3::ONE
+            );
+            assert_eq!(app.world().get::<ScaleEase>(entity).unwrap().to, scale);
+        }
+
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_secs(1));
+        app.update();
+        for &(entity, scale) in &units {
+            let halfway = Vec3::splat((1.0 + scale) * 0.5);
+            assert!(
+                (app.world().get::<Transform>(entity).unwrap().scale - halfway)
+                    .abs()
+                    .max_element()
+                    < 1e-6
+            );
+        }
+
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_secs(1));
+        app.update();
+        for &(entity, scale) in &units {
+            assert_eq!(
+                app.world().get::<Transform>(entity).unwrap().scale,
+                Vec3::splat(scale)
+            );
+            assert!(app.world().get::<ScaleEase>(entity).is_none());
+        }
+    }
+
+    #[test]
     fn scale_ease_is_the_2s_cosine_smoothstep() {
         let w = |elapsed: f32| {
             let t = (elapsed / SCALE_EASE_SECS).min(1.0);

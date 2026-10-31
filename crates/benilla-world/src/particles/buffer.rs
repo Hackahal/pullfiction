@@ -22,6 +22,15 @@ pub struct EffectVertex {
     pub color: [f32; 4],
 }
 
+/// Particle-only supplemental attributes. Other effect writers keep their existing vertex API.
+#[repr(C)]
+#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub(super) struct ParticleVertexData {
+    pub uv_layers: [f32; 4],
+    /// Authored lifetime alpha cutoff and multi-texture combiner mode.
+    pub material: [f32; 2],
+}
+
 /// The lane's blends: [`ParticleBlend`]'s four plus the multiplicative pair of decals and rain.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum EffectBlend {
@@ -190,6 +199,7 @@ pub struct EffectDraw {
     /// The main-world camera whose view draws this (the world's, or a booth's).
     pub cam: Entity,
     pub(crate) texture: AssetId<Image>,
+    pub(crate) extra_textures: Option<[AssetId<Image>; 2]>,
     pub(crate) blend: EffectBlend,
     pub(crate) topology: EffectTopology,
     pub(crate) fog: EffectFog,
@@ -218,6 +228,7 @@ pub struct EffectDraw {
 #[derive(Resource)]
 pub struct EffectQuads {
     pub verts: Vec<EffectVertex>,
+    pub(super) particle_data: Vec<ParticleVertexData>,
     pub draws: Vec<EffectDraw>,
     /// Has [`begin_effect_frame`] run this frame? A commit before it would be erased, so
     /// [`Self::commit`] asserts it in debug builds: every writer needs
@@ -229,6 +240,7 @@ impl Default for EffectQuads {
     fn default() -> Self {
         Self {
             verts: Vec::new(),
+            particle_data: Vec::new(),
             draws: Vec::new(),
             // True, so a fixture with no clear can commit; the app's `Last` reset arms the check.
             cleared_this_frame: true,
@@ -288,6 +300,22 @@ impl EffectQuads {
         self.commit(start, EffectTopology::Tris, spec);
     }
 
+    pub(super) fn commit_particle_quads(
+        &mut self,
+        start: u32,
+        spec: EffectDrawSpec,
+        extra_textures: Option<[AssetId<Image>; 2]>,
+    ) {
+        self.commit_quads(start, spec);
+        if let Some(draw) = self
+            .draws
+            .last_mut()
+            .filter(|draw| draw.range.start == start)
+        {
+            draw.extra_textures = extra_textures;
+        }
+    }
+
     fn commit(&mut self, start: u32, topology: EffectTopology, spec: EffectDrawSpec) {
         debug_assert!(
             self.cleared_this_frame,
@@ -296,10 +324,13 @@ impl EffectQuads {
              (see `EffectQuads::cleared_this_frame`)."
         );
         let end = self.verts.len() as u32;
+        self.particle_data
+            .resize(self.verts.len(), ParticleVertexData::default());
         if end > start {
             self.draws.push(EffectDraw {
                 cam: spec.cam,
                 texture: spec.texture,
+                extra_textures: None,
                 blend: spec.blend,
                 topology,
                 fog: spec.fog,
@@ -322,6 +353,7 @@ impl EffectQuads {
 /// Clear the stream for a new frame; every family's writer runs after it.
 pub fn begin_effect_frame(mut quads: ResMut<EffectQuads>) {
     quads.verts.clear();
+    quads.particle_data.clear();
     quads.draws.clear();
     quads.cleared_this_frame = true;
 }

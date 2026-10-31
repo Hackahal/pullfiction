@@ -45,6 +45,8 @@ struct EffectParams {
     clip: vec4<f32>,
 };
 @group(1) @binding(3) var<uniform> wow_params: EffectParams;
+@group(1) @binding(4) var effect_texture1: texture_2d<f32>;
+@group(1) @binding(5) var effect_texture2: texture_2d<f32>;
 
 // The rain pass's forced fog colour: 0x80808080 → grey (render-state 0x0d).
 const RAIN_FOG_GREY: vec3<f32> = vec3<f32>(0.50196078, 0.50196078, 0.50196078);
@@ -55,6 +57,8 @@ struct Vertex {
     @location(0) position: vec3<f32>,
     @location(1) uv: vec2<f32>,
     @location(2) color: vec4<f32>,    // raw authored gamma RGBA; α is the blend weight
+    @location(3) uv_layers: vec4<f32>,
+    @location(4) material: vec2<f32>, // lifetime cutoff, multi-texture mode
 };
 
 struct VertexOutput {
@@ -63,10 +67,12 @@ struct VertexOutput {
     @location(1) color: vec4<f32>,
     // Planar eye-Z for fog and the farclip wall, positive in front of the camera.
     @location(2) view_z: f32,
+    @location(3) uv_layers: vec4<f32>,
+    @location(4) @interpolate(flat) material: vec2<f32>,
 };
 
 // Modern particle alpha tests precede blending, including Mod/Mod2x whose RGB factors ignore
-// alpha. EXP2 multipliers and lifetime cutoffs are separate unsupported modern capabilities.
+// alpha. EXP2 multipliers arrive in vertex color, and the lifetime cutoff arrives separately.
 fn modern_particle_alpha_pass(texture_alpha: f32, opacity: f32, threshold: f32) -> bool {
     return texture_alpha >= threshold && opacity >= threshold;
 }
@@ -94,6 +100,8 @@ fn vertex(v: Vertex) -> VertexOutput {
 #endif
     out.uv = v.uv;
     out.color = v.color;
+    out.uv_layers = v.uv_layers;
+    out.material = v.material;
     return out;
 }
 
@@ -119,8 +127,26 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     }
     // Texture bytes × authored vertex colour in gamma space; `view.mip_bias` is the render-scale
     // LOD compensation, 0.0 at native and above.
-    let tex = textureSampleBias(effect_texture, effect_sampler, in.uv, view.mip_bias);
+    var tex = textureSampleBias(effect_texture, effect_sampler, in.uv, view.mip_bias);
+    let layer_dx = dpdx(in.uv_layers) * exp2(view.mip_bias);
+    let layer_dy = dpdy(in.uv_layers) * exp2(view.mip_bias);
+    // Adapted from WhiteoutFlakes particle_multitex.slang, BSD-3-Clause.
+    // Three alpha stages are always used; color-stage count and alpha doubling are independent.
+    if (in.material.y > 0.5) {
+        let stage1 = textureSampleGrad(effect_texture1, effect_sampler, in.uv_layers.xy, layer_dx.xy, layer_dy.xy);
+        let stage2 = textureSampleGrad(effect_texture2, effect_sampler, in.uv_layers.zw, layer_dx.zw, layer_dy.zw);
+        let mode = u32(in.material.y);
+        let two = tex * stage1;
+        let three = two * stage2;
+        let three_colors = (mode & 2u) != 0u;
+        let alpha_mod4 = (mode & 4u) != 0u;
+        tex = vec4<f32>(select(two.rgb * 2.0, three.rgb * 4.0, three_colors),
+            three.a * select(2.0, 4.0, alpha_mod4));
+    }
     let c = tex * in.color;
+    if (tex.a < in.material.x) {
+        discard;
+    }
 #ifdef MODERN_PARTICLE_KEY
     if (!modern_particle_alpha_pass(tex.a, c.a, 128.0 / 255.0)) {
         discard;

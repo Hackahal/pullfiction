@@ -817,6 +817,7 @@ fn a_panes_emitters_take_the_half_extent_unit_of_the_leg_it_draws_through() {
     let em = benilla_assets::ModelEmitter {
         def: benilla_world::testing::plain_particle_def(),
         texture: Some(Handle::default()),
+        extra_textures: None,
         bone_pivot: [0.0; 3],
         billboard: None,
         recursion: None,

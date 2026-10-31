@@ -43,13 +43,27 @@ use bevy::shader::Shader;
 
 use crate::lighting::SharedLightBuffer;
 
-use super::buffer::{EffectBlend, EffectFog, EffectQuads, EffectTopology, EffectVertex};
+use super::buffer::{EffectBlend, EffectFog, EffectQuads, EffectTopology};
+
+/// GPU packing extends the particle lane without changing other effect writers' vertex API.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct PackedEffectVertex {
+    pos: [f32; 3],
+    uv: [f32; 2],
+    color: [f32; 4],
+    uv_layers: [f32; 4],
+    material: [f32; 2],
+}
+
+type TextureStages = [AssetId<Image>; 3];
 
 /// One extracted draw: the render-world copy of a [`super::buffer::EffectDraw`].
 struct ExtractedDraw {
     cam: Entity,
     main_entity: Entity,
     texture: AssetId<Image>,
+    extra_textures: Option<[AssetId<Image>; 2]>,
     blend: EffectBlend,
     topology: EffectTopology,
     fog: EffectFog,
@@ -66,10 +80,17 @@ struct ExtractedDraw {
     clip: Option<Vec4>,
 }
 
+impl ExtractedDraw {
+    fn texture_stages(&self) -> TextureStages {
+        let extra = self.extra_textures.unwrap_or([self.texture; 2]);
+        [self.texture, extra[0], extra[1]]
+    }
+}
+
 /// One GPU draw after the merge walk: an index range and the bind-group identity its items share.
 struct MergedDraw {
     index_range: Range<u32>,
-    texture: AssetId<Image>,
+    textures: TextureStages,
     light: Option<Buffer>,
     /// This draw's fog and clip row in [`EffectMeta::params`].
     params_offset: u32,
@@ -78,7 +99,7 @@ struct MergedDraw {
 /// The lane's per-frame GPU state: vertices, indices, draws, merged draws and params rows.
 #[derive(Resource)]
 pub struct EffectMeta {
-    vertices: RawBufferVec<EffectVertex>,
+    vertices: RawBufferVec<PackedEffectVertex>,
     indices: RawBufferVec<u32>,
     draws: Vec<ExtractedDraw>,
     merged: Vec<MergedDraw>,
@@ -172,7 +193,7 @@ impl EffectMeta {
 /// `None` for the world's buffer, which is never re-created.
 #[derive(Resource, Default)]
 pub struct EffectBindGroups {
-    images: HashMap<(AssetId<Image>, Option<BufferId>), BindGroup>,
+    images: HashMap<(TextureStages, Option<BufferId>), BindGroup>,
     /// The params buffer the cached groups bind.
     params_buffer: Option<BufferId>,
 }
@@ -204,6 +225,8 @@ pub fn init_effect_pipeline(mut commands: Commands, asset_server: Res<AssetServe
                 storage_buffer_read_only_sized(false, None),
                 // The per-draw params row, by dynamic offset.
                 uniform_buffer::<EffectParams>(true),
+                texture_2d(TextureSampleType::Float { filterable: true }),
+                texture_2d(TextureSampleType::Float { filterable: true }),
             ),
         ),
     );
@@ -307,6 +330,9 @@ impl SpecializedRenderPipeline for EffectPipeline {
                 VertexFormat::Float32x2,
                 // color: raw authored gamma RGBA
                 VertexFormat::Float32x4,
+                // Additional authored particle UVs and lifetime/material data.
+                VertexFormat::Float32x4,
+                VertexFormat::Float32x2,
             ],
         );
         let (blend, depth_write, blend_def) = effect_blend_state(key.blend);
@@ -397,18 +423,31 @@ fn extract_effects(
             | AssetEvent::Modified { id }
             | AssetEvent::Removed { id }
             | AssetEvent::Unused { id } => {
-                bind_groups.images.retain(|(image, _), _| image != id);
+                bind_groups
+                    .images
+                    .retain(|(images, _), _| !images.contains(id));
             }
             AssetEvent::LoadedWithDependencies { .. } => {}
         }
     }
     meta.vertices.clear();
-    meta.vertices.extend(quads.verts.iter().copied());
+    meta.vertices
+        .extend(quads.verts.iter().enumerate().map(|(i, vertex)| {
+            let extra = quads.particle_data.get(i).copied().unwrap_or_default();
+            PackedEffectVertex {
+                pos: vertex.pos,
+                uv: vertex.uv,
+                color: vertex.color,
+                uv_layers: extra.uv_layers,
+                material: extra.material,
+            }
+        }));
     meta.draws.clear();
     meta.draws.extend(quads.draws.iter().map(|d| ExtractedDraw {
         cam: d.cam,
         main_entity: d.main_entity,
         texture: d.texture,
+        extra_textures: d.extra_textures,
         blend: d.blend,
         topology: d.topology,
         fog: d.fog,
@@ -495,7 +534,7 @@ fn queue_effects(
 /// What adjacent items must share to merge: pipeline, texture, light buffer and params row.
 type RunKey = (
     bevy::render::render_resource::CachedRenderPipelineId,
-    AssetId<Image>,
+    TextureStages,
     Option<BufferId>,
     u32,
 );
@@ -632,7 +671,7 @@ fn prepare_effects(
             };
             let key: RunKey = (
                 pipeline,
-                draw.texture,
+                draw.texture_stages(),
                 draw.light.as_ref().map(|b| b.id()),
                 params_offset,
             );
@@ -649,7 +688,7 @@ fn prepare_effects(
                     close(&mut phase.items, &mut open, meta.merged.len());
                     meta.merged.push(MergedDraw {
                         index_range: index_start..index_end,
-                        texture: draw.texture,
+                        textures: draw.texture_stages(),
                         light: draw.light.clone(),
                         params_offset,
                     });
@@ -707,12 +746,17 @@ fn prepare_effect_bind_groups(
         bind_groups.params_buffer = meta.params_buffer;
     }
     for draw in &meta.draws {
-        let key = (draw.texture, draw.light.as_ref().map(|b| b.id()));
+        let stages = draw.texture_stages();
+        let key = (stages, draw.light.as_ref().map(|b| b.id()));
         if bind_groups.images.contains_key(&key) {
             continue;
         }
         // Not on the GPU yet: the draw is skipped this frame.
         let Some(image) = gpu_images.get(draw.texture) else {
+            continue;
+        };
+        let (Some(image1), Some(image2)) = (gpu_images.get(stages[1]), gpu_images.get(stages[2]))
+        else {
             continue;
         };
         if effect_trace() {
@@ -732,6 +776,8 @@ fn prepare_effect_bind_groups(
                     &image.sampler,
                     light_buf.as_entire_binding(),
                     params_binding.clone(),
+                    &image1.texture_view,
+                    &image2.texture_view,
                 )),
             ),
         );
@@ -781,7 +827,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawEffectBatch {
             return RenderCommandResult::Skip;
         };
         // Image not on the GPU yet: withheld.
-        let key = (draw.texture, draw.light.as_ref().map(|b| b.id()));
+        let key = (draw.textures, draw.light.as_ref().map(|b| b.id()));
         let Some(image_bind_group) = bind_groups.into_inner().images.get(&key) else {
             return RenderCommandResult::Skip;
         };
@@ -841,6 +887,17 @@ fn effect_trace() -> bool {
 #[cfg(test)]
 mod tests {
     use bevy::math::{Mat3, Mat4, Vec3};
+
+    #[test]
+    fn particle_gpu_vertex_layout_matches_all_five_shader_attributes() {
+        use super::PackedEffectVertex;
+        assert_eq!(std::mem::size_of::<PackedEffectVertex>(), 60);
+        assert_eq!(std::mem::offset_of!(PackedEffectVertex, pos), 0);
+        assert_eq!(std::mem::offset_of!(PackedEffectVertex, uv), 12);
+        assert_eq!(std::mem::offset_of!(PackedEffectVertex, color), 20);
+        assert_eq!(std::mem::offset_of!(PackedEffectVertex, uv_layers), 36);
+        assert_eq!(std::mem::offset_of!(PackedEffectVertex, material), 52);
+    }
 
     #[test]
     fn modern_particle_alpha_policy_separates_pipeline_and_merge_identity() {

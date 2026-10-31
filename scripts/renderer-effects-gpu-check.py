@@ -31,6 +31,7 @@ VARIANTS = {
 PROOF = ('Synthetic native GPU render/readback of complete production fragment variants and '
          'production blend states. Does not verify whole-model appearance, browser execution, '
          'sRGB/BC decode, lighting/fog, particle simulation, or official-client parity.')
+GPU_READBACKS = 24
 
 
 def digest(path):
@@ -88,12 +89,14 @@ def preprocess(shader, defines):
     if len(active) != 1:
         raise ValueError('Unbalanced shader conditionals')
     lines.append('''
-@group(2) @binding(0) var<uniform> test_color: vec4<f32>;
+struct TestParams { color:vec4<f32>, uv_layers:vec4<f32>, material:vec2<f32>, padding:vec2<f32> };
+@group(2) @binding(0) var<uniform> test_params: TestParams;
 @vertex fn test_vertex(@builtin(vertex_index) id:u32)->VertexOutput {
     var positions=array<vec2<f32>,3>(vec2<f32>(-1.,-1.),vec2<f32>(3.,-1.),vec2<f32>(-1.,3.));
     var out:VertexOutput;
     out.clip_position=vec4<f32>(positions[id],0.,1.);
-    out.uv=vec2<f32>(0.5);out.color=test_color;out.view_z=0.;return out;
+    out.uv=vec2<f32>(0.5);out.color=test_params.color;out.view_z=0.;
+    out.uv_layers=test_params.uv_layers;out.material=test_params.material;return out;
 }''')
     return '\n'.join(lines)
 
@@ -181,16 +184,16 @@ def main():
             raise ValueError('Expected all three source policy tests to execute.')
         run([*common, '-o', gpu], output, 'compile-gpu', repo)
         gpu_log = run([gpu, output], output, 'gpu', repo)
-        if gpu_log.count('PASS ') != 14:
-            raise ValueError('Expected all fourteen GPU readbacks to execute.')
-        report = {'schema': 1, 'status': 'passed', 'policyTests': 3, 'gpuReadbacks': 14,
+        if gpu_log.count('PASS ') != GPU_READBACKS:
+            raise ValueError(f'Expected all {GPU_READBACKS} GPU readbacks to execute.')
+        report = {'schema': 1, 'status': 'passed', 'policyTests': 3, 'gpuReadbacks': GPU_READBACKS,
                   'proofBoundary': PROOF, 'syntheticTextureRGBA': [64, 96, 160, 'case alpha'],
                   'syntheticTrackRGBA': [.5, .25, .125, 'case alpha'], 'sourceFiles': sources,
                   'generatorSHA256': digest(Path(__file__)), 'harnessSHA256': digest(harness),
                   'nativeLibraries': {name: str(path) for name, path in libraries.items()},
                   'shaderDefines': {name: sorted(defines) for name, defines in VARIANTS.items()}}
         (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
-        print(json.dumps({'status': 'passed', 'policyTests': 3, 'gpuReadbacks': 14,
+        print(json.dumps({'status': 'passed', 'policyTests': 3, 'gpuReadbacks': GPU_READBACKS,
                           'report': str(output / 'report.json'), 'proofBoundary': PROOF}))
     except (ValueError, OSError) as error:
         parser.error(str(error))

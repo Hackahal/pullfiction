@@ -145,6 +145,7 @@ pub struct ParticleEmitter {
     water_bound: (Vec3, f32),
     /// No quads until it is resident, or the engine fallback flashes through the additive blend.
     texture: Handle<Image>,
+    extra_textures: Option<[Handle<Image>; 2]>,
     /// True while the owner is out of the frame's draw set; a gated pool pushes no quads.
     gated: bool,
     /// The owner's freeze, for a scene its camera cannot report (all `<Model>` tile panes share one
@@ -170,6 +171,7 @@ pub struct ParticleEmitter {
 struct ChildEmitter {
     def: ParticleEmitterDef,
     texture: Handle<Image>,
+    extra_textures: Option<[Handle<Image>; 2]>,
     particles: Vec<Particle>,
     accumulator: f32,
     gate_prev: bool,
@@ -186,6 +188,7 @@ impl ChildEmitter {
         Self {
             def,
             texture: Handle::default(),
+            extra_textures: None,
             particles: Vec::new(),
             accumulator: 0.0,
             gate_prev: false,
@@ -532,6 +535,7 @@ pub fn spawn_emitter(
             owner_reach,
             water_bound: emitter.water_bound,
             texture,
+            extra_textures: emitter.extra_textures.clone(),
             gated: false,
             frozen: false,
             recursion: emitter.recursion.clone(),
@@ -596,6 +600,7 @@ pub(crate) fn wire_child_emitters(
                 Some(ChildEmitter {
                     def: em.def.clone(),
                     texture,
+                    extra_textures: em.extra_textures.clone(),
                     particles: Vec::new(),
                     accumulator: 0.0,
                     gate_prev: false,
@@ -714,6 +719,7 @@ pub(crate) mod tests {
         ModelEmitter {
             def: plain_def(),
             texture: Some(Handle::default()),
+            extra_textures: None,
             bone_pivot: [0.0; 3],
             billboard: None,
             recursion: None,

@@ -27,7 +27,7 @@ ARCHIVE_FILES = {
     "python/python_stdlib.zip", "python/pyodide-lock.json", "python/Pyodide-LICENSE.txt",
     "python/Python-LICENSE.txt", "python/SOURCE.md",
 }
-CONVERTER_SCRIPTS = {f"scripts/classic_{name}.py" for name in ("compat", "db2", "items", "spells", "characters", "character_catalog", "creatures", "terrain", "world", "world_catalog", "table_strings", "lighting", "sections", "talents")}
+CONVERTER_SCRIPTS = {f"scripts/classic_{name}.py" for name in ("compat", "db2", "items", "spells", "spell_presentations", "characters", "character_catalog", "creatures", "terrain", "world", "world_catalog", "table_strings", "lighting", "sections", "talents")}
 METADATA_FILES = {
     "metadata/RaidSpawns-SOURCE.md": "third_party/raid-spawns/SOURCE.md",
     "metadata/RaidSpawns-LICENSE.md": "third_party/raid-spawns/LICENSE.md",
@@ -58,6 +58,7 @@ def converter_files(repo: Path) -> set[str]:
     result.update(f"third_party/wowdbdefs/{p.name}" for p in definitions.iterdir()
                   if p.suffix in (".dbd", ".dbde") or p.name in ("SOURCE.md", "LICENSE.md"))
     result.update(("third_party/wowexport/LICENSE", "third_party/wowexport/SOURCE.md"))
+    result.update(("third_party/whiteoutflakes/LICENSE", "third_party/whiteoutflakes/SOURCE.md"))
     return result
 
 

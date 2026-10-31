@@ -146,8 +146,13 @@ export async function prepareOriginalUnits(
       const race = unit.race ?? 1,
         sex = unit.sex ?? 0,
         look = unit.look ?? [0, 0, 0, 0, 0];
+      // Replay descriptors write every logged item in order. Repeated slots therefore
+      // keep the last entry, and the prepared atlas must use that same equipment.
+      const equipped = new Map(
+        unit.gear?.map((gear) => [gear.slot, gear.display]),
+      );
       const displays = [3, 4, 5, 6, 7, 8, 9, 18].map((slot) => {
-        const value = unit.gear?.find((gear) => gear.slot === slot)?.display;
+        const value = equipped.get(slot);
         return typeof value === "number" && items.displays?.[value] ? value : 0;
       });
       resources.add(bodyAppearanceResource({ race, sex, look, displays }));

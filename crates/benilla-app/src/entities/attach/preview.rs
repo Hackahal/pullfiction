@@ -633,7 +633,7 @@ fn assemble(spec: &PreviewSpec, ctx: &mut PreviewCtx<'_, '_>) -> Option<Assemble
     let visible = ctx.characters.map(|c| {
         c.0.visible_geosets(race, sex, char_look.hair_style, char_look.facial_hair, &eg)
     });
-    let body_tex = super::char_skin::forced_body_atlas(
+    let body_tex = match super::char_skin::forced_body_atlas(
         &char_look,
         super::char_skin::skin_key(&char_look, bodyslots, spec.emblem, false),
         ctx.displays.as_deref(),
@@ -641,7 +641,10 @@ fn assemble(spec: &PreviewSpec, ctx: &mut PreviewCtx<'_, '_>) -> Option<Assemble
         ctx.skin_composites,
         ctx.asset_server,
         ctx.images,
-    );
+    ) {
+        super::super::skin_composite::BodyAtlas::Ready(texture) => texture,
+        super::super::skin_composite::BodyAtlas::Pending => return None,
+    };
     let char_mats = super::char_skin::build_char_skin_materials(
         &char_look,
         body_tex,
@@ -1135,6 +1138,7 @@ mod tests {
                 ..benilla_world::testing::plain_particle_def()
             },
             texture: None,
+            extra_textures: None,
             bone_pivot: [0.0; 3],
             billboard: billboard.map(|b| benilla_assets::EmitterBillboard {
                 kind: benilla_formats::BillboardKind::Spherical,

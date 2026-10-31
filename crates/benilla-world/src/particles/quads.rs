@@ -6,7 +6,7 @@ use benilla_assets::coords::wow_to_bevy;
 use benilla_formats::ParticleEmitterDef;
 use bevy::prelude::*;
 
-use super::buffer::EffectVertex;
+use super::buffer::{EffectQuads, EffectVertex, ParticleVertexData};
 use super::{rand01, Particle};
 
 /// The 128-entry twinkle noise table, uniform in [0, 1) like the reference's `0xcf58f0` (filled at
@@ -103,6 +103,40 @@ pub(super) fn expand_quads(
     cam: &CamBasis,
     out: &mut Vec<EffectVertex>,
 ) {
+    expand_quads_inner(def, particles, frame, placement, cam, out, None);
+}
+
+pub(super) fn expand_particle_quads(
+    def: &ParticleEmitterDef,
+    particles: &[Particle],
+    frame: &DrawFrame,
+    placement: &Transform,
+    cam: &CamBasis,
+    stream: &mut EffectQuads,
+) {
+    stream
+        .particle_data
+        .resize(stream.verts.len(), ParticleVertexData::default());
+    expand_quads_inner(
+        def,
+        particles,
+        frame,
+        placement,
+        cam,
+        &mut stream.verts,
+        Some(&mut stream.particle_data),
+    );
+}
+
+fn expand_quads_inner(
+    def: &ParticleEmitterDef,
+    particles: &[Particle],
+    frame: &DrawFrame,
+    placement: &Transform,
+    cam: &CamBasis,
+    out: &mut Vec<EffectVertex>,
+    mut material_out: Option<&mut Vec<ParticleVertexData>>,
+) {
     let anchored = frame.anchored;
     let (cam_right, cam_up) = (cam.right, cam.up);
     // Size takes the instance scale only when flagged (`0x7b2a50`), else the lane's size unit.
@@ -174,12 +208,50 @@ pub(super) fn expand_quads(
         // sort (`0x7b3a10`), because only an alpha-blended cloud can show the order; between
         // clouds, each draw record's anchor sorts it.
         let mut push_quad = |corners: [Vec3; 4], quv: [[f32; 2]; 4]| {
+            let lo: [f32; 2] =
+                std::array::from_fn(|i| quv.iter().map(|uv| uv[i]).fold(f32::INFINITY, f32::min));
+            let hi: [f32; 2] = std::array::from_fn(|i| {
+                quv.iter().map(|uv| uv[i]).fold(f32::NEG_INFINITY, f32::max)
+            });
             for (c, t) in corners.iter().zip(quv) {
                 out.push(EffectVertex {
                     pos: c.to_array(),
                     uv: t,
                     color: rgba,
                 });
+                if let Some(extra) = material_out.as_deref_mut() {
+                    let mut data = ParticleVertexData::default();
+                    if let Some(material) = &def.modern_material {
+                        data.material = [material.cutoff(u_age), material.shader_mode()];
+                        if material.multi_texture() {
+                            // Adapted from WhiteoutFlakes particle2_emitter.cpp and
+                            // particle_geometry.cpp, BSD-3-Clause. Each layer shares one
+                            // symmetric velocity sample across U/V; origins are independent.
+                            let sample = |salt: u32| {
+                                let mut seed =
+                                    p.phase.wrapping_add(salt).wrapping_mul(0x9e3779b9) | 1;
+                                rand01(&mut seed)
+                            };
+                            for layer in 0..2 {
+                                let variation = sample(10 + layer as u32 * 3) * 2. - 1.;
+                                for axis in 0..2 {
+                                    let origin = sample(11 + layer as u32 * 3 + axis as u32);
+                                    let speed = material.uv_velocity[layer][axis]
+                                        + variation * material.uv_velocity_variation[layer][axis];
+                                    let at = (origin + p.age * speed).rem_euclid(1.);
+                                    let corner = if hi[axis] > lo[axis] {
+                                        (t[axis] - lo[axis]) / (hi[axis] - lo[axis])
+                                    } else {
+                                        0.
+                                    };
+                                    data.uv_layers[layer * 2 + axis] =
+                                        at + corner * material.uv_scale[layer];
+                                }
+                            }
+                        }
+                    }
+                    extra.push(data);
+                }
             }
         };
         // Head quad (particleType 0 or 2), drawn first (`0x7b2bc9`): a billboard, or the XY plane.
@@ -259,6 +331,90 @@ pub(super) fn expand_quads(
 mod tests {
     use super::{expand_quads, spin_angle, CamBasis, DrawFrame, Particle};
     use bevy::prelude::{Quat, Transform, Vec3};
+
+    #[test]
+    fn modern_particle_uv_layers_scroll_independently_and_frozen_redraw_is_stable() {
+        use super::expand_particle_quads;
+        use crate::particles::buffer::{EffectQuads, EffectVertex};
+        let mut def = crate::particles::tests::plain_def();
+        def.modern_material = Some(benilla_formats::ModernParticleMaterial {
+            flags: 0x70000000,
+            textures: [
+                Some("base.blp".into()),
+                Some("detail.blp".into()),
+                Some("alpha.blp".into()),
+            ],
+            uv_scale: [1., 0.5],
+            uv_velocity: [[-25. / 512., 0.], [0.75, 0.75]],
+            uv_velocity_variation: [[0.; 2]; 2],
+            color_multiplier: 1.5,
+            alpha_multiplier: 0.75,
+            alpha_cutoff: vec![[0., 0.1], [1., 0.3]],
+            z_source: None,
+        });
+        let mut particle = Particle {
+            pos: Vec3::ZERO,
+            vel: Vec3::ZERO,
+            age: 0.,
+            life: 1.,
+            phase: 7,
+            fresh: false,
+            quat: Quat::IDENTITY,
+            angvel: Vec3::ZERO,
+        };
+        let frame = DrawFrame {
+            anchored: false,
+            ride: Default::default(),
+            alpha: 1.,
+            size_scale: 1.,
+        };
+        let camera = CamBasis {
+            right: Vec3::X,
+            up: Vec3::Y,
+        };
+        let draw = |p: &Particle| {
+            let mut stream = EffectQuads::default();
+            stream.verts.push(EffectVertex {
+                pos: [0.; 3],
+                uv: [0.; 2],
+                color: [1.; 4],
+            });
+            expand_particle_quads(
+                &def,
+                std::slice::from_ref(p),
+                &frame,
+                &Transform::IDENTITY,
+                &camera,
+                &mut stream,
+            );
+            stream
+        };
+        let first = draw(&particle);
+        assert_eq!(
+            first.particle_data.len(),
+            5,
+            "single-texture predecessors receive neutral supplemental data"
+        );
+        assert_eq!(first.particle_data[0].material, [0.; 2]);
+        let a = first.particle_data[1].uv_layers;
+        let opposite = first.particle_data[3].uv_layers;
+        assert!((opposite[0] - a[0] - 1.).abs() < 1e-6);
+        assert!((opposite[2] - a[2] - 0.5).abs() < 1e-6);
+        particle.age = 0.25;
+        let later = draw(&particle);
+        let frozen = draw(&particle);
+        for (a, b) in later.particle_data.iter().zip(&frozen.particle_data) {
+            assert_eq!(a.uv_layers, b.uv_layers);
+            assert_eq!(a.material, b.material);
+        }
+        let b = later.particle_data[1].uv_layers;
+        assert!(
+            ((b[0] - a[0]).rem_euclid(1.) - (-25f32 / 512. * 0.25).rem_euclid(1.)).abs() < 1e-6
+        );
+        assert!(((b[2] - a[2]).rem_euclid(1.) - 0.75 * 0.25).abs() < 1e-6);
+        assert!((later.particle_data[1].material[0] - 0.15).abs() < 1e-6);
+        assert_eq!(later.particle_data[1].material[1], 7.);
+    }
 
     /// The `0x7b2dda` negate: only a negative angle on a bit-5 particle flips.
     #[test]

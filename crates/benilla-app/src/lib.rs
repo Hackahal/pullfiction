@@ -541,3 +541,6 @@ mod planner_plate_layout;
 
 #[cfg(target_arch = "wasm32")]
 pub use portrait::{ActorInspectionControl, ActorInspectionRequest};
+
+#[cfg(all(target_arch = "wasm32", feature = "renderer-lab"))]
+pub mod renderer_actor_diagnostics;

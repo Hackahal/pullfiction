@@ -243,9 +243,52 @@ impl SplineData {
     }
 }
 
+/// Authored modern particle material inputs retained by the browser adapter's PFP5 extension.
+#[derive(Debug, Clone)]
+pub struct ModernParticleMaterial {
+    pub flags: u32,
+    pub textures: [Option<String>; 3],
+    pub uv_scale: [f32; 2],
+    pub uv_velocity: [[f32; 2]; 2],
+    pub uv_velocity_variation: [[f32; 2]; 2],
+    pub color_multiplier: f32,
+    pub alpha_multiplier: f32,
+    pub alpha_cutoff: Vec<[f32; 2]>,
+    pub z_source: Option<f32>,
+}
+
+impl ModernParticleMaterial {
+    pub fn multi_texture(&self) -> bool {
+        self.flags & 0x10000000 != 0
+    }
+    /// Bit 0 activates the path; bits 1/2 choose its independent color/alpha products.
+    pub fn shader_mode(&self) -> f32 {
+        if !self.multi_texture() {
+            return 0.;
+        }
+        (1 + 2 * u32::from(self.flags & 0x40000000 != 0)
+            + 4 * u32::from(self.flags & 0x20000000 != 0)) as f32
+    }
+    pub fn cutoff(&self, age: f32) -> f32 {
+        if self.alpha_cutoff.is_empty() {
+            return 0.;
+        }
+        let end = self.alpha_cutoff.partition_point(|k| k[0] <= age);
+        let a = self.alpha_cutoff[end.saturating_sub(1)];
+        let b = self.alpha_cutoff[end.min(self.alpha_cutoff.len() - 1)];
+        let t = if b[0] > a[0] {
+            ((age - a[0]) / (b[0] - a[0])).clamp(0., 1.)
+        } else {
+            0.
+        };
+        a[1] + (b[1] - a[1]) * t
+    }
+}
+
 /// One vanilla M2 particle emitter, positions and vectors model-local (WoW axes, Z up).
 #[derive(Debug, Clone)]
 pub struct ParticleEmitterDef {
+    pub modern_material: Option<ModernParticleMaterial>,
     pub modern_variation: Option<[f32; 7]>,
     pub life_color_curve: Vec<[f32; 4]>,
     pub life_alpha_curve: Vec<[f32; 2]>,
@@ -364,6 +407,12 @@ impl ParticleEmitterDef {
         value.size_y = linear(&self.life_scale_curve, age, 2).unwrap_or(value.size);
         value.head_cell = cell(&self.head_cell_curve, age).unwrap_or(value.head_cell);
         value.tail_cell = cell(&self.tail_cell_curve, age).unwrap_or(value.tail_cell);
+        if let Some(material) = &self.modern_material {
+            for color in &mut value.color[..3] {
+                *color *= material.color_multiplier;
+            }
+            value.color[3] *= material.alpha_multiplier;
+        }
         value
     }
     /// File flag 0x10 (runtime 0x100; the flag remap `0x70faf8`..`0x70fc44` is not the identity).
@@ -585,12 +634,15 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
     let mut cell_curves = vec![(Vec::new(), Vec::new()); count];
     let mut life_curves = vec![(Vec::new(), Vec::new(), Vec::new()); count];
     let mut modern_variations = vec![None; count];
+    let mut modern_materials = vec![None; count];
     if bytes.len() >= 12 {
         let magic = &bytes[bytes.len() - 12..bytes.len() - 8];
-        if magic == b"PFPV" || magic == b"PFP2" || magic == b"PFP3" || magic == b"PFP4" {
+        if matches!(magic, b"PFPV" | b"PFP2" | b"PFP3" | b"PFP4" | b"PFP5") {
             let offset = le_u32(bytes, bytes.len() - 8) as usize;
             let entries = le_u32(bytes, bytes.len() - 4) as usize;
-            let stride = if magic == b"PFP4" {
+            let stride = if magic == b"PFP5" {
+                160
+            } else if magic == b"PFP4" {
                 76
             } else if magic == b"PFP3" {
                 48
@@ -610,7 +662,7 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                     value.0.is_finite() && value.1.is_finite() && value.0 >= 0.0 && value.1 >= 0.0,
                     "invalid Classic particle variation"
                 );
-                if stride == 76 {
+                if stride >= 76 {
                     let values: [f32; 7] = std::array::from_fn(|i| le_f32(bytes, at + 48 + i * 4));
                     anyhow::ensure!(
                         values.iter().all(|v| v.is_finite()),
@@ -648,6 +700,48 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                         curve(bytes, at + 32, offset)?,
                         curve(bytes, at + 40, offset)?,
                     );
+                    if stride == 160 {
+                        let flags = le_u32(bytes, at + 76);
+                        let material = ModernParticleMaterial {
+                            flags,
+                            textures: std::array::from_fn(|j| {
+                                textures
+                                    .get(le_u32(bytes, at + 80 + j * 4) as usize)
+                                    .cloned()
+                                    .flatten()
+                            }),
+                            uv_scale: std::array::from_fn(|j| le_f32(bytes, at + 92 + j * 4)),
+                            uv_velocity: std::array::from_fn(|j| {
+                                std::array::from_fn(|k| le_f32(bytes, at + 100 + j * 8 + k * 4))
+                            }),
+                            uv_velocity_variation: std::array::from_fn(|j| {
+                                std::array::from_fn(|k| le_f32(bytes, at + 116 + j * 8 + k * 4))
+                            }),
+                            color_multiplier: le_f32(bytes, at + 132),
+                            alpha_multiplier: le_f32(bytes, at + 136),
+                            alpha_cutoff: curve(bytes, at + 140, offset)?,
+                            z_source: (le_u32(bytes, at + 156) != 0)
+                                .then(|| le_f32(bytes, at + 148)),
+                        };
+                        anyhow::ensure!(
+                            material
+                                .uv_scale
+                                .iter()
+                                .chain(material.uv_velocity.iter().flatten())
+                                .chain(material.uv_velocity_variation.iter().flatten())
+                                .chain([&material.color_multiplier, &material.alpha_multiplier])
+                                .all(|v| v.is_finite())
+                                && material.z_source.is_none_or(f32::is_finite),
+                            "invalid modern particle material values"
+                        );
+                        anyhow::ensure!(
+                            !material.multi_texture()
+                                || (le_u32(bytes, at + 152) == 0
+                                    && material.textures.iter().all(Option::is_some)),
+                            "unsupported or unresolved modern particle texture stages"
+                        );
+                        modern_materials[i] = Some(material);
+                    }
                 }
                 if stride >= 24 {
                     let (head, tail) = &mut cell_curves[i];
@@ -783,6 +877,7 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
             ],
         };
         out.push(ParticleEmitterDef {
+            modern_material: modern_materials[i].take(),
             modern_variation: modern_variations[i],
             life_color_curve: life_curves[i].0.clone(),
             life_alpha_curve: life_curves[i].1.clone(),
@@ -848,6 +943,90 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
 #[cfg(test)]
 mod classic_tests {
     use super::*;
+    #[test]
+    fn modern_multitexture_footer_preserves_stages_and_lifetime_materials() {
+        let mut bytes = vec![0u8; 0x144 + STRIDE];
+        bytes[..4].copy_from_slice(b"MD20");
+        bytes[4..8].copy_from_slice(&256u32.to_le_bytes());
+        bytes[HDR_COUNT..HDR_COUNT + 4].copy_from_slice(&1u32.to_le_bytes());
+        bytes[HDR_PTR..HDR_PTR + 4].copy_from_slice(&0x144u32.to_le_bytes());
+        bytes[0x144 + 0x2a..0x144 + 0x2c].copy_from_slice(&1u16.to_le_bytes());
+        for i in 0..3 {
+            bytes[0x144 + 336 + i * 4..0x144 + 340 + i * 4]
+                .copy_from_slice(&u32::MAX.to_le_bytes());
+        }
+        let texture_table = bytes.len();
+        bytes.resize(bytes.len() + 48, 0);
+        bytes[0x5c..0x60].copy_from_slice(&3u32.to_le_bytes());
+        bytes[0x60..0x64].copy_from_slice(&(texture_table as u32).to_le_bytes());
+        for i in 0..3 {
+            let path = format!("stage{i}.blp\0");
+            let at = bytes.len() as u32;
+            bytes.extend(path.as_bytes());
+            bytes[texture_table + i * 16 + 8..texture_table + i * 16 + 12]
+                .copy_from_slice(&(path.len() as u32).to_le_bytes());
+            bytes[texture_table + i * 16 + 12..texture_table + i * 16 + 16]
+                .copy_from_slice(&at.to_le_bytes());
+        }
+        let cutoff = bytes.len() as u32;
+        for value in [0f32, 0.25, 1., 0.75] {
+            bytes.extend(value.to_le_bytes());
+        }
+        let table = bytes.len();
+        bytes.resize(table + 160, 0);
+        let put_u32 = |bytes: &mut [u8], at: usize, value: u32| {
+            bytes[at..at + 4].copy_from_slice(&value.to_le_bytes())
+        };
+        let put_f32 = |bytes: &mut [u8], at: usize, value: f32| {
+            bytes[at..at + 4].copy_from_slice(&value.to_le_bytes())
+        };
+        for (at, value) in [
+            (76, 0x70830021),
+            (80, 0),
+            (84, 1),
+            (88, 2),
+            (140, 2),
+            (144, cutoff),
+            (156, 1),
+        ] {
+            put_u32(&mut bytes, table + at, value);
+        }
+        for (at, value) in [
+            (92, 1.),
+            (96, 0.5),
+            (100, -25. / 512.),
+            (132, 1.5),
+            (136, 0.75),
+            (148, 2.5),
+        ] {
+            put_f32(&mut bytes, table + at, value);
+        }
+        bytes.extend(b"PFP5");
+        bytes.extend((table as u32).to_le_bytes());
+        bytes.extend(1u32.to_le_bytes());
+        let defs = parse_m2_particle_emitters(&bytes).unwrap();
+        let material = defs[0].modern_material.as_ref().unwrap();
+        assert_eq!(
+            material.textures,
+            std::array::from_fn(|i| Some(format!("stage{i}.blp")))
+        );
+        assert_eq!(material.uv_velocity[0][0], -25. / 512.);
+        assert_eq!(material.shader_mode(), 7.);
+        assert_eq!(material.cutoff(0.5), 0.5);
+        assert_eq!(material.z_source, Some(2.5));
+        assert_eq!(defs[0].sample_life(0.5).color, [1.5, 1.5, 1.5, 0.75]);
+        put_u32(&mut bytes, table + 152, 1);
+        assert!(
+            parse_m2_particle_emitters(&bytes).is_err(),
+            "unvalidated animated coordinates remain explicit"
+        );
+        put_u32(&mut bytes, table + 152, 0);
+        put_u32(&mut bytes, table + 88, 3);
+        assert!(
+            parse_m2_particle_emitters(&bytes).is_err(),
+            "an unresolved third stage never degrades to the first"
+        );
+    }
     #[test]
     fn modern_blends_are_explicit_and_do_not_change_original_particle_modes() {
         for (raw, expected) in [

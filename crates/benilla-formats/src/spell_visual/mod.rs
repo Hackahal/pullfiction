@@ -14,7 +14,7 @@ use crate::Chain;
 
 pub mod chain_effects;
 mod modern;
-pub use modern::EffectPlacement;
+pub use modern::{EffectPlacement, ModernGraphProvenance};
 
 pub use chain_effects::{ChainEffect, ChainProc, CHAIN_MAX_BEAMS};
 
@@ -309,6 +309,8 @@ pub struct SpellVisualCatalog {
     modern_attachments: HashMap<u32, Vec<(u16, u32)>>,
     modern_placements: HashMap<u32, EffectPlacement>,
     modern_missiles: HashMap<u32, Vec<u32>>,
+    modern_graph_provenance: Option<ModernGraphProvenance>,
+    modern_chain_procs: HashMap<u32, Vec<ChainProc>>,
 }
 
 impl SpellVisualCatalog {
@@ -331,6 +333,8 @@ impl SpellVisualCatalog {
             modern_attachments: HashMap::new(),
             modern_placements: HashMap::new(),
             modern_missiles: HashMap::new(),
+            modern_graph_provenance: None,
+            modern_chain_procs: HashMap::new(),
         }
     }
 
@@ -593,6 +597,8 @@ pub fn load_spell_visual_catalog(chain: &mut Chain) -> Result<SpellVisualCatalog
         modern_attachments: HashMap::new(),
         modern_placements: HashMap::new(),
         modern_missiles: HashMap::new(),
+        modern_graph_provenance: None,
+        modern_chain_procs: HashMap::new(),
     };
     #[cfg(target_arch = "wasm32")]
     if let Ok(bytes) = chain.read_file("__classic/spell-effects.json") {

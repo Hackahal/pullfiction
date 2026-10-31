@@ -182,6 +182,12 @@ pub(crate) struct ChainProcPlay {
 
 /// One projectile per target on the GO's Speed > 0 branch (`0x6e8a50` → `0x60a3d0`), consumed
 /// by `crate::entities::missile`.
+#[derive(Clone, Debug)]
+pub(crate) struct MissileModel {
+    pub(crate) path: String,
+    pub(crate) scale: f32,
+}
+
 #[derive(Message, Clone)]
 pub(crate) struct MissileSpawn {
     pub(crate) caster: Entity,
@@ -189,7 +195,8 @@ pub(crate) struct MissileSpawn {
     /// `SpellVisual` field 7's model, or `ERROR_CUBE` for an unresolvable id; `None` when field
     /// 7 is below 1 or there is no row, and the spawner flies the wire ammo model (`0x479f40`).
     pub(crate) path: Option<String>,
-    pub(crate) extra_paths: Vec<String>,
+    pub(crate) path_scale: f32,
+    pub(crate) extra_models: Vec<MissileModel>,
     /// The GO's ammo display, flown when [`Self::path`] is `None`.
     pub(crate) ammo_display_id: Option<u32>,
     /// The attach tag the missile homes to (`SpellVisual` field 9 through
@@ -383,7 +390,7 @@ fn resolve_stages(
 }
 
 /// One stage's kit from `spell_id`'s visual chain.
-fn resolve_kit(
+pub(crate) fn resolve_kit(
     spells: &crate::ui_action::Spells,
     visuals: &SpellVisualCatalog,
     spell_id: u32,
@@ -449,7 +456,7 @@ pub(crate) fn held_strike_sound(
 }
 
 /// A kit's populated effect slots; a slot with no `SpellVisualEffectName` path is skipped.
-fn resolve_kit_effects(visuals: &SpellVisualCatalog, kit: &VisualKit) -> Vec<FxSlot> {
+pub(crate) fn resolve_kit_effects(visuals: &SpellVisualCatalog, kit: &VisualKit) -> Vec<FxSlot> {
     visuals
         .model_attachments(kit)
         .into_iter()
@@ -568,7 +575,7 @@ fn play_kit(
         out.shakes.write(SpellKitShake::Play { entity, group });
     }
     // The beam case runs for every play at every stage (`0x60f35c`), ungated by `play.effects`.
-    if let Some(proc) = kit.chain_proc() {
+    for proc in visuals.chain_procs(kit) {
         out.chain.write(ChainProcPlay {
             entity,
             spell_id,
@@ -685,7 +692,7 @@ pub(super) fn route_cast_visuals(
     mut weapon_src: WeaponVisualSrc,
     units: Query<(Entity, &ObjectStore), Without<ItemObject>>,
     holds: Query<&CastHold>,
-    mut channel_cache: Local<EntityHashMap<u32>>,
+    mut channel_cache: Local<EntityHashMap<(u32, Option<u64>)>>,
 ) {
     let spells = sources.spells;
     let auto_repeat = sources.auto_repeat;
@@ -1049,12 +1056,20 @@ pub(super) fn route_cast_visuals(
                     caster,
                     spell_id: go.spell_id,
                     path,
-                    extra_paths: visuals
+                    path_scale: stages
+                        .and_then(|s| visuals.0.placement(s.missile_model))
+                        .map_or(1., |p| p.scale),
+                    extra_models: visuals
                         .0
                         .missile_effects(display.visual)
                         .iter()
                         .skip(1)
-                        .filter_map(|&effect| visuals.0.effect_path(effect).map(str::to_owned))
+                        .filter_map(|&effect| {
+                            visuals.0.effect_path(effect).map(|path| MissileModel {
+                                path: path.to_owned(),
+                                scale: visuals.0.placement(effect).map_or(1., |p| p.scale),
+                            })
+                        })
                         .collect(),
                     ammo_display_id: go.ammo_display_id,
                     dest_tag,
@@ -1073,11 +1088,20 @@ pub(super) fn route_cast_visuals(
     // `MSG_CHANNEL_*` do not); a cleared field drops the hold even with no other wire trace.
     for (entity, store) in &units {
         let cur = store.0.unit_channel_spell();
-        let prev = channel_cache.get(&entity).copied().unwrap_or(0);
-        if cur == prev {
+        let state = (
+            cur,
+            if cur != 0 {
+                store.0.unit_channel_object()
+            } else {
+                None
+            },
+        );
+        let previous = channel_cache.get(&entity).copied().unwrap_or((0, None));
+        let prev = previous.0;
+        if state == previous {
             continue;
         }
-        channel_cache.insert(entity, cur);
+        channel_cache.insert(entity, state);
         if cur != 0 {
             out.sounds.write(SpellKitSound::StopHold {
                 entity,
@@ -1113,7 +1137,7 @@ pub(super) fn route_cast_visuals(
                 }
                 // The CharProc dispatcher's second caller (`0x612b18`): Drain Life's beam is
                 // reached only here, on the rising edge, and lives until the field clears.
-                if let Some(proc) = kit.chain_proc() {
+                for proc in visuals.0.chain_procs(&kit) {
                     out.chain.write(ChainProcPlay {
                         entity,
                         spell_id: cur,

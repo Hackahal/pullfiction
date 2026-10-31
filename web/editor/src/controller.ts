@@ -55,6 +55,7 @@ import {
   prepareOriginalClient,
   prepareOriginalUnits,
 } from "./original-client-assets";
+import { prepareOriginalSpellEffects } from "./original-spell-assets";
 import { installLocalUiArt } from "./local-ui-art";
 import { localSpellReplay } from "./local-spell-assets";
 import { setLocalTalentsProvider, type TalentCatalog } from "./local-talents";
@@ -245,6 +246,8 @@ export class EditorController {
   private portraits = new Map<number, string>();
   private frame: NativeFrame[] = [];
   private inspectionRequest = 0;
+  private appearanceRequests = new Map<string, number>();
+  private pendingAppearances = new Map<string, Appearance>();
   private followCenter: { replay: Replay; point: [number, number] } | null =
     null;
   private floorGeometry = new Map<
@@ -4037,13 +4040,71 @@ export class EditorController {
       {}
     );
   }
-  setAppearance(
+  async setAppearance(
     actor: Actor,
     key: keyof Appearance,
     value: number | undefined,
   ) {
     const id = `${this.state.gameVersion}:${this.state.reportCode}:${actor.id}`;
-    this.appearances[id] = { ...this.appearance(actor), [key]: value };
+    const request = (this.appearanceRequests.get(id) ?? 0) + 1;
+    this.appearanceRequests.set(id, request);
+    const next = {
+      ...(this.pendingAppearances.get(id) ?? this.appearance(actor)),
+      [key]: value,
+    };
+    this.pendingAppearances.set(id, next);
+    const files = this.localFiles;
+    const bridge = this.browserBridge;
+    if (files && bridge) {
+      try {
+        await prepareOriginalUnits(
+          files,
+          bridge,
+          [
+            {
+              player: actor.type === "Player",
+              race: next.race ?? actor.race,
+              sex: next.sex ?? actor.sex,
+              display: next.display ?? actor.displayID,
+              look: next.look ?? [0, 0, 0, 0, 0],
+              gear: actor.gear
+                .filter((gear) => gear.model)
+                .map((gear) => ({
+                  slot: gear.slot,
+                  display: gear.model?.display,
+                })),
+            },
+          ],
+          [],
+          this.clientAbort?.signal,
+        );
+      } catch (error) {
+        if (this.appearanceRequests.get(id) === request) {
+          this.pendingAppearances.delete(id);
+          if (!this.clientAbort?.signal.aborted)
+            this.notify(
+              `Could not prepare appearance: ${error instanceof Error ? error.message : String(error)}`,
+            );
+        }
+        return;
+      }
+      if (files !== this.localFiles || bridge !== this.browserBridge) {
+        if (this.appearanceRequests.get(id) === request)
+          this.pendingAppearances.delete(id);
+        return;
+      }
+    }
+    if (
+      this.appearanceRequests.get(id) !== request ||
+      id !== `${this.state.gameVersion}:${this.state.reportCode}:${actor.id}`
+    ) {
+      if (this.appearanceRequests.get(id) === request)
+        this.pendingAppearances.delete(id);
+      return;
+    }
+    this.pendingAppearances.delete(id);
+    // Publish only after the synchronous native texture reads can succeed.
+    this.appearances[id] = next;
     try {
       this.storage?.setItem(APPEARANCE_KEY, JSON.stringify(this.appearances));
     } catch {
@@ -4564,6 +4625,15 @@ export class EditorController {
         }),
         [...replay.abilities.values()].flatMap((ability) =>
           ability.icon ? [ability.icon] : [],
+        ),
+        signal,
+      );
+      const spellGraph = await this.browserBridge.catalog("spells");
+      await prepareOriginalSpellEffects(
+        this.localFiles,
+        this.browserBridge,
+        [...replay.abilities.keys()].filter(
+          (id) => spellGraph.spells?.[id]?.summonCue,
         ),
         signal,
       );
@@ -5858,6 +5928,9 @@ export class EditorController {
           debuff: !!a.debuff,
         })),
         channel: !!state.cast?.channel,
+        channel_target: state.cast?.channel
+          ? (state.cast.target ?? null)
+          : null,
         cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
         auras: state.auras.slice(0, 48).map((a) => a.spell),
       };

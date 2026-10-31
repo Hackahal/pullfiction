@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
 import sys
+import subprocess
 import unittest
 from unittest.mock import patch
 from email.message import Message
@@ -22,6 +23,16 @@ deploy_spec.loader.exec_module(deployment)
 
 
 class StaticPackageTests(unittest.TestCase):
+    def test_current_converter_manifest_satisfies_runtime_and_package_contracts(self):
+        spec = importlib.util.spec_from_file_location("converter_builder", Path(__file__).with_name("browser-converter-build.py"))
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        manifest = builder.converter_files(package.REPO)
+        self.assertEqual(set(manifest), package.converter_files(package.REPO))
+        runtime = (package.REPO / "web/archive/converter.mjs").as_uri()
+        code = f"import {{validateConverterManifest}} from {json.dumps(runtime)}; validateConverterManifest(JSON.parse(process.argv[1]));"
+        subprocess.run(["node", "--input-type=module", "-e", code, json.dumps(manifest)], check=True, capture_output=True)
+
     def setUp(self):
         work = package.REPO / ".agent/work"
         work.mkdir(parents=True, exist_ok=True)

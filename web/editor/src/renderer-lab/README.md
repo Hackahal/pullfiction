@@ -1,10 +1,35 @@
 # Check the browser renderer
 
-Build a separate static package with `scripts/browser-static-build.sh OUTPUT_DIRECTORY` and serve that directory on a separate localhost port. Open `/?renderer-lab=1` there. Keep the normal editor tab and its saved projects separate.
+Production packages exclude the workbench and diagnostic WASM exports. Build a separate local diagnostic runtime, then run Vite against it:
+
+```sh
+bash scripts/renderer-lab-build.sh .agent/work/renderer-lab/runtime-1
+python3 -m http.server 8101 --bind 127.0.0.1 --directory .agent/work/renderer-lab/runtime-1
+```
+
+In another terminal:
+
+```sh
+PULLFICTION_RENDERER_LAB_NO_HMR=1 PULLFICTION_RUNTIME_ORIGIN=http://127.0.0.1:8101 npm run dev --prefix web/editor -- --port 8100 --strictPort
+```
+
+Open `http://127.0.0.1:8100/?renderer-lab=1`. Confirm that the page says **Renderer workbench**. The root URL opens the normal editor. Both servers are development tools and serve application code only. Keep the normal editor tab and its saved projects separate. Each build needs a new output path; point the runtime server at that path and reload the workbench after a rebuild. Production packaging still rejects diagnostic exports and lab entries. HMR is disabled for this batch server so a source edit cannot reload the page and discard an in-progress run. Reload deliberately after applying changes.
+
+For repeated development batches, start the optional local asset source once:
+
+```sh
+web/editor/node_modules/.bin/tsx scripts/renderer-local-source.mts \
+  --client "/path/to/World of Warcraft" \
+  --archive .agent/work/renderer-lab/runtime-1/archive
+```
+
+Open the workbench URL printed by that command. It reconnects automatically after reloads, so uncached assets do not require folder-picker intervention. This explicit source bypasses the browser’s prepared-asset cache, ensuring startup catalogs and later files come from the same selected converter build. The Node source keeps its own local conversion cache for the process lifetime. The source reads only the selected installation through the existing archive worker and converters. It binds to `127.0.0.1:8102`, permits only the exact diagnostic origin `http://127.0.0.1:8100`, and does not upload assets or launch the official client. Use `--port` and `--origin` when choosing different local diagnostic ports. Keep this development process separate from the hosted application; the WASM renderer, actor inputs and spell pipeline remain unchanged.
+
+The regular folder-picker workflow remains available:
 
 1. Choose the installed World of Warcraft root folder. The workbench uses the normal browser asset reader and converter; it does not start or inspect the official game.
 2. If the workbench restored cached assets, click **Connect client source** and choose the installation before an uncached batch. The runner pauses readiness deadlines while the folder is needed. Run the smoke fixtures. Check that the synthetic subject, creature and spell appear before running a large batch.
-3. Import a JSON array of 1–256 `RendererCase` records. Start with batches of 24–32 cases to bound browser memory and review effort.
+3. Import a JSON array of 1–256 `RendererCase` records, or use **Paste fixture JSON**. The paste option does not require extension file-upload permissions. Start with batches of 24–32 cases to bound browser memory and review effort.
 4. Run the batch with duplicate frozen captures enabled, then export the evidence JSON.
 5. Extract the actual GPU images and contact sheets:
 
@@ -13,6 +38,7 @@ Build a separate static package with `scripts/browser-static-build.sh OUTPUT_DIR
    ```
 
    `--sheet` requires Pillow. Without it, extraction still produces individual PNGs, an HTML contact sheet and a summary. Existing evidence directories are never overwritten.
+
 6. Inspect each subject or room. Record visible defects separately from unsupported assets, unavailable data and unsuitable cameras. A loaded mesh, successful capture or matching frozen hash does not establish visual correctness.
 7. Fix a shared cause, rebuild into a new output directory, and rerun the affected cases plus nearby control cases. Keep the earlier evidence.
 
@@ -26,9 +52,18 @@ Metadata enumeration, conversion, GPU rendering, visual approval and regression 
 
 `cases.ts` defines native WoW XYZ coordinates, radians, requested sample ages and coverage identifiers. `runner.ts` resolves isolated fixtures into a known Molten Core entry stage and records the translated case. Diagnostic world isolation removes surrounding geometry while retaining the production lighting and subject assembly. World fixtures retain their authored map and camera. A future client profile needs its own available stage; the current default is for the retained Era/SoD client.
 
-Subjects pass through the production creature, character/equipment and spell-effect paths. The runner clears previous actors and advances the normal appearance/teardown fades before sampling. After reaching each requested age it freezes simulation and waits for child model draws and resource counts to settle before readback. Both capture statuses are retained for frozen-repeat diagnosis. Raw model fixtures can request an animation. Character/creature samples use their production idle state; they do not implement arbitrary actor animation IDs. Raw effect models sample the asset, rather than reconstructing a server mechanic. Spell-event fixtures currently support cast/flight events with real caster and target bodies. Unimplemented kit/visual/stage routing earns no render credit.
+Subjects pass through the production creature, character/equipment and spell-effect paths. The runner clears previous actors and advances the normal appearance/teardown fades before sampling. After reaching each requested age it freezes simulation and waits for child model draws and resource counts to settle before readback. Both capture statuses are retained for frozen-repeat diagnosis. Character fixtures can set all five `look` dials. Raw model fixtures can request an animation. Character/creature samples do not implement arbitrary actor animation IDs.
 
-Simulation advances in bounded fixed-step chunks and freezes for readback. Seed 1 resets the shared animation RNG. Persistent world timestamp origins, asynchronous loading and draw order prevent a claim of complete scene determinism. Frozen-repeat identity is reported separately; differing second images are retained for diagnosis.
+Spell fixtures use native unit and event inputs:
+
+- `cast` starts a windup at `startMs` and releases after `durationMs`. A zero duration releases immediately.
+- `flight` releases at `startMs`. The production renderer controls the flight and impact.
+- `aura` changes the target's active-aura snapshot. `channel` changes the caster's channel field. A positive `durationMs` ends either state.
+- `summon` tests the existing short illustrative cue. It does not spawn or simulate a summoned creature.
+
+Spell stages require native character or creature hosts. Channel holds do not synthesize periodic spell ticks. Raw effect models test the asset, rather than a server mechanic; they support only `model` at time zero, without a simultaneous `spellId`. Unimplemented kit/visual/stage routing earns no render credit. The report includes synchronous preparation misses to help distinguish missing body textures from GPU failures.
+
+Simulation and the production replay clock advance together on every fixed step, then freeze for readback. Flight cases should include multiple samples between release and arrival; release/impact snapshots alone do not prove travel. Seed 1 resets the shared animation RNG. Persistent world timestamp origins, asynchronous loading and draw order prevent a claim of complete scene determinism. Frozen-repeat identity is reported separately; differing second images are retained for diagnosis.
 
 The exported report records the client identity, loaded WASM SHA-256, resolved fixtures, native readiness, model/emitter counts, GPU backend, PNG hashes and repeat results. Converter revisions are retained in the corresponding static build log. The native status explicitly marks unknown asset-queue/GPU readiness fields and isolation limits. Keep the package audit and build log with the report.
 

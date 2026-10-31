@@ -18,6 +18,16 @@ if (!rendererLab) void ensureWowheadWidget();
 const controller = rendererLab
   ? new EditorController(undefined, {
       rendererLab: true,
+      openClient: new URL(location.href).searchParams.has("local-source")
+        ? async (_files, _progress, { signal }) => {
+            const { localRendererSource } =
+              await import("./renderer-lab/local-source");
+            return localRendererSource(
+              new URL(location.href).searchParams.get("local-source")!,
+              signal,
+            );
+          }
+        : undefined,
       loadEngine: async () => {
         const path = "/pullfiction_viewer.js";
         const engine = await import(/* @vite-ignore */ path);
@@ -26,6 +36,10 @@ const controller = rendererLab
       },
       projectStore: null,
       clientFolders: null,
+      // The explicit diagnostic source must supply the startup catalogs too.
+      clientCache: new URL(location.href).searchParams.has("local-source")
+        ? null
+        : undefined,
     })
   : new EditorController(storage);
 (

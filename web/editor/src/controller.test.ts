@@ -336,6 +336,32 @@ test("Native frame starts future mobs at full HP, registers raid players and fol
   assert.equal(f.frame.find((a) => a.key === "2:1")!.health, 1000);
   f.c.stop();
 });
+test("native channel snapshots use only the recorded cast target and clear it on stop", () => {
+  const f = fixture();
+  const actor = f.c.getSnapshot().replay!.actors.find((a) => a.key === "1:1")!;
+  const channel = {
+    spell: 689,
+    name: "Drain Life",
+    start: 0,
+    end: 2000,
+    channel: true,
+    target: "2:1" as string | null,
+  };
+  actor.casts.unshift(channel);
+  f.c.seek(500);
+  assert.equal(f.frame.find((a) => a.key === "1:1")!.channel_target, "2:1");
+  channel.target = "1:1";
+  f.c.seek(501);
+  assert.equal(f.frame.find((a) => a.key === "1:1")!.channel_target, "1:1");
+  channel.target = null;
+  f.c.seek(502);
+  assert.equal(f.frame.find((a) => a.key === "1:1")!.channel_target, null);
+  f.c.seek(2500);
+  assert.equal(f.frame.find((a) => a.key === "1:1")!.channel, false);
+  assert.equal(f.frame.find((a) => a.key === "1:1")!.channel_target, null);
+  f.c.stop();
+});
+
 test("Playback, pause, casts, aura rewind and native selection share controller state", () => {
   const f = fixture();
   f.c.seek(4800);
@@ -3596,4 +3622,50 @@ test("planned and recorded reference poses share the edge cache and invalidate m
   held([x + 1, y + 1, 185], false);
   assert.equal(calls, beforeCompare + 3);
   c.stop();
+});
+
+test("Appearance edits prepare before publishing and merge pending fields without stale commits", async () => {
+  const f = fixture();
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  const requests: { resources: string[]; release: () => void }[] = [];
+  const internals = f.c as unknown as {
+    localFiles: unknown;
+    browserBridge: unknown;
+  };
+  internals.localFiles = {
+    prepare: async (resources: string[]) =>
+      new Promise<void>((release) => requests.push({ resources, release })),
+  };
+  internals.browserBridge = {
+    catalog: async (kind: string) =>
+      kind === "characters"
+        ? {
+            sectionTextureTypes: [0, 1].map((sex) => ({
+              race: 2,
+              sex,
+              types: [],
+            })),
+          }
+        : { displays: {} },
+  };
+  const before = f.frame;
+  const first = f.c.setAppearance(actor, "race", 2);
+  while (requests.length < 1)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.match(requests[0].resources[0], /^__classic\/appearance\/2-0-/);
+  assert.notEqual(f.c.appearance(actor).race, 2);
+  assert.equal(f.frame, before);
+  const second = f.c.setAppearance(actor, "sex", 1);
+  while (requests.length < 2)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  requests[1].release();
+  await second;
+  assert.equal(f.c.appearance(actor).race, 2);
+  assert.equal(f.c.appearance(actor).sex, 1);
+  requests[0].release();
+  await first;
+  assert.equal(f.c.appearance(actor).race, 2);
+  assert.equal(f.c.appearance(actor).sex, 1);
+  assert.equal(f.frame.find((row) => row.key === actor.key)?.race, 2);
+  assert.equal(f.frame.find((row) => row.key === actor.key)?.sex, 1);
 });

@@ -316,11 +316,19 @@ pub(super) fn forced_body_atlas(
     composites: &mut SkinComposites,
     asset_server: &AssetServer,
     images: &mut Assets<Image>,
-) -> Option<Handle<Image>> {
+) -> BodyAtlas {
     if let BodySkin::Baked(name) = &look.body {
-        return Some(asset_server.load::<Image>(baked_npc_url(name)));
+        return BodyAtlas::Ready(Some(asset_server.load::<Image>(baked_npc_url(name))));
     }
-    let (key, sections) = (key?, sections?);
+    let Some(key) = key else {
+        return BodyAtlas::Ready(None);
+    };
+    if let Some(cached) = composites.cached_atlas(key) {
+        return cached;
+    }
+    let Some(sections) = sections else {
+        return BodyAtlas::Ready(None);
+    };
     composites.force(
         key,
         sections,

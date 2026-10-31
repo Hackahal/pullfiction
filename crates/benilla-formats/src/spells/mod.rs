@@ -291,6 +291,13 @@ pub const SPELL_EFFECT_ENCHANT_ITEM_TEMPORARY: u32 = 54;
 /// with prospect (`0x6e4cd4`).
 pub const SPELL_EFFECT_PROSPECTING: u32 = 127;
 
+/// An explicit illustrative visual choice when the log records no summoned-object motion.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SummonCueVisual {
+    pub display_id: u32,
+    pub visual_spell_id: u32,
+}
+
 /// `Spell.dbc` joined with `SpellIcon.dbc`, plus the learn-spell map: a trainer offers a learn
 /// wrapper, and [`Self::learned_spell`] follows it to the ability it teaches.
 pub struct SpellCatalog {
@@ -301,6 +308,8 @@ pub struct SpellCatalog {
     /// Spell id to the `Languages.dbc` id its first effect declares.
     declared_language: HashMap<u32, u32>,
     dispel_types: SpellDispelTypes,
+    /// Explicit illustrative presentation choices, never recorded spell effects.
+    summon_cues: HashMap<u32, SummonCueVisual>,
 }
 
 impl SpellCatalog {
@@ -313,6 +322,31 @@ impl SpellCatalog {
             .context("missing modern spells")?;
         for (key, row) in rows {
             let key: u32 = key.parse()?;
+            self.summon_cues.remove(&key);
+            if let Some(cue) = row.get("summonCue") {
+                anyhow::ensure!(
+                    cue["presentation"] == "illustrative",
+                    "invalid summon cue provenance"
+                );
+                let id = |field: &str| -> Result<u32> {
+                    let value =
+                        u32::try_from(cue[field].as_u64().context("invalid summon cue ID")?)?;
+                    anyhow::ensure!(value != 0, "zero summon cue ID");
+                    Ok(value)
+                };
+                let visual_spell_id = id("visualSpellID")?;
+                anyhow::ensure!(
+                    rows.contains_key(&visual_spell_id.to_string()),
+                    "summon cue visual spell is absent"
+                );
+                self.summon_cues.insert(
+                    key,
+                    SummonCueVisual {
+                        display_id: id("displayID")?,
+                        visual_spell_id,
+                    },
+                );
+            }
             let options = row["visuals"]
                 .as_array()
                 .context("missing spell visual choices")?;
@@ -358,6 +392,10 @@ impl SpellCatalog {
         Ok(())
     }
 
+    pub fn summon_cue(&self, spell_id: u32) -> Option<SummonCueVisual> {
+        self.summon_cues.get(&spell_id).copied()
+    }
+
     /// A catalog from explicit displays, for tests: no learn-spell map and no dispel table, so
     /// [`Self::dispel_name`] is always `None`.
     pub fn from_displays(spells: HashMap<u32, SpellDisplay>) -> Self {
@@ -384,6 +422,7 @@ impl SpellCatalog {
             learn_effects,
             declared_language: HashMap::new(),
             dispel_types: SpellDispelTypes::default(),
+            summon_cues: HashMap::new(),
         }
     }
 
@@ -759,6 +798,7 @@ pub fn load_spell_catalog(chain: &mut Chain) -> Result<SpellCatalog> {
         learn_effects,
         declared_language,
         dispel_types,
+        summon_cues: HashMap::new(),
     };
     #[cfg(target_arch = "wasm32")]
     if let Ok(bytes) = chain.read_file("__classic/spell-effects.json") {

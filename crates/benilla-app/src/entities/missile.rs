@@ -48,6 +48,7 @@ use bevy::animation::transition::AnimationTransitions;
 use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 
+use crate::creature_anim::spell_visual::MissileModel;
 use crate::creature_anim::{
     oneshot_is_live, AnimData, AnimDriver, AnimSoundEvent, CastEvent, CastEventKind, DefenseAnim,
     MissileSpawn,
@@ -136,7 +137,8 @@ pub(super) struct Missile {
     aim: Aim,
     /// The [`SpellFx`] cache key; `None` flies invisible and still impacts.
     path: Option<String>,
-    extra_paths: Vec<String>,
+    path_scale: f32,
+    extra_models: Vec<MissileModel>,
     /// Remaining flight time in seconds, the arrive-on-time integrator's state.
     arrive_in: f32,
     parts_spawned: bool,
@@ -246,7 +248,8 @@ impl PendingMissiles {
             caster,
             spell_id: 75,
             path: None,
-            extra_paths: Vec::new(),
+            path_scale: 1.,
+            extra_models: Vec::new(),
             ammo_display_id: None,
             dest_tag: None,
             speed: 40.0,
@@ -469,10 +472,11 @@ fn launch_go(
             caster: go.spawn.caster,
             aim: aim_at,
             path: go.key.clone(),
-            extra_paths: go.spawn.extra_paths.clone(),
+            path_scale: go.spawn.path_scale,
+            extra_models: go.spawn.extra_models.clone(),
             arrive_in: launch.distance(aim) / go.spawn.speed.max(f32::EPSILON) - go.queued,
             // An invisible flight has no parts to wait on.
-            parts_spawned: go.key.is_none() && go.spawn.extra_paths.is_empty(),
+            parts_spawned: go.key.is_none() && go.spawn.extra_models.is_empty(),
             weapon_visual: go.spawn.weapon_visual,
         };
         if missile.arrive_in <= 0.0 {
@@ -525,8 +529,8 @@ pub(super) fn spawn_missiles(
     let Some(mut fx) = fx else { return };
     // Resolve the model now, so it loads while the release animation plays.
     for spawn in spawns.read() {
-        for path in &spawn.extra_paths {
-            ensure_model(&mut fx, &asset_server, path);
+        for model in &spawn.extra_models {
+            ensure_model(&mut fx, &asset_server, &model.path);
         }
         let key = match (&spawn.path, spawn.ammo_display_id) {
             (Some(path), _) => {
@@ -660,24 +664,28 @@ pub(super) fn attach_missile_models(
         if missile.parts_spawned {
             continue;
         }
-        let mut paths = std::mem::take(&mut missile.extra_paths);
-        paths.extend(missile.path.take());
+        let mut paths = std::mem::take(&mut missile.extra_models);
+        paths.extend(missile.path.take().map(|path| MissileModel {
+            path,
+            scale: missile.path_scale,
+        }));
         let mut remaining = Vec::new();
-        for key in paths {
-            ensure_model(&mut fx, &asset_server, &key);
-            let Some(dm) = fx.models.get(&key) else {
-                remaining.push(key);
+        for model in paths {
+            let key = &model.path;
+            ensure_model(&mut fx, &asset_server, key);
+            let Some(dm) = fx.models.get(key) else {
+                remaining.push(model);
                 continue; // still loading
             };
             if dm.parts.is_none() {
-                remaining.push(key);
+                remaining.push(model);
                 continue;
             }
             // Each layer owns its rig and particles. Sharing the flight root would
             // overwrite the first model's skin palette when the next model arrives.
             let layer = commands
                 .spawn((
-                    Transform::default(),
+                    Transform::from_scale(Vec3::splat(model.scale)),
                     GlobalTransform::default(),
                     Visibility::default(),
                     ChildOf(entity),
@@ -704,12 +712,12 @@ pub(super) fn attach_missile_models(
                 Some(INFLIGHT_ANIM),
             ) {
                 commands.entity(layer).despawn();
-                remaining.push(key);
+                remaining.push(model);
                 continue;
             }
         }
-        missile.extra_paths = remaining;
-        missile.parts_spawned = missile.extra_paths.is_empty();
+        missile.extra_models = remaining;
+        missile.parts_spawned = missile.extra_models.is_empty();
     }
 }
 
@@ -798,6 +806,7 @@ mod tests {
         let mut app = App::new();
         // No TimePlugin: the tests advance `Time` by hand so every queued-duration is exact.
         app.add_plugins((TaskPoolPlugin::default(), AssetPlugin::default()));
+        app.init_asset::<benilla_assets::M2Model>();
         app.init_resource::<Time>();
         app.init_resource::<super::super::spell_fx::SpellFx>();
         app.init_resource::<PendingMissiles>();
@@ -841,7 +850,8 @@ mod tests {
             caster,
             spell_id: 133,
             path: None, // an invisible flight; the queue needs no model
-            extra_paths: Vec::new(),
+            path_scale: 1.,
+            extra_models: Vec::new(),
             ammo_display_id: None,
             dest_tag: None,
             speed: SPEED,
@@ -1126,14 +1136,82 @@ mod tests {
             .spawn(GlobalTransform::from_xyz(24.0, 1.5, 0.0))
             .id();
         let mut event = go(source, target, false);
-        event.extra_paths = vec!["spells/frostbolt.m2".into(), "spells/arcane.m2".into()];
+        event.path_scale = 20.;
+        event.extra_models = vec![
+            MissileModel {
+                path: "spells/frostbolt.m2".into(),
+                scale: 0.5,
+            },
+            MissileModel {
+                path: "spells/arcane.m2".into(),
+                scale: 2.,
+            },
+        ];
         app.world_mut().write_message(event);
         step(&mut app, 0.016);
         let world = app.world_mut();
         let layers: Vec<_> = world.query::<&Missile>().iter(world).collect();
         assert_eq!(layers.len(), 1);
-        assert_eq!(layers[0].extra_paths.len(), 2);
+        assert_eq!(layers[0].path_scale, 20.);
+        assert_eq!(
+            layers[0]
+                .extra_models
+                .iter()
+                .map(|m| m.scale)
+                .collect::<Vec<_>>(),
+            vec![0.5, 2.]
+        );
         assert!(!layers[0].parts_spawned);
+    }
+
+    #[test]
+    fn authored_scales_reach_separate_attached_layer_transforms() {
+        let mut app = app();
+        app.init_resource::<Assets<benilla_assets::materials::WowModelMaterial>>()
+            .init_resource::<super::super::spell_fx::FxTintAnims>()
+            .init_resource::<benilla_world::doodad_anim::UvAnimMaterials>()
+            .init_resource::<benilla_world::mat_anim_table::MatAnimTable>()
+            .init_resource::<Assets<bevy::mesh::skinning::SkinnedMeshInverseBindposes>>()
+            .init_resource::<benilla_world::rig_palette::RigPalettes>()
+            .add_systems(Update, attach_missile_models.after(spawn_missiles));
+        // A self-authored empty model isolates assembly from archive and GPU I/O.
+        // All three layers deliberately share one cached model, but not a scale.
+        app.world_mut().resource_mut::<SpellFx>().models.insert(
+            "fixture.m2".into(),
+            DisplayModel {
+                parts: Some(Vec::new()),
+                ..super::super::empty_shell()
+            },
+        );
+        let source = caster(&mut app, Vec3::new(0., 1.5, 0.));
+        let target = app
+            .world_mut()
+            .spawn(GlobalTransform::from_xyz(24., 1.5, 0.))
+            .id();
+        let mut event = go(source, target, false);
+        event.path = Some("fixture.m2".into());
+        event.path_scale = 20.;
+        event.extra_models = [0.5, 2.]
+            .into_iter()
+            .map(|scale| MissileModel {
+                path: "fixture.m2".into(),
+                scale,
+            })
+            .collect();
+        app.world_mut().write_message(event);
+        step(&mut app, 0.016);
+        let world = app.world_mut();
+        let (missile, children) = world
+            .query::<(&Missile, &Children)>()
+            .single(world)
+            .unwrap();
+        assert!(missile.parts_spawned);
+        let mut scales: Vec<_> = children
+            .iter()
+            .map(|child| world.get::<Transform>(child).unwrap().scale.x)
+            .collect();
+        scales.sort_by(f32::total_cmp);
+        assert_eq!(scales, [0.5, 2., 20.]);
     }
 
     /// A GO with no cast-kit animation launches at once (`0x6e7a70`), with the full flight time.

@@ -150,6 +150,8 @@ pub struct EmitterBillboard {
 pub struct ModelEmitter {
     pub def: ParticleEmitterDef,
     pub texture: Option<Handle<Image>>,
+    /// The two additional authored stages of a modern multi-texture particle material.
+    pub extra_textures: Option<[Handle<Image>; 2]>,
     /// The host bone's pivot, WoW model space: `def.position − bone_pivot` is the emitter in the
     /// bone's frame. Zero for an out-of-range bone.
     pub bone_pivot: [f32; 3],
@@ -333,8 +335,21 @@ impl AssetLoader for M2ModelLoader {
 
         let skeleton_raw = parse_m2_skeleton(&bytes).unwrap_or_default();
 
-        let mut emitters: Vec<ModelEmitter> = parse_m2_particle_emitters(&bytes)
-            .unwrap_or_default()
+        let particle_defs = parse_m2_particle_emitters(&bytes);
+        // A PFP5 material promises every authored stage. An invalid promise must reach the
+        // asset failure channel rather than turning a spell into a model without emitters.
+        let particle_defs =
+            if bytes.len() >= 12 && &bytes[bytes.len() - 12..bytes.len() - 8] == b"PFP5" {
+                particle_defs.map_err(|error| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("modern particle material: {error:#}"),
+                    )
+                })?
+            } else {
+                particle_defs.unwrap_or_default()
+            };
+        let mut emitters: Vec<ModelEmitter> = particle_defs
             .into_iter()
             .map(|def| {
                 let texture = def.texture.as_deref().map(|t| {
@@ -343,6 +358,21 @@ impl AssetLoader for M2ModelLoader {
                         t.replace('\\', "/").to_ascii_lowercase()
                     ))
                 });
+                let extra_textures = def
+                    .modern_material
+                    .as_ref()
+                    .filter(|material| material.multi_texture())
+                    .map(|material| {
+                        std::array::from_fn(|i| {
+                            let path = material.textures[i + 1]
+                                .as_deref()
+                                .expect("validated particle texture stage");
+                            ctx.load::<Image>(format!(
+                                "mpq://{}",
+                                path.replace('\\', "/").to_ascii_lowercase()
+                            ))
+                        })
+                    });
                 let bone_pivot = skeleton_raw
                     .bones
                     .get(def.bone as usize)
@@ -366,6 +396,7 @@ impl AssetLoader for M2ModelLoader {
                 ModelEmitter {
                     def,
                     texture,
+                    extra_textures,
                     bone_pivot,
                     billboard,
                     recursion,

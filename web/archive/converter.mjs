@@ -1,3 +1,16 @@
+export function validateConverterManifest(manifest) {
+  if (
+    !Array.isArray(manifest) ||
+    manifest.some(
+      (path) =>
+        !/^(?:scripts\/classic_(?:compat|db2|items|spells|spell_presentations|characters|character_catalog|creatures|terrain|world|world_catalog|table_strings|lighting|sections|talents)\.py|third_party\/(?:wowdbdefs|wowexport|whiteoutflakes)\/[A-Za-z0-9_.-]+)$/.test(
+          path,
+        ),
+    )
+  )
+    throw new Error("Invalid converter file manifest");
+}
+
 // Reuse the verified pure Python format adapters inside the browser worker.
 // The interpreter and adapters are application code. Client bytes stay in memory/local cache.
 export async function modernConverter(
@@ -7,23 +20,20 @@ export async function modernConverter(
 ) {
   onProgress({ stage: "converter" });
   const { loadPyodide } = await import("./python/pyodide.mjs");
+  const pythonURL = new URL("./python/", import.meta.url);
   const py = await loadPyodide({
-    indexURL: new URL("./python/", import.meta.url).href,
+    // Pyodide's native Node loader expects a filesystem directory, while the
+    // browser worker uses a URL. The format adapters below are shared unchanged.
+    indexURL:
+      pythonURL.protocol === "file:"
+        ? decodeURIComponent(pythonURL.pathname)
+        : pythonURL.href,
     enableRunUntilComplete: false,
   });
   const manifest = await (
     await fetch(new URL("./converter-files.json", import.meta.url))
   ).json();
-  if (
-    !Array.isArray(manifest) ||
-    manifest.some(
-      (path) =>
-        !/^(?:scripts\/classic_(?:compat|db2|items|spells|characters|character_catalog|creatures|terrain|world|world_catalog|table_strings|lighting|sections|talents)\.py|third_party\/(?:wowdbdefs|wowexport)\/[A-Za-z0-9_.-]+)$/.test(
-          path,
-        ),
-    )
-  )
-    throw new Error("Invalid converter file manifest");
+  validateConverterManifest(manifest);
   for (const path of manifest) {
     const response = await fetch(
       new URL(`./converter/${path}`, import.meta.url),

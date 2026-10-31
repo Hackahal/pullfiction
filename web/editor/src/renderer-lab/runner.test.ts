@@ -6,7 +6,36 @@ import {
   labError,
   smokeCases,
   resolveStage,
+  readyReplayBodyCount,
 } from "./runner";
+test("actor readiness admits loaded emitter-only models before particle simulation starts", () => {
+  assert.equal(
+    readyReplayBodyCount({
+      resources: {
+        replayBodies: 2,
+        replayBodiesWithLoadedMeshes: 1,
+        replayBodiesWithReadyVisuals: 2,
+      },
+      actorDiagnostics: [{ visual: { liveEmitters: 4, liveParticles: 0 } }],
+    }),
+    2,
+  );
+  assert.equal(
+    readyReplayBodyCount({
+      resources: {
+        replayBodiesWithLoadedMeshes: 2,
+        replayBodiesWithReadyVisuals: 0,
+      },
+    }),
+    0,
+    "meshes do not override a pending or failed production visual",
+  );
+  assert.equal(
+    readyReplayBodyCount({ resources: { replayBodiesWithLoadedMeshes: 1 } }),
+    1,
+    "older diagnostic runtimes retain their mesh-based readiness",
+  );
+});
 test("isolated fixtures translate together without mutating authored coordinates", () => {
   const source = smokeCases()[2],
     before = structuredClone(source);
@@ -41,6 +70,22 @@ test("camera places a known diagnostic viewpoint in native world units", () => {
   const c = smokeCases()[0];
   c.camera = { target: [10, 20, 30], yaw: 0, pitch: 0, distance: 5 };
   assert.deepEqual(cameraEye(c), [15, 20, 30]);
+});
+test("appearance fixtures retain non-default dials and reject malformed byte tuples", () => {
+  const c = smokeCases()[2];
+  c.actors[0].look = [1, 2, 3, 4, 0];
+  assert.deepEqual(validateBatch([c])[0].actors[0].look, [1, 2, 3, 4, 0]);
+  for (const look of [
+    [1, 2],
+    [0, 0, -1, 0, 0],
+    [0, 0, 0, 256, 0],
+    [0, 0, 1.5, 0, 0],
+  ]) {
+    assert.throws(
+      () => validateBatch([{ ...c, actors: [{ ...c.actors[0], look }] }]),
+      /appearance dials/,
+    );
+  }
 });
 test("unsupported and unavailable assets remain distinct from renderer failures", () => {
   const e = new Error("capability");
