@@ -40,20 +40,20 @@ const BODY_RADIUS: f32 = 0.35;
 const BODY_FOOT: f32 = 0.6;
 const BODY_HEAD: f32 = 1.9;
 /// Search budget: cells expanded before the search gives up and answers the nearest point.
-pub(super) const MAX_EXPANSIONS: usize = 12_000;
+pub(crate) const MAX_EXPANSIONS: usize = 12_000;
 /// Arrival: within this many yards of the goal (horizontally) and this of its height.
 const GOAL_RADIUS: f32 = 1.5;
 const GOAL_HEIGHT: f32 = 3.0;
 
 /// A found path: Bevy-space floor points from the start to the goal (or the nearest point).
-pub(super) struct Path {
-    pub(super) points: Vec<Vec3>,
-    pub(super) partial: bool,
-    pub(super) expanded: usize,
+pub(crate) struct Path {
+    pub(crate) points: Vec<Vec3>,
+    pub(crate) partial: bool,
+    pub(crate) expanded: usize,
 }
 
 /// The collision queries the search makes; a trait so the search is tested on a synthetic world.
-pub(super) trait Probe {
+pub(crate) trait Probe {
     /// The floor under `(x, z)` near height `y`.
     fn floor(&self, x: f32, z: f32, y: f32) -> Option<f32>;
     /// Can a body walk from floor point `a` to floor point `b` without hitting anything?
@@ -61,13 +61,13 @@ pub(super) trait Probe {
 }
 
 /// The live world: [`WorldCollision`]'s body queries.
-pub(super) struct WorldProbe<'a, 'w, 's> {
-    pub(super) world: &'a WorldCollision<'w, 's>,
-    pub(super) body: Collider,
+pub(crate) struct WorldProbe<'a, 'w, 's> {
+    pub(crate) world: &'a WorldCollision<'w, 's>,
+    pub(crate) body: Collider,
 }
 
 impl<'a, 'w, 's> WorldProbe<'a, 'w, 's> {
-    pub(super) fn new(world: &'a WorldCollision<'w, 's>) -> Self {
+    pub(crate) fn new(world: &'a WorldCollision<'w, 's>) -> Self {
         let half = (BODY_HEAD - BODY_FOOT) * 0.5 - BODY_RADIUS;
         Self {
             world,
@@ -138,7 +138,7 @@ fn flat_dist(a: Vec3, b: Vec3) -> f32 {
 }
 
 /// Search from `from` to `to` (Bevy space, feet). `None` when the start has no floor.
-pub(super) fn find(probe: &impl Probe, from: Vec3, to: Vec3, budget: usize) -> Option<Path> {
+pub(crate) fn find(probe: &impl Probe, from: Vec3, to: Vec3, budget: usize) -> Option<Path> {
     let start_y = probe.floor(from.x, from.z, from.y)?;
     let start = Vec3::new(from.x, start_y, from.z);
     let goal = to;
@@ -255,7 +255,7 @@ pub(super) fn find(probe: &impl Probe, from: Vec3, to: Vec3, budget: usize) -> O
 
 /// Can the body walk the straight line `a`→`b`: clear of obstacles, and with a floor under every
 /// yard of it that never steps more than an edge may?
-fn straight(probe: &impl Probe, a: Vec3, b: Vec3) -> bool {
+pub(crate) fn straight(probe: &impl Probe, a: Vec3, b: Vec3) -> bool {
     let n = (flat_dist(a, b) / CELL).ceil().max(1.0) as usize;
     let mut prev = a;
     for i in 1..=n {

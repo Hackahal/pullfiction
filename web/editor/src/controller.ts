@@ -5629,6 +5629,22 @@ export class EditorController {
               : undefined) ??
             floorHints.get(unit.key) ??
             null,
+          movement:
+            this.state.workspaceMode === "analyse" && pose?.movement
+              ? {
+                  ...pose.movement,
+                  from: [
+                    pose.movement.from[0],
+                    pose.movement.from[1],
+                    pose.movement.from[2] ?? floorHints.get(unit.key) ?? 0,
+                  ],
+                  to: [
+                    pose.movement.to[0],
+                    pose.movement.to[1],
+                    pose.movement.to[2] ?? floorHints.get(unit.key) ?? 0,
+                  ],
+                }
+              : null,
           facing: pose?.facing ?? 0,
           speed: this.state.playing ? (pose?.speed ?? 0) : 0,
           dead: pose?.dead ?? false,

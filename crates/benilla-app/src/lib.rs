@@ -84,6 +84,8 @@ mod planner_editor_camera;
 #[cfg(target_arch = "wasm32")]
 pub mod planner_embed;
 #[cfg(any(target_arch = "wasm32", test))]
+mod planner_movement;
+#[cfg(any(target_arch = "wasm32", test))]
 mod planner_observer;
 #[cfg(any(target_arch = "wasm32", test))]
 mod planner_raid_layout;

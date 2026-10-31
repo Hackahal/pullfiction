@@ -71,6 +71,7 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
             || a.name.len() > 120
             || !a.facing.is_finite()
             || !a.speed.is_finite()
+            || a.movement.as_ref().is_some_and(|segment| !segment.valid())
             || !crate::replay_validation::valid_object_scale(a.scale)
             || a.floor_hint
                 .is_some_and(|z| !z.is_finite() || z.abs() > 20000.)

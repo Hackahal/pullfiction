@@ -1,3 +1,4 @@
+import {prepareMovement,movementBetween} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
 import {reconstructCasts,buildVisualEvents} from './replay-actions.mjs';
 export {visualEventsBetween} from './replay-actions.mjs';
@@ -129,14 +130,22 @@ export function poseAt(actor, time, smoothGaps = false) {
   const distance=b?Math.hypot(b[1]-a[1],b[2]-a[2]):0;
   const lifeBoundary=!!b&&(actor.deaths??[]).some(([t])=>t>a[0]&&t<=b[0]);
   const zoneBoundary=!!b&&(actor.positionBreaks??[]).some(t=>t>a[0]&&t<=b[0]);
-  const discontinuity=!!b&&(distance/(gap/1000)>35||lifeBoundary||zoneBoundary);
+  let discontinuity=!!b&&(distance/(gap/1000)>35||lifeBoundary||zoneBoundary);
   const fresh = !beforeFirst && time-a[0] <= 2000;
   let pos=a.slice(1), speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
   const loadedBetween=!actor.bufferedRanges||actor.bufferedRanges.some(([start,end])=>start<=a[0]&&end>=b?.[0]);
-  const estimated=!!(b && loadedBetween && !discontinuity && gap>2000 && smoothGaps && actor.type==='Player' && gap<=120000 && time>a[0]);
+  let estimated=!!(b && loadedBetween && !discontinuity && gap>2000 && smoothGaps && actor.type==='Player' && gap<=120000 && time>a[0]);
   const wisp=estimated&&!fresh&&distance>.25&&!coveredByActivity(actor,time);
+  let movement=null;
+  const timing=b&&loadedBetween&&!beforeFirst&&!lifeBoundary&&!zoneBoundary
+    ?movementBetween(actor,a,b,time):null;
+  if(timing?.blink){
+    discontinuity=true;
+    pos=(timing.after?b:a).slice(1);
+    estimated=timing.after&&time<b[0];
+  }
   if (b && loadedBetween && !beforeFirst && !discontinuity && (gap<=2000 || estimated)) {
-    const fraction=(time-a[0])/gap;
+    const fraction=timing?.weighted?timing.fraction:(time-a[0])/gap;
     if(estimated){
       pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
       speed=distance/(gap/1000);
@@ -161,12 +170,21 @@ export function poseAt(actor, time, smoothGaps = false) {
       speed=Math.hypot(velocities[0],velocities[1]);
       if(speed>.03)facing=Math.atan2(velocities[1],velocities[0]);
     }
+    if(timing?.weighted){
+      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
+      speed=distance*timing.rate;
+      if(distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
+    }
     if(estimated&&distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
+    if(actor.type==='Player'&&gap<=2000&&distance>.03&&speed/distance<=1000){
+      movement={from:a.slice(1),to:b.slice(1),fraction:Math.max(0,Math.min(1,((pos[0]-a[1])*(b[1]-a[1])+(pos[1]-a[2])*(b[2]-a[2]))/(distance*distance))),rate:speed/distance,duration:gap/1000,recorded_facing:false};
+    }
   }
   const facings=actor.facings??[];
   let fl=0,fh=facings.length;
   while(fl<fh){const mid=(fl+fh)>>>1;if(facings[mid][0]<=time)fl=mid+1;else fh=mid;}
   if(beforeFirst&&facings.length)facing=facings[0][1];
+  if(movement)movement.recorded_facing=!!fl||beforeFirst&&facings.length>0;
   if(fl){
     const from=facings[fl-1],to=facings[fl];facing=from[1];
     if(to&&to[0]-from[0]<=2000){
@@ -176,7 +194,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   }
   let dead=false;
   for(const [t,value] of actor.deaths) { if(t>time) break; dead=value; }
-  return { pos, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
+  return { pos, movement:dead?null:movement, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:timing?.blink&&timing.after?'ability jump estimate':beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
 }
 export class ReplayClock {
   constructor(duration=0) { this.duration=duration; this.time=0; this.playing=false; this.rate=1; }
@@ -243,6 +261,7 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}) {
   for(const a of all){a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
   reconstructCasts(replay,spellMetadata);
+  for(const actor of all)prepareMovement(actor);
   replay.visualEvents=buildVisualEvents(replay);
   return replay;
 }

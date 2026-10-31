@@ -2704,3 +2704,50 @@ test("Cached project switching retains Individuals for the same report and clear
   assert.equal(c.getSnapshot().rangeCheck.radius, 8);
   c.stop();
 });
+
+test("short playback segments reach native routing, including paused seeks, but plan snapshots do not", () => {
+  const f = fixture();
+  f.c.installReplay({
+    ...raw,
+    events: [
+      {
+        timestamp: 1000,
+        type: "cast",
+        sourceID: 1,
+        resourceActor: 1,
+        x: 100,
+        y: 200,
+      },
+      {
+        timestamp: 2000,
+        type: "cast",
+        sourceID: 1,
+        resourceActor: 1,
+        x: 100,
+        y: 800,
+      },
+    ],
+  } as unknown as RawReplay);
+  f.c.seek(500);
+  const player = f.frame.find((a) => a.key === "1:1") as unknown as {
+    speed: number;
+    movement: { from: number[]; to: number[]; fraction: number; rate: number };
+  };
+  assert.ok(player.movement);
+  assert.deepEqual(player.movement.from.slice(0, 2), [2, -1]);
+  assert.deepEqual(player.movement.to.slice(0, 2), [8, -1]);
+  assert.equal(player.movement.fraction, 0.5);
+  assert.equal(player.speed, 0);
+  assert.ok(player.movement.rate > 0);
+  f.c.seek(900);
+  f.c.seek(500);
+  assert.deepEqual(
+    (f.frame.find((a) => a.key === "1:1") as unknown as typeof player).movement,
+    player.movement,
+  );
+  f.c.setWorkspaceMode("plan");
+  assert.ok(
+    f.frame.every((a) => !(a as unknown as { movement?: unknown }).movement),
+  );
+  f.c.stop();
+});
