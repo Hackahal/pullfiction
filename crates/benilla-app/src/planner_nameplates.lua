@@ -60,6 +60,7 @@ function PullFictionPlates_Update(units, u, looking)
         local barH = d.friendly and 5*u or 10*u
         if d.selected then barH = 10*u end
         f.edge:SetVertexColor(d.selected and 1 or 0.015, d.selected and 0.79 or 0.02, d.selected and 0.3 or 0.03, 1)
+        f.edge:Show(); f.background:Show()
         rect(f.edge, f, -u, barY-u, w+2*u, barH+2*u)
         rect(f.background, f, 0, barY, w, barH)
         rect(f.fill, f, 0, barY, w*d.health, barH)
@@ -100,6 +101,11 @@ function PullFictionPlates_Update(units, u, looking)
                 icon.stack:SetFont(font, 8*u, 'OUTLINE'); icon.stack:SetText(a.stack>1 and tostring(a.stack) or '')
                 icon:Show()
             else icon:Hide() end
+        end
+        if d.name_only then
+            f.edge:Hide(); f.background:Hide(); f.fill:Hide(); f.hp:Hide()
+            f.castback:Hide(); f.castfill:Hide(); f.casttext:Hide(); f.casttime:Hide(); f.castic:Hide()
+            for i = 1, 4 do f.icons[i]:Hide() end
         end
         f:SetAlpha(d.selected and 1 or (d.friendly and 0.92 or 1)); f:Show()
     end

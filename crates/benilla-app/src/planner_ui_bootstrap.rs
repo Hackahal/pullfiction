@@ -190,6 +190,75 @@ mod tests {
     }
 
     #[test]
+    fn friendly_names_survive_plate_toggle_and_restore_native_widgets() {
+        use crate::planner_embed_state::{
+            plate_chunk, PlannerUiAura, PlannerUiCast, PlannerUiFrame, PlannerUiUnit,
+        };
+        let mut s = vm();
+        let mut frame = PlannerUiFrame {
+            units: vec![PlannerUiUnit {
+                guid: 42,
+                name: "Mage".into(),
+                player: true,
+                visible: true,
+                health_known: true,
+                health: 50,
+                max_health: 100,
+                anchor: Some([500., 300.]),
+                cast: Some(PlannerUiCast {
+                    name: "Frostbolt".into(),
+                    ..Default::default()
+                }),
+                auras: vec![PlannerUiAura {
+                    spell: 1,
+                    name: "Buff".into(),
+                    icon: "buff".into(),
+                    stack: 1,
+                    debuff: false,
+                    active: true,
+                }],
+                ..Default::default()
+            }],
+            selected: Some(42),
+            nameplates: true,
+            ..Default::default()
+        };
+        let mut layout = Default::default();
+        for enabled in [true, false, true] {
+            frame.friendly_nameplates = enabled;
+            s.run(&plate_chunk(&frame, &mut layout, [1024., 768.], 0.05, 1.))
+                .unwrap();
+            assert!(s.eval::<bool>("return PullFictionPlates['42']:IsShown() ~= nil and PullFictionPlates['42'].name:GetText() == 'Mage'").unwrap());
+            for child in [
+                "edge",
+                "background",
+                "fill",
+                "hp",
+                "castback",
+                "castfill",
+                "casttext",
+                "casttime",
+                "castic",
+                "icons[1]",
+            ] {
+                assert_eq!(
+                    s.eval::<bool>(&format!(
+                        "return PullFictionPlates['42'].{child}:IsShown() ~= nil"
+                    ))
+                    .unwrap(),
+                    enabled,
+                    "{child}"
+                );
+            }
+        }
+        frame.nameplates = false;
+        s.run(&plate_chunk(&frame, &mut layout, [1024., 768.], 0.05, 1.))
+            .unwrap();
+        assert!(s.eval::<bool>("return PullFictionPlates['42']:IsShown() ~= nil and not PullFictionPlates['42'].fill:IsShown()").unwrap());
+        assert!(s.take_errors().is_empty());
+    }
+
+    #[test]
     fn original_binding_parser_drives_original_camera_channels() {
         use benilla_ui::script::{BindingInput, FiredInput, HeldInput};
 

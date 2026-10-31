@@ -48,6 +48,10 @@ pub struct ReplayAura {
     pub stack: u32,
     pub debuff: bool,
 }
+fn nameplate_default() -> bool {
+    true
+}
+
 #[derive(Clone, serde::Deserialize)]
 pub struct ReplayUnit {
     pub key: String,
@@ -66,6 +70,9 @@ pub struct ReplayUnit {
     pub dead: bool,
     #[serde(default)]
     pub friendly: bool,
+    /// Per-actor plate category filter; omitted values preserve older clients.
+    #[serde(default = "nameplate_default")]
+    pub nameplate: bool,
     #[serde(default)]
     pub raid: bool,
     #[serde(default)]
@@ -205,6 +212,7 @@ pub struct ReplayBody {
     pub(crate) health_known: bool,
     pub(crate) power_known: bool,
     pub(crate) friendly: bool,
+    pub(crate) nameplate: bool,
     pub(crate) raid: bool,
     pub(crate) estimated: bool,
     pub(crate) plate_cast: Option<ReplayCast>,
@@ -627,6 +635,7 @@ pub(crate) fn apply(
                     body.health_known = unit.health.is_some();
                     body.power_known = unit.power.is_some();
                     body.friendly = unit.friendly;
+                    body.nameplate = unit.nameplate;
                     body.raid = unit.raid;
                     body.estimated = unit.estimated;
                     body.plate_cast = unit.plate_cast.clone();
@@ -738,6 +747,7 @@ pub(crate) fn apply(
                         ),
                         key: unit.key.clone(),
                         friendly: unit.friendly,
+                        nameplate: unit.nameplate,
                         raid: unit.raid,
                         estimated: unit.estimated,
                         plate_cast: unit.plate_cast.clone(),

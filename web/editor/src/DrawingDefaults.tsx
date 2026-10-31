@@ -209,9 +209,10 @@ export function DrawingDefaults({
       <details className="drawing-help">
         <summary>Basic controls</summary>
         <p>
-          Click to select. Drag to draw with the chosen marking. A selected
-          actor is the drawing's origin. Its move grip repositions it.
-          Right-drag turns the camera; WASD moves it. Shift adds to a selection.
+          Click with the marker tool to place a marker. Shift-click to select.
+          Drag to draw with other markings. A selected actor is the drawing's
+          origin. Its move grip repositions it. Right-drag turns the camera;
+          WASD moves it. Shift adds to a selection.
         </p>
         <p>
           Type a distance while drawing. Enter confirms; Escape cancels. Select

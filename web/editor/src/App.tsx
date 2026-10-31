@@ -1,10 +1,12 @@
 import { CommunityLinks } from "./CommunityLinks";
+import { nameplateShortcut } from "./nameplate-model";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
 import { EditsPanel } from "./EditsPanel";
 import { Inspection } from "./Inspection";
 import {
   sceneGesture,
+  drawsOnRelease,
   startsDrag,
   usesNativeMouseLook,
 } from "./interaction-policy";
@@ -295,6 +297,17 @@ export function App({ controller }: { controller: EditorController }) {
           );
           return;
         }
+      }
+      const plateOption = nameplateShortcut(event);
+      if (plateOption) {
+        event.preventDefault();
+        if (!event.repeat) {
+          controller.setOption(
+            plateOption,
+            !controller.getSnapshot().options[plateOption],
+          );
+        }
+        return;
       }
       const scene = context === "scene";
 
@@ -1076,8 +1089,10 @@ export function App({ controller }: { controller: EditorController }) {
                 {(
                   [
                     ["raidFrames", "Raid frames"],
-                    ["friendlyNameplates", "Friendly nameplates"],
-                    ["enemyNameplates", "Enemy nameplates"],
+                    ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
+                    ["enemyNameplates", "Enemy nameplates (V)"],
+                    ["trashNameplates", "Trash nameplates"],
+                    ["bossNameplates", "Boss nameplates"],
                     ["auras", "Buffs and debuffs"],
                     ["spells", "Spell effects"],
                     ["smoothGaps", "Smooth gaps as wisps"],
@@ -1238,13 +1253,15 @@ function Viewport({
           ? "Right-drag to orbit · Drag empty space to select"
           : "WASD to move · Right-drag to look · Drag empty space to select"
         : state.tool === "marker" && hovered?.actor
-          ? "Drag to attach marker to actor"
+          ? "Click to attach marker to actor"
           : !hovered?.point
             ? "Aim at loaded terrain"
             : state.tool === "drawing"
               ? "Drag to draw · Esc to cancel"
               : state.tool === "marker" || state.tool === "label"
-                ? "Drag to place · Click selects"
+                ? state.tool === "marker"
+                  ? "Click to place · Shift-click to select"
+                  : "Drag to place · Click selects"
                 : ["circle", "cone", "arrow"].includes(state.tool)
                   ? "Drag to size and aim · Type yards · Release to place"
                   : "Click waypoints · Finish or Enter to end";
@@ -1607,12 +1624,23 @@ function Viewport({
                   e.currentTarget.releasePointerCapture(e.pointerId);
                 return;
               }
+              const moved =
+                press.moved ||
+                startsDrag([press.x, press.y], [e.clientX, e.clientY]);
               if (
-                (press.moved ||
-                  startsDrag([press.x, press.y], [e.clientX, e.clientY])) &&
-                press.gesture === "draw"
+                press.gesture === "draw" &&
+                drawsOnRelease(state.tool, moved)
               ) {
                 const drop = ["marker", "label"].includes(state.tool);
+                if (state.tool === "marker") {
+                  controller.placeSceneMarkerAt(
+                    e.clientX - r.left,
+                    e.clientY - r.top,
+                  );
+                  if (e.currentTarget.hasPointerCapture(e.pointerId))
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                  return;
+                }
                 if (!press.actor || !controller.startActorDrawing(press.actor))
                   controller.pick(
                     ...((drop
@@ -1784,7 +1812,9 @@ function Viewport({
                   );
                 })()
               : map
-                ? "Right-drag to pan · Scroll to zoom · Click to select"
+                ? state.tool === "marker"
+                  ? "Right-drag to pan · Scroll to zoom · Click to place · Shift-click to select"
+                  : "Right-drag to pan · Scroll to zoom · Click to select"
                 : hint}
           </div>
         )}

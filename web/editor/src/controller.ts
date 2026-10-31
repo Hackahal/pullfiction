@@ -1,3 +1,4 @@
+import { actorNameplateEnabled } from "./nameplate-model";
 import {
   createClientFolderAccess,
   type ClientFolderAccess,
@@ -182,6 +183,15 @@ export class EditorController {
   private dimensionBefore: Plan | null = null;
   private pendingSceneSelect: { x: number; y: number; toggle: boolean } | null =
     null;
+  private markerRequest = 0;
+  private pendingMarkerClicks: {
+    x: number;
+    y: number;
+    epoch: number;
+    projectEpoch: number;
+    request: number;
+    selectedActor: string | null;
+  }[] = [];
   private markDrag: {
     id: string;
     handle: number | null;
@@ -434,6 +444,8 @@ export class EditorController {
         nameplates: true,
         friendlyNameplates: true,
         enemyNameplates: true,
+        trashNameplates: true,
+        bossNameplates: true,
         raidFrames: true,
         auras: true,
         spells: true,
@@ -1982,6 +1994,7 @@ export class EditorController {
             key: snapshot.actors[i].key,
             name: snapshot.actors[i].name,
             class: snapshot.actors[i].class,
+            icon: snapshot.actors[i].icon,
             type: snapshot.actors[i].type,
             id: 0,
             instance: 1,
@@ -2090,6 +2103,7 @@ export class EditorController {
               key: a.key,
               name: a.name,
               class: a.class ?? "",
+              icon: a.icon ?? null,
               type: a.type,
               position: [
                 p.pos[0],
@@ -2538,6 +2552,30 @@ export class EditorController {
     )
       this.seek(page.start);
     this.selectActor(key, toggle);
+  }
+  // Resolve the release hit instead of using the throttled scene-hover snapshot.
+  placeSceneMarkerAt(x: number, y: number) {
+    if (this.state.tool !== "marker" || ![x, y].every(Number.isFinite)) return;
+    const selected = this.selectedActorForDrawing();
+    if (!this.engine?.hover_annotation) {
+      if (!selected || !this.startActorDrawing(selected)) this.pick(x, y);
+      return;
+    }
+    this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
+      (click) =>
+        click.epoch === this.pickEpoch &&
+        click.projectEpoch === this.projectEpoch,
+    );
+    this.markerRequest = (this.markerRequest + 1) >>> 0;
+    this.pendingMarkerClicks.push({
+      x,
+      y,
+      epoch: this.pickEpoch,
+      projectEpoch: this.projectEpoch,
+      request: this.markerRequest,
+      selectedActor: selected,
+    });
+    this.engine.hover_annotation(x, y, true, this.markerRequest);
   }
   selectSceneAt(x: number, y: number, toggle = false) {
     this.pendingSceneSelect = { x, y, toggle };
@@ -3043,6 +3081,7 @@ export class EditorController {
     this.draftMark = null;
     this.markDrag = null;
     this.pickEpoch++;
+    this.pendingMarkerClicks = [];
     this.pendingPicks = 0;
     this.mapPickQueue = [];
     this.finishRequested = false;
@@ -4680,6 +4719,34 @@ export class EditorController {
       )
         this.viewBasis = { right: basis.right, up: basis.up };
       this.patch({ sceneHover: JSON.parse(value) });
+      const markerIndex = this.pendingMarkerClicks.findIndex(
+        (click) =>
+          basis.request === click.request &&
+          Array.isArray(basis.pixel) &&
+          Math.hypot(basis.pixel[0] - click.x, basis.pixel[1] - click.y) < 0.1,
+      );
+      if (markerIndex >= 0) {
+        const [click] = this.pendingMarkerClicks.splice(markerIndex, 1);
+        if (
+          click.epoch !== this.pickEpoch ||
+          click.projectEpoch !== this.projectEpoch ||
+          this.state.tool !== "marker" ||
+          basis.nativeUI
+        )
+          return;
+        const actor = click.selectedActor ?? basis.actor;
+        if (!actor || !this.startActorDrawing(actor)) {
+          if (
+            Array.isArray(basis.point) &&
+            basis.point.length === 3 &&
+            basis.point.every(Number.isFinite)
+          )
+            this.placePoint(basis.point as Point);
+          else
+            this.notify("No loaded ground here. Move the 3D view here first.");
+        }
+        return;
+      }
       if (basis.nativeUI) {
         const pending = this.pendingSceneSelect;
         if (
@@ -5417,6 +5484,13 @@ export class EditorController {
       this.patch({ time: this.clockTime });
       return;
     }
+    if (this.engine?.set_replay_nameplate_filters)
+      this.engine.set_replay_nameplate_filters(
+        options.nameplates && options.friendlyNameplates,
+        options.nameplates && options.enemyNameplates,
+      );
+    else this.engine?.set_replay_nameplates?.(options.nameplates);
+    this.engine?.set_replay_raid_frames?.(options.raidFrames);
     if (!replay) {
       this.sendPositions();
       this.patch({ time: this.clockTime });
@@ -5456,6 +5530,7 @@ export class EditorController {
         dead: false,
         estimated: false,
         friendly: actor.type === "Pet",
+        nameplate: actorNameplateEnabled(actor, options),
         race: appearance.race ?? actor.race,
         sex: appearance.sex ?? actor.sex,
         look: appearance.look ?? [0, 0, 0, 0, 0],
@@ -5497,13 +5572,6 @@ export class EditorController {
         auras: state.auras.slice(0, 48).map((a) => a.spell),
       };
     });
-    if (this.engine?.set_replay_nameplate_filters)
-      this.engine.set_replay_nameplate_filters(
-        options.nameplates && options.friendlyNameplates,
-        options.nameplates && options.enemyNameplates,
-      );
-    else this.engine?.set_replay_nameplates(options.nameplates);
-    this.engine?.set_replay_raid_frames(options.raidFrames);
     this.sendPositions();
     this.sendActions();
     this.patch({ time: this.clockTime });
@@ -5587,6 +5655,7 @@ export class EditorController {
             dead: false,
             estimated: false,
             friendly: a.type !== "NPC",
+            nameplate: actorNameplateEnabled(a, this.state.options),
             race: a.race ?? 1,
             sex: a.sex ?? 0,
             look: [0, 0, 0, 0, 0],
