@@ -1053,6 +1053,9 @@ export function App({ controller }: { controller: EditorController }) {
                           ? "Saving prepared game assets on this device"
                           : "Automatic reopening could not be saved. Select the folder again next visit."}
                     </span>
+                    {state.clientPrefetchProgress && (
+                      <span role="status">{state.clientPrefetchProgress}</span>
+                    )}
                     {state.clientCacheStatus !== "recording" && (
                       <button
                         onClick={() => void controller.clearClientCache()}
