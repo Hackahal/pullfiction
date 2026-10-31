@@ -67,6 +67,11 @@ pub struct ReplayUnit {
     pub floor_hint: Option<f32>,
     pub facing: f32,
     pub speed: f32,
+    #[serde(
+        default,
+        deserialize_with = "crate::planner_movement::deserialize_optional"
+    )]
+    pub movement: Option<crate::planner_movement::Segment>,
     pub dead: bool,
     #[serde(default)]
     pub friendly: bool,
@@ -247,7 +252,10 @@ pub(crate) fn apply(
     mut names: ResMut<NameCache>,
     mut index: ResMut<net::GuidIndex>,
     mut serial: Local<u64>,
-    mut ground_cache: Local<HashMap<String, crate::planner_grounding::GroundMemo>>,
+    (mut ground_cache, mut routes): (
+        Local<HashMap<String, crate::planner_grounding::GroundMemo>>,
+        Local<crate::planner_movement::Routes>,
+    ),
     collider_epoch: Res<benilla_world::collision::ColliderEpoch>,
     mut units: Local<HashMap<String, (Entity, u64)>>,
     mut query: Query<
@@ -326,6 +334,7 @@ pub(crate) fn apply(
     let reset = std::mem::take(&mut control.reset);
     if reset {
         ground_cache.clear();
+        routes.clear();
         control.generation += 1;
         control.flights.clear();
         for (entity, _) in units.values() {
@@ -348,6 +357,7 @@ pub(crate) fn apply(
     let source = ((floor_context.4).0, control.generation);
     if floor_context.7.synchronize(source, reset) {
         ground_cache.clear();
+        routes.clear();
     }
     let assets_changed = floor_context.5.read().fold(false, |changed, event| {
         changed
@@ -373,11 +383,20 @@ pub(crate) fn apply(
     if let Some(batch) = control.pending.take() {
         floor_context.7.replace(batch);
     }
+    // A paused frame may need several bounded batches to route every actor.
+    if routes.deferred() {
+        floor_context.7.retry_after_spawn();
+    }
     // Retain the owned input, not a cloned actor graph. Native assets may finish after JS settles.
     if let Some(batch) = floor_context.7.ready(readiness_revision, control.playing) {
         let mut spawned = false;
         let keep: HashSet<_> = batch.iter().map(|u| u.key.as_str()).collect();
         ground_cache.retain(|key, _| keep.contains(key.as_str()));
+        // A paused retry can reflect newly ready floor assets/placements without
+        // a collider epoch change. Its route misses must be retried as well.
+        routes.begin(readiness_revision);
+        routes.retain(&keep);
+        let route_probe = crate::webbridge::path::WorldProbe::new(world);
         units.retain(|key, (entity, guid)| {
             if keep.contains(key.as_str()) {
                 true
@@ -468,11 +487,26 @@ pub(crate) fn apply(
                 ground_cache.remove(&unit.key);
             }
 
+            let mut facing = unit.facing;
+            let mut speed = unit.speed;
+            if unit.player && !unit.dead && !unit.wisp && unit.position.is_some() {
+                if let Some(segment) = &unit.movement {
+                    if let Some((point, heading, velocity)) =
+                        routes.pose(&unit.key, segment, &route_probe)
+                    {
+                        pos = Some(point + Vec3::Y * 0.05);
+                        if !segment.recorded_facing {
+                            facing = heading;
+                        }
+                        speed = if control.playing { velocity } else { 0. };
+                    }
+                }
+            }
             let transform = Transform::from_translation(pos.unwrap_or(Vec3::ZERO))
-                .with_rotation(Quat::from_rotation_y(unit.facing));
+                .with_rotation(Quat::from_rotation_y(facing));
             let motion = MovementState {
-                speed: unit.speed.min(30.),
-                flags: if unit.speed > 0.1 { 1 } else { 0 },
+                speed: speed.min(30.),
+                flags: if speed > 0.1 { 1 } else { 0 },
                 ..default()
             };
             let visibility = if pos.is_some() {

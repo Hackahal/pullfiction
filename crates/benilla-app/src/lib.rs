@@ -87,6 +87,8 @@ pub mod planner_embed;
 #[path = "planner_embed/state.rs"]
 mod planner_embed_state;
 #[cfg(any(target_arch = "wasm32", test))]
+mod planner_movement;
+#[cfg(any(target_arch = "wasm32", test))]
 mod planner_observer;
 #[cfg(any(target_arch = "wasm32", test))]
 mod planner_raid_layout;

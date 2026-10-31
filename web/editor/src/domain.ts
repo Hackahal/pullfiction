@@ -78,6 +78,14 @@ export const poseAt = data.poseAt as unknown as (
   estimated: boolean;
   wisp: boolean;
   discontinuity: boolean;
+  movement?: {
+    from: [number, number, number | null];
+    to: [number, number, number | null];
+    fraction: number;
+    rate: number;
+    duration: number;
+    recorded_facing: boolean;
+  } | null;
   sampleAge: number | null;
   positionSource: string;
 } | null;

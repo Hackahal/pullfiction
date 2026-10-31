@@ -42,7 +42,7 @@
 //! same snapshot builder the unit frames use ([`crate::ui_unit::snapshot`]).
 
 mod act;
-mod path;
+pub(crate) mod path;
 
 /// The `path` verb's default search budget (cells), when the page names none.
 fn path_budget() -> usize {

@@ -57,7 +57,7 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
             MAX_REPLAY_FRAME_BYTES
         )));
     }
-    let actors: Vec<ReplayActor> =
+    let mut actors: Vec<ReplayActor> =
         serde_json::from_str(json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     if actors.len() > MAX_REPLAY_FRAME_ACTORS {
         return Err(JsValue::from_str(&format!(
@@ -80,6 +80,14 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
                 .any(|v| !v.is_finite() || v.abs() > 20000.0)
     }) {
         return Err(JsValue::from_str("Invalid replay frame"));
+    }
+    // Movement is optional presentation data. Preserve every actor's recorded pose
+    // when a parsed segment is out of bounds, rather than freezing the whole frame.
+    for actor in &mut actors {
+        actor.movement = actor
+            .movement
+            .take()
+            .and_then(|segment| segment.validated());
     }
     enqueue(Command::Replay(actors));
     Ok(())

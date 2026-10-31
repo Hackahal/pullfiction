@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {poseAt, normalizeReplay, enrichCombat} from './replay.mjs';
+import {prepareMovement} from './replay-movement.mjs';
+const player = () => ({type:'Player', samples:[[0,0,0,null],[1000,6,0,null]], facings:[], deaths:[], casts:[], auras:[]});
+test('short routes preserve anchors, easing, recorded facing and seek independence', () => {
+  const a=player(); a.samples.push([2000,6,0,null]);
+  const mid=poseAt(a,500);
+  assert.ok(mid.movement); assert.deepEqual(mid.movement.from,[0,0,null]);
+  assert.equal(poseAt(a,0).movement.fraction,0);
+  assert.deepEqual(poseAt(a,1000).pos,[6,0,null]);
+  assert.ok(poseAt(a,999).movement.rate < .01);
+  poseAt(a,1900); assert.deepEqual(poseAt(a,500),mid);
+  a.facings=[[0,Math.PI/2]];
+  assert.equal(poseAt(a,500).movement.recorded_facing,true);
+  assert.equal(poseAt(a,500).facing,Math.PI/2);
+});
+test('Blink jumps at the recorded cast even below the old speed threshold', () => {
+  const a=player(); a.casts=[{spell:1953,end:400,outcome:'completed',timingSource:'recorded'}]; prepareMovement(a);
+  assert.deepEqual(poseAt(a,399).pos,[0,0,null]);
+  assert.deepEqual(poseAt(a,400).pos,[6,0,null]);
+  assert.equal(poseAt(a,400).speed,0); assert.equal(poseAt(a,400).movement,null);
+  assert.equal(poseAt(a,400).discontinuity,true);
+  assert.deepEqual(poseAt(a,1000).pos,[6,0,null]);
+  assert.deepEqual(poseAt(a,399).pos,[0,0,null]);
+  a.casts[0].timingSource='WCL inferred cast'; prepareMovement(a);
+  assert.equal(poseAt(a,400).discontinuity,false);
+});
+test('Sprint application/removal changes speed at its timestamp without moving the endpoints', () => {
+  const a=player(); a.auras=[[500,{spell:11305}],[800,{spell:11305,remove:true}]];prepareMovement(a);
+  const before=poseAt(a,499), during=poseAt(a,500), after=poseAt(a,800);
+  assert.ok(Math.abs(during.speed/before.speed-1.7)<1e-9);
+  assert.ok(Math.abs(during.speed/after.speed-1.7)<1e-9);
+  assert.deepEqual(poseAt(a,0).pos,[0,0,null]); assert.deepEqual(poseAt(a,1000).pos,[6,0,null]);
+  assert.deepEqual(poseAt(a,500),during);
+});
+test('initial buffs, overlapping ranks, reset and Dash are deterministic', () => {
+  const a=player(); a.initialAuras=[2983];
+  a.auras=[[250,{spell:11305}],[500,{spell:11305,remove:true}],[750,{reset:[1850]}]];prepareMovement(a);
+  assert.equal(a.movement.profile[0][1],1.5);
+  assert.equal(a.movement.profile[1][1],1.7);
+  assert.equal(a.movement.profile[2][1],1.5);
+  assert.equal(a.movement.profile[3][1],1.5);
+  assert.ok(poseAt(a,700).movement);
+});
+test('no route crosses a death, zone break or unloaded buffer hole; long gaps remain optional', () => {
+  for (const extra of [{deaths:[[500,true]]},{positionBreaks:[500]},{bufferedRanges:[[0,400],[600,1000]]}]) {
+    assert.equal(poseAt({...player(),...extra},750).movement,null);
+  }
+  const a=player();a.samples[1][0]=10000;
+  assert.equal(poseAt(a,5000).movement,null);
+  assert.equal(poseAt(a,5000,true).estimated,true);
+  assert.equal(poseAt(a,5000,true).movement,null);
+});
+test('real normalization and combat enrichment feed ability reconstruction without rewriting raw logs', () => {
+  const raw={report:{code:'DyN7vF94QR8aj1Lc'},fight:{startTime:1000,endTime:4000,gameZone:{name:'Molten Core'},friendlyPlayers:[1]},actors:[{id:1,type:'Player',name:'Mage',subType:'Mage'}],events:[
+    {timestamp:1000,type:'cast',sourceID:1,resourceActor:1,x:100,y:100},
+    {timestamp:1400,type:'cast',sourceID:1,abilityGameID:1953},
+    {timestamp:2000,type:'cast',sourceID:1,resourceActor:1,x:100,y:700},
+  ]};
+  const original=JSON.stringify(raw), r=enrichCombat(normalizeReplay(raw)), a=r.actors[0];
+  assert.deepEqual(poseAt(a,399).pos,[1,-1,null]);
+  assert.deepEqual(poseAt(a,400).pos,[7,-1,null]);
+  assert.equal(JSON.stringify(raw),original);
+});
+
+test('Swiftness potion uses its aura, and crafting the potion does not change speed', () => {
+  const a=player(); a.auras=[[500,{spell:2379}]]; prepareMovement(a);
+  assert.ok(Math.abs(poseAt(a,500).speed/poseAt(a,499).speed-1.5)<1e-9);
+  a.auras=[[500,{spell:2335}]]; prepareMovement(a);
+  assert.equal(poseAt(a,500).speed,6);
+});
+
+test('very dense observations cannot send a rate outside native transport bounds', () => {
+  const a=player(); a.samples=[[0,0,0,null],[1,0.034,0,null],[2,0.034,0,null]];
+  for(let t=0;t<2;t+=0.05){
+    const pose=poseAt(a,t);
+    assert.ok(!pose.movement || pose.movement.rate<=1000);
+    assert.ok(Number.isFinite(pose.speed));
+  }
+});
