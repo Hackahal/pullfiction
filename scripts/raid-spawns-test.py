@@ -2,6 +2,10 @@
 """Validate shipped reference coverage and SQL projection decisions."""
 import importlib.util
 import json
+import gzip
+import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -28,6 +32,25 @@ class RaidSpawnTests(unittest.TestCase):
                 self.assertGreater(row['entry'], 0)
                 self.assertGreater(row['displayID'], 0)
                 self.assertTrue(all(abs(n) < 20000 for n in row['position']))
+
+    def test_utf8_names_are_identical_in_plain_and_gzip_input_under_ascii_locale(self):
+        sql = "CREATE TABLE `creature_template` (\n `Name` text\n);\nINSERT INTO `creature_template` VALUES ('Se\u00f1or');\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            for suffix in ('.sql', '.sql.gz'):
+                path = Path(tmp) / ('utf8' + suffix)
+                encoded = sql.encode('utf-8')
+                path.write_bytes(gzip.compress(encoded) if suffix.endswith('.gz') else encoded)
+                code = (
+                    "import importlib.util,sys;"
+                    "spec=importlib.util.spec_from_file_location('spawns',sys.argv[1]);"
+                    "module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);"
+                    "assert module.tables(sys.argv[2])['creature_template'][0]['name']=='Se\\u00f1or'"
+                )
+                result = subprocess.run([sys.executable, '-c', code,
+                    str(ROOT / 'scripts/raid-spawns.py'), str(path)],
+                    env={**os.environ, 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0', 'LC_ALL': 'C'},
+                    capture_output=True, text=True, encoding='utf-8')
+                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_sql_projection_uses_declared_columns_and_one_random_variant(self):
         sql = '''CREATE TABLE `creature` (

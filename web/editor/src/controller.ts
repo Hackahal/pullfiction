@@ -2749,6 +2749,7 @@ export class EditorController {
     this.sendAnnotations();
   }
   displayMarks() {
+    let actors: Map<string, Actor> | undefined;
     return this.visiblePages()
       .flatMap((s) => s.annotations.filter((a) => !a.hidden))
       .map((a) => {
@@ -2758,8 +2759,10 @@ export class EditorController {
             ? this.displaySnapshot()?.actors.find((p) => p.key === a.actor)
             : undefined;
         const actor =
-          a.actorReport === this.state.replay?.report.code
-            ? this.state.replay?.actors.find((p) => p.key === a.actor)
+          a.actorReport === (this.state.replay?.report.code ?? "")
+            ? (actors ??= new Map(
+                this.sceneActors().map((actor) => [actor.key, actor]),
+              )).get(a.actor)
             : undefined;
         const pose = actor ? this.actorPose(actor) : null;
         if (!planned && !pose) return { ...a, actor: undefined };
@@ -2861,7 +2864,7 @@ export class EditorController {
     if (this.state.selectionFilter !== "actors")
       this.selectMarks(this.displayMarks().map((a) => a.id));
     if (this.state.selectionFilter !== "drawings")
-      this.selectActors(this.snapshot()?.actors.map((a) => a.key) ?? []);
+      this.selectActors(this.sceneActors().map((a) => a.key));
   }
   boxSelect(
     x1: number,

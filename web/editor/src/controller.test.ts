@@ -3125,3 +3125,61 @@ test("group drag moves both edited and untouched reference NPCs together", () =>
   assert.equal(c.sceneActors().length, 233);
   c.stop();
 });
+
+test("Select All includes untouched and edited reference NPCs with drawings and respects selection filters", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  const keys = c.sceneActors().map((a) => a.key);
+  assert.equal(c.snapshot(), undefined);
+  c.selectAllMarks();
+  assert.deepEqual(c.getSnapshot().selectedActors, keys);
+  assert.equal(c.snapshot(), undefined);
+  c.selectActors([keys[0]]);
+  c.setSnapBypass(true);
+  c.nudgeActors(5, 0);
+  c.attachRange(keys[1], 30);
+  const mark = c.getSnapshot().selectedMark!;
+  c.selectAllMarks();
+  assert.deepEqual(new Set(c.getSnapshot().selectedActors), new Set(keys));
+  assert.deepEqual(c.getSnapshot().selectedMarks, [mark]);
+  c.selectMark(null);
+  c.clearActorSelection();
+  c.setSelectionFilter("actors");
+  c.selectAllMarks();
+  assert.deepEqual(new Set(c.getSnapshot().selectedActors), new Set(keys));
+  assert.deepEqual(c.getSnapshot().selectedMarks, []);
+  c.clearActorSelection();
+  c.setSelectionFilter("drawings");
+  c.selectAllMarks();
+  assert.deepEqual(c.getSnapshot().selectedActors, []);
+  assert.deepEqual(c.getSnapshot().selectedMarks, [mark]);
+  c.stop();
+});
+
+test("range attachment to an untouched reference NPC survives materialization and follows edits", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c.sceneActors()[0],
+    start = c.actorPose(actor)!.pos;
+  c.attachRange(actor.key, 30);
+  const id = c.getSnapshot().selectedMark!,
+    displayed = () => c.displayMarks().find((m) => m.id === id)!;
+  assert.equal(c.snapshot(), undefined);
+  assert.equal(displayed().actor, actor.key);
+  assert.deepEqual(displayed().points[0], start);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.equal(displayed().actor, actor.key);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.setCompareRecorded(true);
+  assert.deepEqual(displayed().points[0], start);
+  c.setCompareRecorded(false);
+  c.attachEdit(id, null);
+  assert.equal(displayed().actor, undefined);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.stop();
+});

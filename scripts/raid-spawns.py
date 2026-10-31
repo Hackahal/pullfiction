@@ -21,7 +21,7 @@ TUPLE = re.compile(r"\((?:[^'()]|'(?:\\.|[^'\\])*')*\)")
 def tables(path):
     result, columns, active = {}, {}, None
     opener = gzip.open if str(path).endswith('.gz') else open
-    with opener(path, 'rt') as source:
+    with opener(path, 'rt', encoding='utf-8') as source:
         for line in source:
             match = re.match(r'CREATE TABLE `(' + TABLES + ')`', line)
             if match:
@@ -93,7 +93,7 @@ def main():
     if not all(value['maps'].values()):
         raise ValueError('Expected reference spawns for every supported Vanilla raid')
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(value, separators=(',', ':')) + '\n')
+    args.output.write_text(json.dumps(value, separators=(',', ':')) + '\n', encoding='utf-8')
     print({m: len(rows) for m, rows in value['maps'].items()})
 
 
