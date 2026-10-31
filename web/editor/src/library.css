@@ -643,6 +643,9 @@
   .library-backdrop {
     overflow: auto;
   }
+  .library-header .community-links {
+    display: none;
+  }
   .library-header {
     gap: 10px;
     position: sticky;
