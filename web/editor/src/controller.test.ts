@@ -1,3 +1,4 @@
+import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -2991,4 +2992,61 @@ test("native movement requires a known height for each endpoint and keeps ground
     }
     f.c.stop();
   }
+});
+
+test("native movement resolves both ramp endpoint heights independently of the current actor floor", () => {
+  const f = fixture();
+  const replay = f.c.getSnapshot().replay!;
+  const actor = replay.actors.find((a) => a.key === "1:1")!;
+  actor.samples = [
+    [0, 0, 1, null],
+    [1000, 6, 1, null],
+  ];
+  const g = new ReplayFloorGeometry(
+    [
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 0],
+          [10, 0, 0],
+          [0, 10, 0],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 10],
+          [10, 0, 20],
+          [0, 10, 10],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 30],
+          [10, 0, 30],
+          [0, 10, 30],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [{ id: "room", name: "stage", height: 25 }],
+  );
+  (
+    f.c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
+  ).loadedFloors.set(replay.map, g);
+  for (const t of [500, 100, 900, 500]) {
+    f.c.seek(t);
+    const p = f.frame.find((u) => u.key === actor.key) as unknown as {
+      movement: { from: number[]; to: number[] };
+    };
+    assert.equal(p.movement.from[2], 10);
+    assert.equal(p.movement.to[2], 16);
+  }
+  f.c.stop();
 });

@@ -1,4 +1,4 @@
-//! Short replay routes reuse the client's walking queries. No log positions are rewritten.
+//! Replay routes reuse the client's walking queries. No log positions are rewritten.
 use crate::webbridge::path::{self, Probe};
 use bevy::math::Vec3;
 use std::collections::HashMap;
@@ -12,6 +12,14 @@ pub struct Segment {
     pub rate: f32,
     pub duration: f32,
     pub recorded_facing: bool,
+    /// Integrated normal-run distance available between the observations.
+    #[serde(default)]
+    pub travel_budget: Option<f32>,
+    #[serde(default)]
+    pub run_speed: Option<f32>,
+    /// Sparse position estimates, including wisps, need not obey a run-speed cap.
+    #[serde(default)]
+    pub unrestricted: bool,
 }
 impl Segment {
     /// Optional reconstruction is discarded independently of the recorded replay pose.
@@ -30,7 +38,17 @@ impl Segment {
             && (0.0..=1000.).contains(&self.rate)
             && self.duration.is_finite()
             && self.duration > 0.
-            && self.duration <= 2.
+            && self.duration <= if self.unrestricted { 120. } else { 2. }
+            && match (self.travel_budget, self.run_speed) {
+                (None, None) => true,
+                (Some(budget), Some(speed)) => {
+                    budget.is_finite()
+                        && (0.0..=12000.).contains(&budget)
+                        && speed.is_finite()
+                        && (0.0..=100.).contains(&speed)
+                }
+                _ => false,
+            }
     }
 }
 
@@ -47,6 +65,7 @@ struct Memo {
     from: Vec3,
     to: Vec3,
     duration: f32,
+    unrestricted: bool,
     points: Option<Vec<Vec3>>,
 }
 #[derive(Default)]
@@ -85,13 +104,20 @@ impl Routes {
         }
         let from = benilla_assets::coords::wow_to_bevy(segment.from);
         let to = benilla_assets::coords::wow_to_bevy(segment.to);
-        if !self
-            .actors
-            .get(key)
-            .is_some_and(|m| m.from == from && m.to == to && m.duration == segment.duration)
-        {
-            let points = match route_budget(probe, from, to, segment.duration, &mut self.remaining)
-            {
+        if !self.actors.get(key).is_some_and(|m| {
+            m.from == from
+                && m.to == to
+                && m.duration == segment.duration
+                && m.unrestricted == segment.unrestricted
+        }) {
+            let points = match route_budget(
+                probe,
+                from,
+                to,
+                segment.duration,
+                segment.unrestricted,
+                &mut self.remaining,
+            ) {
                 Ok(points) => points,
                 Err(()) => {
                     self.deferred = true;
@@ -104,12 +130,13 @@ impl Routes {
                     from,
                     to,
                     duration: segment.duration,
+                    unrestricted: segment.unrestricted,
                     points,
                 },
             );
         }
         let points = self.actors.get(key)?.points.as_ref()?;
-        let (mut point, heading, velocity) = sample(points, segment.fraction, segment.rate)?;
+        let (mut point, heading, velocity) = sample_segment(points, segment)?;
         // String-pulling removes horizontal waypoints, not the stairs/terrain beneath a leg.
         point.y = probe.floor(point.x, point.z, point.y)?;
         Some((point, heading, velocity))
@@ -118,7 +145,7 @@ impl Routes {
 
 #[cfg(test)]
 fn route(probe: &impl Probe, from: Vec3, to: Vec3, duration: f32) -> Option<Vec<Vec3>> {
-    route_budget(probe, from, to, duration, &mut 4).unwrap()
+    route_budget(probe, from, to, duration, false, &mut 4).unwrap()
 }
 
 fn route_budget(
@@ -126,12 +153,21 @@ fn route_budget(
     from: Vec3,
     to: Vec3,
     duration: f32,
+    unrestricted: bool,
     budget: &mut usize,
 ) -> Result<Option<Vec<Vec3>>, ()> {
     let mut deferred = false;
     let result = (|| {
-        if from.distance(to) > 40. {
+        if from.distance(to) > if unrestricted { 400. } else { 40. } {
             return None;
+        }
+        // Long direct legs also consume a job: their floor probes can be costly.
+        if unrestricted {
+            if *budget == 0 {
+                deferred = true;
+                return None;
+            }
+            *budget -= 1;
         }
         let start = Vec3::new(from.x, probe.floor(from.x, from.z, from.y)?, from.z);
         let goal = Vec3::new(to.x, probe.floor(to.x, to.z, to.y)?, to.z);
@@ -142,11 +178,13 @@ fn route_budget(
         let points = if path::straight(probe, start, goal) {
             vec![start, goal]
         } else {
-            if *budget == 0 {
-                deferred = true;
-                return None;
+            if !unrestricted {
+                if *budget == 0 {
+                    deferred = true;
+                    return None;
+                }
+                *budget -= 1;
             }
-            *budget -= 1;
             let found = path::find(probe, start, goal, 2048)?;
             if found.partial {
                 return None;
@@ -155,6 +193,9 @@ fn route_budget(
         };
         // The shared search's arrival radius can report success short of the exact goal.
         if points.last()?.distance(goal) > 0.01 {
+            return None;
+        }
+        if unrestricted && points.windows(2).map(|p| p[0].distance(p[1])).sum::<f32>() > 800. {
             return None;
         }
         // Horizontal string-pulling may discard a hill's summit or a stair landing.
@@ -180,7 +221,7 @@ fn route_budget(
         }
         let points = grounded;
         let length: f32 = points.windows(2).map(|p| p[0].distance(p[1])).sum();
-        if length <= 0.03 || length / duration > 20. {
+        if length <= 0.03 || !unrestricted && length / duration > 20. {
             return None;
         }
         Some(points)
@@ -190,6 +231,33 @@ fn route_budget(
     } else {
         Ok(result)
     }
+}
+
+/// Cadence follows the recorded movement aura, not an impossible anchor velocity.
+pub(crate) fn gait_speed(translation: f32, normal: Option<f32>) -> f32 {
+    if translation > 0.1 {
+        normal.unwrap_or(7.)
+    } else {
+        translation
+    }
+}
+
+fn sample_segment(points: &[Vec3], segment: &Segment) -> Option<(Vec3, f32, f32)> {
+    let length: f32 = points.windows(2).map(|p| p[0].distance(p[1])).sum();
+    let (mut fraction, mut rate) = (segment.fraction, segment.rate);
+    if let Some(budget) = segment
+        .travel_budget
+        .filter(|b| !segment.unrestricted && *b >= length && length > 0.)
+    {
+        let travelled = fraction * budget - (budget - length) / 2.;
+        fraction = (travelled / length).clamp(0., 1.);
+        rate = if travelled >= 0. && travelled < length {
+            rate * budget / length
+        } else {
+            0.
+        };
+    }
+    sample(points, fraction, rate)
 }
 
 fn sample(points: &[Vec3], fraction: f32, rate: f32) -> Option<(Vec3, f32, f32)> {
@@ -247,6 +315,9 @@ mod tests {
             rate: 0.5,
             duration: 2.,
             recorded_facing: false,
+            travel_budget: None,
+            run_speed: None,
+            unrestricted: false,
         }
     }
     #[test]
@@ -486,5 +557,109 @@ mod tests {
             serde_json::from_str::<Actor>(r#"{"key":"p","position":"bad","movement":null}"#)
                 .is_err()
         );
+    }
+    #[test]
+    fn normal_run_has_constant_speed_with_holds_and_exact_anchors() {
+        let points = [Vec3::ZERO, Vec3::new(6., 0., 0.)];
+        let mut s = segment();
+        s.travel_budget = Some(14.);
+        s.run_speed = Some(7.);
+        for (fraction, x, speed) in [
+            (0., 0., 0.),
+            (0.1, 0., 0.),
+            (0.4, 1.6, 7.),
+            (0.5, 3., 7.),
+            (0.6, 4.4, 7.),
+            (0.9, 6., 0.),
+            (1., 6., 0.),
+        ] {
+            s.fraction = fraction;
+            let (p, _, v) = sample_segment(&points, &s).unwrap();
+            assert!((p.x - x).abs() < 0.001);
+            assert!((v - speed).abs() < 0.001);
+        }
+    }
+    #[test]
+    fn detour_uses_its_actual_length_and_impossible_spans_preserve_anchors() {
+        let points = [Vec3::ZERO, Vec3::new(0., 0., 4.), Vec3::new(6., 0., 4.)];
+        let mut s = segment();
+        s.travel_budget = Some(14.);
+        s.run_speed = Some(7.);
+        s.fraction = 0.4;
+        let (p, heading, v) = sample_segment(&points, &s).unwrap();
+        assert!((v - 7.).abs() < 0.001);
+        assert!((p.z - 3.6).abs() < 0.001);
+        assert!((heading.abs() - std::f32::consts::PI).abs() < 0.001);
+        s.travel_budget = Some(7.);
+        s.rate = 1.;
+        for (fraction, want) in [(0., points[0]), (1., points[2])] {
+            s.fraction = fraction;
+            assert_eq!(sample_segment(&points, &s).unwrap().0, want);
+        }
+        s.fraction = 0.5;
+        let v = sample_segment(&points, &s).unwrap().2;
+        assert_eq!(v, 10.);
+        assert_eq!(gait_speed(v, s.run_speed), 7.);
+        assert_eq!(gait_speed(0., s.run_speed), 0.);
+        assert_eq!(gait_speed(20., Some(11.9)), 11.9);
+    }
+    #[test]
+    fn sparse_wisps_route_faster_than_normal_without_unbounded_work() {
+        struct Open;
+        impl Probe for Open {
+            fn floor(&self, _: f32, _: f32, _: f32) -> Option<f32> {
+                Some(0.)
+            }
+            fn clear(&self, _: Vec3, _: Vec3) -> bool {
+                true
+            }
+        }
+        let mut s = segment();
+        s.to = [0., -100., 0.];
+        s.duration = 3.;
+        s.rate = 1. / 3.;
+        s.unrestricted = true;
+        s.travel_budget = Some(21.);
+        s.run_speed = Some(7.);
+        let mut routes = Routes::default();
+        routes.begin(1);
+        for i in 0..4 {
+            let (p, _, v) = routes.pose(&i.to_string(), &s, &Open).unwrap();
+            assert!((p.x - 50.).abs() < 0.001);
+            assert!(v > 30.);
+        }
+        assert!(routes.pose("deferred", &s, &Open).is_none());
+        assert!(routes.deferred());
+        routes.begin(1);
+        assert!(routes.pose("deferred", &s, &Open).is_some());
+        s.unrestricted = false;
+        s.duration = 2.;
+        assert!(routes.pose("0", &s, &Open).is_none());
+        s.unrestricted = true;
+        s.duration = 3.;
+        s.to = [0., -401., 0.];
+        assert!(routes.pose("far", &s, &Open).is_none());
+    }
+    #[test]
+    fn optional_timing_rejects_partial_nonfinite_and_out_of_bounds_values() {
+        for (budget, speed) in [
+            (Some(f32::NAN), Some(7.)),
+            (Some(7.), None),
+            (None, Some(7.)),
+            (Some(-1.), Some(7.)),
+            (Some(7.), Some(101.)),
+        ] {
+            let mut s = segment();
+            s.travel_budget = budget;
+            s.run_speed = speed;
+            assert!(!s.valid());
+        }
+        let mut s = segment();
+        s.duration = 120.;
+        assert!(!s.valid());
+        s.unrestricted = true;
+        assert!(s.valid());
+        s.duration = 120.01;
+        assert!(!s.valid());
     }
 }
