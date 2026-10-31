@@ -87,6 +87,7 @@ import {
 } from "./replay-buffer";
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
+import { movementFloorCandidates } from "./replay-movement-floors";
 import { replayFloorAnchors } from "./replay-floor-anchors";
 import { ReplayHeightCache } from "./replay-height-cache";
 import { withReplayPoses } from "./replay-pose-phase";
@@ -6121,6 +6122,19 @@ export class EditorController {
                 ...movement,
                 from: [movement.from[0], movement.from[1], fromHeight],
                 to: [movement.to[0], movement.to[1], toHeight],
+                from_inferred: movement.from[2] == null && seed === undefined,
+                to_inferred: movement.to[2] == null && seed === undefined,
+                floor_candidates: geometry
+                  ? movementFloorCandidates(
+                      geometry,
+                      movement.from as number[],
+                      movement.to as number[],
+                      fromHeight,
+                      toHeight,
+                      movement.from[2] == null && seed === undefined,
+                      movement.to[2] == null && seed === undefined,
+                    )
+                  : [],
               }
             : null;
         // Unknown route endpoints are not permission to draw a line through walls.

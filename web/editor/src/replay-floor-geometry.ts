@@ -29,6 +29,7 @@ export class ReplayFloorGeometry {
   private anchors: ValidAnchor[] = [];
   private anchorColumns = new Map<string, ValidAnchor[]>();
   private projected = new Map<string, number | undefined>();
+  private candidateColumns = new Map<string, readonly number[]>();
   private catalogs = new WeakMap<object, Map<number, FloorCatalog>>();
   constructor(
     floors: MapFloor[],
@@ -126,7 +127,17 @@ export class ReplayFloorGeometry {
     // Authored/catalog floor overrides remain authoritative, including zero.
     for (const [entry, value] of Object.entries(original)) {
       const seeds = (value as { floorSeeds?: number[][] })?.floorSeeds;
-      if (seeds) result[entry] = { floorSeeds: seeds };
+      if (!seeds) continue;
+      const hasCurrentMap = seeds.some(
+        (seed) =>
+          seed.length === 4 && seed.every(Number.isFinite) && seed[0] === map,
+      );
+      result[entry] = {
+        floorSeeds:
+          seeds.length === 0 || hasCurrentMap
+            ? seeds
+            : [...(result[entry]?.floorSeeds ?? []), ...seeds],
+      };
     }
     maps.set(map, result);
     return result;
@@ -237,6 +248,27 @@ export class ReplayFloorGeometry {
       if (z <= from + 1.1 && z >= from - 2 && (best === undefined || z > best))
         best = z;
     return best;
+  }
+
+  /** Alternative structural supports, never evidence that an actor occupied them. */
+  heightCandidates(x: number, y: number): readonly number[] {
+    if (![x, y].every(Number.isFinite)) return [];
+    const key = `${x}:${y}`;
+    const cached = this.candidateColumns.get(key);
+    if (cached) return cached;
+    const levels = [...this.crossings(x, y)]
+      .filter(([, triangle]) => triangle.structure)
+      .map(([z]) => z)
+      .sort((a, b) => a - b);
+    const unique: number[] = [];
+    for (const z of levels)
+      if (!unique.length || z - unique[unique.length - 1] > 0.05)
+        unique.push(z);
+    const result = Object.freeze(unique);
+    if (this.candidateColumns.size >= MAX_PROJECTED_CELLS)
+      this.candidateColumns.delete(this.candidateColumns.keys().next().value!);
+    this.candidateColumns.set(key, result);
+    return result;
   }
 
   height(

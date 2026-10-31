@@ -28,10 +28,10 @@ use benilla_world::collision::WorldCollision;
 /// Grid pitch, yards.
 const CELL: f32 = 1.0;
 /// Highest floor step up an edge may take (the mover's step-up height, a little slope on top).
-const MAX_RISE: f32 = 1.1;
+pub(crate) const MAX_RISE: f32 = 1.1;
 /// Deepest floor step down an edge may take: a ledge the body would drop off without harm, not a
 /// cliff it would take damage from or not climb back.
-const MAX_DROP: f32 = 2.0;
+pub(crate) const MAX_DROP: f32 = 2.0;
 /// The floor ray starts this far above the reference floor and reaches this far below it.
 const RAY_UP: f32 = 1.6;
 const RAY_DOWN: f32 = 4.0;
@@ -198,7 +198,10 @@ impl Search {
             if h < self.best.0 {
                 self.best = (h, key);
             }
-            if h <= GOAL_RADIUS && (node.pos.y - self.goal.y).abs() <= GOAL_HEIGHT {
+            if h <= GOAL_RADIUS
+                && (node.pos.y - self.goal.y).abs() <= GOAL_HEIGHT
+                && straight(probe, node.pos, self.goal)
+            {
                 self.reached = Some(key);
                 return true;
             }
@@ -292,7 +295,7 @@ impl Search {
             let last = *points.last().expect("the start");
             if let Some(y) = probe.floor(goal.x, goal.z, last.y) {
                 let g = Vec3::new(goal.x, y, goal.z);
-                if probe.clear(last, g) {
+                if straight(probe, last, g) {
                     points.push(g);
                 }
             }
@@ -333,7 +336,9 @@ pub(crate) fn straight(probe: &impl Probe, a: Vec3, b: Vec3) -> bool {
         }
         prev = here;
     }
-    true
+    // A continuous walk on another storey is not a walk to the requested goal.
+    // Include the tiny final connector when floor-query precision differs.
+    (prev.y - b.y).abs() <= 0.01 && probe.clear(prev, b)
 }
 
 /// String-pull: from each kept point, jump to the farthest later point walkable in a straight line.
@@ -415,6 +420,81 @@ mod tests {
         assert_eq!(p.points.len(), 2);
     }
 
+    #[test]
+    fn straight_rejects_disconnected_goal_storey_and_find_keeps_a_partial_path() {
+        struct Stacked;
+        impl Probe for Stacked {
+            fn floor(&self, _: f32, _: f32, y: f32) -> Option<f32> {
+                Some(if y > 310. { 317.7975 } else { 297.9374 })
+            }
+            fn clear(&self, _: Vec3, _: Vec3) -> bool {
+                true
+            }
+        }
+        let from = benilla_assets::coords::wow_to_bevy([3249.52, -3195.56, 317.7975]);
+        let to = benilla_assets::coords::wow_to_bevy([3252.01, -3191.10, 297.9374]);
+        assert!(!straight(&Stacked, from, to));
+        assert!(!straight(&Stacked, to, from));
+        let found = find(&Stacked, from, to, MAX_EXPANSIONS).unwrap();
+        assert!(found.partial);
+        assert!(found.points.iter().all(|p| (p.y - from.y).abs() < 0.001));
+    }
+    #[test]
+    fn goal_radius_does_not_bypass_walking_step_and_drop_limits() {
+        struct Ledge(f32);
+        impl Probe for Ledge {
+            fn floor(&self, x: f32, _: f32, _: f32) -> Option<f32> {
+                Some(if x >= 1. { self.0 } else { 0. })
+            }
+            fn clear(&self, _: Vec3, _: Vec3) -> bool {
+                true
+            }
+        }
+        for y in [-3., 1.5] {
+            let goal = Vec3::new(1., y, 0.);
+            let found = find(&Ledge(y), Vec3::ZERO, goal, MAX_EXPANSIONS).unwrap();
+            assert!(
+                found.partial,
+                "an unwalkable final connector is not a reached goal"
+            );
+            assert_ne!(
+                found.points.last(),
+                Some(&goal),
+                "arrival radius cannot authorize an unwalkable final step"
+            );
+        }
+    }
+    #[test]
+    fn blocked_near_goal_connector_keeps_searching_for_a_clear_final_approach() {
+        struct CornerWall;
+        impl Probe for CornerWall {
+            fn floor(&self, x: f32, z: f32, _: f32) -> Option<f32> {
+                ((-2. ..=4.).contains(&x) && (-2. ..=2.).contains(&z)).then_some(0.)
+            }
+            fn clear(&self, a: Vec3, b: Vec3) -> bool {
+                if (a.x - 1.5) * (b.x - 1.5) > 0. {
+                    return true;
+                }
+                if (b.x - a.x).abs() < 0.00001 {
+                    return a.z.min(b.z) > 0.4 || a.z.max(b.z) < -0.4;
+                }
+                let t = (1.5 - a.x) / (b.x - a.x);
+                (a.z + (b.z - a.z) * t).abs() > 0.4
+            }
+        }
+        let goal = Vec3::new(2., 0., 0.);
+        assert!(!straight(&CornerWall, Vec3::new(1., 0., 0.), goal));
+        let found = find(&CornerWall, Vec3::ZERO, goal, 100).unwrap();
+        assert!(
+            !found.partial,
+            "blocked first approach must not stop the search"
+        );
+        assert_eq!(found.points.last(), Some(&goal));
+        assert!(found.expanded > 1 && found.expanded < 100);
+        for pair in found.points.windows(2) {
+            assert!(straight(&CornerWall, pair[0], pair[1]));
+        }
+    }
     /// A pit: no floor within x in 3..7.
     struct Pit;
     impl Probe for Pit {

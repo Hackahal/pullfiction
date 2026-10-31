@@ -192,6 +192,39 @@ test("floor-only catalogs preserve overrides without modifying models or injecti
   assert.equal(JSON.stringify(models), before);
   assert.equal(geometry.contextCatalog(533, models), result);
 });
+test("authored seeds override calibration only for their own map, while empty overrides stay empty", () => {
+  const geometry = new ReplayFloorGeometry(
+    [floor(30, true)],
+    [],
+    [{ entry: 1, point: [1, 1, 30] }],
+  );
+  assert.deepEqual(
+    geometry.contextCatalog(533, { 1: { floorSeeds: [[469, 2, 2, 0]] } })[1],
+    {
+      floorSeeds: [
+        [533, 1, 1, 30],
+        [469, 2, 2, 0],
+      ],
+    },
+  );
+  assert.deepEqual(
+    geometry.contextCatalog(533, { 1: { floorSeeds: [[533, 2, 2, 0]] } })[1],
+    { floorSeeds: [[533, 2, 2, 0]] },
+  );
+  assert.deepEqual(geometry.contextCatalog(533, { 1: { floorSeeds: [] } })[1], {
+    floorSeeds: [],
+  });
+});
+test("movement alternatives use exact structural supports and exclude unrelated terrain", () => {
+  const geometry = new ReplayFloorGeometry([
+    floor(0),
+    floor(10, true),
+    floor(30, true),
+  ]);
+  assert.deepEqual(geometry.heightCandidates(10, 10), [10, 30]);
+  assert.deepEqual(geometry.heightCandidates(1000, 1000), []);
+  assert.deepEqual(geometry.heightCandidates(NaN, 0), []);
+});
 test("projection caches stay bounded while queries remain deterministic after eviction", () => {
   const geometry = new ReplayFloorGeometry(
     [
