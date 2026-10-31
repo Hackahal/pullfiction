@@ -584,7 +584,7 @@ fn play_kit(
     }
     // The trail arm (`0x60d80a`), on the same terms; the reference dispatches it before the kit's
     // anim (`0x60f3c5`), so a kit with both fires its trail on its own swing.
-    if let Some(trail) = kit.trail_proc() {
+    for trail in visuals.trail_procs(kit) {
         out.trails
             .write(crate::weapon_trail::TrailArm { entity, trail });
     }
@@ -608,6 +608,7 @@ fn play_kit(
 #[derive(Clone, Copy)]
 struct ImpactPlay {
     spell_id: u32,
+    caster: Option<Entity>,
     /// The caster's ranged fallback, resolved before the caster can vanish.
     weapon_visual: Option<u32>,
     /// Lay the victim's severity-0 wound flinch beside the kit.
@@ -628,6 +629,7 @@ fn play_impact(
 ) {
     let ImpactPlay {
         spell_id,
+        caster,
         weapon_visual,
         flinch,
         seq,
@@ -654,6 +656,16 @@ fn play_impact(
             play_kit(entity, spell_id, &kit, play, seq, visuals, out);
         }
     }
+    if caster.is_some_and(|caster| caster != entity) {
+        if let Some(kit) = resolve_kit(spells, visuals, spell_id, |s| s.impact_not_caster, || None)
+        {
+            play_kit(entity, spell_id, &kit, KitPlay::DISCRETE, seq, visuals, out);
+        }
+    }
+    // Modern tables commonly contain identical Impact/Caster and Impact/Target
+    // rows (Fireball/Frostbolt). The target enum alone does not establish that
+    // both owners receive an explosion. Retain the caster row and source context,
+    // but do not invent an additional caster effect without dispatcher semantics.
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
@@ -907,12 +919,16 @@ pub(super) fn route_cast_visuals(
                     );
                 }
             }
-            CastEventKind::Impact { weapon_visual } => {
+            CastEventKind::Impact {
+                weapon_visual,
+                caster,
+            } => {
                 // The arrival flinches every living target, no hostility test (`0x61dc74`).
                 play_impact(
                     ev.entity,
                     ImpactPlay {
                         spell_id: ev.spell_id,
+                        caster,
                         weapon_visual,
                         flinch: {
                             #[cfg(target_arch = "wasm32")]
@@ -982,6 +998,35 @@ pub(super) fn route_cast_visuals(
         // that is no unit we hold reads the spell's own row (`0x6e8038`).
         let wv = go.caster.and_then(|caster| weapon_src.caster(caster));
         let stages = resolve_stages(spells, &visuals.0, go.spell_id, || wv);
+        // Cast-on-target is a release event, independent of missile travel. Use
+        // the GO's actual successful hits, never misses or a guessed selection.
+        let mut cast_targets = EntityHashSet::default();
+        for &target in &go.hits {
+            if !cast_targets.insert(target) || commands.get_entity(target).is_err() {
+                continue;
+            }
+            for stage in [
+                Some((|s: &VisualStages| s.cast_target) as fn(&VisualStages) -> u32),
+                go.caster.filter(|&caster| caster != target).map(|_| {
+                    (|s: &VisualStages| s.cast_target_not_caster) as fn(&VisualStages) -> u32
+                }),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if let Some(kit) = resolve_kit(spells, &visuals.0, go.spell_id, stage, || None) {
+                    play_kit(
+                        target,
+                        go.spell_id,
+                        &kit,
+                        KitPlay::DISCRETE,
+                        go.seq,
+                        &visuals.0,
+                        &mut out,
+                    );
+                }
+            }
+        }
         // The dest one-shot (`0x6e8088`): field 12's model once at the dest point when field 6 is
         // 0, fired at GO whatever the hit list, for a caster unit only (`0x6e8082`).
         if let (Some(dest), Some(_)) = (go.dest, go.caster) {
@@ -1012,6 +1057,7 @@ pub(super) fn route_cast_visuals(
                     target,
                     ImpactPlay {
                         spell_id: go.spell_id,
+                        caster: go.caster,
                         weapon_visual: wv,
                         flinch,
                         seq: go.seq,
@@ -1145,7 +1191,7 @@ pub(super) fn route_cast_visuals(
                     });
                 }
                 // The trail arm from the same caller: kit 370 (Whirlwind Primer) is reached here.
-                if let Some(trail) = kit.trail_proc() {
+                for trail in visuals.0.trail_procs(&kit) {
                     out.trails
                         .write(crate::weapon_trail::TrailArm { entity, trail });
                 }

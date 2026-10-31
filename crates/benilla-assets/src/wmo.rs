@@ -486,6 +486,22 @@ impl AssetLoader for WmoModelLoader {
                     let path = format!("mpq://{}", t.replace('\\', "/").to_ascii_lowercase());
                     ctx.load::<Image>(path)
                 });
+                let stage1 = sub.stage1.as_ref().and_then(|stage| {
+                    let texture = stage.texture.as_deref()?;
+                    Some(crate::Stage1 {
+                        uv: None,
+                        third_texture: None,
+                        third_uses_base_texture: false,
+                        third_shares_base_slot: false,
+                        third_wrap: (true, true),
+                        texture: ctx.load::<Image>(crate::texture_url(
+                            texture,
+                            (stage.wrap_x, stage.wrap_y),
+                        )),
+                        combine: stage.combine,
+                        env_map: stage.env_map,
+                    })
+                });
                 submeshes.push(ModelSubmesh {
                     texture,
                     skin_slot: sub.skin_slot,
@@ -500,8 +516,8 @@ impl AssetLoader for WmoModelLoader {
                     window: sub.window, // MOMT WINDOW (0x20): the interior midpoint light
                     additive: sub.additive,
                     env_map: false,
-                    stage1: None, // a WMO batch is one texture stage
-                    combine: None,
+                    stage1,
+                    combine: (sub.combine >= 32).then_some(sub.combine),
                     no_depth_write: false,
                     no_depth_test: false,
                     fog_policy: sub.fog_policy,

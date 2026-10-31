@@ -362,6 +362,7 @@ mod tests {
         ChunkMesh {
             positions,
             normals: Vec::new(),
+            vertex_colors: Vec::new(),
             uvs: Vec::new(),
             indices: Vec::new(),
             holes: 0,

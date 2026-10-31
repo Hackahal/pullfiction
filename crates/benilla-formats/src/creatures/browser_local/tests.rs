@@ -1,6 +1,17 @@
 use super::*;
 use serde_json::json;
 
+#[test]
+fn creature_display_palette_is_per_display_and_missing_reference_is_an_error() {
+    let mut data = fixture();
+    let palette = [[[0.25f32; 3]; 3]; 3];
+    data["displays"]["100"]["particleColorID"] = json!(7);
+    assert!(from_json(&serde_json::to_vec(&data).unwrap()).is_err());
+    data["displays"]["100"]["particleColors"] = json!(palette);
+    let catalog = from_json(&serde_json::to_vec(&data).unwrap()).unwrap();
+    assert_eq!(catalog.particle_colors(100), Some(&palette));
+}
+
 fn fixture() -> Value {
     json!({
         "schema": 1,

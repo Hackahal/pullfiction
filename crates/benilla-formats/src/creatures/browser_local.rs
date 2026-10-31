@@ -198,6 +198,7 @@ fn from_json(bytes: &[u8]) -> Result<CreatureCatalog> {
         catalog.display.insert(
             key,
             DisplayRow {
+                particle_colors: crate::modern_items::particle_colors(row)?,
                 model_id,
                 extended_id,
                 scale: number(row, "scale")?,

@@ -1860,6 +1860,7 @@ mod inner_hold_tests {
         ChunkMesh {
             positions: (0..145).map(|i| [i as f32, 0.0, 0.0]).collect(),
             normals: Vec::new(),
+            vertex_colors: Vec::new(),
             uvs: vec![[0.0, 0.0]; 145],
             indices: vec![0, 1, 17],
             holes: 0,

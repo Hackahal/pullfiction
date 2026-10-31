@@ -356,6 +356,7 @@ pub struct RenderSubmesh {
     pub stage1: Option<TextureStage>,
     /// Stage 0's combine preset, 0 to 5 (`benilla_m2::M2Model::stage_combine`): preset 0, the
     /// stock opaque batch's, takes its alpha from the diffuse alone, 1 modulates it by the texel.
+    /// Private PFW1 WMO cache data uses 32+MOMT shader; the shader gates it on the WMO path.
     pub combine: u8,
 }
 
@@ -378,6 +379,8 @@ pub struct TextureUvAnimations {
     pub seqs: Option<std::sync::Arc<super::SeqLoops<[f32; 2]>>>,
     pub rot: Option<std::sync::Arc<super::SeqLoops<[f32; 4]>>>,
     pub scale: Option<std::sync::Arc<super::SeqLoops<[f32; 2]>>>,
+    /// This sample's transparency-weight curve, independent of the model's opacity.
+    pub weight: Option<std::sync::Arc<super::AlphaAnim>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -401,6 +404,8 @@ pub struct TextureStage {
     /// with alpha passed or modulated, 3 adds, 4 modulates ×2, 2 and 5 interpolate.
     /// Adapter-only 6 adds reflection, 7 combines three samples, and 8..17 select packed modern
     /// two-sampler combiners before lighting (see `modern_two_stage_rgba` in wow_model.wgsl).
+    /// PFW1 WMO Env uses 18: diffuse plus reflection weighted by the base texel alpha.
+    /// Adapter-only 19..25 select static modern two-sample pixel operations.
     pub combine: u8,
 }
 

@@ -23,7 +23,7 @@ def catalogs():
                       'kits': {'8': {'effects': [{'effect': 9}]}},
                       'effects': {'9': {'fileDataID': 123, 'scale': 1}}},
             'creatures': {'source': SOURCE, 'models': {'10': {'fileDataID': 123}},
-                          'displays': {'11': {'modelID': 10, 'scale': 1, 'textures': [123]}}}}
+                          'displays': {'11': {'modelID': 10, 'scale': 1, 'textures': [124]}}}}
 
 
 def decoded_model(file_id=123):
@@ -37,6 +37,141 @@ def decoded_model(file_id=123):
 
 
 class CoverageTest(unittest.TestCase):
+    def test_nonpositive_item_visual_sentinels_do_not_create_missing_dependencies(self):
+        data = catalogs()
+        data['items'] = {'source': SOURCE, 'displays': {'1': {'visual': -1, 'rangedVisual': -1},
+            '2': {'visual': 0}, '3': {'visual': 7}},
+            'enchantments': {'10': {'visual': -1}, '11': {'visual': 0}, '12': {'visual': 7}}}
+        rows = {r['id']: r for r in coverage.build_manifest(data, max_cases=0)['entries']}
+        for key in ['gear:1', 'gear:2', 'enchantment:10', 'enchantment:11']:
+            self.assertEqual(rows[key]['dependencies'], [])
+            self.assertFalse(any('item-visual:-1' in gap for gap in rows[key]['coverageGaps']))
+        for key in ['gear:3', 'enchantment:12']:
+            self.assertIn('missing-reference:item-visual:7', rows[key]['coverageGaps'])
+
+    def test_item_visual_and_enchant_chains_preserve_positional_slots_and_missing_targets(self):
+        data = catalogs()
+        data['items'] = {'source': SOURCE, 'items': {'41': {'display': 12}},
+            'displays': {'12': {'visual': 7, 'rangedVisual': 4}},
+            'itemVisuals': {'7': [0, 999, -1, 1000, 0]},
+            'enchantments': {'8': {'visual': 7}, '9': {'visual': 77}, '10': {'visual': 0}}}
+        rows = {r['id']: r for r in coverage.build_manifest(data, max_cases=0)['entries']}
+        self.assertEqual(rows['item-visual:7']['dependencies'], ['asset:1000', 'asset:999'])
+        self.assertEqual(rows['item-visual:7']['fingerprint'], coverage.digest(['item-visual', [0, 999, -1, 1000, 0], ['asset:1000', 'asset:999']]))
+        self.assertEqual(rows['enchantment:8']['dependencies'], ['item-visual:7'])
+        self.assertEqual(rows['enchantment:10']['dependencies'], [])
+        self.assertIn('missing-reference:item-visual:77', rows['enchantment:9']['coverageGaps'])
+        self.assertEqual(rows['gear:12']['dependencies'], ['item-visual:7', 'visual:4'])
+        self.assertIn('resource:model', rows['item:41']['renderCapabilities'])
+        self.assertNotIn('asset:7', rows)
+
+    def test_sparse_definition_roots_join_real_owners_and_preserve_backreferences(self):
+        data = catalogs()
+        data['spells']['kits']['8']['effects'][0]['id'] = 99
+        definitions = {'tables': {'Curve': {'rows': {'1': {'ID': 1}}},
+                                 'CurvePoint': {'rows': {'2': {'ID': 2, 'Value': 1}}}},
+            'roots': [{'owner': 'SpellVisualKitModelAttach:99', 'field': 'ScaleCurveID', 'table': 'Curve', 'id': 1}],
+            'references': [{'owner': 'Curve:1', 'table': 'CurvePoint', 'id': 2},
+                           {'owner': 'CurvePoint:2', 'table': 'Curve', 'id': 1}]}
+        data['spells']['referenceDefinitions'] = definitions
+        result = coverage.build_manifest(data, verification_id='local')
+        rows = {r['id']: r for r in result['entries']}
+        self.assertIn('definition:Curve:1', rows['kit:8']['dependencies'])
+        self.assertEqual(rows['definition:Curve:1']['referenceTargets'], ['definition:CurvePoint:2'])
+        self.assertEqual(rows['definition:Curve:1']['dependencies'], [], 'membership backreferences are not recursive render loads')
+        self.assertFalse(any('dependency-cycle' in gap for gap in rows['spell:1']['coverageGaps']))
+        before = rows['spell:1']['dependencyFingerprint']
+        definitions['tables']['CurvePoint']['rows']['2']['Value'] = .5
+        changed = coverage.build_manifest(data, verification_id='local')
+        self.assertNotEqual(before, next(r for r in changed['entries'] if r['id'] == 'spell:1')['dependencyFingerprint'])
+        definitions['references'][0]['id'] = 404
+        missing = coverage.build_manifest(data)
+        self.assertIn('missing-reference:definition:CurvePoint:404', next(r for r in missing['entries'] if r['id'] == 'spell:1')['coverageGaps'])
+
+    def test_definition_animation_zero_and_unjoined_owners_are_not_silently_dropped(self):
+        data = catalogs()
+        data['spells']['kits']['8']['animations'] = [{'ID': 7}]
+        data['spells']['referenceDefinitions'] = {'tables': {'AnimationData': {'rows': {'0': {'ID': 0}}}},
+            'roots': [{'owner': 'SpellVisualAnim:7', 'table': 'AnimationData', 'id': 0},
+                      {'owner': 'FutureOwner:9', 'table': 'AnimationData', 'id': 0}], 'references': []}
+        rows = {r['id']: r for r in coverage.build_manifest(data)['entries']}
+        self.assertIn('definition:AnimationData:0', rows['kit:8']['dependencies'])
+        self.assertIn('normalized-reference-owner-unavailable', rows['definition-owner:FutureOwner:9']['issues'])
+
+    def test_raw_items_without_default_appearance_remain_explicit_without_guessed_displays(self):
+        data = catalogs()
+        data['items'] = {'source': SOURCE, 'items': {}, 'displays': {}, 'unresolvedItems': {
+            '41': {'inventory': 6, 'display': 0}, '42': {'inventory': 0, 'display': 0}}}
+        result = coverage.build_manifest(data, max_cases=0)
+        rows = {r['id']: r for r in result['entries']}
+        self.assertIn('default-item-appearance-unavailable', rows['item:41']['issues'])
+        self.assertIn('item-without-renderer-equipment-slot', rows['item:42']['issues'])
+        self.assertEqual(rows['item:41']['dependencies'], [])
+        self.assertNotIn('gear:0', rows)
+
+    def test_internal_model_dependencies_keep_resource_types_and_invalidate_parents(self):
+        data = catalogs()
+        feature = decoded_model()
+        feature['dependencies'] = [{'kind': 'TXID', 'fileDataID': 999, 'available': True},
+                                   {'kind': 'RPID', 'fileDataID': 1000, 'available': False}]
+        result = coverage.build_manifest(data, model_features=[feature])
+        rows = {r['id']: r for r in result['entries']}
+        self.assertEqual(rows['asset:123']['dependencies'], ['asset:1000', 'asset:999'])
+        self.assertIn('resource:texture', rows['asset:999']['renderCapabilities'])
+        self.assertNotIn('decoded-model-features-missing', rows['asset:999']['coverageGaps'])
+        self.assertIn('source-resource-unavailable', rows['asset:1000']['issues'])
+        before = rows['spell:1']['dependencyFingerprint']
+        feature['dependencies'][0]['fileDataID'] = 998
+        after = coverage.build_manifest(data, model_features=[feature])
+        self.assertNotEqual(before, next(r for r in after['entries'] if r['id'] == 'spell:1')['dependencyFingerprint'])
+
+    def test_equipment_file_references_do_not_include_selector_metadata(self):
+        data = catalogs()
+        data['items'] = {'source': SOURCE, 'displays': {'1': {
+            'models': [[{'file': 1000, 'race': 8, 'sex': 1, 'position': 17}]],
+            'textures': [[{'file': 1001, 'race': 4, 'sex': 3}]],
+            'regions': {'5': [{'file': 1002, 'race': 6, 'sex': 1}]}}}}
+        rows = {r['id']: r for r in coverage.build_manifest(data)['entries']}
+        self.assertEqual(rows['gear:1']['dependencies'], ['asset:1000', 'asset:1001', 'asset:1002'])
+        self.assertFalse(any('asset:' + str(i) in rows for i in (3, 4, 5, 6, 8, 17)))
+
+    def test_modern_character_body_joins_through_display_not_chrmodel_id(self):
+        data = catalogs()
+        data['characters'] = {'source': SOURCE, 'bodies': [
+            {'race': 1, 'sex': 0, 'modelId': 999, 'displayId': 11}]}
+        rows = {r['id']: r for r in coverage.build_manifest(data)['entries']}
+        self.assertEqual(rows['character:1:0:0']['dependencies'], ['display:11'])
+        self.assertIn('character-customization-dependencies-unverified', rows['character:1:0:0']['issues'])
+        self.assertNotIn('model:999', rows)
+
+    def test_inventory_fixture_limit_preserves_all_content_and_explicit_omissions(self):
+        whole = coverage.build_manifest(catalogs())
+        bounded = coverage.build_manifest(catalogs(), max_cases=0)
+        self.assertEqual(whole['entries'], bounded['entries'])
+        self.assertEqual(bounded['cases'], [])
+        self.assertEqual(bounded['summary']['inventoryCaseCandidates'], len(whole['cases']))
+        self.assertEqual(sum(bounded['summary']['omittedInventoryCases'].values()), len(whole['cases']))
+        self.assertEqual(len(coverage.build_manifest(catalogs(), max_cases=1)['cases']), 1)
+
+    def test_nonchannel_spell_visual_does_not_invent_a_channel_lifecycle(self):
+        data = catalogs()
+        spell = {'visuals': [{'id': 4}], 'channel': False, 'castMs': 0}
+        data['spells']['spells'] = {'1': spell}
+        data['spells']['visuals']['4']['events'].append({'start': 'Channel Start', 'target': 'Caster', 'kit': 8})
+        stages, gaps = coverage.recipe_stages(spell, data['spells'])
+        self.assertNotIn('channel', stages)
+        self.assertIn('channel-event-on-nonchannel-spell', gaps)
+        result = coverage.build_manifest(data)
+        cast = next(c for c in result['representativeCases'] if c['effects'][0]['stage'] == 'cast')
+        self.assertEqual(cast['effects'][0]['durationMs'], 0)
+
+    def test_invalid_procedural_chain_ids_do_not_break_inventory_or_truncate(self):
+        for value in (None, 3.5, '4', -1, True):
+            data = catalogs()
+            data['spells']['kits']['8']['proceduralEffects'] = [{'id': 99, 'type': 0, 'values': [value, 1, 0, 0]}]
+            rows = {r['id']: r for r in coverage.build_manifest(data)['entries']}
+            self.assertEqual(rows['procedure:99']['dependencies'], [])
+
     def test_bounded_diversity_covers_lifecycles_before_redundant_popular_families(self):
         self.assertEqual(coverage.known_capabilities({'renderCapabilities':
             ['missing-reference:kit:999', 'catalog-primitive:Opaque', 'procedure:type:999', 'asset:unclassified']}), set())
@@ -46,7 +181,7 @@ class CoverageTest(unittest.TestCase):
         graph['spells'] = {str(i): {'visuals': [{'id': 4}], 'durationMs': i} for i in range(1, 51)}
         for spell_id, stage in [(100, 'Aura Start'), (200, 'Channel Start')]:
             graph['visuals'][str(spell_id)] = {'events': [{'start': stage, 'target': 'Caster', 'kit': 8}]}
-            graph['spells'][str(spell_id)] = {'visuals': [{'id': spell_id}]}
+            graph['spells'][str(spell_id)] = {'visuals': [{'id': spell_id}], 'channel': stage == 'Channel Start'}
         graph['visuals']['400'] = {'events': [], 'missiles': [{'effect': 9}]}
         graph['spells']['400'] = {'visuals': [{'id': 400}]}
         graph['spells']['300'] = {'visuals': [{'id': 4}],
@@ -157,6 +292,7 @@ class CoverageTest(unittest.TestCase):
 
     def test_lifecycle_recipes_use_supported_native_stages_and_do_not_claim_server_mechanics(self):
         data = catalogs()
+        data['spells']['spells']['1']['channel'] = True
         graph = data['spells']
         graph['visuals']['4']['events'] += [{'start': start, 'target': 'Target', 'kit': 8}
             for start in ['Impact', 'Aura Start', 'Aura End', 'Channel Start', 'Channel End', 'ServerOnly']]
@@ -238,7 +374,7 @@ class CoverageTest(unittest.TestCase):
     def test_shared_assets_and_kits_deduplicate_without_crediting_spell_routing(self):
         result = coverage.build_manifest(catalogs(), batch_size=2)
         rows = {r['id']: r for r in result['entries']}
-        self.assertEqual([k for k in rows if k.startswith('asset:')], ['asset:123'])
+        self.assertEqual([k for k in rows if k.startswith('asset:')], ['asset:123', 'asset:124'])
         self.assertEqual(len([c for c in result['cases'] if c['id'].startswith('kit:')]), 1)
         self.assertEqual(rows['spell:1']['status']['render'], 'unverified')
         self.assertEqual(rows['spell:2']['status']['render'], 'expected-none')
@@ -308,7 +444,7 @@ class CoverageTest(unittest.TestCase):
         result = coverage.build_manifest(data)
         self.assertEqual(result['summary']['byKind']['item'], 2)
         gear = next(c for c in result['cases'] if c['id'].startswith('gear-case:'))
-        self.assertEqual(gear['actors'][0]['equipment'], [{'slot': 0, 'displayId': 5}])
+        self.assertEqual(gear['actors'][0]['equipment'], [{'slot': 0, 'itemId': 1, 'displayId': 5}])
 
     def test_cli_writes_repeatable_local_batches(self):
         with tempfile.TemporaryDirectory() as tmp:

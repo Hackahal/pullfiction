@@ -135,16 +135,24 @@ def creature_catalog(read, source, *, include_character_aliases=True):
             'footstepCameraEffectID': row['FootstepCameraEffectID'],
             'deathThudCameraEffectID': row['DeathThudCameraEffectID'],
         }
-    displays = {}
+    displays, palettes = {}, None
     for key, row in tables['CreatureDisplayInfo'].items():
         displays[key] = {
             'modelID': row['ModelID'], 'scale': number(row, 'CreatureModelScale'),
             'textures': row['TextureVariationFileDataID'],
             'extraDisplayID': row['ExtendedDisplayInfoID'],
             'portraitFileDataID': row['PortraitTextureFileDataID'],
+            'particleColorID': row['ParticleColorID'],
             'alpha': row['CreatureModelAlpha'], 'sizeClass': row['SizeClass'],
             'bloodID': row['BloodID'], 'soundID': row['SoundID'], 'flags': row['Flags'] & 0xffffffff,
         }
+        if row['ParticleColorID']:
+            if palettes is None:
+                from classic_spells import particle_colors
+                palettes = particle_colors(read)
+            if row['ParticleColorID'] not in palettes:
+                raise DB2Error('Creature display references an unavailable ParticleColor palette.')
+            displays[key]['particleColors'] = palettes[row['ParticleColorID']]
     if not displays or not models:
         raise DB2Error('Creature display/model tables must not be empty.')
     if any(row['modelID'] not in models for row in displays.values()):

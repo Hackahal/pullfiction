@@ -266,7 +266,14 @@ class Characters:
                 if not candidates:
                     continue
                 position = index if slot == 2 and any(r.get('position', -1) >= 0 for r in candidates) else None
-                file = self.select_gear_file(candidates, race, sex, class_id, position=position)
+                try:
+                    file = self.select_gear_file(candidates, race, sex, class_id, position=position)
+                except DB2Error as error:
+                    # Optional rigid/component model ambiguity must remain explicit without
+                    # discarding the independently resolved body atlas and geoset recipe.
+                    unsupported.append({'type': 'gear-model-attachment', 'id': item, 'slot': slot,
+                                        'file': None, 'reason': str(error)})
+                    continue
                 point = self.attachment_point(body_file, points[index]) if index < len(points) else None
                 if not file or point is None:
                     unsupported.append({'type': 'gear-model-attachment', 'id': item, 'slot': slot,

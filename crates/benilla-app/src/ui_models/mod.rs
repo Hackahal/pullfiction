@@ -404,6 +404,8 @@ struct UvPart {
     uv_seq: Option<Arc<SeqLoops<[f32; 2]>>>,
     uv_rot: Option<Arc<SeqLoops<[f32; 4]>>>,
     uv_scale: Option<Arc<SeqLoops<[f32; 2]>>>,
+    texture_weight: Option<Arc<benilla_formats::AlphaAnim>>,
+    weight_seed: f32,
 }
 
 impl UvPart {
@@ -412,10 +414,11 @@ impl UvPart {
             && loops.seqs.is_none()
             && loops.rot.is_none()
             && loops.scale.is_none()
+            && loops.weight.is_none()
         {
             return None;
         }
-        let trans = (loops.single.is_some() || loops.seqs.is_some())
+        let trans = (loops.single.is_some() || loops.seqs.is_some() || loops.weight.is_some())
             .then(|| table.alloc())
             .flatten()
             .map(|slot| (slot, loops.open_offset()));
@@ -430,6 +433,8 @@ impl UvPart {
             uv_seq: loops.seqs.clone(),
             uv_rot: loops.rot.clone(),
             uv_scale: loops.scale.clone(),
+            texture_weight: loops.weight.clone(),
+            weight_seed: loops.open_weight(),
         };
         part.write_rows(table, None, 0.0, 0.0);
         Some(part)
@@ -456,7 +461,9 @@ impl UvPart {
                 [
                     quantize(uv[0], 4096.0) - seed[0],
                     quantize(uv[1], 4096.0) - seed[1],
-                    0.0,
+                    self.texture_weight.as_ref().map_or(0.0, |a| {
+                        a.sample(seq_slot, cursor_s, gseq_s) - self.weight_seed
+                    }),
                     0.0,
                 ],
             );
@@ -1870,6 +1877,7 @@ fn build_tile(
                 if second {
                     own.extension.stage1_uv.x = seed[0];
                     own.extension.stage1_uv.y = seed[1];
+                    own.extension.texture_weights.x = channels.open_weight();
                 } else {
                     own.extension.sun_scale.z = seed[0];
                     own.extension.sun_scale.w = seed[1];
@@ -2020,6 +2028,39 @@ fn build_tile(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn weighted_only_ui_stage_allocates_and_releases_its_clip_clock_row() {
+        let weight = Arc::new(
+            benilla_formats::AlphaAnim::new(vec![benilla_formats::AlphaSeq {
+                color: None,
+                weight: Some(benilla_formats::KeyAnim {
+                    period: 1.0,
+                    step: false,
+                    wrap: false,
+                    gseq: false,
+                    keys: vec![(0.0, 0.75), (1.0, 0.25)],
+                }),
+            }])
+            .unwrap(),
+        );
+        let loops = UvLoops {
+            weight: Some(weight),
+            ..Default::default()
+        };
+        let mut table = MatAnimTable::default();
+        let part = UvPart::allocate(&loops, &mut table).expect("weight-only material needs a row");
+        let slot = part.trans.unwrap().0;
+        assert_eq!(loops.open_weight(), 0.75);
+        assert_eq!(table.row(slot), [0.0; 4]);
+        part.write_rows(&mut table, None, 0.5, 999.0);
+        assert_eq!(table.row(slot), [0.0, 0.0, -0.25, 0.0]);
+        part.write_rows(&mut table, None, 0.5, 1999.0);
+        assert_eq!(table.row(slot), [0.0, 0.0, -0.25, 0.0]);
+        part.free(&mut table);
+        assert_eq!(table.alloc(), Some(slot));
+        assert_eq!(table.row(slot), [0.0; 4]);
+    }
 
     #[test]
     fn both_ui_texture_stages_use_the_panes_clip_and_global_clocks_and_release_rows() {

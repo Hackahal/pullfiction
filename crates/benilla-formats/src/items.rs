@@ -24,6 +24,8 @@ pub struct ItemDisplay {
     /// The authored modern display key, retained for prepared character-atlas requests.
     /// Legacy DBC rows have no modern identity.
     pub modern_display_id: Option<u32>,
+    /// Authored per-display RGB palette, applied to instance emitter clones.
+    pub particle_colors: Option<crate::ParticleColorPalette>,
     pub modern_models: [Vec<(u8, u8, u32)>; 2],
     /// Left and right model basenames, normalized by [`crate::models::model_name`]; the cache's
     /// rule decides on the full path the model is made from.
@@ -90,6 +92,12 @@ pub struct ItemDisplayCatalog {
 }
 
 impl ItemDisplayCatalog {
+    /// The source-derived modern appearance graph, shared with browser-local startup.
+    pub fn from_modern_json(bytes: &[u8]) -> Result<Self> {
+        let mut catalog = Self::from_displays(HashMap::new());
+        crate::modern_items::merge(&mut catalog, bytes)?;
+        Ok(catalog)
+    }
     pub(crate) fn insert_modern(&mut self, id: u32, display: ItemDisplay) {
         self.displays.insert(id, display);
     }
@@ -183,6 +191,7 @@ fn catalog_from_records(rs: RecordSet) -> ItemDisplayCatalog {
             id,
             ItemDisplay {
                 modern_display_id: None,
+                particle_colors: None,
                 modern_models: Default::default(),
                 model,
                 model_texture,
@@ -225,10 +234,8 @@ pub(crate) fn load_browser_local_catalog(
 ) -> Result<ItemDisplayCatalog> {
     let bytes = read("__classic/item-appearances.json")
         .context("reading browser-local modern item appearance graph")?;
-    let mut catalog = ItemDisplayCatalog::from_displays(HashMap::new());
-    crate::modern_items::merge(&mut catalog, &bytes)
-        .context("loading browser-local modern item display catalog")?;
-    Ok(catalog)
+    ItemDisplayCatalog::from_modern_json(&bytes)
+        .context("loading browser-local modern item display catalog")
 }
 
 #[cfg(test)]

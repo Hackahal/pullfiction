@@ -213,8 +213,8 @@ pub fn scatter_ground_doodads(
         if chunk.no_effect_doodad[k] {
             continue; // the authored no-clutter mask (roads, clearings)
         }
-        // No clutter over a holed 2×2 block, where no surface is drawn.
-        if chunk.holes & (1u16 << ((row >> 1) * 4 + (col >> 1))) != 0 {
+        // The mesh normalizes legacy blocks and modern individual holes to this 8×8 grid.
+        if chunk.holes & (1u64 << k) != 0 {
             continue;
         }
         let layer = chunk.pred_tex[k] as usize;
@@ -368,6 +368,57 @@ pub fn load_ground_effect_catalog(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ground_clutter_respects_normalized_legacy_and_modern_cell_holes() {
+        let iff = |magic: &[u8; 4], payload: &[u8]| {
+            [&magic[..], &(payload.len() as u32).to_le_bytes(), payload].concat()
+        };
+        let mut header = vec![0u8; 128];
+        header[0x14..0x18].copy_from_slice(&136u32.to_le_bytes());
+        header[0x3c..0x3e].copy_from_slice(&0x8000u16.to_le_bytes());
+        let heights = iff(b"TVCM", &[0u8; 145 * 4]);
+        let payload = [header, heights].concat();
+        let mut legacy = crate::terrain::adt_to_tile_mesh(&iff(b"KNCM", &payload))
+            .unwrap()
+            .chunks
+            .remove(0);
+        let precise = iff(b"1HFP", &(1u64 << 54).to_le_bytes());
+        let mut modern =
+            crate::terrain::adt_to_tile_mesh(&iff(b"KNCM", &[payload, precise].concat()))
+                .unwrap()
+                .chunks
+                .remove(0);
+        let catalog = GroundEffectCatalog {
+            effects: HashMap::from([(
+                1,
+                GroundEffect {
+                    doodads: std::array::from_fn(|_| Some("test-tuft.m2".to_string())),
+                    density: 1,
+                },
+            )]),
+        };
+        for chunk in [&mut legacy, &mut modern] {
+            chunk.layer_textures = vec!["ground.blp".to_string()];
+            chunk.layer_effect_ids = vec![1];
+            chunk.no_effect_doodad.fill(true);
+            for cell in [54, 55, 62, 63] {
+                chunk.no_effect_doodad[cell] = false;
+            }
+        }
+        assert_eq!(legacy.holes, 0xc0c0_0000_0000_0000);
+        assert!(scatter_ground_doodads(&legacy, &catalog, 0, 0, 16.0).is_empty());
+        let placements = scatter_ground_doodads(&modern, &catalog, 0, 0, 16.0);
+        assert!(
+            !placements.is_empty(),
+            "adjacent authored ground must retain clutter"
+        );
+        for placement in placements {
+            let row = (-placement.position[0] / crate::terrain::UNIT_SIZE).floor() as usize;
+            let col = (-placement.position[1] / crate::terrain::UNIT_SIZE).floor() as usize;
+            assert!([55, 62, 63].contains(&(row * 8 + col)));
+        }
+    }
 
     /// The folder and the raw name, decided by the cache's rule on the whole path.
     #[test]

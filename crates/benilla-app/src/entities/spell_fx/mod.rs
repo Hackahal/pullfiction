@@ -22,15 +22,15 @@ use bevy::prelude::*;
 
 use crate::creature_anim::spell_visual::FxSlot;
 use crate::creature_anim::{scan_events, AnimSoundEvent, FxClass, FxStage, SpellKitFx};
-use benilla_assets::m2_url;
 use benilla_assets::materials::WowModelMaterial;
+use benilla_assets::{m2_url, wmo_url};
 use benilla_world::model_render::{ModelKind, ModelPart};
 use benilla_world::particles;
 use benilla_world::vis_chain::VisChainOnly;
 
 use super::{BoneAttach, DisplayModel, EntityPart, ModelHandle};
 pub(super) use lifecycle::advance_fx_anim;
-use lifecycle::{decay_span, FxAnimLife, FxDecay};
+use lifecycle::{FxAnimLife, FxDecay};
 
 /// `CMissile`'s attach cascade (`0x61ceb0`) for a model lacking the requested point: `0xf`, then
 /// `0x13`, then the unit root.
@@ -54,7 +54,11 @@ pub(super) fn ensure_model(fx: &mut SpellFx, asset_server: &AssetServer, path: &
     fx.models
         .entry(path.to_string())
         .or_insert_with(|| DisplayModel {
-            handle: ModelHandle::M2(asset_server.load(m2_url(path))),
+            handle: if path.to_ascii_lowercase().ends_with(".wmo") {
+                ModelHandle::Wmo(asset_server.load(wmo_url(path)))
+            } else {
+                ModelHandle::M2(asset_server.load(m2_url(path)))
+            },
             ..super::empty_shell()
         });
 }
@@ -477,6 +481,8 @@ struct FxInstance {
     /// Reaped and playing its `Decay` out (`0x6141f0`). A reap or replace cannot reach it, as the
     /// reference has moved it to its pending-destroy list.
     decaying: bool,
+    /// Authored attachment end phase, carried through the asynchronous load/reap.
+    end_anim: Option<u16>,
 }
 
 /// A unit's effect instances (the client's per-unit `+0xb4` effect list).
@@ -610,6 +616,7 @@ pub(super) fn resolve_spell_fx(
                             root: None,
                             expires: None,
                             decaying: false,
+                            end_anim: None,
                         });
                     }
                 }
@@ -706,7 +713,7 @@ fn reap_matching(
         let span = i
             .root
             .and_then(|_| fx.models.get(&i.path))
-            .and_then(|dm| decay_span(dm.animations.as_ref()));
+            .and_then(|dm| lifecycle::decay_span_as(dm.animations.as_ref(), i.end_anim));
         let (Some(root), Some(span)) = (i.root, span) else {
             if let Some(root) = i.root {
                 // Destroyed at once, through `0x6203e0` like any other, so its particles drain.
@@ -718,7 +725,7 @@ fn reap_matching(
         commands.entity(root).try_insert(FxDecay);
         i.decaying = true;
         i.expires = Some(now + span);
-        lifecycle::trace_leg("decay", root, lifecycle::ANIM_DECAY);
+        lifecycle::trace_leg("decay", root, i.end_anim.unwrap_or(lifecycle::ANIM_DECAY));
         true
     });
 }
@@ -800,6 +807,8 @@ pub(super) fn attach_spell_fx(
                 }
             }
             let placement = visuals.as_deref().and_then(|v| v.0.placement(inst.effect));
+            let phases = placement.map(|p| p.animation).unwrap_or_default();
+            inst.end_anim = phases.end;
             if placement.is_some_and(|p| now < inst.queued_at + p.delay) {
                 return true;
             }
@@ -877,6 +886,10 @@ pub(super) fn attach_spell_fx(
                 (root, ground_anchor)
             };
             // Parts were checked ready above, so this always attaches.
+            commands
+                .entity(root)
+                .insert(lifecycle::FxAnimOverrides(phases));
+            let preferred_anim = phases.start.or(phases.loop_anim);
             attach_effect_visuals(
                 &mut commands,
                 root,
@@ -886,7 +899,7 @@ pub(super) fn attach_spell_fx(
                 // Chained to the unit: it fades and is freed with the body.
                 EffectHost { parent: Some(unit) },
                 // A kit effect is a `CEffect`: it runs the stage's lifecycle.
-                Some(inst.stage),
+                Some(lifecycle::attachment_anim_stage(inst.stage, phases)),
                 &mut FxMaterials {
                     store: &mut wow_materials,
                     tint: &mut tint_reg,
@@ -895,14 +908,18 @@ pub(super) fn attach_spell_fx(
                 },
                 &ibps,
                 &mut palettes,
-                None, // an attach-point kit effect opens on its model's own `Stand`
+                preferred_anim,
             );
             inst.root = Some(root);
             if !inst.persistent {
                 // One pass of sequence 0, from the raw sequence table: a sequence with no bone
                 // keys builds no clip (the eat/drink tankard). A looping one counts as one pass;
                 // the reference's loop boundary is untraced, but its tankard ends with the drink.
-                let span = dm.first_seq_span.unwrap_or(FALLBACK_SPAN);
+                let authored_span = preferred_anim
+                    .and_then(|_| dm.animations.as_ref())
+                    .and_then(|a| a.preferred_clip(preferred_anim))
+                    .map(|clip| clip.duration);
+                let span = authored_span.or(dm.first_seq_span).unwrap_or(FALLBACK_SPAN);
                 inst.expires = Some(now + span);
             }
             if benilla_assets::trace::enabled() {
@@ -999,6 +1016,7 @@ mod tests {
             root: Some(root),
             expires: None,
             decaying: false,
+            end_anim: None,
         }
     }
 
@@ -1126,11 +1144,28 @@ mod tests {
         app.add_plugins((MinimalPlugins, AssetPlugin::default()))
             .init_asset::<WowModelMaterial>()
             .init_asset::<benilla_assets::M2Model>()
+            .init_asset::<benilla_assets::WmoModel>()
             .init_resource::<SpellFx>()
             .add_message::<SpellKitFx>()
             .add_systems(Update, resolve_spell_fx);
         let unit = app.world_mut().spawn_empty().id();
         (app, unit)
+    }
+
+    #[test]
+    fn spell_model_paths_select_existing_wmo_backend_and_preserve_legacy_m2() {
+        let (mut app, unit) = resolving();
+        send(&mut app, begin(unit, 1, FRONT, "__classic/6715107.WMO"));
+        send(&mut app, begin(unit, 2, BACK, "Spells/Legacy.mdx"));
+        let cache = app.world().resource::<SpellFx>();
+        assert!(matches!(
+            cache.models["__classic/6715107.WMO"].handle,
+            ModelHandle::Wmo(_)
+        ));
+        assert!(matches!(
+            cache.models["Spells/Legacy.mdx"].handle,
+            ModelHandle::M2(_)
+        ));
     }
 
     /// One self-terminating `Begin` carrying one slot.
@@ -1304,6 +1339,7 @@ mod tests {
                         root: None,
                         expires: None,
                         decaying: false,
+                        end_anim: None,
                     }],
                 },
             ))

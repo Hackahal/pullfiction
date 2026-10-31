@@ -37,8 +37,8 @@ class LightingTests(unittest.TestCase):
         self.assertEqual(fields[:4],['LightParamID','Time','DirectColor','AmbientColor'])
         self.assertEqual(lighting.COLOR_FIELDS[11:14],['CloudLayer1AmbientColor','CloudEmissiveColor','CloudLayer2AmbientColor'])
 
-    def test_skybox_names_resolve_inline_relative_strings_and_model_suffix(self):
-        self.assertEqual(lighting.skybox_names(skybox_table()),{4:'Environments/Stars/Stars.m2'})
+    def test_skybox_names_resolve_inline_relative_strings_and_preserve_authored_labels(self):
+        self.assertEqual(lighting.skybox_names(skybox_table()),{4:'Environments\\Stars\\Stars.mdx'})
         with self.assertRaises(DB2Error):
             lighting.skybox_names(skybox_table()[:-1])
         data=skybox_table()
@@ -47,6 +47,24 @@ class LightingTests(unittest.TestCase):
             lighting.skybox_names(data)
         with self.assertRaisesRegex(DB2Error,'Invalid LightSkybox'):
             lighting.skybox_names(skybox_table(b'../outside.m2\0'))
+
+    def test_numeric_skybox_file_join_precedes_friendly_name_and_keeps_label(self):
+        names = {4: 'Environments\\Stars\\Stars.mdx', 655: 'Dueling Zone - Skybox', 670: 'Scarlet Skybox', 1: 'Environments\\Stars\\StratholmeSkybox.mdx',
+                 329: 'environments\\stars\\stars.mdx - combine with procedural'}
+        rows = {4: {'SkyboxFileDataID': 130629}, 655: {'SkyboxFileDataID': 130495},
+                670: {'SkyboxFileDataID': 130502}, 1: {'SkyboxFileDataID': 0}, 329: {'SkyboxFileDataID': 0}}
+        result = {row['id']: row for row in lighting.skybox_models(names, rows)}
+        for key, file_id in [(4, 130629), (655, 130495), (670, 130502)]:
+            self.assertEqual(result[key]['path'], f'__classic/{file_id}.m2')
+            self.assertEqual(result[key]['label'], names[key])
+            self.assertEqual(result[key]['fileDataID'], file_id)
+        self.assertEqual(result[1]['path'], 'Environments/Stars/StratholmeSkybox.m2')
+        self.assertEqual(result[329]['path'], 'environments/stars/stars.m2')
+        self.assertEqual(result[329]['label'], names[329])
+        with self.assertRaisesRegex(DB2Error, 'no authored model file'):
+            lighting.skybox_models({9: 'Friendly label'}, {9: {'SkyboxFileDataID': 0}})
+        with self.assertRaisesRegex(DB2Error, 'Invalid LightSkybox file ID'):
+            lighting.skybox_models({9: 'Friendly label'}, {9: {'SkyboxFileDataID': -1}})
 
     def test_missing_underwater_links_remain_unknown_and_authored_values_are_unscaled(self):
         bits=lambda value:struct.unpack('<I',struct.pack('<f',value))[0]

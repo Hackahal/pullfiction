@@ -121,6 +121,23 @@ pub(super) fn bake_scalar_anim(
     )
 }
 
+/// A sampled texture factor may be zero without hiding the model. Fold only identity,
+/// retaining zero constants and per-sequence holds for weighted reflection shaders.
+pub(super) fn bake_texture_weight(
+    track: &M2ScalarTrack,
+    gseq_durations: &[u32],
+    seq: Option<SeqSlot>,
+) -> Option<ScalarAnim> {
+    bake_track(
+        track,
+        gseq_durations,
+        seq,
+        |v| v,
+        |v| (v - 1.0).abs() < f32::EPSILON,
+        |v| (v - 1.0).abs() < f32::EPSILON,
+    )
+}
+
 /// Bake one `M2Color` RGB track only when it varies in time: constants and holds stay with the
 /// static vertex-colour bake in `m2_batches`, which a varying track skips, so the two never
 /// double-apply.
@@ -431,6 +448,20 @@ mod tests {
             ranges: Vec::new(),
             keys: keys.to_vec(),
         }
+    }
+
+    #[test]
+    fn texture_weight_zero_is_retained_without_hiding_the_model() {
+        let zero = track(0xffff, 0, &[(0, 0.0)]);
+        let weight =
+            bake_texture_weight(&zero, &[], None).expect("zero is a meaningful reflection factor");
+        assert_eq!(weight.sample(0.0), 0.0);
+        assert!(
+            bake_scalar_anim(&zero, &[], None).is_none(),
+            "legacy opacity culling remains unchanged"
+        );
+        let identity = track(0xffff, 0, &[(0, 1.0)]);
+        assert!(bake_texture_weight(&identity, &[], None).is_none());
     }
 
     /// The same track with per-sequence key windows, which the reference indexes by file slot.

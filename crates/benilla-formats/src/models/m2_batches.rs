@@ -56,18 +56,23 @@ fn classic_stage1_combine(bytes: &[u8], shader: u16, count: u16, legacy: u8) -> 
             }
         };
     }
-    if bytes.get(..8) == Some(b"MD20\x00\x01\x00\x00")
-        && bytes.get(0x144..0x14c) == Some(b"PFM1\x01\x00\x00\x00")
-        && (matches!(shader, 0x8001 | 0x8005) || (shader == 0x8009 && count == 3))
-    {
-        if shader == 0x8009 {
-            7
-        } else {
-            6
+    if adapted_modern(bytes) {
+        // Pinned MIT noclip STATIC_SHADERS: selected pixel operations are independent
+        // of the material's framebuffer blend. UV selectors are validated by the adapter.
+        match (shader, count) {
+            (0x8001 | 0x8005, 2) => return 6,           // OpaqueAddAlpha
+            (0x8009, 3) => return 7,                    // OpaqueMod2xNAAlpha3s
+            (0x8000, 2) => return 19,                   // OpaqueMod2xNAAlpha
+            (0x8002, 2) => return 20,                   // OpaqueAddAlphaAlpha
+            (0x8004 | 0x8006 | 0x800b, 2) => return 21, // ModAddAlpha
+            (0x800a | 0x800f, 2) => return 22,          // OpaqueAddAlphaWgt
+            (0x800c, 2) => return 23,                   // OpaqueModNAAlpha
+            (0x8017, 2) => return 24,                   // OpaqueAlpha
+            (0x800d | 0x800e, 2) => return 25,          // ModAddAlphaWgt
+            _ => {}
         }
-    } else {
-        legacy
     }
+    legacy
 }
 
 /// A batch's `.blp`: `Monster1/2/3` come from the creature's skin variations
@@ -496,29 +501,60 @@ pub fn parse_m2_render_submeshes(
             let texture = rec.and_then(|t| resolve_texture(t, dir, skins).0);
             TextureStage {
                 uv: if adapted_modern(bytes) {
-                    batch
-                        .texture_transform_combo_index
-                        .checked_add(1)
-                        .and_then(|combo| {
-                            let single = tex_anim::bake_uv_anim(model, combo, seq0_slot)
-                                .map(std::sync::Arc::new);
-                            let seqs = tex_anim::bake_uv_seqs(model, combo, &seq_slots)
-                                .filter(|set| set.uniform().is_none())
-                                .map(std::sync::Arc::new);
-                            let rot = tex_anim::bake_uv_rot_seqs(model, combo, &seq_slots)
-                                .map(std::sync::Arc::new);
-                            let scale = tex_anim::bake_uv_scale_seqs(model, combo, &seq_slots)
-                                .map(std::sync::Arc::new);
-                            (single.is_some() || seqs.is_some() || rot.is_some() || scale.is_some())
-                                .then(|| {
-                                    std::sync::Arc::new(TextureUvAnimations {
-                                        single,
-                                        seqs,
-                                        rot,
-                                        scale,
-                                    })
-                                })
+                    {
+                        let combo = batch.texture_transform_combo_index.checked_add(1);
+                        let single = combo
+                            .and_then(|c| tex_anim::bake_uv_anim(model, c, seq0_slot))
+                            .map(std::sync::Arc::new);
+                        let seqs = combo
+                            .and_then(|c| tex_anim::bake_uv_seqs(model, c, &seq_slots))
+                            .filter(|set| set.uniform().is_none())
+                            .map(std::sync::Arc::new);
+                        let rot = combo
+                            .and_then(|c| tex_anim::bake_uv_rot_seqs(model, c, &seq_slots))
+                            .map(std::sync::Arc::new);
+                        let scale = combo
+                            .and_then(|c| tex_anim::bake_uv_scale_seqs(model, c, &seq_slots))
+                            .map(std::sync::Arc::new);
+                        let weight = matches!(batch.shader_id, 0x800a | 0x800d | 0x800e | 0x800f)
+                            .then(|| {
+                                model
+                                    .transparency_lookup
+                                    .get(batch.weight_combo_index as usize + 1)
+                                    .and_then(|&id| model.transparency_tracks.get(id as usize))
+                            })
+                            .flatten()
+                            .and_then(|track| {
+                                AlphaAnim::new(
+                                    seq_slots
+                                        .iter()
+                                        .map(|&slot| mat_anim::AlphaSeq {
+                                            color: None,
+                                            weight: mat_anim::bake_texture_weight(
+                                                track,
+                                                &model.global_sequences,
+                                                Some(slot),
+                                            ),
+                                        })
+                                        .collect(),
+                                )
+                            })
+                            .map(std::sync::Arc::new);
+                        (single.is_some()
+                            || seqs.is_some()
+                            || rot.is_some()
+                            || scale.is_some()
+                            || weight.is_some())
+                        .then(|| {
+                            std::sync::Arc::new(TextureUvAnimations {
+                                single,
+                                seqs,
+                                rot,
+                                scale,
+                                weight,
+                            })
                         })
+                    }
                 } else {
                     None
                 },
@@ -895,6 +931,40 @@ pub fn m2_sequence_visible_textures(bytes: &[u8], anim_id: u16) -> Option<Vec<St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adapted_static_materials_select_authored_operations_without_changing_legacy() {
+        for (shader, expected) in [
+            (0x8000u16, 19u8),
+            (0x8001, 6),
+            (0x8002, 20),
+            (0x8004, 21),
+            (0x8005, 6),
+            (0x8006, 21),
+            (0x800a, 22),
+            (0x800b, 21),
+            (0x800c, 23),
+            (0x800f, 22),
+            (0x8017, 24),
+            (0x800d, 25),
+            (0x800e, 25),
+        ] {
+            let mut bytes = two_texture_model(2);
+            let view = le_u32(&bytes, 0x50) as usize;
+            let batch = le_u32(&bytes, view + 36) as usize;
+            bytes[batch + 2..batch + 4].copy_from_slice(&shader.to_le_bytes());
+            let legacy = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+            assert_eq!(legacy[0].stage1.as_ref().unwrap().combine, 1);
+            bytes[4..8].copy_from_slice(&0x100u32.to_le_bytes());
+            bytes[0x144..0x14c].copy_from_slice(b"PFM1\x01\x00\x00\x00");
+            let adapted = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+            assert_eq!(
+                adapted[0].stage1.as_ref().unwrap().combine,
+                expected,
+                "shader {shader:#x}"
+            );
+        }
+    }
 
     /// A bucket never sorts under the exact rung, which its sibling quad cloud keeps.
     #[test]

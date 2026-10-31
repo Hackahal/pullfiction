@@ -106,6 +106,7 @@ fn parses_stage_kits_and_zero_means_no_kit_at_that_stage() {
                 area_gate: g(11),
                 area_effect: g(12),
                 area_kit: g(13),
+                ..Default::default()
             },
         );
     }
@@ -235,6 +236,7 @@ fn real_spell_visual_chain_resolves_fireball() {
             area_gate: 0,
             area_effect: 0,
             area_kit: 0,
+            ..Default::default()
         }
     );
     assert_eq!(
@@ -614,6 +616,7 @@ fn the_weapon_merge_fills_only_the_empty_slots() {
         area_gate: 1,
         area_effect: 7,
         area_kit: 9,
+        ..Default::default()
     };
     // Multi-Shot's real shape: its own impact + missile, both body kits empty.
     let own = VisualStages {

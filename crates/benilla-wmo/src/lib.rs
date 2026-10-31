@@ -22,14 +22,20 @@ pub struct WmoRoot {
     pub materials: Vec<Material>,
     /// Group count (`MOHD.nGroups`).
     pub n_groups: u32,
+    /// Private PFW1 cache marker; original WMO files retain their established renderer path.
+    pub modern_materials: bool,
 }
 
 /// One MOMT material (the fields the renderer reads).
 pub struct Material {
     pub flags: u32,
+    /// MOMT+4, the authored WMO shader-table selector.
+    pub shader: u32,
     pub blend_mode: u32,
     /// Byte offset of texture 1's name in the MOTX blob.
     pub texture_1: u32,
+    pub texture_2: u32,
+    pub texture_3: u32,
     /// The SIDN self-illumination colour (MOMT+0x10, BGRA on disk, RGB here): the client scales it
     /// by the night fraction and adds it as emission on batches with `flags & 0x10`, the windows'
     /// glow at night.
@@ -181,9 +187,16 @@ fn parse_root(b: &[u8]) -> Result<WmoRoot> {
         texture_offset_index_map: HashMap::new(),
         materials: Vec::new(),
         n_groups: 0,
+        modern_materials: false,
     };
     for (magic, p) in chunks(b) {
         match &magic {
+            b"1WFP" => {
+                if p != 1u32.to_le_bytes() {
+                    return Err(Error::Truncated("PFW1 version"));
+                }
+                root.modern_materials = true;
+            }
             // MOHD: nTextures@0, nGroups@4
             b"DHOM" => root.n_groups = p.u32_at(4).ok_or(Error::Truncated("MOHD"))?,
             b"XTOM" => {
@@ -199,8 +212,11 @@ fn parse_root(b: &[u8]) -> Result<WmoRoot> {
                     let diff = m.u32_at(0x1c).ok_or(Error::Truncated("MOMT"))?;
                     root.materials.push(Material {
                         flags: m.u32_at(0).ok_or(Error::Truncated("MOMT"))?,
+                        shader: m.u32_at(4).ok_or(Error::Truncated("MOMT"))?,
                         blend_mode: m.u32_at(8).ok_or(Error::Truncated("MOMT"))?,
                         texture_1: m.u32_at(12).ok_or(Error::Truncated("MOMT"))?,
+                        texture_2: m.u32_at(24).ok_or(Error::Truncated("MOMT"))?,
+                        texture_3: m.u32_at(36).ok_or(Error::Truncated("MOMT"))?,
                         sidn_rgb: [(sidn >> 16) as u8, (sidn >> 8) as u8, sidn as u8],
                         diff_color: [(diff >> 16) as u8, (diff >> 8) as u8, diff as u8],
                         ground_type: m.u32_at(0x20).ok_or(Error::Truncated("MOMT"))?,
@@ -412,6 +428,35 @@ mod tests {
             root.materials[0].get_texture1_index(&root.texture_offset_index_map),
             1
         );
+    }
+
+    #[test]
+    fn modern_material_marker_retains_shader_and_secondary_texture_fields() {
+        let mut material = vec![0u8; 64];
+        material[4..8].copy_from_slice(&3u32.to_le_bytes());
+        material[24..28].copy_from_slice(&7u32.to_le_bytes());
+        material[36..40].copy_from_slice(&11u32.to_le_bytes());
+        let mut header = [0u8; 64];
+        header[..4].copy_from_slice(&1u32.to_le_bytes());
+        let root_header = chunk(b"DHOM", &header);
+        let mut bytes = root_header.clone();
+        bytes.extend(chunk(b"TMOM", &material));
+        let ParsedWmo::Root(legacy) = parse(&bytes).unwrap() else {
+            panic!("root expected")
+        };
+        assert!(!legacy.modern_materials);
+        bytes.extend(chunk(b"1WFP", &1u32.to_le_bytes()));
+        let ParsedWmo::Root(modern) = parse(&bytes).unwrap() else {
+            panic!("root expected")
+        };
+        assert!(modern.modern_materials);
+        assert_eq!(modern.materials[0].shader, 3);
+        assert_eq!(modern.materials[0].texture_2, 7);
+        assert_eq!(modern.materials[0].texture_3, 11);
+        let mut invalid = root_header;
+        invalid.extend(chunk(b"1WFP", &2u32.to_le_bytes()));
+        invalid.extend(chunk(b"TMOM", &material));
+        assert!(parse(&invalid).is_err());
     }
 
     #[test]

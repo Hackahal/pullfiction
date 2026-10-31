@@ -21,15 +21,15 @@ INFRA = Path(__file__).with_name('renderer-effects-gpu-check.py')
 SPEC = importlib.util.spec_from_file_location('renderer_gpu_infrastructure', INFRA)
 GPU = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GPU)
-GPU_READBACKS = 19
+GPU_READBACKS = 45
 PROOF = ('Synthetic native GPU execution/readback of exact production packed M2 combiner, '
-         'specular and UV helper functions. Does not validate complete shader bindings, '
+         'specular/UV, WMO material and terrain MCCV helper functions. Does not validate complete shader bindings, '
          'whole-model appearance, browser execution, texture decoding, actual lighting/fog, '
          'or official-client parity. The unused-third case checks helper sample arity; '
          'native parser tests separately verify real descriptor selection.')
 
 COMPUTE_CASES = '''
-@group(0) @binding(0) var<storage, read_write> output: array<vec4<f32>, 19>;
+@group(0) @binding(0) var<storage, read_write> output: array<vec4<f32>, 45>;
 @group(0) @binding(1) var<storage, read> authored_bindings: array<vec4<f32>, 6>;
 @compute @workgroup_size(1) fn main() {
     let d = vec4<f32>(0.8, 0.6, 0.4, 0.7);
@@ -59,21 +59,59 @@ COMPUTE_CASES = '''
         stage_alpha(6u, 0.8, 0.5));
     output[18] = vec4<f32>(stage1_rgb(6u, lit_base, vec4<f32>(0.8, 0.7, 0.1, 0.0), 0.8),
         stage_alpha(6u, 0.8, 0.0));
+    output[19] = vec4<f32>(wmo_reflection_uv(vec3<f32>(0.6, 0.0, -0.8), vec3<f32>(0.0, 0.0, 1.0)), 0.0, 1.0);
+    output[20] = vec4<f32>(wmo_env_rgb(vec3<f32>(0.2, 0.3, 0.4), vec3<f32>(0.8, 0.6, 0.4), 0.25), wmo_output_alpha(3u, 0.25));
+    output[21] = vec4<f32>(wmo_specular(vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(0.0, 0.0, 1.0),
+        vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(0.8, 0.4, 0.2), 0.5), wmo_output_alpha(1u, 0.5));
+    output[22] = vec4<f32>(wmo_specular(vec3<f32>(0.0, 0.0, -1.0), vec3<f32>(0.0, 0.0, 1.0),
+        vec3<f32>(0.0, 0.0, 1.0), vec3<f32>(0.8, 0.4, 0.2), 0.5), wmo_output_alpha(4u, 0.2));
+    output[23] = vec4<f32>(wmo_output_alpha(0u, 0.2), wmo_output_alpha(4u, 0.2),
+        wmo_output_alpha(21u, 0.2), wmo_output_alpha(1u, 0.2));
+    output[24] = vec4<f32>(wmo_env_rgb(vec3<f32>(0.2, 0.3, 0.4), vec3<f32>(0.0), 0.8), wmo_output_alpha(3u, 0.8) * 0.25);
+    output[25] = vec4<f32>(terrain_diffuse_term(vec3<f32>(0.8, 0.6, 0.4),
+        vec3<f32>(2.0, 254.0 / 255.0, 0.0), vec3<f32>(0.5, 0.25, 1.0), 0.0), 1.0);
+    output[26] = vec4<f32>(terrain_diffuse_term(vec3<f32>(0.8, 0.6, 0.4),
+        vec3<f32>(0.0), vec3<f32>(0.5, 0.25, 1.0), 1.0), 1.0);
+    output[27] = vec4<f32>(terrain_diffuse_term(vec3<f32>(0.8, 0.6, 0.4),
+        vec3<f32>(1.0), vec3<f32>(0.5, 0.25, 1.0), 1.0), 1.0);
+    output[28] = modern_two_stage_rgba(19u, d, t0, t1);
+    for (var i = 0u; i < 3u; i += 1u) {
+        let preset = 20u + i;
+        let base = modern_two_stage_rgba(preset, d, t0, t1);
+        output[29u + i] = vec4<f32>(base.rgb * 0.25 + modern_static_specular(preset, t0, t1, 0.3), base.a);
+    }
+    output[32] = modern_two_stage_rgba(23u, d, t0, t1);
+    output[33] = modern_two_stage_rgba(24u, d, t0, t1);
+    output[34] = modern_two_stage_rgba(19u, d, vec4<f32>(t0.rgb, 0.0), t1);
+    output[35] = modern_two_stage_rgba(19u, d, vec4<f32>(t0.rgb, 1.0), t1);
+    let opaque_base = modern_two_stage_rgba(20u, d, t0, t1);
+    output[36] = vec4<f32>(opaque_base.rgb * 0.25 + modern_static_specular(20u, vec4<f32>(t0.rgb, 1.0), t1, 1.0), opaque_base.a);
+    output[37] = vec4<f32>(opaque_base.rgb * 0.25 + modern_static_specular(20u, vec4<f32>(t0.rgb, 0.0), t1, 1.0), opaque_base.a);
+    output[38] = vec4<f32>(opaque_base.rgb * 0.25 + modern_static_specular(22u, t0, t1, 0.0), opaque_base.a);
+    output[39] = vec4<f32>(opaque_base.rgb * 0.25 + modern_static_specular(22u, t0, t1, 1.0), opaque_base.a);
+    output[40] = modern_two_stage_rgba(24u, d, t0, vec4<f32>(t1.rgb, 0.0));
+    output[41] = modern_two_stage_rgba(24u, d, t0, vec4<f32>(t1.rgb, 1.0));
+    let weighted_mod = modern_two_stage_rgba(25u, d, t0, t1);
+    output[42] = vec4<f32>(weighted_mod.rgb * 0.25 + modern_static_specular(25u, t0, t1, 0.3), weighted_mod.a);
+    output[43] = vec4<f32>(weighted_mod.rgb * 0.25 + modern_static_specular(25u, t0, t1, 0.0), weighted_mod.a);
+    output[44] = vec4<f32>(weighted_mod.rgb * 0.25 + modern_static_specular(25u, t0, t1, 1.0), weighted_mod.a);
 }
 '''
 
 
 def generate(repo, output):
     shader = repo / 'crates/benilla-assets/src/shaders/wow_model.wgsl'
+    terrain = repo / 'crates/benilla-assets/src/shaders/terrain.wgsl'
     fixture = Path(__file__).with_name('renderer-model-gpu-check-fixture.rs')
     source = shader.read_text()
     helpers = '\n\n'.join(GPU.block(source, 'fn ' + name + '(') for name in (
-        'modern_two_stage_rgba', 'modern_two_stage_specular', 'model_uv_transform',
-        'stage1_rgb', 'stage_alpha'))
+        'modern_two_stage_rgba', 'modern_two_stage_specular', 'modern_static_specular', 'model_uv_transform',
+        'stage1_rgb', 'stage_alpha', 'wmo_reflection_uv', 'wmo_env_rgb', 'wmo_specular', 'wmo_output_alpha'))
+    helpers += '\n\n' + GPU.block(terrain.read_text(), 'fn terrain_diffuse_term(')
     (output / 'packed-model-helpers.wgsl').write_text(helpers + '\n' + COMPUTE_CASES)
     harness = output / 'harness.rs'
     harness.write_text(fixture.read_text())
-    return harness, [{'path': str(p), 'sha256': GPU.digest(p)} for p in (shader, fixture, INFRA)]
+    return harness, [{'path': str(p), 'sha256': GPU.digest(p)} for p in (shader, terrain, fixture, INFRA)]
 
 
 def main():

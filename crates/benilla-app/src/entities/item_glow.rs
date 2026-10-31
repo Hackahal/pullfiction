@@ -267,6 +267,140 @@ pub(super) fn attach_item_glows(
 mod tests {
     use super::*;
 
+    #[test]
+    fn modern_item_glow_waits_attaches_authored_slot_and_frees_with_weapon() {
+        let bytes = serde_json::to_vec(&serde_json::json!({"schema":1,
+            "displays":{"8":{"visual":7}}, "itemVisuals":{"7":[0,0,0,77,0]},
+            "enchantments":{"9":{"visual":7,"flags":0,"name":"Authored"}}}))
+        .unwrap();
+        let catalog = benilla_formats::ItemDisplayCatalog::from_modern_json(&bytes).unwrap();
+        let visuals = ItemVisualCatalog::from_modern_json(&bytes).unwrap();
+        let enchants = EnchantCatalog::from_modern_json(&bytes).unwrap();
+        let mut glows = ItemGlows::new(visuals);
+        let visual = effective_visual(
+            &glows,
+            Some(&enchants),
+            catalog.get(8).unwrap().item_visual,
+            [9],
+        );
+        assert_eq!(visual, 7);
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .init_resource::<Assets<Image>>()
+            .init_resource::<Assets<WowModelMaterial>>()
+            .init_resource::<Assets<bevy::mesh::skinning::SkinnedMeshInverseBindposes>>()
+            .init_resource::<FxTintAnims>()
+            .init_resource::<benilla_world::doodad_anim::UvAnimMaterials>()
+            .init_resource::<benilla_world::mat_anim_table::MatAnimTable>()
+            .init_resource::<benilla_world::rig_palette::RigPalettes>()
+            .init_resource::<benilla_world::particles::ParticleTuning>()
+            .init_resource::<benilla_world::particles::buffer::EffectQuads>()
+            .init_resource::<benilla_world::view::ViewDistance>()
+            .init_resource::<benilla_world::wmo_portal::CameraInteriorClaim>()
+            .init_resource::<benilla_world::liquid::Underwater>()
+            .init_resource::<avian3d::collider_tree::ColliderTrees>()
+            .add_systems(Update, attach_item_glows);
+        app.world_mut().spawn((
+            benilla_world::view::WorldCamera,
+            Camera::default(),
+            Projection::default(),
+            Transform::default(),
+            GlobalTransform::default(),
+            bevy::camera::primitives::Frustum::default(),
+        ));
+        let texture = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default());
+        let effect = DisplayModel {
+            parts: None,
+            emitters: vec![benilla_assets::ModelEmitter {
+                def: benilla_world::testing::plain_particle_def(),
+                texture: Some(texture.clone()),
+                extra_textures: None,
+                bone_pivot: [0.0; 3],
+                billboard: None,
+                recursion: None,
+                geometry: None,
+                owner_reach: 0.0,
+                water_bound: (Vec3::ZERO, 0.0),
+                idle_seq: 0,
+            }],
+            ..super::super::display::empty_shell()
+        };
+        glows.models.insert("__classic/77.m2".into(), effect);
+        let item = DisplayModel {
+            skeleton: benilla_assets::ModelSkeleton {
+                joints: vec![benilla_assets::ModelJoint {
+                    parent: -1,
+                    local_translation: Vec3::ZERO,
+                    billboard: None,
+                    parent_arm: None,
+                }],
+                ..Default::default()
+            },
+            attachments: vec![benilla_assets::ModelAttachment {
+                id: 3,
+                bone: 0,
+                offset: Vec3::new(1.0, 2.0, 3.0),
+            }],
+            ..super::super::display::empty_shell()
+        };
+        app.world_mut().insert_resource(ItemDisplays {
+            catalog,
+            models: HashMap::from([((8, ItemModelKind::Weapon), item)]),
+        });
+        app.world_mut().insert_resource(glows);
+        let weapon = app
+            .world_mut()
+            .spawn((
+                Transform::default(),
+                Visibility::default(),
+                ItemGlow {
+                    display: 8,
+                    kind: ItemModelKind::Weapon,
+                    visual,
+                    bone: 0,
+                    offset: Vec3::ZERO,
+                    attach: 1,
+                },
+            ))
+            .id();
+        app.update();
+        assert!(
+            app.world().get::<ItemGlowAttached>(weapon).is_none(),
+            "wait for every model"
+        );
+        app.world_mut()
+            .resource_mut::<ItemGlows>()
+            .models
+            .get_mut("__classic/77.m2")
+            .unwrap()
+            .parts = Some(Vec::new());
+        app.update();
+        assert!(app.world().get::<ItemGlowAttached>(weapon).is_some());
+        let mut query = app
+            .world_mut()
+            .query::<(Entity, &benilla_world::particles::ParticleEmitter)>();
+        let (pool, emitter) = query.single(app.world()).expect("real glow emitter pool");
+        let instance = emitter.anchor().unwrap();
+        assert_eq!(emitter.texture(), &texture);
+        assert_eq!(
+            app.world().get::<Transform>(instance).unwrap().translation,
+            Vec3::new(1.0, 2.0, 3.0)
+        );
+        app.world_mut().entity_mut(weapon).despawn();
+        assert!(
+            app.world().get_entity(instance).is_err(),
+            "glow instance belongs to its weapon"
+        );
+        benilla_world::particles::simulate_for_test(app.world_mut());
+        assert!(
+            app.world().get_entity(pool).is_err(),
+            "production owner-loss policy frees the glow pool"
+        );
+    }
+
     fn catalog(visual_rows: &[u32], enchant_rows: &[(u32, i32)]) -> (ItemGlows, EnchantCatalog) {
         let visuals = visual_rows
             .iter()

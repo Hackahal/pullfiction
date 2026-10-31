@@ -31,6 +31,12 @@ def decode(data, *, relationships=False):
     records, fields, record_size, _, _, layout, _, _, _, flags, id_index, total_fields, _, _, storage_size, common_size, palette_size, section_count = header
     if flags & 1:
         raise DB2Error('Sparse WDC5 records are not supported yet.')
+    # A sectionless empty table has field descriptors but no record/storage
+    # blocks. Require the exact envelope; this must not admit missing sections.
+    if not any((records, record_size, storage_size, common_size, palette_size, section_count)):
+        if fields != total_fields or len(data) != 204 + total_fields * 4:
+            raise DB2Error('Invalid empty WDC5 envelope.')
+        return f'{layout:08x}', {}
     if not record_size or storage_size != total_fields * 24 or fields != total_fields:
         raise DB2Error('Unsupported WDC5 field storage layout.')
     sections = [unpack(data, '<Q8I', 204 + i * 40) for i in range(section_count)]

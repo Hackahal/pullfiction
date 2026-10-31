@@ -9,6 +9,14 @@ pub struct EffectPlacement {
     pub rotation: [f32; 3],
     pub scale: f32,
     pub delay: f32,
+    pub animation: EffectAnimation,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EffectAnimation {
+    pub start: Option<u16>,
+    pub loop_anim: Option<u16>,
+    pub end: Option<u16>,
 }
 
 /// Identity of the exact modern graph bytes consumed by this catalog. This is
@@ -49,6 +57,19 @@ impl SpellVisualCatalog {
                 .unwrap_or_default();
         }
         kit.chain_proc().into_iter().collect()
+    }
+
+    /// Modern kits may combine more than the legacy four procedure slots. Keep
+    /// every authored trail, including when several event kits share a stage.
+    pub fn trail_procs(&self, kit: &VisualKit) -> Vec<TrailProc> {
+        if kit.modern_id != 0 {
+            return self
+                .modern_trail_procs
+                .get(&kit.modern_id)
+                .cloned()
+                .unwrap_or_default();
+        }
+        kit.trail_proc().into_iter().collect()
     }
 
     /// All authored projectile models, layered on a shared flight and arrival.
@@ -111,9 +132,14 @@ impl SpellVisualCatalog {
         for (key, row) in effects {
             let key: u32 = key.parse()?;
             if id(&row["type"]) == 0 && id(&row["fileDataID"]) != 0 {
+                let extension = match row["assetFormat"].as_str() {
+                    Some("wmo") => "wmo",
+                    Some("m2") | None => "m2", // Existing schema-1 graphs predate header hints.
+                    Some(_) => continue, // Unknown or unavailable bytes do not establish a model type.
+                };
                 self.effect_paths.insert(
                     EFFECT_BASE + key,
-                    format!("__classic/{}.m2", id(&row["fileDataID"])),
+                    format!("__classic/{}.{extension}", id(&row["fileDataID"])),
                 );
                 // Missile layers reference the effect name directly, without a kit
                 // attachment (whose exported scale already includes this factor).
@@ -124,6 +150,7 @@ impl SpellVisualCatalog {
                         rotation: [0.; 3],
                         scale: row["scale"].as_f64().unwrap_or(1.) as f32,
                         delay: 0.,
+                        animation: EffectAnimation::default(),
                     },
                 );
             }
@@ -151,6 +178,18 @@ impl SpellVisualCatalog {
                             rotation: floats("rotation"),
                             scale,
                             delay: a["delay"].as_f64().unwrap_or(0.0).max(0.0) as f32,
+                            animation: {
+                                let anim = |field: &str| {
+                                    a["animation"][field]
+                                        .as_u64()
+                                        .and_then(|id| u16::try_from(id).ok())
+                                };
+                                EffectAnimation {
+                                    start: anim("start"),
+                                    loop_anim: anim("loop"),
+                                    end: anim("end"),
+                                }
+                            },
                         },
                     );
                     let attach = a["attachment"].as_i64().unwrap_or(-1);
@@ -166,8 +205,40 @@ impl SpellVisualCatalog {
                 .collect();
             self.modern_attachments.insert(key, paths);
             let mut procs = Vec::new();
+            let mut trails = Vec::new();
             for proc in row["proceduralEffects"].as_array().into_iter().flatten() {
+                if proc["rendererCompatible"] == false {
+                    continue;
+                }
                 let ty = id(&proc["type"]) as i32;
+                if ty == char_proc_type::WEAPON_TRAIL {
+                    let values = std::array::from_fn(|i| proc["values"][i].as_f64());
+                    // Mirror the converter's exact subset: RGB and alpha are
+                    // packed integers; One is unused by the trail dispatcher.
+                    if let [Some(rgb), Some(unused), Some(duration), Some(alpha)] = values {
+                        if unused.is_finite()
+                            && [
+                                (rgb, 0xffffff as f64),
+                                (duration, i32::MAX as f64),
+                                (alpha, 255.),
+                            ]
+                            .iter()
+                            .all(|&(v, max)| {
+                                v.is_finite() && v >= 0. && v <= max && v.fract() == 0.
+                            })
+                        {
+                            if let Some(trail) = (CharProc {
+                                ty,
+                                params: [rgb as f32, unused as f32, duration as f32, alpha as f32],
+                            })
+                            .as_weapon_trail()
+                            {
+                                trails.push(trail);
+                            }
+                        }
+                    }
+                    continue;
+                }
                 if !char_proc_type::is_chain(ty) {
                     continue;
                 }
@@ -196,6 +267,7 @@ impl SpellVisualCatalog {
                 });
             }
             self.modern_chain_procs.insert(key, procs);
+            self.modern_trail_procs.insert(key, trails);
             let anim = row["animations"]
                 .as_array()
                 .into_iter()
@@ -224,7 +296,19 @@ impl SpellVisualCatalog {
             for (start, target, slot) in [
                 ("Precast Start", "Caster", &mut stages.precast),
                 ("Cast", "Caster", &mut stages.cast),
+                ("Cast", "Target", &mut stages.cast_target),
+                (
+                    "Cast",
+                    "Target (Not Caster)",
+                    &mut stages.cast_target_not_caster,
+                ),
                 ("Impact", "Target", &mut stages.impact),
+                ("Impact", "Caster", &mut stages.impact_caster),
+                (
+                    "Impact",
+                    "Target (Not Caster)",
+                    &mut stages.impact_not_caster,
+                ),
                 ("Aura Start", "Target", &mut stages.state),
                 ("Channel Start", "Caster", &mut stages.channel),
             ] {
@@ -245,7 +329,10 @@ impl SpellVisualCatalog {
                     .filter(|e| {
                         e["start"] == start
                             && (e["target"] == target
-                                || (target == "Target" && e["target"] == "Target (Not Caster)"))
+                                || (target == "Target"
+                                    && start != "Impact"
+                                    && start != "Cast"
+                                    && e["target"] == "Target (Not Caster)"))
                     })
                     .map(|e| id(&e["kit"]))
                     .filter(|i| self.kits.contains_key(i))
@@ -276,6 +363,17 @@ impl SpellVisualCatalog {
                         })
                         .collect();
                     self.modern_chain_procs.insert(synthetic, procs);
+                    let trails = ids
+                        .iter()
+                        .flat_map(|id| {
+                            self.modern_trail_procs
+                                .get(id)
+                                .into_iter()
+                                .flatten()
+                                .copied()
+                        })
+                        .collect();
+                    self.modern_trail_procs.insert(synthetic, trails);
                     let anim_id = ids
                         .iter()
                         .find_map(|i| self.kits.get(i).and_then(|k| k.anim_id));
@@ -326,6 +424,78 @@ impl SpellVisualCatalog {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn modern_attachment_animation_override_keeps_explicit_stand_zero() {
+        let data = serde_json::json!({"schema":1,"effects":{"1":{"type":0,"fileDataID":100}},
+            "kits":{"7":{"effects":[{"id":8,"effect":1,"attachment":34,
+                "animation":{"start":0,"loop":144,"end":193}}],"animations":[]}},"visuals":{}});
+        let mut cat = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        cat.merge_modern_json(&serde_json::to_vec(&data).unwrap())
+            .unwrap();
+        let (_, effect) = cat.model_attachments(cat.kit(7).unwrap())[0];
+        let phases = cat.placement(effect).unwrap().animation;
+        assert_eq!(
+            (phases.start, phases.loop_anim, phases.end),
+            (Some(0), Some(144), Some(193))
+        );
+    }
+    #[test]
+    fn modern_effect_paths_use_probed_formats_and_do_not_guess_unknown_headers() {
+        let data = serde_json::json!({"schema":1,"effects":{
+            "1":{"type":0,"fileDataID":100,"assetFormat":"m2"},
+            "2":{"type":0,"fileDataID":200,"assetFormat":"wmo"},
+            "3":{"type":0,"fileDataID":300,"assetFormat":"unknown"},
+            "4":{"type":0,"fileDataID":400}},"kits":{},"visuals":{}});
+        let mut cat = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        cat.merge_modern_json(&serde_json::to_vec(&data).unwrap())
+            .unwrap();
+        assert_eq!(cat.effect_path(EFFECT_BASE + 1), Some("__classic/100.m2"));
+        assert_eq!(cat.effect_path(EFFECT_BASE + 2), Some("__classic/200.wmo"));
+        assert_eq!(cat.effect_path(EFFECT_BASE + 3), None);
+        assert_eq!(
+            cat.effect_path(EFFECT_BASE + 4),
+            Some("__classic/400.m2"),
+            "old graphs retain compatibility"
+        );
+    }
+    #[test]
+    fn modern_weapon_trails_preserve_all_slots_and_combined_event_kits() {
+        let proc = serde_json::json!({"type":8,"values":[14304033,20,600,100]});
+        let data = serde_json::json!({"schema":1,"effects":{},
+            "kits":{"1":{"effects":[],"animations":[],"proceduralEffects":vec![proc.clone();6]},
+                    "2":{"effects":[],"animations":[],"proceduralEffects":[proc,
+                        {"type":8,"values":[1,20,0,100]},
+                        {"type":8,"values":[1,20,600,256]},
+                        {"type":14,"values":[0.3,0,0,0]}]}},
+            "visuals":{"7":{"missiles":[],"events":[
+                {"start":"Cast","target":"Caster","kit":1},
+                {"start":"Cast","target":"Caster","kit":2}]}}});
+        let mut cat = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        cat.merge_modern_json(&serde_json::to_vec(&data).unwrap())
+            .unwrap();
+        let trails = cat.trail_procs(cat.kit(cat.stages(7).unwrap().cast).unwrap());
+        assert_eq!(trails.len(), 7, "modern data has no four-slot truncation");
+        assert!(trails
+            .iter()
+            .all(|t| t.rgb() == [0xda, 0x43, 0x21] && t.alpha() == 100 && t.duration_ms == 600));
+        assert!(
+            cat.kit(2).unwrap().char_procs().next().is_none(),
+            "unimplemented body procedures do not enter legacy aura semantics"
+        );
+        let legacy = VisualKit {
+            char_proc_slots: [
+                Some(CharProc {
+                    ty: 8,
+                    params: [14304033., 20., 600., 100.],
+                }),
+                None,
+                None,
+                None,
+            ],
+            ..Default::default()
+        };
+        assert_eq!(cat.trail_procs(&legacy), trails[..1]);
+    }
     #[test]
     fn modern_graph_resolves_new_spell_visuals_and_all_attachments() {
         let bytes=serde_json::to_vec(&serde_json::json!({"schema":1,"effects":{"735":{"fileDataID":165578,"type":0}},"kits":{"1005":{"effects":[{"id":3,"effect":735,"attachment":34,"scale":1.5,"offset":[1,2,3],"rotation":[0,0,0],"delay":0.2},{"id":4,"effect":735,"attachment":21,"scale":1,"offset":[0,0,0],"rotation":[0,0,0],"delay":0}],"animations":[]}},"visuals":{"7749":{"events":[{"start":"Impact","target":"Target","kit":1005}],"missiles":[]}},"spells":{"400574":{"visuals":[{"id":7749,"priority":1,"difficulty":0,"conditions":[0,0,0,0]}],"speed":0,"schoolMask":64}}})).unwrap();
@@ -466,5 +636,16 @@ mod tests {
         assert!(cat
             .merge_modern_json(&serde_json::to_vec(&invalid).unwrap())
             .is_err());
+        // The converter retains non-finite authored bits as JSON-safe nulls and
+        // explicitly disables that procedure; it must not abort the whole graph.
+        invalid["kits"]["402"]["proceduralEffects"][0] = serde_json::json!({
+            "type": 0, "values": [null, 1, 0, 0],
+            "rawValueBits": [2139095040u32, 1065353216u32, 0, 0],
+            "rendererCompatible": false
+        });
+        cat.merge_modern_json(&serde_json::to_vec(&invalid).unwrap())
+            .unwrap();
+        assert!(cat.chain_procs(cat.kit(402).unwrap()).is_empty());
+        assert_eq!(cat.chain_procs(cat.kit(403).unwrap()).len(), 1);
     }
 }

@@ -42,6 +42,13 @@ def unsupported(message):
     raise UnsupportedFeatureError(message)
 
 
+MODERN_STATIC_COMBINERS = {
+    0x8000: 2, 0x8001: 2, 0x8002: 2, 0x8004: 2, 0x8005: 2,
+    0x8006: 2, 0x8009: 3, 0x800a: 2, 0x800b: 2, 0x800c: 2,
+    0x800d: 2, 0x800e: 2, 0x800f: 2, 0x8017: 2,
+}
+
+
 def shader_coordinates(shader, texture_count):
     """Translate modern M2 vertex-shader inputs to explicit renderer UV selectors.
 
@@ -49,6 +56,9 @@ def shader_coordinates(shader, texture_count):
     Reference: noclip.website rust/src/wow/skin.rs get_vertex_shader.
     """
     env = 0xffff
+    required = MODERN_STATIC_COMBINERS.get(shader)
+    if required is not None and texture_count != required:
+        unsupported(f'Modern static material requires exactly {required} texture bindings.')
     if texture_count == 0:
         return ()
     if shader == 0x8009 and texture_count == 3:
@@ -78,6 +88,65 @@ def shader_coordinates(shader, texture_count):
     if shader & 0x80:
         return (env, env if shader & 8 else 0)
     return (0, env if shader & 8 else 1 if shader & 0x4000 else 0)
+
+
+def inline_skeleton(modern, read_file):
+    """Inline the supported self-contained SKL1 skeleton tables without resampling.
+
+    Chunk-relative arrays follow WhiteoutLib's pinned SKS1/SKB1/SKA1 layouts.
+    Parent skeletons and external animation/bone payloads remain explicit gaps.
+    """
+    def chunks(data):
+        result, cursor = {}, 0
+        while cursor < len(data):
+            tag, size = read(data, '<4sI', cursor)
+            if tag in result: fail('Duplicate external skeleton/model chunk.')
+            result[tag] = span(data, cursor+8, size)
+            cursor += size+8
+        return result
+    parts = chunks(modern)
+    ids = parts.get(b'SKID', b'')
+    if not any(ids): return modern
+    if len(ids) != 4: fail('Invalid modern external skeleton reference.')
+    if any(parts.get(b'AFID', b'')) or any(parts.get(b'BFID', b'')):
+        unsupported('External skeleton animation/bone payloads require separate adaptation.')
+    skeleton = chunks(read_file('id:' + str(read(ids, '<I', 0)[0])))
+    if any(skeleton.get(tag, b'') for tag in (b'SKPD', b'AFID', b'BFID')):
+        unsupported('Parent or external skeleton animation/bone payloads require separate adaptation.')
+    if set(skeleton) != {b'SKL1', b'SKS1', b'SKB1', b'SKA1'} or read(skeleton[b'SKL1'], '<I', 0)[0] != 0x100:
+        unsupported('Unsupported external skeleton chunk layout.')
+    body = bytearray(parts[b'MD21'])
+    layouts = [(b'SKS1', [(0,0x14,4),(8,0x1c,64),(16,0x24,2)], []),
+               (b'SKB1', [(0,0x2c,88),(8,0x34,2)], [(0,88,[(16,12),(36,8),(56,12)])]),
+               (b'SKA1', [(0,0xf0,40),(8,0xf8,2)], [(0,40,[(20,1)])])]
+    for tag, arrays, animated in layouts:
+        raw = skeleton[tag]
+        body.extend(bytes((-len(body)) % 4))
+        base = len(body)
+        body.extend(raw)
+        for field, target, stride in arrays:
+            if read(body, '<I', target)[0]:
+                unsupported('External skeleton conflicts with inline skeletal tables.')
+            n, at = read(raw, '<II', field)
+            span(raw, at, n*stride)
+            struct.pack_into('<II', body, target, n, base+at if n else 0)
+        for field, stride, tracks in animated:
+            n, at = read(raw, '<II', field)
+            for index in range(n):
+                for track_offset, value_size in tracks:
+                    track = at + index*stride + track_offset
+                    span(raw, track, 20)
+                    for arrays_offset, element_size in [(4,4),(12,value_size)]:
+                        count, pointer = read(raw, '<II', track+arrays_offset)
+                        span(raw, pointer, count*8)
+                        struct.pack_into('<I', body, base+track+arrays_offset+4, base+pointer if count else 0)
+                        for j in range(count):
+                            keys, values = read(raw, '<II', pointer+j*8)
+                            span(raw, values, keys*element_size)
+                            struct.pack_into('<I', body, base+pointer+j*8+4, base+values if keys else 0)
+    parts[b'MD21'] = bytes(body)
+    del parts[b'SKID']
+    return b''.join(tag+struct.pack('<I',len(value))+value for tag,value in parts.items())
 
 
 class Adapter:
@@ -234,6 +303,9 @@ class Adapter:
         geometry_ids = self.parts.get(b'GPID')
         if geometry_ids is not None and len(geometry_ids) != count * 4:
             fail('Modern GPID count does not match particle emitters.')
+        recursion_ids = self.parts.get(b'RPID')
+        if recursion_ids is not None and len(recursion_ids) != count * 4:
+            fail('Modern RPID count does not match particle emitters.')
         records, variations = [], []
         for index, raw in enumerate(table(self.b, 0x128, 492)):
             base = start + index * 492
@@ -250,15 +322,16 @@ class Adapter:
             for offset in (24, 32):
                 n, at = read(raw, '<II', offset)
                 name = span(self.b, at, n)
-                if offset == 24 and geometry_ids is not None:
-                    file_id = read(geometry_ids, '<I', index * 4)[0]
+                ids = geometry_ids if offset == 24 else recursion_ids
+                if ids is not None:
+                    file_id = read(ids, '<I', index * 4)[0]
                     if file_id == 0xffffffff:
-                        fail('Invalid modern particle geometry file ID.')
+                        fail('Invalid modern particle child model file ID.')
                     if file_id:
                         name = f'__classic/{file_id}.m2\0'.encode()
                 put(offset, '<II', len(name), self.append(name))
             blend, shape, color = read(raw, '<BBH', 40)
-            if shape not in (1, 2, 3) or color:
+            if shape not in (1, 2, 3) or color not in (0, 11, 12, 13):
                 unsupported('Modern particle emitter type/color replacement requires extended support.')
             if flags & 0x10000000:
                 packed = read(raw, '<H', 22)[0]
@@ -278,6 +351,9 @@ class Adapter:
                 texture_indices = [read(raw, '<H', 22)[0]] * 3
             put(40, '<HH', blend, shape)
             p[44] = 2 if flags & 0x60000 == 0x60000 else 1 if flags & 0x40000 else 0
+            # PFP5+ adapted records reserve byte45 for the modern palette slot.
+            # It is instance data selected by a display, never baked into a cache.
+            p[45] = color
             p[46:52] = raw[46:52]
             gravity_metadata = bytes(88)
             for source, target in [(52,52),(72,80),(92,108),(112,136),(132,164),(152,192),(176,220),(200,248),(220,276),(240,304)]:
@@ -311,6 +387,8 @@ class Adapter:
                 times=[read(self.b,'<H',to+j*2)[0] for j in range(nt)]
                 return times,[read(self.b,fmt,vo+j*struct.calcsize(fmt)) for j in range(nv)]
             times,colors=ramp(260,'<3f'); alpha_times,alphas=ramp(276,'<h'); scale_times,scales=ramp(292,'<2f')
+            if color and len(colors) != 3:
+                unsupported('Modern particle color replacement requires exactly three RGB keys.')
             # Modern ramps have independent timestamps and arbitrary key counts.
             # Keep authored values in the renderer extension, with safe legacy defaults.
             put(332,'<f',0.5)
@@ -495,6 +573,8 @@ class Adapter:
                         record = bytearray(batch)
                         shader, count = read(batch, '<H', 2)[0], read(batch, '<H', 14)[0]
                         coordinates = shader_coordinates(shader, count)
+                        if shader & 0x8000 and shader not in MODERN_STATIC_COMBINERS:
+                            unsupported('Modern static material pixel shader requires extended support.')
                         if count > 2 and not shader & 0x8000:
                             # Only two sampled bindings are required. The unused third record
                             # may be absent; an unresolved sampled second texture is still a gap.
@@ -567,5 +647,7 @@ class Adapter:
         return bytes(self.output)
 
 
-def adapt_model(modern, skins):
+def adapt_model(modern, skins, read_file=None):
+    if read_file is not None:
+        modern = inline_skeleton(modern, read_file)
     return Adapter(modern, skins).convert()

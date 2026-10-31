@@ -2,7 +2,7 @@ use futures_lite::future::block_on;
 
 // Analytical expectations are independent of the extracted production WGSL. Diffuse is
 // [.8,.6,.4,.7], first texel [.9,.7,.5,.6], second [.8,.6,.4,.1]. No readback is clamped.
-const CASES: [(&str, [f32; 4]); 19] = [
+const CASES: [(&str, [f32; 4]); 45] = [
     ("Mod_Mod2x", [1.152, 0.504, 0.16, 0.084]),
     (
         "Mod_Mod2xNA_ignores_second_alpha",
@@ -48,6 +48,101 @@ const CASES: [(&str, [f32; 4]); 19] = [
     (
         "transparent_reflection_does_not_darken_the_lit_skin",
         [0.4, 0.35, 0.05, 0.8],
+    ),
+    (
+        "WMO_raw_reflection_has_no_M2_half_bias",
+        [0.6, 0.0, 0.0, 1.0],
+    ),
+    (
+        "WMO_Env_base_alpha_weights_emissive_reflection",
+        [0.4, 0.45, 0.5, 1.0],
+    ),
+    (
+        "WMO_specular_directional_highlight",
+        [0.5, 0.25, 0.125, 0.5],
+    ),
+    ("WMO_backfacing_specular_is_zero", [0.0, 0.0, 0.0, 1.0]),
+    (
+        "WMO_Diffuse_Opaque_LOD_Specular_alpha",
+        [0.2, 1.0, 0.2, 0.2],
+    ),
+    (
+        "WMO_Env_zero_reflection_preserves_base_and_fade",
+        [0.2, 0.3, 0.4, 0.25],
+    ),
+    (
+        "terrain_MCCV_diffuse_tint_in_shadow",
+        [0.56, 0.1045882353, 0.0, 1.0],
+    ),
+    (
+        "terrain_MCCV_black_removes_diffuse_only",
+        [0.0, 0.0, 0.0, 1.0],
+    ),
+    (
+        "terrain_absent_MCCV_keeps_legacy_white",
+        [0.4, 0.15, 0.4, 1.0],
+    ),
+    (
+        "static_OpaqueMod2xNAAlpha_masks_reflection_by_base_alpha",
+        [0.8928, 0.4536, 0.184, 0.7],
+    ),
+    (
+        "static_OpaqueAddAlphaAlpha_masks_emission_after_lighting",
+        [0.212, 0.129, 0.066, 0.7],
+    ),
+    (
+        "static_ModAddAlpha_uses_base_opacity_and_emissive_second",
+        [0.26, 0.165, 0.09, 0.42],
+    ),
+    (
+        "static_OpaqueAddAlphaWgt_uses_independent_authored_weight",
+        [0.204, 0.123, 0.062, 0.7],
+    ),
+    ("static_OpaqueModNAAlpha", [0.6624, 0.3528, 0.152, 0.7]),
+    ("static_OpaqueAlpha", [0.712, 0.414, 0.196, 0.7]),
+    (
+        "static_base_alpha_zero_retains_doubled_modulation",
+        [1.152, 0.504, 0.16, 0.7],
+    ),
+    (
+        "static_base_alpha_one_restores_base_texture",
+        [0.72, 0.42, 0.2, 0.7],
+    ),
+    (
+        "static_base_alpha_one_removes_additive_reflection",
+        [0.18, 0.105, 0.05, 0.7],
+    ),
+    (
+        "static_base_alpha_zero_keeps_additive_reflection",
+        [0.26, 0.165, 0.09, 0.7],
+    ),
+    (
+        "static_zero_texture_weight_removes_reflection_without_hiding_base",
+        [0.18, 0.105, 0.05, 0.7],
+    ),
+    (
+        "static_full_texture_weight_keeps_reflection",
+        [0.26, 0.165, 0.09, 0.7],
+    ),
+    (
+        "static_second_alpha_zero_restores_base",
+        [0.72, 0.42, 0.2, 0.7],
+    ),
+    (
+        "static_second_alpha_one_selects_second_texture",
+        [0.64, 0.36, 0.16, 0.7],
+    ),
+    (
+        "static_ModAddAlphaWgt_preserves_base_opacity",
+        [0.204, 0.123, 0.062, 0.42],
+    ),
+    (
+        "static_ModAddAlphaWgt_zero_weight_keeps_base",
+        [0.18, 0.105, 0.05, 0.42],
+    ),
+    (
+        "static_ModAddAlphaWgt_full_weight_keeps_emission",
+        [0.26, 0.165, 0.09, 0.42],
     ),
 ];
 

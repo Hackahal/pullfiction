@@ -213,6 +213,9 @@ pub struct UvAnimEntry {
     pub anim: UvLoop,
     pub slot: u16,
     pub seed: [f32; 2],
+    /// A second sample's authored weight uses z of this same table row.
+    weight: Option<std::sync::Arc<benilla_formats::AlphaAnim>>,
+    weight_seed: f32,
     /// The rotation and scaling half ([`UvAffine`]), `None` when the transform only translates.
     affine: Option<UvAffine>,
     /// The entity whose [`crate::rig_anim::SceneClock`] this entry runs on, `None` for the
@@ -259,10 +262,21 @@ impl UvAnimEntry {
                     .map_or([0.0, 0.0], |l| l.sample(l.clock(band_t, f64::from(age))))
             }
         };
+        let weight_delta = self.weight.as_ref().map_or(0.0, |weight| {
+            let (band_t, gseq) = match &self.anim {
+                UvLoop::Shared(_) => (now, gseq_now),
+                UvLoop::PerSeq { .. } => (playing.map_or(now, |(_, t)| t), gseq_now),
+                UvLoop::Instance { attached_at, .. } => {
+                    let age = now - attached_at;
+                    (playing.map_or(age, |(_, t)| t), f64::from(age))
+                }
+            };
+            weight.sample(playing.map(|(seq, _)| seq), band_t, gseq) - self.weight_seed
+        });
         [
             benilla_assets::quantize(uv[0], 4096.0) - self.seed[0],
             benilla_assets::quantize(uv[1], 4096.0) - self.seed[1],
-            0.0,
+            weight_delta,
             0.0,
         ]
     }
@@ -479,6 +493,7 @@ pub fn clocked_twin(
     for second in [false, true] {
         if let Some(src) = uv.entries(second).get(&source) {
             let lane = src.anim.for_twin(root);
+            let weight = src.weight.clone();
             let affine = src
                 .affine
                 .as_ref()
@@ -489,6 +504,7 @@ pub fn clocked_twin(
                     attach_affine_stage(uv, table, materials, twin, rot, scale, second);
                 }
             }
+            attach_weight_stage(uv, materials, twin, weight, second);
         }
         if let Some(e) = uv.entries_mut(second).get_mut(&twin) {
             e.anim.set_host(root);
@@ -584,10 +600,30 @@ fn register_uv_stage(
             anim,
             slot,
             seed,
+            weight: None,
+            weight_seed: 1.0,
             affine: None,
             clock: None,
         },
     );
+}
+
+fn attach_weight_stage(
+    reg: &mut UvAnimMaterials,
+    materials: &mut bevy::asset::Assets<benilla_assets::materials::WowModelMaterial>,
+    id: bevy::asset::AssetId<benilla_assets::materials::WowModelMaterial>,
+    weight: Option<std::sync::Arc<benilla_formats::AlphaAnim>>,
+    second: bool,
+) {
+    let Some(entry) = reg.entries_mut(second).get_mut(&id) else {
+        return;
+    };
+    entry.weight = weight;
+    if let Some(seed) = crate::model_render::lazy::with_material_mut(materials, id, |mat| {
+        mat.extension.texture_weights.x
+    }) {
+        entry.weight_seed = seed;
+    }
 }
 
 /// Attach the rotation and scaling half, if any, to the entry [`register_uv`] just made: a second
@@ -664,6 +700,7 @@ fn register_fx_uv_stage(
         single,
         rot,
         scale,
+        weight,
         ..
     } = loops;
     register_uv_stage(
@@ -680,6 +717,7 @@ fn register_fx_uv_stage(
         second,
     );
     attach_affine_stage(reg, table, materials, id, rot, scale, second);
+    attach_weight_stage(reg, materials, id, weight, second);
     let Some(entry) = reg.entries(second).get(&id) else {
         return;
     };
@@ -733,11 +771,17 @@ fn register_entity_uv_stage(
         loops.scale.clone(),
         second,
     );
+    attach_weight_stage(reg, materials, id, loops.weight.clone(), second);
 }
 
 fn entity_uv_lane(loops: &UvLoops, host: Option<Entity>) -> UvLoop {
     match host {
-        Some(host) if loops.seqs.is_some() || loops.rot.is_some() || loops.scale.is_some() => {
+        Some(host)
+            if loops.seqs.is_some()
+                || loops.rot.is_some()
+                || loops.scale.is_some()
+                || loops.weight.is_some() =>
+        {
             UvLoop::PerSeq {
                 seqs: loops.seqs.clone(),
                 single: loops.single.clone(),
@@ -757,6 +801,7 @@ pub struct UvLoops {
     pub single: Option<std::sync::Arc<benilla_formats::UvAnim>>,
     pub rot: Option<std::sync::Arc<benilla_formats::SeqLoops<[f32; 4]>>>,
     pub scale: Option<std::sync::Arc<benilla_formats::SeqLoops<[f32; 2]>>>,
+    pub weight: Option<std::sync::Arc<benilla_formats::AlphaAnim>>,
 }
 
 impl UvLoops {
@@ -767,6 +812,7 @@ impl UvLoops {
 
     fn per_sequence_self(&self) -> bool {
         self.seqs.is_some()
+            || self.weight.is_some()
             || self.rot.as_ref().is_some_and(|set| set.uniform().is_none())
             || self
                 .scale
@@ -786,6 +832,7 @@ impl UvLoops {
             single: sub.uv_anim.clone(),
             rot: sub.uv_rot_seq.clone(),
             scale: sub.uv_scale_seq.clone(),
+            weight: None,
         }
     }
 
@@ -796,6 +843,7 @@ impl UvLoops {
             || self.single.is_some()
             || self.rot.is_some()
             || self.scale.is_some()
+            || self.weight.is_some()
             || self.stage1.as_ref().is_some_and(|s| s.any())
     }
 
@@ -807,6 +855,7 @@ impl UvLoops {
 
     fn animates_self(&self) -> bool {
         self.seqs.is_some()
+            || self.weight.is_some()
             || self.rot.is_some()
             || self.scale.is_some()
             || self.single.as_ref().is_some_and(|l| l.period > 0.0)
@@ -819,6 +868,7 @@ impl UvLoops {
             single: uv.single.clone(),
             rot: uv.rot.clone(),
             scale: uv.scale.clone(),
+            weight: uv.weight.clone(),
         })
     }
 
@@ -829,6 +879,12 @@ impl UvLoops {
             .and_then(|s| s.seq(None))
             .or(self.single.as_deref())
             .map_or([0.0, 0.0], |l| l.sample(0.0))
+    }
+
+    pub fn open_weight(&self) -> f32 {
+        self.weight
+            .as_ref()
+            .map_or(1.0, |a| a.sample(None, 0.0, 0.0))
     }
 }
 
@@ -1225,6 +1281,65 @@ fn probe_at() -> Option<f32> {
 mod delta_tests {
     use super::*;
 
+    #[test]
+    fn weighted_second_stage_follows_model_clocks_without_changing_opacity() {
+        let curve = std::sync::Arc::new(
+            benilla_formats::AlphaAnim::new(vec![
+                benilla_formats::AlphaSeq {
+                    color: None,
+                    weight: Some(benilla_formats::KeyAnim {
+                        period: 2.0,
+                        step: false,
+                        wrap: true,
+                        gseq: false,
+                        keys: vec![(0.0, 1.0), (1.0, 0.5)],
+                    }),
+                },
+                benilla_formats::AlphaSeq {
+                    color: None,
+                    weight: Some(benilla_formats::KeyAnim {
+                        period: 0.0,
+                        step: true,
+                        wrap: false,
+                        gseq: false,
+                        keys: vec![(0.0, 0.0)],
+                    }),
+                },
+            ])
+            .unwrap(),
+        );
+        let loops = UvLoops {
+            weight: Some(curve.clone()),
+            ..Default::default()
+        };
+        assert!(loops.any() && loops.animates() && loops.per_sequence());
+        let host = Entity::from_raw_u32(7).unwrap();
+        let entry = UvAnimEntry {
+            anim: entity_uv_lane(&loops, Some(host)),
+            slot: 1,
+            seed: [0.0; 2],
+            weight: Some(curve),
+            weight_seed: 1.0,
+            affine: None,
+            clock: None,
+        };
+        assert_eq!(
+            entry.delta(99.0, 99.0, Some((0, 0.5))),
+            [0.0, 0.0, -0.25, 0.0]
+        );
+        assert_eq!(
+            entry.delta(999.0, 999.0, Some((0, 0.5))),
+            [0.0, 0.0, -0.25, 0.0]
+        );
+        assert_eq!(
+            entry.delta(99.0, 99.0, Some((1, 0.5))),
+            [0.0, 0.0, -1.0, 0.0]
+        );
+        let mut effect = fx_entry(40.0);
+        effect.weight = entry.weight;
+        assert_eq!(effect.delta(40.5, 999.0, None)[2], -0.25);
+    }
+
     fn fx_entry(attached_at: f32) -> UvAnimEntry {
         UvAnimEntry {
             anim: UvLoop::Instance {
@@ -1235,6 +1350,8 @@ mod delta_tests {
             },
             slot: 9,
             seed: [0.0, 0.0],
+            weight: None,
+            weight_seed: 1.0,
             affine: None,
             clock: None,
         }
@@ -1291,6 +1408,8 @@ mod delta_tests {
             anim: UvLoop::Shared(None),
             slot: 4,
             seed: [0.0, 0.0],
+            weight: None,
+            weight_seed: 1.0,
             affine: Some(UvAffine {
                 rot: Some(quarter_turn()),
                 scale: None,
@@ -1425,6 +1544,8 @@ mod delta_tests {
             anim: lane,
             slot: 1,
             seed: [0.0; 2],
+            weight: None,
+            weight_seed: 1.0,
             affine: Some(UvAffine {
                 rot: Some(rot),
                 scale: Some(scale),
@@ -1560,6 +1681,8 @@ mod delta_tests {
             anim: UvLoop::Shared(Some(anim.clone())),
             slot: 3,
             seed,
+            weight: None,
+            weight_seed: 1.0,
             affine: None,
             clock: None,
         };
@@ -1609,6 +1732,8 @@ mod delta_tests {
             },
             slot: 5,
             seed: [0.0, 0.0],
+            weight: None,
+            weight_seed: 1.0,
             affine: None,
             clock: None,
         };
@@ -1665,6 +1790,8 @@ mod delta_tests {
                 anim: UvLoop::Shared(Some(uv_loop())),
                 slot: 3,
                 seed: [0.0, 0.0],
+                weight: None,
+                weight_seed: 1.0,
                 affine: None,
                 clock: None,
             },
@@ -1703,6 +1830,8 @@ mod delta_tests {
             anim: UvLoop::Shared(Some(uv_loop())),
             slot: 5,
             seed: [0.0, 0.0],
+            weight: None,
+            weight_seed: 1.0,
             affine: None,
             clock: None,
         };

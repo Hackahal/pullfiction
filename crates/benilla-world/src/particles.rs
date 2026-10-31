@@ -20,6 +20,17 @@ pub(crate) mod sim; // `SceneGates` is the ribbon sim's draw-set input too
 
 use emit::{emit_local, next_u32, rand01, rand_s11};
 use sim::simulate_particles;
+
+/// Dependent-crate integration tests run the production simulator without a render app.
+#[cfg(feature = "test-support")]
+pub fn simulate_for_test(world: &mut World) {
+    use bevy::ecs::system::RunSystemOnce;
+    world.init_resource::<crate::liquid::WaterIndex>();
+    world.init_resource::<crate::wmo_portal::ExteriorWindows>();
+    world
+        .run_system_once(simulate_particles)
+        .expect("production particle simulation");
+}
 // The water-plane classification, shared with the ribbon sim.
 pub(crate) use sim::{far_side_of_water, model_far_side, water_height, WaterInterleave};
 
@@ -569,6 +580,16 @@ pub(crate) fn owner_last_bias(reach: f32) -> f32 {
 #[derive(Component)]
 pub(crate) struct PendingChildren;
 
+fn child_particle_def(
+    parent: &ParticleEmitterDef,
+    child: &ParticleEmitterDef,
+) -> ParticleEmitterDef {
+    parent.particle_colors().map_or_else(
+        || child.clone(),
+        |palette| child.with_particle_colors(palette),
+    )
+}
+
 /// Once a parent's recursion model resolves, make up to 4 of its emitters (`0x7b5dfe`) the
 /// parent's children, as the reference does at the model's async-load completion (`0x7b5dd0`).
 pub(crate) fn wire_child_emitters(
@@ -598,7 +619,7 @@ pub(crate) fn wire_child_emitters(
                     return None;
                 }
                 Some(ChildEmitter {
-                    def: em.def.clone(),
+                    def: child_particle_def(&emitter.def, &em.def),
                     texture,
                     extra_textures: em.extra_textures.clone(),
                     particles: Vec::new(),
@@ -709,6 +730,47 @@ impl Plugin for ParticlePlugin {
 pub(crate) mod tests {
     use super::*;
     use benilla_formats::ParticleShape;
+
+    #[test]
+    fn recursive_children_inherit_instance_palette_without_changing_shared_defs() {
+        let material = benilla_formats::ModernParticleMaterial {
+            color_index: 0,
+            particle_colors: None,
+            flags: 0,
+            textures: [None, None, None],
+            uv_scale: [1.; 2],
+            uv_velocity: [[0.; 2]; 2],
+            uv_velocity_variation: [[0.; 2]; 2],
+            color_multiplier: 1.,
+            alpha_multiplier: 1.,
+            alpha_cutoff: Vec::new(),
+            z_source: None,
+        };
+        let mut parent = plain_def();
+        parent.modern_material = Some(material.clone());
+        let mut child = plain_def();
+        child.modern_material = Some(benilla_formats::ModernParticleMaterial {
+            color_index: 12,
+            ..material
+        });
+        child.life_color_curve = vec![[0., 1., 1., 1.], [0.2, 0.5, 0.5, 0.5], [1., 0., 0., 0.]];
+        child.life_alpha_curve = vec![[0., 0.8], [1., 0.4]];
+        let palette = [[[1., 0., 0.]; 3], [[0., 1., 0.]; 3], [[0., 0., 1.]; 3]];
+        let colored = parent.with_particle_colors(&palette);
+        let inherited = child_particle_def(&colored, &child);
+        assert_eq!(
+            inherited.life_color_curve,
+            [[0., 0., 1., 0.], [0.2, 0., 1., 0.], [1., 0., 1., 0.]]
+        );
+        assert_eq!(inherited.life_alpha_curve, child.life_alpha_curve);
+        assert_eq!(child.life_color_curve[1], [0.2, 0.5, 0.5, 0.5]);
+        assert!(child.particle_colors().is_none());
+        assert_eq!(inherited.particle_colors(), Some(&palette));
+        assert_eq!(
+            child_particle_def(&parent, &child).life_color_curve,
+            child.life_color_curve
+        );
+    }
 
     /// The minimal def, for sibling-module tests.
     pub(crate) fn plain_def() -> ParticleEmitterDef {

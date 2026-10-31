@@ -61,6 +61,7 @@ pub struct NpcAppearance {
 /// One CreatureDisplayInfo row (the parts we use).
 #[derive(Debug, Clone)]
 struct DisplayRow {
+    particle_colors: Option<crate::ParticleColorPalette>,
     model_id: u32,
     /// `ExtendedDisplayInfoID`: the `CreatureDisplayInfoExtra` key; 0 = none.
     extended_id: u32,
@@ -126,6 +127,12 @@ pub struct CreatureCatalog {
 }
 
 impl CreatureCatalog {
+    pub fn particle_colors(&self, display_id: u32) -> Option<&crate::ParticleColorPalette> {
+        self.display
+            .get(&self.records_row(display_id)?)?
+            .particle_colors
+            .as_ref()
+    }
     /// The display row a unit's records come from (`0x60afb0`): `display_id`'s, else the table's
     /// first, after the `NOUNITDISPLAYID` line (`0x60affc`-`0x60b033`). `None` for an empty table.
     pub fn records_row(&self, display_id: u32) -> Option<u32> {
@@ -181,6 +188,7 @@ impl CreatureCatalog {
                     (
                         id,
                         DisplayRow {
+                            particle_colors: None,
                             model_id,
                             extended_id,
                             scale: 1.0,
@@ -488,6 +496,7 @@ pub fn load_creature_catalog(chain: &mut Chain) -> Result<CreatureCatalog> {
                 d.insert(
                     id,
                     DisplayRow {
+                        particle_colors: None,
                         model_id,
                         extended_id: u32_at(r, 3).unwrap_or(0),
                         scale: f32_at(r, 4).unwrap_or(1.0),

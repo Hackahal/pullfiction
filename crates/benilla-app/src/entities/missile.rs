@@ -381,6 +381,7 @@ fn arrival_handoff(
         } => {
             let kind = CastEventKind::Impact {
                 weapon_visual: missile.weapon_visual,
+                caster: Some(missile.caster),
             };
             out.impacts.write(event(target, kind));
         }
@@ -943,6 +944,10 @@ mod tests {
         assert_eq!(impacts.len(), 1, "the impact plays at release");
         assert_eq!(impacts[0].entity, target);
         assert_eq!(impacts[0].spell_id, 133);
+        assert!(
+            matches!(impacts[0].kind,CastEventKind::Impact {caster:Some(source),..} if source==caster),
+            "arrival retains its actual caster for modern owner routing"
+        );
     }
 
     /// The location fallback (`0x6e8a50`'s empty-hit-array arm) flies exactly one projectile.

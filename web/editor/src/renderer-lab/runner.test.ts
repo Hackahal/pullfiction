@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   cameraEye,
+  clearPreviousActors,
+  resolveFixtureEquipment,
   RendererRunner,
   validateBatch,
   labError,
@@ -9,6 +11,39 @@ import {
   resolveStage,
   readyReplayBodyCount,
 } from "./runner";
+
+test("a cold frozen batch advances the production teardown fade before waiting for zero actors", async () => {
+  let frames = 0;
+  const order: string[] = [];
+  await clearPreviousActors(
+    async () => {
+      order.push("status");
+      return { resources: { replayBodies: frames >= 30 ? 0 : 1 } };
+    },
+    async (count) => {
+      order.push("advance");
+      frames += count;
+    },
+    new AbortController().signal,
+  );
+  assert.equal(order[0], "advance");
+  assert.equal(frames, 30);
+  assert.ok(order.includes("status"));
+  const abort = new AbortController();
+  abort.abort(new Error("cancelled fixture"));
+  await assert.rejects(
+    clearPreviousActors(
+      async () => {
+        throw new Error("unexpected status");
+      },
+      async () => {
+        throw new Error("unexpected advance");
+      },
+      abort.signal,
+    ),
+    /cancelled fixture/,
+  );
+});
 test("actor readiness admits loaded emitter-only models before particle simulation starts", () => {
   assert.equal(
     readyReplayBodyCount({
@@ -123,6 +158,34 @@ test("renderer workbench boot does not initialize project or WCL services", asyn
   normal.stop();
 });
 
+test("editor callbacks do not inject plan actors or annotations into diagnostic fixtures", async () => {
+  const { EditorController } = await import("../controller");
+  const controller = new EditorController(undefined, {
+    rendererLab: true,
+    projectStore: null,
+    clientFolders: null,
+  });
+  const calls: string[] = [];
+  (controller as any).engine = {
+    set_annotations: () => calls.push("annotations"),
+    set_replay_frame: () => calls.push("actors"),
+    set_replay_nameplate_filters: () => calls.push("plates"),
+    set_replay_raid_frames: () => calls.push("raidframes"),
+  };
+  (controller as any).sceneActors = () => [
+    { key: "reference", type: "Player", class: "Mage", name: "Reference" },
+  ];
+  (controller as any).actorPose = () => ({
+    pos: [1, 2, 3],
+    facing: 0,
+    dead: false,
+  });
+  controller.render();
+  (controller as any).sendPositions();
+  (controller as any).sendAnnotations();
+  assert.deepEqual(calls, []);
+});
+
 test("case preparation failures are recorded and later cases still run", async () => {
   const graph = {
     source: {},
@@ -187,4 +250,71 @@ test("case preparation failures are recorded and later cases still run", async (
     runner.dispose();
     (globalThis as any).window = previous;
   }
+});
+
+test("equipment fixtures preserve intrinsic display joins and both enchant slots", () => {
+  const catalog = {
+    items: { 42: { display: 20, inventory: 13, enchant: 999 } },
+  };
+  const gear = resolveFixtureEquipment(
+    [{ slot: 15, itemId: 42, enchant: 7, temporary: 8 }],
+    catalog,
+  );
+  assert.equal(gear[0].display, 20);
+  assert.equal(gear[0].enchant, 7);
+  assert.equal(gear[0].temporary, 8);
+  assert.equal(
+    resolveFixtureEquipment([{ slot: 15, itemId: 42 }], catalog)[0].enchant,
+    0,
+  );
+  assert.equal(
+    resolveFixtureEquipment(
+      [{ slot: 15, itemId: 42, displayId: 21 }],
+      catalog,
+    )[0].display,
+    21,
+  );
+  assert.throws(
+    () => resolveFixtureEquipment([{ slot: 15, itemId: 99 }], catalog),
+    /No local item\/display join/,
+  );
+  const c = smokeCases()[0];
+  c.actors[0].equipment = [{ slot: 15, itemId: 42, enchant: 0x100000000 }];
+  assert.throws(() => validateBatch([c]), /invalid equipment/);
+});
+
+test("display-directed equipment uses unambiguous source metadata instead of requiring an item ID", () => {
+  const row = {
+    display: 21,
+    class: 2,
+    subclass: 7,
+    inventory: 13,
+    material: 1,
+    sheath: 3,
+  };
+  const catalog = { items: { 42: row, 43: { ...row } }, displays: { 21: {} } };
+  const gear = resolveFixtureEquipment(
+    [{ slot: 15, displayId: 21, enchant: 7 }],
+    catalog,
+  )[0];
+  assert.equal(gear.id, 42);
+  assert.equal(gear.display, 21);
+  assert.equal(gear.class, 2);
+  assert.equal(gear.subclass, 7);
+  assert.equal(gear.enchant, 7);
+  assert.throws(
+    () =>
+      resolveFixtureEquipment([{ slot: 15, displayId: 21 }], {
+        ...catalog,
+        items: { ...catalog.items, 44: { ...row, subclass: 15 } },
+      }),
+    /No local item\/display join/,
+  );
+  assert.equal(
+    resolveFixtureEquipment([{ slot: 15, itemId: 44, displayId: 21 }], {
+      items: {},
+      unresolvedItems: { 44: { ...row, display: 0 } },
+    })[0].class,
+    2,
+  );
 });

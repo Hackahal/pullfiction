@@ -123,6 +123,9 @@ pub struct WowModelExt {
     /// Stage1's UV seed xy, translation-table row z and affine-table row w.
     #[uniform(100)]
     pub stage1_uv: Vec4,
+    /// Authored second-sample weight seed in x; animation delta is translation-row z.
+    #[uniform(100)]
+    pub texture_weights: Vec4,
     /// Stage 1's texture, sampled at the generated environment coordinate when `stage1.x` is set;
     /// `None` binds the fallback image, unread.
     #[texture(101, visibility(fragment))]
@@ -439,6 +442,24 @@ impl MaterialExtension for TerrainExtension {
     }
     fn fragment_shader() -> ShaderRef {
         "embedded://benilla_assets/shaders/terrain.wgsl".into()
+    }
+
+    fn specialize(
+        _pipeline: &MaterialExtensionPipeline,
+        descriptor: &mut RenderPipelineDescriptor,
+        layout: &MeshVertexBufferLayoutRef,
+        _key: MaterialExtensionKey<Self>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        let attrs = [
+            Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
+            Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
+            Mesh::ATTRIBUTE_UV_0.at_shader_location(2),
+            Mesh::ATTRIBUTE_UV_1.at_shader_location(3),
+            Mesh::ATTRIBUTE_COLOR.at_shader_location(5),
+            crate::adt::ATTRIBUTE_TERRAIN_TINT.at_shader_location(8),
+        ];
+        descriptor.vertex.buffers = vec![layout.0.get_layout(&attrs)?];
+        Ok(())
     }
 }
 

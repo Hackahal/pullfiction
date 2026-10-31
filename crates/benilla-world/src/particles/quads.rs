@@ -338,6 +338,8 @@ mod tests {
         use crate::particles::buffer::{EffectQuads, EffectVertex};
         let mut def = crate::particles::tests::plain_def();
         def.modern_material = Some(benilla_formats::ModernParticleMaterial {
+            color_index: 0,
+            particle_colors: None,
             flags: 0x70000000,
             textures: [
                 Some("base.blp".into()),

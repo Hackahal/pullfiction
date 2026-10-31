@@ -1022,6 +1022,7 @@ pub(crate) fn apply(
                         spell_id: event.spell,
                         kind: CastEventKind::Impact {
                             weapon_visual: None,
+                            caster: source,
                         },
                         cast_flags: 0,
                         item_cast: false,

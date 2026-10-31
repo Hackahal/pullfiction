@@ -13,6 +13,13 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class ModernCharacters(unittest.TestCase):
+    def test_unresolved_optional_armor_model_keeps_body_recipe_and_reports_partial(self):
+        recipe = self.characters.appearance({'race':1,'sex':0,'legacyLook':[0]*5,
+            'gear':[{'id':21331,'slot':4}]})
+        self.assertTrue(any(layer.get('item') == 21331 for tex in recipe['textures'] for layer in tex['layers']))
+        self.assertTrue(any(row['type'] == 'gear-model-attachment' and row['id'] == 21331
+                            for row in recipe['unsupported']))
+
     @classmethod
     def setUpClass(cls):
         install = os.environ.get('PULLFICTION_CLIENT_VIEW')

@@ -3,7 +3,8 @@
 //! Each MCNK is the reference's 145-vertex centre fan: 81 outer corner verts and 64 inner verts at
 //! the cell centres, each inner one with its own authored MCVT height, and four triangles per cell
 //! fanning from the centre. The arrays keep MCVT's stride-17 order: outer `(r,c)` at `r·17+c`,
-//! inner at `r·17+9+c`. A hole (`MCNK+0x3C`) omits a 2×2-cell block's triangles; its verts stay.
+//! inner at `r·17+9+c`. Legacy holes omit 2×2-cell blocks; modern cache metadata can omit each
+//! individual cell. All source vertices stay in place.
 
 use std::io::Cursor;
 
@@ -38,12 +39,15 @@ pub struct ChunkMesh {
     pub positions: Vec<[f32; 3]>,
     /// Unit normals from MCNR, authored continuous across chunk borders; empty without MCNR.
     pub normals: Vec<[f32; 3]>,
+    /// Optional authored MCCV diffuse multiplier, RGB = 2 * raw BGRA.bgr / 255.
+    /// Empty means the original terrain's unchanged white multiplier.
+    pub vertex_colors: Vec<[f32; 3]>,
     /// Texture coords, 0..1 across the chunk; the layers scale them by [`TERRAIN_LAYER_TILES`].
     pub uvs: Vec<[f32; 2]>,
     /// Triangle-list indices: four fan triangles per cell, holed blocks omitted.
     pub indices: Vec<u32>,
-    /// Low-res hole bitmap (`MCNK+0x3C`): bit `(cellY>>1)·4 + (cellX>>1)` drops that 2×2 block.
-    pub holes: u16,
+    /// Normalized 8x8 bitmap: bit `cellY*8+cellX` drops one cell. Legacy 2x2 blocks expand here.
+    pub holes: u64,
     pub base_texture: Option<String>,
     /// MTEX filenames of the layers (up to 4), layer 0 first.
     pub layer_textures: Vec<String>,
@@ -141,7 +145,7 @@ impl ChunkMesh {
         if self.positions.len() == 145 {
             let row = ((south * 8.0) as u32).min(7);
             let col = ((east * 8.0) as u32).min(7);
-            if self.holes & (1u16 << ((row >> 1) * 4 + (col >> 1))) != 0 {
+            if self.holes & (1u64 << (row * 8 + col)) != 0 {
                 return None;
             }
             let tl = (row * 17 + col) as usize;
@@ -351,13 +355,13 @@ pub fn adt_to_tile_mesh(adt_bytes: &[u8]) -> Result<TileMesh> {
             }
         }
 
-        // Four fan triangles per cell, CCW from above (front face up in Bevy under the det +1
-        // transform); a set hole bit drops its 2×2 block, and 1.12 has no high-res holes.
-        let holes = mcnk.header.holes_low_res;
+        // Four fan triangles per cell, CCW from above. Legacy blocks expand to four bits;
+        // modern adapter data retains each authored cell instead of removing its neighbours.
+        let holes = mcnk.hole_mask();
         let mut indices = Vec::with_capacity(8 * 8 * 12);
         for row in 0..8u32 {
             for col in 0..8u32 {
-                if holes & (1u16 << ((row >> 1) * 4 + (col >> 1))) != 0 {
+                if holes & (1u64 << (row * 8 + col)) != 0 {
                     continue;
                 }
                 let tl = row * 17 + col;
@@ -439,6 +443,12 @@ pub fn adt_to_tile_mesh(adt_bytes: &[u8]) -> Result<TileMesh> {
         chunks.push(ChunkMesh {
             positions,
             normals,
+            vertex_colors: mcnk.vertex_colors.as_ref().map_or_else(Vec::new, |colors| {
+                colors
+                    .iter()
+                    .map(|c| [c[2], c[1], c[0]].map(|v| f32::from(v) * (2.0 / 255.0)))
+                    .collect()
+            }),
             uvs,
             indices,
             holes,
@@ -655,6 +665,7 @@ mod tests {
         ChunkMesh {
             positions,
             normals: Vec::new(),
+            vertex_colors: Vec::new(),
             uvs: Vec::new(),
             indices,
             holes: 0,
@@ -686,6 +697,55 @@ mod tests {
         h[0x18..0x1c].copy_from_slice(&(8 + 128 + mcvt.len() as u32).to_le_bytes()); // MCNR
         h[0x70..0x74].copy_from_slice(&50f32.to_le_bytes()); // base height
         chunk(b"KNCM", &[h, mcvt, mcnr].concat())
+    }
+
+    #[test]
+    fn modern_cell_holes_preserve_adjacent_ground_in_mesh_and_height_queries() {
+        let mut legacy = flat_tile([0, 0, 127]);
+        legacy[8 + 0x3c..8 + 0x3e].copy_from_slice(&1u16.to_le_bytes());
+        let old = adt_to_tile_mesh(&legacy).unwrap();
+        assert_eq!(old.chunks[0].holes, 0x303);
+        assert_eq!(old.chunks[0].indices.len(), 60 * 12);
+
+        let size = u32::from_le_bytes(legacy[4..8].try_into().unwrap());
+        legacy[4..8].copy_from_slice(&(size + 16).to_le_bytes());
+        legacy.extend_from_slice(b"1HFP\x08\x00\x00\x00");
+        legacy.extend_from_slice(&1u64.to_le_bytes());
+        let modern = adt_to_tile_mesh(&legacy).unwrap();
+        let cell = &modern.chunks[0];
+        assert_eq!(cell.holes, 1);
+        assert_eq!(cell.indices.len(), 63 * 12);
+        assert!(cell
+            .height_at([-UNIT_SIZE * 0.5, -UNIT_SIZE * 0.5, 0.0])
+            .is_none());
+        let solid = [-UNIT_SIZE * 0.5, -UNIT_SIZE * 1.5, 0.0];
+        assert_eq!(cell.height_at(solid), Some(50.0));
+        assert_eq!(old.chunks[0].height_at(solid), None);
+    }
+
+    #[test]
+    fn authored_terrain_vertex_colors_keep_bgra_order_and_finite_multiplier() {
+        let mut source = flat_tile([0, 0, 127]);
+        assert!(adt_to_tile_mesh(&source).unwrap().chunks[0]
+            .vertex_colors
+            .is_empty());
+        let offset = source.len() as u32;
+        source[8 + 0x74..8 + 0x78].copy_from_slice(&offset.to_le_bytes());
+        source.extend_from_slice(b"VCCM");
+        source.extend_from_slice(&(145u32 * 4).to_le_bytes());
+        source.extend_from_slice(&[0, 127, 255, 91].repeat(145));
+        let size = source.len() as u32 - 8;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        let converted = adt_to_tile_mesh(&source).unwrap();
+        let colors = &converted.chunks[0].vertex_colors;
+        assert_eq!(colors.len(), converted.chunks[0].positions.len());
+        assert_eq!(colors[0][0], 2.0);
+        assert!((colors[0][1] - 254.0 / 255.0).abs() < 1e-6);
+        assert_eq!(colors[0][2], 0.0);
+        assert!(colors
+            .iter()
+            .flatten()
+            .all(|v| v.is_finite() && (0.0..=2.0).contains(v)));
     }
 
     /// `CMapChunk::LoadNormals` (`0x6aff10`) keeps the MCNR bytes in file order, X, Y, Z, so the

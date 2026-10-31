@@ -728,6 +728,7 @@ export class EditorController {
         : "move";
   }
   private sendAnnotations() {
+    if (this.runtime.rendererLab) return;
     const { plan, activeStep, showAllSteps, selectedMark } = this.state;
     const selectedActors = this.state.selectedActors.length
       ? new Map(this.sceneActors().map((actor) => [actor.key, actor]))
@@ -4628,15 +4629,22 @@ export class EditorController {
         ),
         signal,
       );
-      const spellGraph = await this.browserBridge.catalog("spells");
-      await prepareOriginalSpellEffects(
-        this.localFiles,
-        this.browserBridge,
-        [...replay.abilities.keys()].filter(
-          (id) => spellGraph.spells?.[id]?.summonCue,
-        ),
-        signal,
-      );
+      try {
+        const spellGraph = await this.browserBridge.catalog("spells");
+        await prepareOriginalSpellEffects(
+          this.localFiles,
+          this.browserBridge,
+          [...replay.abilities.keys()].filter(
+            (id) => spellGraph.spells?.[id]?.summonCue,
+          ),
+          signal,
+        );
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (error instanceof Error && error.name === "AbortError") throw error;
+        // These illustrative cues are optional; unavailable effects must not block the run.
+        this.notify(`Some spell effects are unavailable: ${message(error)}`);
+      }
     }
     return prepared;
   }
@@ -5834,6 +5842,10 @@ export class EditorController {
     this.renderedInputs = inputs;
   }
   private renderFrame() {
+    // The diagnostic runner owns actors, annotations and scene presentation.
+    // Async editor bootstrap/floor callbacks must not inject reference spawns
+    // between a fixture's clear and install operations.
+    if (this.runtime.rendererLab) return;
     const { replay, options } = this.state;
     this.sendAnnotations();
     if (
@@ -5988,6 +6000,7 @@ export class EditorController {
     this.resetEvents = false;
   }
   private sendPositions() {
+    if (this.runtime.rendererLab) return;
     if (!this.engine) return;
     if (!this.state.replay) {
       const actors = this.state.options.actors

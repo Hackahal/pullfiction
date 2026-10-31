@@ -11,6 +11,7 @@ import unittest
 from classic_creatures import BAKE_LAYOUTS, LAYOUTS, character_paths, creature_catalog, npc_bake_files
 from classic_db2 import DB2Error, creature_catalog as previous_catalog, decode
 from classic_spells import schema
+from unittest.mock import patch
 
 SOURCE = {'product': 'wow_classic_era', 'version': '1.15.9.70576', 'buildKey': 'a' * 32}
 
@@ -47,7 +48,7 @@ def fixture(model=7):
     values = {
         'CreatureDisplayInfo': (100, {'ID': 100, 'ModelID': model, 'ExtendedDisplayInfoID': 8,
             'CreatureModelScale': bits(2), 'CreatureModelAlpha': 128, 'SizeClass': -1,
-            'TextureVariationFileDataID': [123, 0, 456, 789], 'SoundID': 9}),
+            'TextureVariationFileDataID': [123, 0, 456, 789], 'SoundID': 9, 'ParticleColorID': 0}),
         'CreatureModelData': (7, {'FileDataID': 123020, 'ModelScale': bits(1.5), 'Flags': 2,
             'SizeClass': 4, 'BloodID': -1, 'FootprintTextureID': 7,
             'FootprintTextureLength': bits(18), 'FootprintTextureWidth': bits(12),
@@ -64,6 +65,16 @@ def fixture(model=7):
 
 
 class CreatureTests(unittest.TestCase):
+    def test_display_palette_is_resolved_from_authored_particle_color_reference(self):
+        files = fixture()
+        files['dbfilesclient/creaturedisplayinfo.db2'] = table('CreatureDisplayInfo', 100,
+            {'ModelID': 7, 'ParticleColorID': 777, 'TextureVariationFileDataID': [0]*4})
+        palette = [[[0.1, 0.2, 0.3]] * 3] * 3
+        with patch('classic_spells.particle_colors', return_value={777: palette}):
+            display = creature_catalog(files.__getitem__, SOURCE, include_character_aliases=False)['displays'][100]
+        self.assertEqual(display['particleColorID'], 777)
+        self.assertEqual(display['particleColors'], palette)
+
     def test_character_path_identity_comes_from_joined_rows_and_shared_npc_body_stays_generic(self):
         tables = {'ChrRaces': {1: {'ClientFileString': 'Human', 'MaleDisplayID': 49, 'FemaleDisplayID': 50},
                                9: {'ClientFileString': 'Goblin', 'MaleDisplayID': 100, 'FemaleDisplayID': 100}},
@@ -87,6 +98,7 @@ class CreatureTests(unittest.TestCase):
         self.assertTrue(all(name.endswith('.db2') for name in reads))
         self.assertEqual((display['alpha'], display['scale'], display['sizeClass']), (128, 2, -1))
         self.assertEqual(display['textures'], [123, 0, 456, 789])
+        self.assertEqual(display['particleColorID'], 0)
         self.assertEqual((model['fileDataID'], model['scale'], model['collisionHeight']), (123020, 1.5, 3))
         self.assertEqual((model['flags'], model['bloodID'], model['footprintLength']), (2, -1, 18))
         self.assertEqual(graph['extras'][8]['race'], 3)

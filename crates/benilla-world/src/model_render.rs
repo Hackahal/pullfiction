@@ -356,6 +356,7 @@ pub fn model_material(
                 anim_slots: Vec4::ZERO,
                 stage1: stage1_params(stage1, combine),
                 stage1_uv: stage1_uv_seed(stage1),
+                texture_weights: stage1_weight_seed(stage1),
                 stage1_texture: stage1.map(|s| s.texture.clone()),
                 third_texture: stage1.and_then(|s| {
                     if s.third_uses_base_texture {
@@ -502,6 +503,7 @@ pub fn zfill_material(
                 anim_slots: Vec4::ZERO,
                 stage1: stage1_params(stage1, None),
                 stage1_uv: stage1_uv_seed(stage1),
+                texture_weights: stage1_weight_seed(stage1),
                 stage1_texture: stage1.map(|s| s.texture.clone()),
                 third_texture: stage1.and_then(|s| {
                     if s.third_uses_base_texture {
@@ -529,6 +531,14 @@ fn stage1_uv_seed(stage1: Option<&benilla_assets::Stage1>) -> Vec4 {
             .map_or([0.0; 2], |a| a.sample(0.0))
     });
     Vec4::new(seed[0], seed[1], 0.0, 0.0)
+}
+
+fn stage1_weight_seed(stage1: Option<&benilla_assets::Stage1>) -> Vec4 {
+    let weight = stage1
+        .and_then(|s| s.uv.as_ref())
+        .and_then(|uv| uv.weight.as_ref())
+        .map_or(1.0, |a| a.sample(None, 0.0, 0.0));
+    Vec4::new(weight, 0.0, 0.0, 0.0)
 }
 
 fn stage1_params(stage1: Option<&benilla_assets::Stage1>, combine: Option<u8>) -> Vec4 {
@@ -1055,6 +1065,7 @@ mod tests {
                 seqs: None,
                 rot: None,
                 scale: None,
+                weight: None,
             })),
             texture: Default::default(),
             combine: 9,
@@ -1070,6 +1081,26 @@ mod tests {
             bevy::prelude::Vec4::new(0.25, -0.75, 0.0, 0.0)
         );
         assert_eq!(super::stage1_uv_seed(None), bevy::prelude::Vec4::ZERO);
+        assert_eq!(super::stage1_weight_seed(None), bevy::prelude::Vec4::X);
+        let mut weighted = stage;
+        let channels = std::sync::Arc::make_mut(weighted.uv.as_mut().unwrap());
+        channels.weight = Some(std::sync::Arc::new(
+            benilla_formats::AlphaAnim::new(vec![benilla_formats::AlphaSeq {
+                color: None,
+                weight: Some(benilla_formats::KeyAnim {
+                    period: 0.0,
+                    step: false,
+                    wrap: false,
+                    gseq: false,
+                    keys: vec![(0.0, 0.25)],
+                }),
+            }])
+            .unwrap(),
+        ));
+        assert_eq!(
+            super::stage1_weight_seed(Some(&weighted)),
+            bevy::prelude::Vec4::new(0.25, 0.0, 0.0, 0.0)
+        );
     }
 
     #[test]
