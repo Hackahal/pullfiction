@@ -77,7 +77,9 @@ export function MapView({
   const [recovering, setRecovering] = useState(false);
   const measured = useRef(false);
   const fitted = useRef<{ manifest: MapManifest; area: string } | null>(null);
-  const [size, setSize] = useState({ width: 800, height: 600 }),
+  // Cached maps can resolve before ResizeObserver reports the real viewport.
+  // Zero dimensions defer the initial fit instead of fitting a placeholder size.
+  const [size, setSize] = useState({ width: 0, height: 0 }),
     [camera, setCamera] = useState<MapCamera>({ x: 0, y: 0, scale: 1 });
   const [art, setArt] = useState(0),
     [hover, setHover] = useState<{ actor: Actor; x: number; y: number } | null>(
