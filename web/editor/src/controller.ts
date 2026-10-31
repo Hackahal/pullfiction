@@ -578,13 +578,16 @@ export class EditorController {
       : this.state.selected
         ? [this.state.selected]
         : [];
+    let scene: Map<string, Actor> | undefined;
     const actors = keys.flatMap((key) => {
       const planned =
         this.state.workspaceMode === "plan"
           ? this.snapshot()?.actors.find((a) => a.key === key)
           : undefined;
       if (planned) return [planned];
-      const actor = this.sceneActors().find((a) => a.key === key),
+      const actor = (scene ??= new Map(
+          this.sceneActors().map((a) => [a.key, a]),
+        )).get(key),
         pose = actor ? this.actorPose(actor) : null;
       return pose && !pose.dead
         ? [
@@ -709,6 +712,9 @@ export class EditorController {
   }
   private sendAnnotations() {
     const { plan, activeStep, showAllSteps, selectedMark } = this.state;
+    const selectedActors = this.state.selectedActors.length
+      ? new Map(this.sceneActors().map((actor) => [actor.key, actor]))
+      : undefined;
     const payload = JSON.stringify({
       ranges: this.rangeCheckCircles().map(({ key, radius, status }) => ({
         key,
@@ -719,7 +725,7 @@ export class EditorController {
         ...this.displayMarks().map((a) => this.markGeometry(a)),
         ...this.actorGizmo(),
         ...this.state.selectedActors.flatMap((key) => {
-          const actor = this.sceneActors().find((a) => a.key === key),
+          const actor = selectedActors?.get(key),
             pose = actor ? this.actorPose(actor) : null;
           if (!pose) return [];
           return [
@@ -2042,8 +2048,9 @@ export class EditorController {
         ? this.state.replay.actors.map((a) => [a.key, a])
         : this.defaultRaidActors().map((a) => [a.key, a]),
     );
+    const plannedKeys = new Set(snapshot.actors.map((actor) => actor.key));
     const defaults = this.defaultRaidActors().filter(
-      (a) => !snapshot.actors.some((p) => p.key === a.key),
+      (actor) => !plannedKeys.has(actor.key),
     );
     return [
       ...defaults,
