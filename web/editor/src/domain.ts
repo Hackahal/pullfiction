@@ -85,6 +85,9 @@ export const poseAt = data.poseAt as unknown as (
     rate: number;
     duration: number;
     recorded_facing: boolean;
+    travel_budget?: number;
+    run_speed?: number;
+    unrestricted?: boolean;
   } | null;
   sampleAge: number | null;
   positionSource: string;

@@ -44,5 +44,18 @@ export function movementBetween(actor, a, b, time) {
     fraction: Math.max(0, Math.min(1, (current[0] - start) / total)),
     rate: current[1] * 1000 / total,
     weighted: (total !== gap || current[1] !== 1) && gap <= 2000,
+    travel_budget: total * 7 / 1000,
+    run_speed: current[1] * 7,
+  };
+}
+
+// A normal run can fit between the fixed observations with a hold at either end.
+// If anchors demand faster travel, preserve their timestamps and normalized profile.
+export function runProgress(length, fraction, rate, budget) {
+  if (!(length > 0) || !(budget >= length)) return { fraction, rate };
+  const travelled = fraction * budget - (budget - length) / 2;
+  return {
+    fraction: Math.max(0, Math.min(1, travelled / length)),
+    rate: travelled >= 0 && travelled < length ? rate * budget / length : 0,
   };
 }

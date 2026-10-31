@@ -42,3 +42,28 @@ test("stacked floor seeds remain authoritative; ceilings and invalid inputs cann
   assert.equal(geometry.height(10, 10, 173, false), 173);
   assert.equal(geometry.height(NaN, 10, 186, true), undefined);
 });
+
+test("unseeded interior stages cast down from the client room level instead of entrance altitude", () => {
+  const geometry = new ReplayFloorGeometry(
+    [floor(10, true), floor(30, true), floor(60, true), floor(0)],
+    [{ id: "room", name: "interior", height: 45 }],
+  );
+  for (const x of [10, 20, 10])
+    assert.equal(geometry.height(x, 10, 12, true), 30);
+  // Explicit lower-storey observations/seeds must still win, including zero.
+  assert.equal(geometry.height(10, 10, 10, false), 10);
+  assert.equal(geometry.height(10, 10, 0, false), 0);
+});
+test("room metadata is optional and invalid or unrelated levels cannot affect a floor", () => {
+  for (const areas of [
+    [],
+    [{ id: "room", name: "bad", height: NaN }],
+    [{ id: "other", name: "other", height: 45 }],
+  ]) {
+    const geometry = new ReplayFloorGeometry(
+      [floor(10, true), floor(30, true)],
+      areas,
+    );
+    assert.equal(geometry.height(10, 10, 12, true), 10);
+  }
+});

@@ -1,4 +1,4 @@
-import {prepareMovement,movementBetween} from './replay-movement.mjs';
+import {prepareMovement,movementBetween,runProgress} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
 import {reconstructCasts,buildVisualEvents} from './replay-actions.mjs';
 export {visualEventsBetween} from './replay-actions.mjs';
@@ -145,11 +145,11 @@ export function poseAt(actor, time, smoothGaps = false) {
     estimated=timing.after&&time<b[0];
   }
   if (b && loadedBetween && !beforeFirst && !discontinuity && (gap<=2000 || estimated)) {
-    const fraction=timing?.weighted?timing.fraction:(time-a[0])/gap;
+    const fraction=timing&&(timing.weighted||estimated)?timing.fraction:(time-a[0])/gap;
     if(estimated){
       pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
       speed=distance/(gap/1000);
-    }else{
+    }else if(actor.type!=='Player'){
       // Shape-preserving Hermite interpolation. Neighbouring stationary samples
       // produce zero tangents; no axis can overshoot its recorded endpoints.
       const previous=s[lo-2],next=s[lo+1];
@@ -170,14 +170,19 @@ export function poseAt(actor, time, smoothGaps = false) {
       speed=Math.hypot(velocities[0],velocities[1]);
       if(speed>.03)facing=Math.atan2(velocities[1],velocities[0]);
     }
-    if(timing?.weighted){
+    if(actor.type==='Player'&&!estimated&&timing){
+      const progress=runProgress(distance,timing.fraction,timing.rate,timing.travel_budget);
+      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*progress.fraction);
+      speed=distance*progress.rate;
+      if(speed>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
+    }else if(timing?.weighted){
       pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
       speed=distance*timing.rate;
       if(distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
     }
     if(estimated&&distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
-    if(actor.type==='Player'&&gap<=2000&&distance>.03&&speed/distance<=1000){
-      movement={from:a.slice(1),to:b.slice(1),fraction:Math.max(0,Math.min(1,((pos[0]-a[1])*(b[1]-a[1])+(pos[1]-a[2])*(b[2]-a[2]))/(distance*distance))),rate:speed/distance,duration:gap/1000,recorded_facing:false};
+    if(actor.type==='Player'&&timing&&distance>.03&&timing.rate<=1000){
+      movement={from:a.slice(1),to:b.slice(1),fraction:timing.fraction,rate:timing.rate,duration:gap/1000,recorded_facing:false,travel_budget:timing.travel_budget,run_speed:timing.run_speed,unrestricted:estimated};
     }
   }
   const facings=actor.facings??[];
@@ -185,7 +190,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   while(fl<fh){const mid=(fl+fh)>>>1;if(facings[mid][0]<=time)fl=mid+1;else fh=mid;}
   if(beforeFirst&&facings.length)facing=facings[0][1];
   if(movement)movement.recorded_facing=!!fl||beforeFirst&&facings.length>0;
-  if(fl){
+  if(fl&&speed<=.03){
     const from=facings[fl-1],to=facings[fl];facing=from[1];
     if(to&&to[0]-from[0]<=2000){
       const angle=Math.atan2(Math.sin(to[1]-from[1]),Math.cos(to[1]-from[1]));
