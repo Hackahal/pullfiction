@@ -33,7 +33,13 @@ export interface RendererActor {
   sex?: number;
   /** Native skin, face, hair style, hair colour and facial hair dials. */
   look?: [number, number, number, number, number];
-  equipment?: { slot: number; itemId?: number; displayId?: number }[];
+  equipment?: {
+    slot: number;
+    itemId?: number;
+    displayId?: number;
+    enchant?: number;
+    temporary?: number;
+  }[];
   animation?: number;
 }
 export interface RendererEffect {
@@ -276,6 +282,23 @@ export function validateRendererCase(value: unknown): string[] {
           a.look.some((v) => !Number.isSafeInteger(v) || v < 0 || v > 255))
       )
         errors.push(`invalid appearance dials ${a.id}`);
+      if (
+        a.equipment !== undefined &&
+        (!Array.isArray(a.equipment) ||
+          a.equipment.some(
+            (g) =>
+              !g ||
+              !Number.isSafeInteger(g.slot) ||
+              g.slot < 0 ||
+              g.slot > 18 ||
+              [g.itemId, g.displayId, g.enchant, g.temporary].some(
+                (v) =>
+                  v !== undefined &&
+                  (!Number.isSafeInteger(v) || v < 0 || v > 0xffffffff),
+              ),
+          ))
+      )
+        errors.push(`invalid equipment ${a.id}`);
     }
   if (!Array.isArray(c.effects)) errors.push("effects must be an array");
   else {

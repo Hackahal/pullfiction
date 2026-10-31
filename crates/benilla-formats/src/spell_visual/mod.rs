@@ -14,7 +14,7 @@ use crate::Chain;
 
 pub mod chain_effects;
 mod modern;
-pub use modern::{EffectPlacement, ModernGraphProvenance};
+pub use modern::{EffectAnimation, EffectPlacement, ModernGraphProvenance};
 
 pub use chain_effects::{ChainEffect, ChainProc, CHAIN_MAX_BEAMS};
 
@@ -177,7 +177,13 @@ pub mod char_proc_type {
 pub struct VisualStages {
     pub precast: u32,
     pub cast: u32,
+    /// Modern Cast events on the explicitly hit target.
+    pub cast_target: u32,
+    pub cast_target_not_caster: u32,
     pub impact: u32,
+    /// Modern Impact owner routes; legacy data leaves these zero.
+    pub impact_caster: u32,
+    pub impact_not_caster: u32,
     pub state: u32,
     pub channel: u32,
     /// Field 7: the missile's `SpellVisualEffectName` id; 0 flies the ammo or weapon model, and an
@@ -311,6 +317,7 @@ pub struct SpellVisualCatalog {
     modern_missiles: HashMap<u32, Vec<u32>>,
     modern_graph_provenance: Option<ModernGraphProvenance>,
     modern_chain_procs: HashMap<u32, Vec<ChainProc>>,
+    modern_trail_procs: HashMap<u32, Vec<TrailProc>>,
 }
 
 impl SpellVisualCatalog {
@@ -335,6 +342,7 @@ impl SpellVisualCatalog {
             modern_missiles: HashMap::new(),
             modern_graph_provenance: None,
             modern_chain_procs: HashMap::new(),
+            modern_trail_procs: HashMap::new(),
         }
     }
 
@@ -539,7 +547,11 @@ pub fn load_spell_visual_catalog(chain: &mut Chain) -> Result<SpellVisualCatalog
             VisualStages {
                 precast: g(1),
                 cast: g(2),
+                cast_target: 0,
+                cast_target_not_caster: 0,
                 impact: g(3),
+                impact_caster: 0,
+                impact_not_caster: 0,
                 state: g(4),
                 channel: g(5),
                 missile_model: g(7),
@@ -599,6 +611,7 @@ pub fn load_spell_visual_catalog(chain: &mut Chain) -> Result<SpellVisualCatalog
         modern_missiles: HashMap::new(),
         modern_graph_provenance: None,
         modern_chain_procs: HashMap::new(),
+        modern_trail_procs: HashMap::new(),
     };
     #[cfg(target_arch = "wasm32")]
     if let Ok(bytes) = chain.read_file("__classic/spell-effects.json") {

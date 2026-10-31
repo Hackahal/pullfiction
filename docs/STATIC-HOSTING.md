@@ -123,7 +123,7 @@ The packaging fixtures intentionally contaminate the editor, renderer, and archi
 
 The NPC index has a separate fixed schema. The audit rejects model bytes, texture references, coordinates, spawns, extra fields, invented scale overrides, and metadata that differs from the reviewed repository copy. See [the Wowhead metadata source record](../third_party/wowhead-npcs/SOURCE.md) for regeneration and coverage limits. Page bodies and local report data never enter the release.
 
-The current index is partial: 205 vanilla and 152 SoD NPC references. Its source record documents prefetch coverage and unavailable entries. Missing references continue through the application's explicit unavailable-appearance behavior; imported report model references retain precedence. A successful static build does not establish complete NPC model coverage.
+The current index is partial: 359 vanilla and 224 SoD NPC references. Its source record documents prefetch coverage and unavailable entries. Missing references continue through the application's explicit unavailable-appearance behavior; imported report model references retain precedence. A successful static build does not establish complete NPC model coverage.
 
 The audit reads every published file, including decompressed viewer WebAssembly, and emits a hash and byte count for each file. It compares converter sources with the current repository and requires the reviewed viewer loader and Cloudflare headers. The signature scan detects specific credential and local-endpoint patterns. It does not prove the absence of every possible secret or verify browser rendering.
 

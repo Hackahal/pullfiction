@@ -80,6 +80,42 @@ def particle_geometry_fixture(geometry_ids=None):
 
 
 class AdapterTest(unittest.TestCase):
+    def test_static_materials_require_their_sampled_bindings(self):
+        for shader in (0x8000, 0x8001, 0x8002, 0x8004, 0x8005, 0x800a, 0x800c, 0x8017):
+            for count in (0,1):
+                with self.assertRaisesRegex(UnsupportedFeatureError, 'exactly 2 texture bindings'):
+                    shader_coordinates(shader, count)
+        with self.assertRaisesRegex(UnsupportedFeatureError, 'exactly 3 texture bindings'):
+            shader_coordinates(0x8009, 2)
+
+    def test_palette_slot_survives_adaptation_with_independent_color_and_alpha_times(self):
+        source,skin=particle_geometry_fixture()
+        body=bytearray(source[8:]);_,p=read(body,'<II',0x128)
+        put(body,0x128,1,p)
+        struct.pack_into('<H',body,p+42,12)
+        times=len(body);body.extend(struct.pack('<3H',0,4096,32767))
+        colors=len(body);body.extend(struct.pack('<9f',*[10.,20.,30.]*3))
+        put(body,p+260,3,times,3,colors)
+        alpha_times=len(body);body.extend(struct.pack('<2H',0,32767))
+        alpha=len(body);body.extend(struct.pack('<2h',32767,16384))
+        put(body,p+276,2,alpha_times,2,alpha)
+        raw=lambda:b'MD21'+struct.pack('<I',len(body))+body
+        output=adapt_model(raw(),[skin]);_,at=read(output,'<II',0x13c)
+        self.assertEqual(output[at+45],12)
+        footer=read(output,'<I',len(output)-8)[0]
+        n,at=read(output,'<II',footer+24)
+        self.assertEqual(n,3)
+        self.assertAlmostEqual(read(output,'<f',at+16)[0],4096/32767)
+        n,at=read(output,'<II',footer+32)
+        self.assertEqual(n,2)
+        self.assertAlmostEqual(read(output,'<f',at+12)[0],16384/32767)
+        struct.pack_into('<H',body,p+42,14)
+        with self.assertRaises(UnsupportedFeatureError):adapt_model(raw(),[skin])
+        struct.pack_into('<H',body,p+42,12)
+        put(body,p+260,2,times,2,colors)
+        with self.assertRaisesRegex(UnsupportedFeatureError,'exactly three RGB keys'):
+            adapt_model(raw(),[skin])
+
     def test_skin_section_level_extends_range_start_with_u16_triangle_elements(self):
         source, skin = fixture()
         skin = bytearray(skin)
@@ -204,6 +240,27 @@ class AdapterTest(unittest.TestCase):
             source, skin = particle_geometry_fixture(ids)
             with self.subTest(ids=ids), self.assertRaises(CompatError):
                 adapt_model(source, [skin])
+
+    def test_rpid_preserves_child_models_and_inline_fallback_with_strict_array_bounds(self):
+        source, skin = particle_geometry_fixture()
+        body = bytearray(source[8:])
+        _, at = read(body, '<II', 0x128)
+        inline = b'Particle/Child.m2\0'
+        put(body, at + 492 + 32, len(inline), len(body))
+        body.extend(inline)
+        raw = b'MD21' + struct.pack('<I',len(body)) + body
+        chunk = lambda ids: b'RPID' + struct.pack('<I',len(ids)*4) + struct.pack('<'+'I'*len(ids),*ids)
+        output = adapt_model(raw + chunk([101,0,103]), [skin])
+        count, at = read(output,'<II',0x13c)
+        names=[]
+        for i in range(count):
+            n, pos = read(output,'<II',at+i*504+32)
+            names.append(output[pos:pos+n])
+        self.assertEqual(names,[b'__classic/101.m2\0',inline,b'__classic/103.m2\0'])
+        self.assertEqual(adapt_model(raw,[skin]),adapt_model(raw+chunk([0,0,0]),[skin]))
+        for ids in ([101], [101,0xffffffff,103]):
+            with self.subTest(ids=ids), self.assertRaises(CompatError):
+                adapt_model(raw+chunk(ids),[skin])
 
     def camera_fixture(self, version, fov=0.9):
         source, skin = fixture()

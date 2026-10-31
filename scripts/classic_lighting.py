@@ -5,6 +5,7 @@ stores the old bands at common time keys; keep those authored packed colours and
 half-minute times, without baking a selected raid or noon-only atmosphere.
 """
 import math
+import re
 import struct
 from classic_db2 import DB2Error, decode, f32, unpack
 from classic_spells import read_tables
@@ -49,14 +50,39 @@ def skybox_names(data):
             if end < 0:
                 raise DB2Error('Unterminated LightSkybox Name.')
             try:
-                path = data[start:end].decode('utf-8').replace('\\', '/')
+                label = data[start:end].decode('utf-8')
             except UnicodeError as error:
                 raise DB2Error('Invalid LightSkybox Name.') from error
+            path = label.replace('\\', '/')
             if not path or '..' in path.split('/') or ':' in path:
                 raise DB2Error('Invalid LightSkybox model path.')
-            result[row_id] = path.rsplit('.', 1)[0] + '.m2'
+            result[row_id] = label
     if set(result) != set(rows):
         raise DB2Error('LightSkybox names do not cover the table.')
+    return result
+
+
+def skybox_models(names, rows):
+    """Prefer the authored numeric asset. Name can be a friendly label in modern rows."""
+    result = []
+    for key, label in names.items():
+        row = rows[key]
+        file_id = row.get('SkyboxFileDataID', 0)
+        if isinstance(file_id, bool) or not isinstance(file_id, int) or not 0 <= file_id < 0xffffffff:
+            raise DB2Error('Invalid LightSkybox file ID.')
+        if file_id:
+            path = f'__classic/{file_id}.m2'
+        else:
+            path = label.replace('\\', '/')
+            # Some original-name rows append a descriptive " - ..." after their complete
+            # authored filename (Stars row329). Keep that text as the label, not as a suffix.
+            filename = re.fullmatch(r'(.+?\.(?:m2|mdx|mdl))(?:\s+-\s+.*)?', path, re.I)
+            if not filename:
+                raise DB2Error('LightSkybox has no authored model file reference.')
+            path = filename[1].rsplit('.', 1)[0] + '.m2'
+        result.append({'id': key, 'path': path, 'label': label, 'fileDataID': file_id,
+                       'celestialFileDataID': row.get('CelestialSkyboxFileDataID', 0),
+                       'flags': row.get('Flags', 0)})
     return result
 
 
@@ -94,7 +120,7 @@ def lighting_catalog(read, source):
                         'cloudDensity': number(row['CloudDensity'])})
     return {'schema': 1, 'source': source, 'layouts': layouts, 'lights': lights,
             'params': params, 'samples': samples,
-            'skyboxes': [{'id': key, 'path': value} for key, value in skyboxes.items()],
+            'skyboxes': skybox_models(skyboxes, tables['LightSkybox']),
             'coverage': {'underwaterProfileLinks': False,
                          'underwaterPolicy': 'surface-profile',
                          'reason': 'Modern Light omits the original clear/storm underwater profile links.',

@@ -5,6 +5,7 @@ import { LocalClientFiles } from "./local-client-files";
 import {
   prepareOriginalSpellEffects,
   preparedModelDependencies,
+  preparedWmoDependencies,
 } from "./original-spell-assets";
 
 function model(texture: string, child?: string) {
@@ -34,6 +35,122 @@ function model(texture: string, child?: string) {
   }
   return bytes.subarray(0, cursor);
 }
+
+function wmoChunk(tag: string, payload: Uint8Array) {
+  const result = new Uint8Array(payload.length + 8);
+  result.set(new TextEncoder().encode(tag.split("").reverse().join("")));
+  new DataView(result.buffer).setUint32(4, payload.length, true);
+  result.set(payload, 8);
+  return result;
+}
+function wmoRoot(extra?: Uint8Array) {
+  const version = new Uint8Array(4);
+  new DataView(version.buffer).setUint32(0, 17, true);
+  const header = new Uint8Array(64);
+  new DataView(header.buffer).setUint32(4, 1, true);
+  const material = new Uint8Array(64);
+  const names = new TextEncoder().encode("__classic/10.blp\0\0");
+  new DataView(material.buffer).setUint32(24, names.length - 1, true);
+  new DataView(material.buffer).setUint32(36, names.length - 1, true);
+  const chunks = [
+    wmoChunk("MVER", version),
+    wmoChunk("MOHD", header),
+    wmoChunk("MOMT", material),
+    wmoChunk("MOTX", names),
+    wmoChunk("GFID", new Uint8Array(16)),
+    ...(extra ? [extra] : []),
+  ];
+  const bytes = new Uint8Array(
+    chunks.reduce((n, value) => n + value.length, 0),
+  );
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.length;
+  }
+  return bytes;
+}
+
+test("source-classified WMO spell preparation follows required base groups and textures without M2 conversion", async () => {
+  const reads: string[] = [];
+  const version = new Uint8Array(4);
+  new DataView(version.buffer).setUint32(0, 17, true);
+  const group = new Uint8Array(12 + 8 + 68);
+  group.set(wmoChunk("MVER", version));
+  group.set(wmoChunk("MOGP", new Uint8Array(68)), 12);
+  const bytes: Record<string, Uint8Array> = {
+    "__classic/100.wmo": wmoRoot(),
+    "__classic/100_000.wmo": group,
+    "__classic/10.blp": new Uint8Array([1]),
+  };
+  const files = new LocalClientFiles(
+    {
+      async read(path) {
+        reads.push(path);
+        assert.ok(bytes[path], path);
+        return bytes[path];
+      },
+    },
+    "wmo-spell",
+  );
+  const bridge = {
+    async catalog() {
+      return {
+        spells: { 7: { visuals: [{ id: 1 }] } },
+        visuals: { 1: { missiles: [{ effect: 1 }], events: [] } },
+        effects: { 1: { type: 0, fileDataID: 100, assetFormat: "wmo" } },
+      };
+    },
+  } as unknown as BrowserAssetBridge;
+  await prepareOriginalSpellEffects(files, bridge, [7]);
+  assert.deepEqual(reads, [
+    "__classic/100.wmo",
+    "__classic/100_000.wmo",
+    "__classic/10.blp",
+  ]);
+  assert.throws(
+    () => files.containsSync("__classic/100_001.wmo"),
+    /needs preparation/,
+  );
+});
+
+test("WMO preparation rejects malformed ranges and unimplemented child contexts; unknown model format is not assumed M2", async () => {
+  const malformed = wmoRoot();
+  new DataView(malformed.buffer).setUint32(4, 0xffffffff, true);
+  assert.throws(
+    () => preparedWmoDependencies(malformed, "x.wmo"),
+    /chunk range/,
+  );
+  assert.throws(
+    () =>
+      preparedWmoDependencies(
+        wmoRoot(wmoChunk("MODD", new Uint8Array(40))),
+        "x.wmo",
+      ),
+    /owning world context/,
+  );
+  const files = new LocalClientFiles(
+    {
+      async read() {
+        throw new Error("unclassified asset must not be read as M2");
+      },
+    },
+    "unknown-spell",
+  );
+  const bridge = {
+    async catalog() {
+      return {
+        spells: { 7: { visuals: [{ id: 1 }] } },
+        visuals: { 1: { missiles: [{ effect: 1 }], events: [] } },
+        effects: { 1: { type: 0, fileDataID: 100, assetFormat: "unknown" } },
+      };
+    },
+  } as unknown as BrowserAssetBridge;
+  await assert.rejects(
+    prepareOriginalSpellEffects(files, bridge, [7]),
+    /model format is unavailable/,
+  );
+});
 
 test("selected spell preparation follows explicit cue and recursive model dependencies once", async () => {
   const reads: string[] = [];

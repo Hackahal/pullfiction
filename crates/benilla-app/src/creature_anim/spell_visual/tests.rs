@@ -121,6 +121,259 @@ fn hold(app: &App, unit: Entity) -> Option<u32> {
 }
 
 #[test]
+fn modern_trails_reach_cast_and_channel_dispatch_without_rearming_each_frame() {
+    use benilla_protocol::field::FIELD_UNIT_CHANNEL_SPELL;
+    let graph = serde_json::json!({"schema":1,"effects":{},
+        "kits":{"1":{"effects":[],"animations":[],"proceduralEffects":[
+            {"type":8,"values":[14304033,20,600,100]}]}},
+        "visuals":{"130":{"missiles":[],"events":[
+            {"start":"Cast","target":"Caster","kit":1},
+            {"start":"Channel Start","target":"Target","kit":1}]}}});
+    let mut catalog = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    catalog
+        .merge_modern_json(&serde_json::to_vec(&graph).unwrap())
+        .unwrap();
+    let mut app = app();
+    app.insert_resource(SpellVisuals(catalog));
+    let caster = app.world_mut().spawn_empty().id();
+    app.world_mut()
+        .write_message(cast_event(caster, SPELL, CastEventKind::Go));
+    app.update();
+    let read = |app: &mut App| {
+        app.world_mut()
+            .resource_mut::<Messages<crate::weapon_trail::TrailArm>>()
+            .drain()
+            .map(|arm| (arm.entity, arm.trail))
+            .collect::<Vec<_>>()
+    };
+    let cast = read(&mut app);
+    assert_eq!(cast.len(), 1);
+    assert_eq!(
+        (
+            cast[0].0,
+            cast[0].1.rgb(),
+            cast[0].1.alpha(),
+            cast[0].1.duration_ms
+        ),
+        (caster, [0xda, 0x43, 0x21], 100, 600)
+    );
+    app.world_mut()
+        .entity_mut(caster)
+        .insert(crate::net::ObjectStore(
+            benilla_protocol::ObjectFields::from_pairs(&[(FIELD_UNIT_CHANNEL_SPELL, SPELL)])
+                .into_created(benilla_protocol::messages::ObjectType::Unit),
+        ));
+    app.update();
+    assert_eq!(read(&mut app), cast);
+    app.update();
+    assert!(
+        read(&mut app).is_empty(),
+        "a held channel does not restart its trail"
+    );
+    app.world_mut()
+        .get_mut::<crate::net::ObjectStore>(caster)
+        .unwrap()
+        .0
+        .merge(benilla_protocol::ObjectFields::from_pairs(&[(
+            FIELD_UNIT_CHANNEL_SPELL,
+            0,
+        )]));
+    app.update();
+    assert!(read(&mut app).is_empty());
+}
+
+fn modern_owner_routes(speed: f32) -> App {
+    let mut effects = serde_json::Map::new();
+    let mut kits = serde_json::Map::new();
+    for id in 1..=5 {
+        effects.insert(
+            id.to_string(),
+            serde_json::json!({"type":0,"fileDataID":100+id}),
+        );
+        kits.insert(
+            id.to_string(),
+            serde_json::json!({"effects":[{"id":id,"effect":id,"attachment":34}],"animations":[]}),
+        );
+    }
+    let graph = serde_json::json!({"schema":1,"effects":effects,"kits":kits,
+        "visuals":{"130":{"missiles":[],"events":[
+            {"start":"Cast","target":"Target","kit":1},
+            {"start":"Cast","target":"Target (Not Caster)","kit":2},
+            {"start":"Impact","target":"Target","kit":3},
+            {"start":"Impact","target":"Target (Not Caster)","kit":4},
+            {"start":"Impact","target":"Caster","kit":5}]}}});
+    let mut visuals = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    visuals
+        .merge_modern_json(&serde_json::to_vec(&graph).unwrap())
+        .unwrap();
+    let mut app = app();
+    app.insert_resource(SpellVisuals(visuals));
+    app.insert_resource(crate::ui_action::Spells {
+        catalog: SpellCatalog::from_displays(HashMap::from([(
+            SPELL,
+            SpellDisplay {
+                visual: VISUAL,
+                speed,
+                ..Default::default()
+            },
+        )])),
+        ..crate::ui_action::Spells::empty_for_tests()
+    });
+    app
+}
+
+fn owner_fx(app: &mut App) -> Vec<(Entity, String)> {
+    app.world_mut()
+        .resource_mut::<Messages<SpellKitFx>>()
+        .drain()
+        .flat_map(|fx| match fx {
+            SpellKitFx::Begin {
+                entity, effects, ..
+            } => effects.into_iter().map(move |e| (entity, e.path)).collect(),
+            _ => Vec::new(),
+        })
+        .collect()
+}
+
+#[test]
+fn modern_cast_target_uses_hits_and_contextual_impacts_wait_for_arrival() {
+    let mut app = modern_owner_routes(24.);
+    let caster = app.world_mut().spawn_empty().id();
+    let target = app.world_mut().spawn_empty().id();
+    let reflected = app.world_mut().spawn_empty().id();
+    app.world_mut()
+        .write_message(cast_event(caster, SPELL, CastEventKind::Go));
+    app.world_mut().write_message(SpellGoTargets {
+        caster: Some(caster),
+        spell_id: SPELL,
+        hits: vec![target, target, caster],
+        misses: vec![(reflected, 11)],
+        dest: None,
+        ammo_display_id: None,
+        seq: 1,
+    });
+    app.update();
+    assert_eq!(
+        owner_fx(&mut app),
+        vec![
+            (target, "__classic/101.m2".into()),
+            (target, "__classic/102.m2".into()),
+            (caster, "__classic/101.m2".into())
+        ],
+        "cast owns true hits once; neither impact nor a reflected/missed target runs at release"
+    );
+    app.world_mut().write_message(cast_event(
+        target,
+        SPELL,
+        CastEventKind::Impact {
+            weapon_visual: None,
+            caster: Some(caster),
+        },
+    ));
+    app.update();
+    assert_eq!(
+        owner_fx(&mut app),
+        vec![
+            (target, "__classic/103.m2".into()),
+            (target, "__classic/104.m2".into())
+        ]
+    );
+    app.update();
+    assert!(
+        owner_fx(&mut app).is_empty(),
+        "arrival is an edge, not persistent state"
+    );
+}
+
+#[test]
+fn modern_impact_owner_predicates_do_not_guess_missing_casters_or_duplicate_self_targets() {
+    let mut app = modern_owner_routes(24.);
+    let caster = app.world_mut().spawn_empty().id();
+    let target = app.world_mut().spawn_empty().id();
+    let arrive = |app: &mut App, entity, caster| {
+        app.world_mut().write_message(cast_event(
+            entity,
+            SPELL,
+            CastEventKind::Impact {
+                weapon_visual: None,
+                caster,
+            },
+        ));
+        app.update();
+        owner_fx(app)
+    };
+    assert_eq!(
+        arrive(&mut app, caster, Some(caster)),
+        vec![(caster, "__classic/103.m2".into())]
+    );
+    assert_eq!(
+        arrive(&mut app, target, None),
+        vec![(target, "__classic/103.m2".into())]
+    );
+    app.world_mut().despawn(caster);
+    assert_eq!(
+        arrive(&mut app, target, Some(caster)),
+        vec![
+            (target, "__classic/103.m2".into()),
+            (target, "__classic/104.m2".into())
+        ],
+        "source identity still proves not-caster, but a despawned source owns no effect"
+    );
+    app.world_mut().despawn(target);
+    assert!(arrive(&mut app, target, None).is_empty());
+}
+
+#[test]
+fn modern_common_impact_pairs_do_not_invent_a_second_caster_explosion() {
+    // Retained Fireball67 names kit286 for both Impact/Caster and Impact/Target.
+    // Frostbolt13 has the same paired shape with kit4991. Enum labels alone are
+    // insufficient evidence to apply both owners at an observed target impact.
+    for (visual, kit) in [(67, 286), (13, 4991)] {
+        let graph = serde_json::json!({"schema":1,"effects":{"1":{"type":0,"fileDataID":101}},
+            "kits":{kit.to_string():{"effects":[{"id":1,"effect":1,"attachment":34}],"animations":[]}},
+            "visuals":{visual.to_string():{"missiles":[],"events":[
+                {"start":"Impact","target":"Caster","kit":kit},
+                {"start":"Impact","target":"Target","kit":kit}]}}});
+        let mut catalog = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        catalog
+            .merge_modern_json(&serde_json::to_vec(&graph).unwrap())
+            .unwrap();
+        assert_eq!(
+            catalog.stages(visual).unwrap().impact_caster,
+            kit,
+            "metadata remains available"
+        );
+        let mut app = app();
+        app.insert_resource(SpellVisuals(catalog));
+        app.insert_resource(crate::ui_action::Spells {
+            catalog: SpellCatalog::from_displays(HashMap::from([(
+                SPELL,
+                SpellDisplay {
+                    visual,
+                    ..Default::default()
+                },
+            )])),
+            ..crate::ui_action::Spells::empty_for_tests()
+        });
+        let caster = app.world_mut().spawn_empty().id();
+        let target = app.world_mut().spawn_empty().id();
+        app.world_mut().write_message(cast_event(
+            target,
+            SPELL,
+            CastEventKind::Impact {
+                weapon_visual: None,
+                caster: Some(caster),
+            },
+        ));
+        app.update();
+        assert_eq!(
+            owner_fx(&mut app),
+            vec![(target, "__classic/101.m2".into())]
+        );
+    }
+}
+
+#[test]
 fn timed_cast_hold_arms_and_releases_across_frames() {
     let mut app = app();
     let unit = app.world_mut().spawn_empty().id();
@@ -1034,6 +1287,7 @@ fn a_harmful_go_wounds_each_hit_once_and_a_missile_arrival_always() {
         HELPFUL,
         CastEventKind::Impact {
             weapon_visual: None,
+            caster: None,
         },
     ));
     app.update();

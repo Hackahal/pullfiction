@@ -7,8 +7,8 @@
 // 1); M2's one FFP light site (`70bdf6`) runs only with that cvar off. Clutter and WMO are the FFP
 // light (GL_LIGHTING, GL_LIGHT0, GL_COLOR_MATERIAL); clutter's normal is the terrain normal under
 // the tuft, which the reference writes onto the clutter vertex.
-// Not built: a specular term (the M2 per-material shininess is only inferred) and the WMO
-// per-group authored colour.
+// PFW1 WMO cache materials select the modern Diffuse/Specular/Env/Opaque/LOD programs below.
+// The M2 per-material shininess remains inferred and is not used as a specular exponent.
 
 #import bevy_pbr::{
     pbr_fragment::pbr_input_from_standard_material,
@@ -49,6 +49,7 @@ struct ModelParams {
     // w generated reflection coordinates.
     stage1: vec4<f32>,
     stage1_uv: vec4<f32>,
+    texture_weights: vec4<f32>,
 };
 @group(#{MATERIAL_BIND_GROUP}) @binding(100) var<uniform> m: ModelParams;
 // Stage 1's texture, sampled at the generated coordinate `env_uv` when `m.stage1.x` is set.
@@ -154,6 +155,31 @@ fn wow_env_uv(p_view: vec3<f32>, n_view: vec3<f32>) -> vec2<f32> {
     return refl.xy * 0.5 + vec2<f32>(0.5, 0.5);
 }
 
+// MIT: noclip.website WorldOfWarcraft/program.ts WmoProgram. WMO Env uses raw reflected XY,
+// unlike M2's biased sphere map. The emissive reflection is weighted by the diffuse texel alpha.
+fn wmo_reflection_uv(p_view: vec3<f32>, n_view: vec3<f32>) -> vec2<f32> {
+    return reflect(normalize(p_view), normalize(n_view)).xy;
+}
+
+fn wmo_env_rgb(diffuse: vec3<f32>, reflection: vec3<f32>, tex_alpha: f32) -> vec3<f32> {
+    return diffuse + reflection * tex_alpha;
+}
+
+fn wmo_specular(normal: vec3<f32>, to_light: vec3<f32>, to_eye: vec3<f32>,
+                light_color: vec3<f32>, tex_alpha: f32) -> vec3<f32> {
+    let half_sum = to_light + to_eye;
+    let half_dir = half_sum / max(length(half_sum), 1e-8);
+    let nl = clamp(dot(normal, to_light), 0.0, 1.0);
+    let nh = clamp(dot(normal, half_dir), 0.0, 1.0);
+    let lh = clamp(dot(to_light, half_dir), 0.0, 1.0);
+    let fresnel = mix(pow(1.0 - lh, 5.0), 1.0, tex_alpha);
+    return light_color * (1.25 * pow(nh, 8.0) * fresnel * nl);
+}
+
+fn wmo_output_alpha(shader: u32, tex_alpha: f32) -> f32 {
+    return select(tex_alpha, 1.0, shader == 3u || shader == 4u);
+}
+
 // Stage 1's colour combine on `prev`, the stage-0 result, by gx preset as the default device,
 // Direct3D, maps it (`0x80a25c` = 4, 4, 13, 7, 5, 12 as `D3DTOP`, args TEXTURE and CURRENT, which
 // the device never changes): 0 and 1 modulate, 2 BLENDTEXTUREALPHA interpolates by the texel's
@@ -199,6 +225,11 @@ fn modern_two_stage_rgba(preset: u32, diffuse: vec4<f32>, tex0: vec4<f32>, tex1:
         case 15u: { rgb *= 2.0; alpha = tex1.a * 2.0; } // Opaque_Mod2x
         case 16u: { rgb *= 2.0; alpha = 1.0; } // Opaque_Mod2xNA
         case 17u: { alpha = tex1.a; } // Opaque_Mod
+        case 6u, 20u, 22u: { rgb = tex0.rgb; alpha = 1.0; } // Opaque_AddAlpha variants
+        case 19u: { rgb = mix(2.0 * rgb, tex0.rgb, vec3<f32>(tex0.a)); alpha = 1.0; }
+        case 21u, 25u: { rgb = tex0.rgb; alpha = tex0.a; } // Mod_AddAlpha variants
+        case 23u: { rgb = mix(rgb, tex0.rgb, vec3<f32>(tex0.a)); alpha = 1.0; }
+        case 24u: { rgb = mix(tex0.rgb, tex1.rgb, vec3<f32>(tex1.a)); alpha = 1.0; }
         default: {} // Mod_Mod
     }
     return diffuse * vec4<f32>(rgb, alpha);
@@ -206,8 +237,14 @@ fn modern_two_stage_rgba(preset: u32, diffuse: vec4<f32>, tex0: vec4<f32>, tex1:
 
 fn modern_two_stage_specular(preset: u32, tex1: vec4<f32>) -> vec3<f32> {
     if (preset == 11u || preset == 12u) { return tex1.rgb; }
-    if (preset == 14u) { return tex1.rgb * tex1.a; }
+    if (preset == 6u || preset == 14u || preset == 21u) { return tex1.rgb * tex1.a; }
     return vec3<f32>(0.0);
+}
+
+fn modern_static_specular(preset: u32, tex0: vec4<f32>, tex1: vec4<f32>, weight1: f32) -> vec3<f32> {
+    if (preset == 20u) { return tex1.rgb * tex1.a * (1.0 - tex0.a); }
+    if (preset == 22u || preset == 25u) { return tex1.rgb * tex1.a * weight1; }
+    return modern_two_stage_specular(preset, tex1);
 }
 
 fn model_uv_transform(uv: vec2<f32>, offset: vec2<f32>, affine: vec4<f32>) -> vec2<f32> {
@@ -494,7 +531,11 @@ fn vertex(vertex: WowVertex) -> WowVsOut {
 #ifdef VERTEX_POSITIONS
 #ifdef VERTEX_NORMALS
     if (m.stage1.w > 0.5) {
-        out.env_uv = wow_env_uv(view_rot * p_cam, normalize(view_rot * out.world_normal));
+        if (m.model_flags.x > 0.5 && u32(m.stage1.y) == 18u) {
+            out.env_uv = wmo_reflection_uv(view_rot * p_cam, view_rot * out.world_normal);
+        } else {
+            out.env_uv = wow_env_uv(view_rot * p_cam, normalize(view_rot * out.world_normal));
+        }
     }
 #endif
 #endif
@@ -639,8 +680,15 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     // alpha the cutout reads (the blend's is `faded_alpha`, below); its colour combines after the light (below).
     let stage1_on = m.stage1.x > 0.5;
     let stage1_preset = u32(m.stage1.y);
-    let modern_two = stage1_on && stage1_preset >= 8u && stage1_preset <= 17u;
+    // WMO's private stage-0 range is 32+MOMT shader, uploaded as preset+1. Original WMO and M2
+    // material uniforms never enter this branch; no uniform layout or pipeline key changes.
+    let modern_wmo = m.model_flags.x > 0.5 && m.stage1.z >= 33.0;
+    let wmo_shader = u32(max(m.stage1.z - 33.0, 0.0));
+    let modern_two = stage1_on && !modern_wmo && (stage1_preset == 6u ||
+        (stage1_preset >= 8u && stage1_preset <= 17u) ||
+        (stage1_preset >= 19u && stage1_preset <= 25u));
     let tex0_alpha = base_color.a;
+    var modern_tex0_alpha = tex0_alpha;
     var tex1 = vec4<f32>(1.0);
     if (stage1_on) {
         var uv1 = in.env_uv;
@@ -683,6 +731,7 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
 #ifdef VERTEX_UVS_A
     if (modern_two) {
         let tex0 = textureSampleBias(pbr_bindings::base_color_texture, pbr_bindings::base_color_sampler, vo.uv, view.mip_bias);
+        modern_tex0_alpha = tex0.a;
         var diffuse = pbr_bindings::material.base_color;
 #ifdef VERTEX_COLORS
         diffuse *= in.color;
@@ -704,11 +753,14 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     // (`0x811f8c`) blends by the fade alone and the texel's alpha never reaches the frame. Stage 1
     // follows on that. `m.stage1.z` is the stage-0 preset + 1, 0 for a batch with none.
     var faded_alpha = base_color.a * obj_fade;
-    if (m.stage1.z > 0.5 && !modern_two) {
+    if (m.stage1.z > 0.5 && !modern_two && !modern_wmo) {
         faded_alpha = stage_alpha(u32(m.stage1.z) - 1u, obj_fade, tex0_alpha);
         if (stage1_on) {
             faded_alpha = stage_alpha(stage1_preset, faded_alpha, tex1.a);
         }
+    }
+    if (modern_wmo) {
+        faded_alpha = wmo_output_alpha(wmo_shader, tex0_alpha) * obj_fade;
     }
 #ifdef VERTEX_UVS_A
     if (stage1_on && stage1_preset == 7u) {
@@ -921,11 +973,22 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
         rgb = base.rgb;
     }
     // Stage 1 combines with the stage-0 result, the lit texel, before the fog.
-    if (stage1_on && stage1_preset != 7u && !modern_two) {
+    if (stage1_on && stage1_preset != 7u && !modern_two && !modern_wmo) {
         // The diffuse alpha is the batch and instance alpha, the shader's `obj_fade`.
         rgb = stage1_rgb(stage1_preset, rgb, tex1, obj_fade);
     }
-    if (modern_two) { rgb += modern_two_stage_specular(stage1_preset, tex1); }
+    if (modern_two) {
+        let weight1 = m.texture_weights.x + wow_light.matanim[u32(m.stage1_uv.z)].z;
+        rgb += modern_static_specular(stage1_preset, vec4<f32>(0.0, 0.0, 0.0, modern_tex0_alpha), tex1, weight1);
+    }
+    if (modern_wmo && wmo_shader == 3u) {
+        rgb = wmo_env_rgb(rgb, tex1.rgb, tex0_alpha);
+    } else if (modern_wmo && wmo_shader == 1u) {
+        // Use the same owning directional-light context as the WMO diffuse path. Interior
+        // classification remains the material's existing INT/TRANS/EXT lane, not an M2 probe.
+        rgb += wmo_specular(n_lit, L, normalize(view.world_position - in.world_position.xyz),
+                            select(vec3<f32>(0.0), wow_light.light_diffuse.rgb, wow_light.light_sun.w > 0.5), tex0_alpha);
+    }
 
     // Linear fog by planar eye depth, as in terrain.wgsl. Per-batch colour policy (`clutter_fade.z`
     // bits 4-6, the M2 state setter `0x70baf0`): 0 scene, 1 black (additive), 2 white (Mod),

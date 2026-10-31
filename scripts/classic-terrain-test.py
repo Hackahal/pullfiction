@@ -6,6 +6,48 @@ from classic_compat import CompatError
 
 
 class TerrainTest(unittest.TestCase):
+    def test_authored_bgra_vertex_colors_survive_without_consuming_hole_metadata(self):
+        colors = bytes([0, 127, 255, 91]) + bytes([127, 127, 127, 255]) * 144
+        def inputs(payload):
+            root, tex = bytearray(), bytearray()
+            for index in range(256):
+                header = bytearray(128)
+                struct.pack_into('<I', header, 0, 0x10000)
+                root.extend(chunk('MCNK', header + chunk('MCVT', bytes(145*4))
+                                  + (chunk('MCCV', payload) if index == 0 else b'')))
+                tex.extend(chunk('MCNK', b''))
+            return root, tex
+        root, tex = inputs(colors)
+        converted = [body for tag, body in chunks(adapt_adt(root, tex, b'')) if tag == 'MCNK']
+        for index, data in enumerate(converted):
+            nested = dict(chunks(data[128:]))
+            self.assertEqual(nested['PFH1'], bytes(8))
+            offset = struct.unpack_from('<I', data, 0x74)[0]
+            if index == 0:
+                self.assertEqual(nested['MCCV'], colors)
+                self.assertEqual(data[offset-8:offset-4], b'VCCM')
+            else:
+                self.assertEqual(offset, 0)
+                self.assertNotIn('MCCV', nested)
+        for malformed in (colors[:-1], colors + bytes(4), b''):
+            with self.assertRaisesRegex(CompatError, '145 authored terrain vertex colors'):
+                adapt_adt(*inputs(malformed), b'')
+
+    def test_high_resolution_holes_retain_the_exact_cell_mask_in_private_cache_metadata(self):
+        root, tex = bytearray(), bytearray()
+        mask = (1 << 0) | (1 << 63)
+        for index in range(256):
+            header = bytearray(128)
+            struct.pack_into('<I', header, 0, 0x10000)
+            struct.pack_into('<Q', header, 0x14, mask if index == 0 else 0)
+            root.extend(chunk('MCNK', header + chunk('MCVT', bytes(145*4))))
+            tex.extend(chunk('MCNK', b''))
+        converted = [body for tag, body in chunks(adapt_adt(root, tex, b'')) if tag == 'MCNK']
+        self.assertEqual(dict(chunks(converted[0][128:]))['PFH1'], struct.pack('<Q', mask))
+        self.assertEqual(dict(chunks(converted[1][128:]))['PFH1'], bytes(8))
+        self.assertEqual(struct.unpack_from('<H', converted[0], 0x3c)[0], 1 | (1 << 15))
+        self.assertFalse(struct.unpack_from('<I', converted[0])[0] & 0x10000)
+
     def test_split_files_keep_geometry_textures_and_file_id_placements(self):
         root, tex = bytearray(), bytearray(chunk('MDID', struct.pack('<I', 123)))
         for i in range(256):

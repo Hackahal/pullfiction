@@ -64,6 +64,24 @@ impl FxAnimLife {
 #[derive(Component)]
 pub(crate) struct FxDecay;
 
+/// Attachment-specific modern animation IDs; absent phases use legacy defaults.
+#[derive(Component, Clone, Copy, Default)]
+pub(crate) struct FxAnimOverrides(pub benilla_formats::EffectAnimation);
+
+/// An authored loop needs a birth completion even on legacy repeating precasts.
+/// Only the rig's completion policy changes; the instance keeps its original
+/// stage/class for reap routing. Attachments without phases retain legacy behavior.
+pub(super) fn attachment_anim_stage(
+    stage: FxStage,
+    phases: benilla_formats::EffectAnimation,
+) -> FxStage {
+    if stage == FxStage::Relive && phases.loop_anim.is_some() {
+        FxStage::State
+    } else {
+        stage
+    }
+}
+
 /// Run each instance's completion callback, the `Hold` handover or the reap's `Decay`. The
 /// reference drains them at the end of the scene tick (`0x707595` in `0x7074b0`); run in `Update`,
 /// after `PreUpdate` advances the players, this fires in the frame the span ends. Completion is
@@ -77,11 +95,18 @@ pub(crate) fn advance_fx_anim(
         &mut AnimationPlayer,
         &ModelAnimations,
         Has<FxDecay>,
+        Option<&FxAnimOverrides>,
     )>,
 ) {
-    for (root, mut life, mut player, anims, decaying) in &mut instances {
+    for (root, mut life, mut player, anims, decaying, overrides) in &mut instances {
+        let phases = overrides.map(|v| v.0).unwrap_or_default();
         if decaying {
-            arm_decay(&mut player, life.armed(), anims);
+            arm_decay_as(
+                &mut player,
+                life.armed(),
+                anims,
+                phases.end.unwrap_or(ANIM_DECAY),
+            );
             // The expiry clock owns the despawn now, and nothing may re-arm over the decay.
             commands.entity(root).try_remove::<FxAnimLife>();
             continue;
@@ -98,18 +123,33 @@ pub(crate) fn advance_fx_anim(
         }
         // `0x5ff170`: arm `Hold` if the model authors it and keep it running (`0x5ff1d0`'s deadline
         // `node+0x58` is set only at stage 3); otherwise stay parked on the birth.
-        match anims.find(ANIM_HOLD) {
-            Some(hold) => {
-                player.stop(armed);
-                player.play(hold.node).set_repeat(RepeatAnimation::Forever);
-                *life = FxAnimLife::Settled(hold.node);
-                trace_leg("hold", root, ANIM_HOLD);
-            }
-            None => {
-                *life = FxAnimLife::Settled(armed);
-                trace_leg("park", root, 0);
-            }
+        let hold_id = phases.loop_anim.unwrap_or(ANIM_HOLD);
+        *life = handover_hold(&mut player, armed, anims, hold_id);
+        trace_leg(
+            if anims.find(hold_id).is_some() {
+                "hold"
+            } else {
+                "park"
+            },
+            root,
+            hold_id,
+        );
+    }
+}
+
+fn handover_hold(
+    player: &mut AnimationPlayer,
+    armed: AnimationNodeIndex,
+    anims: &ModelAnimations,
+    hold_id: u16,
+) -> FxAnimLife {
+    match anims.find(hold_id) {
+        Some(hold) => {
+            player.stop(armed);
+            player.play(hold.node).set_repeat(RepeatAnimation::Forever);
+            FxAnimLife::Settled(hold.node)
         }
+        None => FxAnimLife::Settled(armed),
     }
 }
 
@@ -124,8 +164,13 @@ pub(super) fn trace_leg(leg: &str, root: Entity, anim_id: u16) {
 
 /// The reap's decay-out (`0x614150`, gates `0x614187`–`0x6141a1`): arm `Decay` if the model authors
 /// it; otherwise the caller's immediate expiry stands (`0x6141d6`, straight to the destructor).
-fn arm_decay(player: &mut AnimationPlayer, armed: AnimationNodeIndex, anims: &ModelAnimations) {
-    let Some(decay) = anims.find(ANIM_DECAY) else {
+fn arm_decay_as(
+    player: &mut AnimationPlayer,
+    armed: AnimationNodeIndex,
+    anims: &ModelAnimations,
+    end_id: u16,
+) {
+    let Some(decay) = anims.find(end_id) else {
         return;
     };
     player.stop(armed);
@@ -138,8 +183,15 @@ fn arm_decay(player: &mut AnimationPlayer, armed: AnimationNodeIndex, anims: &Mo
 
 /// How long a reaped instance keeps rendering (`0x6141f0`): its model's `Decay` span, or `None`
 /// when it authors none and is destroyed at once.
+#[cfg(test)]
 pub(crate) fn decay_span(anims: Option<&ModelAnimations>) -> Option<f32> {
-    anims?.find(ANIM_DECAY).map(|c| c.duration)
+    decay_span_as(anims, None)
+}
+
+pub(super) fn decay_span_as(anims: Option<&ModelAnimations>, end_id: Option<u16>) -> Option<f32> {
+    anims?
+        .find(end_id.unwrap_or(ANIM_DECAY))
+        .map(|c| c.duration)
 }
 
 #[cfg(test)]
@@ -147,6 +199,115 @@ mod tests {
     use super::*;
     use benilla_assets::AnimClip;
     use bevy::animation::RepeatAnimation;
+
+    #[test]
+    fn authored_precast_start_hands_over_to_loop_and_then_end_on_reap() {
+        bevy::tasks::ComputeTaskPool::get_or_init(bevy::tasks::TaskPool::default);
+        let mut world = World::new();
+        let mut time = Time::<()>::default();
+        time.advance_by(std::time::Duration::from_millis(1100));
+        world.insert_resource(time);
+        let mut clips = Assets::<AnimationClip>::default();
+        let handles: Vec<_> = (0..3)
+            .map(|_| {
+                let mut clip = AnimationClip::default();
+                clip.set_duration(1.0);
+                clips.add(clip)
+            })
+            .collect();
+        let (graph, nodes) = AnimationGraph::from_clips(handles);
+        let mut graphs = Assets::<AnimationGraph>::default();
+        let graph = graphs.add(graph);
+        world.insert_resource(clips);
+        world.insert_resource(graphs);
+        let anims = test_anims(&[
+            clip(127, nodes[0].index(), false),
+            clip(144, nodes[1].index(), true),
+            clip(193, nodes[2].index(), false),
+        ]);
+        let phases = benilla_formats::EffectAnimation {
+            start: Some(127),
+            loop_anim: Some(144),
+            end: Some(193),
+        };
+        let mut player = AnimationPlayer::default();
+        let life = FxAnimLife::arm(
+            &mut player,
+            anims.preferred_clip(phases.start).unwrap(),
+            attachment_anim_stage(FxStage::Relive, phases),
+        );
+        let root = world
+            .spawn((
+                life,
+                player,
+                anims,
+                AnimationGraphHandle(graph),
+                FxAnimOverrides(phases),
+            ))
+            .id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((bevy::animation::advance_animations, advance_fx_anim).chain());
+        schedule.run(&mut world);
+        let player = world.get::<AnimationPlayer>(root).unwrap();
+        assert!(
+            player.animation(nodes[0]).is_none(),
+            "precast start must stop after its span"
+        );
+        assert_eq!(
+            player.animation(nodes[1]).unwrap().repeat_mode(),
+            RepeatAnimation::Forever
+        );
+        world.entity_mut(root).insert(FxDecay);
+        schedule.run(&mut world);
+        let player = world.get::<AnimationPlayer>(root).unwrap();
+        assert!(player.animation(nodes[1]).is_none());
+        assert_eq!(
+            player.animation(nodes[2]).unwrap().repeat_mode(),
+            RepeatAnimation::Never
+        );
+        assert!(world.get::<FxAnimLife>(root).is_none());
+        assert_eq!(
+            attachment_anim_stage(FxStage::Relive, Default::default()),
+            FxStage::Relive
+        );
+        assert_eq!(
+            attachment_anim_stage(FxStage::OneShot, phases),
+            FxStage::OneShot
+        );
+    }
+
+    #[test]
+    fn authored_attachment_phases_reuse_hold_decay_backend_and_preserve_zero_id() {
+        let mut end = clip(193, 2, false);
+        end.duration = 2.75;
+        let anims = test_anims(&[
+            clip(127, 0, false),
+            clip(144, 1, true),
+            end,
+            clip(0, 3, false),
+            clip(ANIM_HOLD, 4, true),
+        ]);
+        let mut player = AnimationPlayer::default();
+        let birth = anims.preferred_clip(Some(127)).unwrap();
+        let life = FxAnimLife::arm(&mut player, birth, FxStage::State);
+        assert!(matches!(life,FxAnimLife::Birth(node) if node==AnimationNodeIndex::new(0)));
+        let held = handover_hold(&mut player, life.armed(), &anims, 144);
+        assert_eq!(held.armed(), AnimationNodeIndex::new(1));
+        assert_eq!(repeat(&player, 1), RepeatAnimation::Forever);
+        assert!(
+            player.animation(AnimationNodeIndex::new(4)).is_none(),
+            "explicit loop does not arm legacy Hold"
+        );
+        arm_decay_as(&mut player, held.armed(), &anims, 193);
+        assert_eq!(repeat(&player, 2), RepeatAnimation::Never);
+        assert_eq!(decay_span_as(Some(&anims), Some(193)), Some(2.75));
+        assert_eq!(decay_span_as(Some(&anims), Some(0)), Some(1.));
+        assert_eq!(
+            decay_span_as(Some(&anims), None),
+            None,
+            "missing legacy decay is distinct from explicit Stand"
+        );
+    }
 
     /// One clip of `anim_id` with the M2 loop flag `looping`, on graph node `node`.
     fn clip(anim_id: u16, node: usize, looping: bool) -> AnimClip {

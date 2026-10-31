@@ -8,9 +8,11 @@ If the reference was recovered from an already fetched raid zone page, the
 optional `sourceDocumentURL` identifies that exact document. Its retrieval time
 and hash apply to the zone page. The NPC URL remains an individual reference link.
 
-The prepared snapshot is partial. It resolves 205 of 505 requested `vanilla`
+The prepared snapshot is partial. It resolves 359 of 505 requested `vanilla`
 NPC identifiers and 224 of 233 requested `sod` identifiers. The remaining
-300 vanilla and nine SoD identifiers have no bundled reference. The 2026-10-31
+146 vanilla and nine SoD identifiers have no bundled reference. The final
+2026-10-31 Era pass added 154 validated numeric references and stopped when
+the source returned HTTP 403; no alternate transport or identity was used. The 2026-10-31
 Temple of Ahn'Qiraj pass added 72 SoD references from validated individual NPC
 pages, including every boss in the retained full-run replay. All 81 mapped
 NPC and pet identifiers in that replay resolve to display and model file

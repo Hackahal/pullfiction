@@ -29,6 +29,19 @@ def table():
 
 
 class DB2Test(unittest.TestCase):
+    def test_sectionless_empty_table_requires_its_exact_field_envelope(self):
+        data=bytearray(212);data[:4]=b'WDC5'
+        struct.pack_into('<9I2H7I',data,136,0,2,0,0,0,0x19a69a6c,0,0,0xffffffff,
+                         4,0,2,0,0,0,0,0,0)
+        struct.pack_into('<2I',data,204,32,32)
+        self.assertEqual(decode(data),('19a69a6c',{}))
+        for changed in (data[:-1],data+b'\0'):
+            with self.assertRaisesRegex(DB2Error,'empty WDC5'):
+                decode(changed)
+        sparse=bytearray(data);struct.pack_into('<H',sparse,172,1)
+        with self.assertRaisesRegex(DB2Error,'Sparse'):
+            decode(sparse)
+
     def test_all_storage_kinds_and_copy_ids(self):
         layout, rows = decode(table())
         self.assertEqual(layout, '12345678')

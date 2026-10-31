@@ -50,11 +50,14 @@ def items(table):
 
 
 class Inventory:
-    def __init__(self, profile):
+    def __init__(self, profile, max_cases=None):
         self.profile = profile
         self.entries = {}
         self.cases = {}
         self.rows = {}
+        self.max_cases = max_cases
+        self.case_ids = set()
+        self.omitted_cases = collections.Counter()
 
     def add(self, key, kind, row, dependencies=(), family=None, issues=()):
         dependencies = sorted(set(dependencies))
@@ -65,15 +68,26 @@ class Inventory:
         self.rows[key] = row
         return key
 
-    def asset(self, file_id):
-        if not isinstance(file_id, int) or file_id <= 0:
+    def asset(self, file_id, resource_kind=None):
+        if type(file_id) is not int or file_id <= 0:
             return None
         key = f'asset:{file_id}'
         if key not in self.entries:
             self.add(key, 'asset', {'fileDataID': file_id})
+        if resource_kind:
+            row = self.rows[key]
+            row['resourceKinds'] = sorted(set(row.get('resourceKinds', [])) | {resource_kind})
+            self.entries[key]['fingerprint'] = digest(['asset', row, self.entries[key]['dependencies']])
         return key
 
     def case(self, case):
+        if case['id'] not in self.case_ids:
+            self.case_ids.add(case['id'])
+            if self.max_cases is not None and len(self.cases) >= self.max_cases:
+                self.omitted_cases[case['category']] += 1
+                return
+        elif case['id'] not in self.cases:
+            return
         self.cases[case['id']] = case
 
 
@@ -112,10 +126,10 @@ def build_profile(catalogs, content):
 
 def spell_inventory(inv, graph, content):
     for key, row in items(graph.get('chainEffects', {})):
-        deps = [a for f in row.get('textureFileDataIDs', []) if (a := inv.asset(f))]
+        deps = [a for f in row.get('textureFileDataIDs', []) if (a := inv.asset(f, 'texture'))]
         inv.add(f'chain:{key}', 'chain', row, deps)
     for key, row in items(graph.get('effects', {})):
-        asset = inv.asset(row.get('fileDataID'))
+        asset = inv.asset(row.get('fileDataID'), 'model')
         eid = inv.add(f'effect:{key}', 'effect', row, [asset] if asset else [],
                       family=asset or f'effect:{key}', issues=[] if asset else ['no-model-file-reference'])
         if asset:
@@ -127,7 +141,10 @@ def spell_inventory(inv, graph, content):
         for proc in row.get('proceduralEffects', []):
             pid = f"procedure:{proc.get('id', digest(proc)[:16])}"
             values = proc.get('values', [])
-            chain = int(values[0]) if values and proc.get('type') in (0, 12) else 0
+            first = values[0] if isinstance(values, list) and values else None
+            chain = int(first) if (proc.get('type') in (0, 12) and type(first) in (int, float)
+                and math.isfinite(first) and first == int(first) and 0 < first <= 0xffffffff
+                and proc.get('rendererCompatible', True)) else 0
             inv.add(pid, 'procedure', proc, [f'chain:{chain}'] if chain else [])
             deps.append(pid)
         inv.add(f'kit:{key}', 'kit', row, deps, issues=[f"catalog-primitive:{x.get('type', 'unknown')}" for x in row.get('unsupported', [])])
@@ -172,18 +189,74 @@ def spell_inventory(inv, graph, content):
             inv.entries[sid]['issues'].append('expected-none: catalog has no authored visual reference')
             inv.entries[sid]['status']['render'] = 'expected-none'
         # Conditions are deliberately retained in row fingerprint, never treated as resolved gameplay.
+    definition_inventory(inv, graph)
+
+
+def definition_inventory(inv, graph):
+    """Join authored roots to the exported sparse definition set.
+
+    Definition relationships may contain legitimate ownership/back references, not
+    recursive render loads. Keep those edges explicit without turning them into
+    execution cycles. A conservative set fingerprint invalidates every affected
+    owner when any reachable definition changes.
+    """
+    document = graph.get('referenceDefinitions', {})
+    if not document:
+        return
+    tables = document.get('tables', {})
+    set_fingerprint = digest(document)
+    relationships = collections.defaultdict(list)
+    for edge in document.get('references', []):
+        relationships[edge['owner']].append(edge)
+    for name, table in sorted(tables.items()):
+        for ident, definition in items(table.get('rows', {})):
+            owner = f'{name}:{ident}'
+            targets = [f"definition:{e['table']}:{e['id']}" for e in relationships[owner] if 'id' in e]
+            missing = [target for target in targets if target.removeprefix('definition:').split(':', 1)[1]
+                       not in tables.get(target.split(':', 2)[1], {}).get('rows', {})]
+            row = {'table': name, 'definition': definition, 'definitionSetFingerprint': set_fingerprint,
+                   'relationships': relationships[owner], 'layout': table.get('layout'),
+                   'sourceSha256': table.get('sourceSha256'), 'definitionSha256': table.get('definitionSha256')}
+            key = inv.add('definition:' + owner, 'reference-definition', row, missing)
+            inv.entries[key]['referenceTargets'] = sorted(set(targets))
+            inv.entries[key]['definitionTable'] = name
+    owners = collections.defaultdict(set)
+    for key, kit in graph.get('kits', {}).items():
+        for effect in kit.get('effects', []):
+            if 'id' in effect:
+                owners[f"SpellVisualKitModelAttach:{effect['id']}"].add('kit:' + str(key))
+        for animation in kit.get('animations', []):
+            if 'ID' in animation:
+                owners[f"SpellVisualAnim:{animation['ID']}"].add('kit:' + str(key))
+    for key, visual in graph.get('visuals', {}).items():
+        for missile in visual.get('missiles', []):
+            if 'id' in missile:
+                owners[f"SpellVisualMissile:{missile['id']}"].add('visual:' + str(key))
+    for key in graph.get('chainEffects', {}):
+        owners['SpellChainEffects:' + str(key)].add('chain:' + str(key))
+    for edge in document.get('roots', []):
+        target = f"definition:{edge['table']}:{edge['id']}"
+        consumers = owners.get(edge['owner'])
+        if not consumers:
+            unknown = 'definition-owner:' + edge['owner']
+            if unknown not in inv.entries:
+                inv.add(unknown, 'unjoined-definition-owner', {'owner': edge['owner']},
+                        issues=['normalized-reference-owner-unavailable'])
+            consumers = {unknown}
+        for owner in consumers:
+            inv.entries[owner]['dependencies'] = sorted(set(inv.entries[owner]['dependencies']) | {target})
 
 
 def creature_inventory(inv, catalog, npcs, content, bosses):
     models, displays = catalog.get('models', {}), catalog.get('displays', {})
     for key, row in items(models):
-        asset = inv.asset(row.get('fileDataID'))
+        asset = inv.asset(row.get('fileDataID'), 'model')
         mid = inv.add(f'model:{key}', 'model', row, [asset] if asset else [], family=asset)
         if asset:
             inv.case(fixture(mid, 'model', content, actors=[actor('model', modelFileId=row['fileDataID'])]))
     for key, row in items(displays):
         deps = [f"model:{row['modelID']}"] if row.get('modelID') else []
-        deps += [a for f in row.get('textures', []) if (a := inv.asset(f))]
+        deps += [a for f in row.get('textures', []) if (a := inv.asset(f, 'texture'))]
         inv.add(f'display:{key}', 'display', row, deps, family=f"model:{row.get('modelID', 0)}")
         inv.case(fixture(f'display:{key}', 'model', content,
                          actors=[actor('creature', displayId=int(key))]))
@@ -213,42 +286,83 @@ def gear_inventory(inv, catalog, characters, content):
     equipment_slot = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 7, 9: 8, 10: 9,
                       11: 10, 12: 12, 13: 15, 14: 16, 15: 17, 16: 14, 17: 15, 19: 18,
                       20: 4, 21: 15, 22: 16, 23: 16, 25: 17, 26: 17}
+    for key, effects in items(catalog.get('itemVisuals', {})):
+        deps, issues = [], []
+        for file_id in effects:
+            if type(file_id) is not int:
+                issues.append('invalid-item-visual-model-reference')
+            elif file_id > 0:
+                deps.append(inv.asset(file_id, 'model'))
+            elif file_id not in (0, -1):
+                issues.append('invalid-item-visual-model-reference')
+        inv.add(f'item-visual:{key}', 'item-visual', effects, deps, issues=issues)
+    for key, row in items(catalog.get('enchantments', {})):
+        visual = row.get('visual', 0)
+        inv.add(f'enchantment:{key}', 'enchantment', row,
+                [f'item-visual:{visual}'] if type(visual) is int and visual > 0 else [])
     for key, row in items(catalog.get('items', {})):
         display = row.get('display', 0)
         inv.add(f'item:{key}', 'item', row, [f'gear:{display}'] if display else [], family=f'gear:{display}')
         if row.get('inventory') in equipment_slot:
-            slots.setdefault(str(display), equipment_slot[row['inventory']])
-    recipes = characters if isinstance(characters, list) else characters.get('characters', [])
+            slots.setdefault(str(display), (equipment_slot[row['inventory']], int(key)))
+    # Raw Item rows without a default appearance must remain in the denominator.
+    # They are not given a guessed display or a fictional equipment fixture.
+    for key, row in items(catalog.get('unresolvedItems', {})):
+        if f'item:{key}' not in inv.entries:
+            issue = ('default-item-appearance-unavailable' if row.get('inventory') in equipment_slot
+                     else 'item-without-renderer-equipment-slot')
+            inv.add(f'item:{key}', 'item', row, issues=[issue])
+    recipes = characters if isinstance(characters, list) else characters.get('characters', characters.get('bodies', []))
     for i, recipe in enumerate(recipes):
-        asset = inv.asset(recipe.get('file'))
-        deps = ([asset] if asset else []) + [a for t in recipe.get('textures', []) for l in t.get('layers', []) if (a := inv.asset(l.get('file')))]
+        asset = inv.asset(recipe.get('file'), 'model')
+        deps = ([asset] if asset else []) + [a for t in recipe.get('textures', []) for l in t.get('layers', []) if (a := inv.asset(l.get('file'), 'texture'))]
+        display = recipe.get('displayId', recipe.get('displayID'))
+        if display:
+            # ChrModel IDs are not CreatureModelData IDs. The display owns that join.
+            deps.append(f'display:{display}')
+        issues = [] if asset or display else ['character-model-reference-missing']
+        if isinstance(characters, dict) and 'bodies' in characters:
+            issues.append('character-customization-dependencies-unverified')
         key = f"character:{recipe.get('race', 0)}:{recipe.get('sex', 0)}:{i}"
-        inv.add(key, 'character', recipe, deps)
+        inv.add(key, 'character', recipe, deps, issues=issues)
         inv.case(fixture(key, 'gear', content, actors=[actor('character', race=recipe.get('race'), sex=recipe.get('sex'))]))
     representatives = {}
     for key, row in items(catalog.get('displays', {})):
         # Texture/model file IDs can be nested lists in exported item catalogs.
         def files(value):
-            if isinstance(value, int):
+            if type(value) is int:
                 yield value
             elif isinstance(value, (list, tuple)):
                 for child in value:
                     yield from files(child)
             elif isinstance(value, dict):
-                for child in value.values():
-                    yield from files(child)
-        deps = [a for f in files([row.get('models', []), row.get('textures', []), row.get('regions', {})]) if (a := inv.asset(f))]
+                if 'file' in value:
+                    if type(value['file']) is int:
+                        yield value['file']
+                else:
+                    for child in value.values():
+                        if isinstance(child, (dict, list, tuple)):
+                            yield from files(child)
+        deps = [a for value, resource_kind in [(row.get('models', []), 'model'),
+                (row.get('textures', []), 'texture'), (row.get('regions', {}), 'texture')]
+                for f in files(value) if (a := inv.asset(f, resource_kind))]
+        if type(row.get('visual')) is int and row['visual'] > 0:
+            deps.append(f"item-visual:{row['visual']}")
+        if type(row.get('rangedVisual')) is int and row['rangedVisual'] > 0:
+            deps.append(f"visual:{row['rangedVisual']}")
         family = 'gear-family:' + digest({k: row.get(k) for k in ('models', 'geosets', 'helmet', 'regions', 'visual', 'rangedVisual')})[:16]
         inv.add(f'gear:{key}', 'gear-display', row, deps, family=family)
         if key in slots:
-            representatives.setdefault((family, slots[key]), key)
+            slot, item_id = slots[key]
+            representatives.setdefault((family, slot), (key, item_id))
     # Every distinct feature family/slot crosses each available race/body recipe.
     # This is a representative assembly matrix, not all possible gear combinations.
-    for (family, slot), display in sorted(representatives.items()):
+    for (family, slot), (display, item_id) in sorted(representatives.items()):
         for recipe in recipes:
             race, sex = recipe.get('race'), recipe.get('sex')
             cid = f'gear-case:{display}:{slot}:{race}:{sex}'
-            a = actor('character', race=race, sex=sex, equipment=[{'slot': slot, 'displayId': int(display)}])
+            a = actor('character', race=race, sex=sex,
+                      equipment=[{'slot': slot, 'itemId': item_id, 'displayId': int(display)}])
             inv.case(fixture(cid, 'gear', content, actors=[a], coverage=[f'gear:{display}']))
     return {'equipmentStrategy': 'all-item/display inventory; feature-family/slot crossed with supplied race/body recipes',
             'equipmentExclusions': ['all simultaneous gear combinations', 'unavailable race/body recipes', 'unmapped inventory slots']}
@@ -340,12 +454,17 @@ def render_paths(inv, model_features):
         entry, row = inv.entries[key], inv.rows[key]
         kind = entry['kind']
         children = {d: visit(d, stack | {key}) for d in entry['dependencies']}
-        caps, gaps, shape = {kind}, set(), []
+        caps, gaps, shape = {kind}, {issue for issue in entry['issues'] if not issue.startswith('expected-none:')}, []
         draw = 'unknown'
         if kind == 'asset':
             # Asset IDs alone say nothing about geometry, UVs, emitters or visibility.
             summary = model_features.get(row['fileDataID'])
-            if summary is None:
+            resource_kinds = set(row.get('resourceKinds', []))
+            caps.update('resource:' + value for value in resource_kinds)
+            if summary is None and resource_kinds and 'model' not in resource_kinds:
+                draw = 'none'
+                gaps.add('resource-decode-unverified')
+            elif summary is None:
                 caps.add('asset:unclassified')
                 gaps.add('decoded-model-features-missing')
             else:
@@ -458,6 +577,10 @@ def render_paths(inv, model_features):
                 gaps.add('server-summon-motion-unknown')
             if not children:
                 draw = 'none'
+        elif kind == 'reference-definition':
+            caps.add('metadata-table:' + row['table'])
+            gaps.add('definition-runtime-context-unverified:' + row['table'])
+            draw = 'none'
         else:
             caps.add('path:unclassified')
         for child in children.values():
@@ -503,6 +626,9 @@ def recipe_stages(spell, graph):
             stage = {'Precast Start': 'cast', 'Cast': 'cast', 'Impact': 'flight',
                      'Aura Start': 'aura', 'Aura End': 'aura',
                      'Channel Start': 'channel', 'Channel End': 'channel'}.get(start)
+            if stage == 'channel' and not spell.get('channel'):
+                gaps.append('channel-event-on-nonchannel-spell')
+                continue
             if stage:
                 stages.add(stage)
             else:
@@ -594,7 +720,8 @@ def family_recipes(inv, graph, content, limit, model_features, case_limit):
                 cid = f'path:{key}:{stage}'
                 e = {'id': 'lifecycle', 'spellId': int(key.split(':')[1]), 'stage': stage,
                      'casterId': 'subject', 'targetId': 'target', 'startMs': 0,
-                     'durationMs': 0 if stage == 'flight' else 1500}
+                     'durationMs': (0 if stage == 'flight' else
+                                    max(0, int(spell.get('castMs', 1500))) if stage == 'cast' else 1500)}
                 c = fixture(cid, 'spell', content, label=f'{key} shared {stage} path',
                             actors=[actor('character', race=1, sex=0),
                                     dict(actor('character', race=1, sex=0), id='target', position=[8, 0, 0])],
@@ -651,13 +778,15 @@ def family_recipes(inv, graph, content, limit, model_features, case_limit):
 
 
 def build_manifest(catalogs=None, *, content='sod', npcs=None, raids=None, bosses=None, resume=None, batch_size=32, verification_id=None,
-                   model_features=None, representative_limit=64, case_limit=None):
+                   model_features=None, representative_limit=64, case_limit=None, max_cases=None):
     if not isinstance(batch_size, int) or isinstance(batch_size, bool) or batch_size < 1:
         raise ValueError('batch_size must be a positive integer')
     if not isinstance(representative_limit, int) or isinstance(representative_limit, bool) or representative_limit < 0:
         raise ValueError('representative_limit must be a nonnegative integer')
     if case_limit is not None and (not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 0):
         raise ValueError('case_limit must be a nonnegative integer')
+    if max_cases is not None and (type(max_cases) is not int or max_cases < 0):
+        raise ValueError('max_cases must be a nonnegative integer')
     catalogs = catalogs or {}
     profile = build_profile(catalogs, content)
     profile['verificationId'] = verification_id
@@ -665,11 +794,34 @@ def build_manifest(catalogs=None, *, content='sod', npcs=None, raids=None, bosse
     feature_source = model_features.get('source', {}) if isinstance(model_features, dict) and 'models' in model_features else {}
     if feature_source and any(feature_source.get(k) != profile.get(k) for k in ('product', 'version', 'buildKey')):
         raise ValueError('Model feature client source mismatch.')
-    inv = Inventory(profile)
+    inv = Inventory(profile, max_cases=max_cases)
     spell_inventory(inv, catalogs.get('spells', {}), content)
     creature_inventory(inv, catalogs.get('creatures', {}), npcs or {}, content, bosses or [])
     notes = gear_inventory(inv, catalogs.get('items', {}), catalogs.get('characters', []), content)
     world_inventory(inv, catalogs.get('world', {}), raids or [], content)
+    # Internal model references are part of the same graph, including non-drawing skins,
+    # skeletons and textures. Their file IDs must not be treated as standalone M2 models.
+    dependency_kinds = {'SFID': 'skin', 'TXID': 'texture', 'appearance-texture': 'texture',
+                        'SKID': 'skeleton', 'AFID': 'animation', 'BFID': 'bone',
+                        'GPID': 'model', 'RPID': 'model'}
+    pending = [key for key in inv.entries if key.startswith('asset:')]
+    joined = set()
+    while pending:
+        key = pending.pop()
+        if key in joined:
+            continue
+        joined.add(key)
+        summary = features.get(inv.rows[key]['fileDataID'])
+        if summary is None:
+            continue
+        for dep in summary.get('dependencies', []):
+            child = inv.asset(dep.get('fileDataID'), dependency_kinds.get(dep.get('kind')))
+            if child:
+                inv.entries[key]['dependencies'].append(child)
+                inv.entries[key]['dependencies'] = sorted(set(inv.entries[key]['dependencies']))
+                if dep.get('available') is False:
+                    inv.entries[child]['issues'].append('source-resource-unavailable')
+                pending.append(child)
     for key, row in inv.entries.items():
         if row['kind'] == 'asset' and (summary := features.get(inv.rows[key]['fileDataID'])) is not None:
             # Refinements can change path selection and invalidate dependent old verification.
@@ -704,7 +856,9 @@ def build_manifest(catalogs=None, *, content='sod', npcs=None, raids=None, bosse
             'representativeCases': representative_cases, 'ungeneratedRecipes': ungenerated,
             'summary': {'entities': len(entries), 'cases': len(cases), 'byKind': counts, 'byStatus': status_counts,
                         'renderFamilies': len(families), 'representativeCases': len(representative_cases),
-                        'selectedSpellMembers': sum(len(f['selectedIds']) for f in families)},
+                        'selectedSpellMembers': sum(len(f['selectedIds']) for f in families),
+                        'inventoryCaseCandidates': len(inv.case_ids),
+                        'omittedInventoryCases': dict(inv.omitted_cases)},
             'inputs': inputs,
             'notes': dict(notes, referenceImages='none; captures are regression evidence only',
                           scale='Catalog scales and unknown server template scales are separate.',
@@ -736,6 +890,7 @@ def main():
     parser.add_argument('--model-features', help='Optional existing model-audit JSONL or JSON model rows; no game assets')
     parser.add_argument('--representative-limit', type=int, default=64, help='Maximum selected spell members across shared families')
     parser.add_argument('--case-limit', type=int, help='Optional maximum executable lifecycle captures; new stages/capabilities first')
+    parser.add_argument('--max-cases', type=int, help='Bound inventory fixture materialization; 0 inventories all records without retaining those fixtures')
     parser.add_argument('--representatives', action='store_true', help='Write executable lifecycle representatives as cases/batches instead of inventory cases')
     parser.add_argument('--verification-id', help='Composite renderer/converter/browser identity. Required to resume verification credits.')
     parser.add_argument('--output', required=True, help='Ignored local output directory')
@@ -745,7 +900,7 @@ def main():
         manifest = build_manifest(catalogs, content=args.content, npcs=load(args.npcs), raids=load(args.raids),
                                   bosses=load(args.bosses), resume=load(args.resume), batch_size=args.batch_size, verification_id=args.verification_id,
                                   model_features=load_model_features(args.model_features), representative_limit=args.representative_limit,
-                                  case_limit=args.case_limit)
+                                  case_limit=args.case_limit, max_cases=args.max_cases)
     except (ValueError, KeyError, TypeError, OSError) as error:
         parser.error(str(error))
     out = Path(args.output)

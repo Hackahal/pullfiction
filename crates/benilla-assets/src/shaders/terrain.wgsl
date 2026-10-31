@@ -11,10 +11,19 @@
 
 #import bevy_pbr::{
     mesh_functions,
-    forward_io::Vertex,
     view_transformations::position_world_to_clip,
     mesh_view_bindings::view,
 }
+
+struct TerrainVertex {
+    @builtin(instance_index) instance_index: u32,
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) uv_b: vec2<f32>,
+    @location(5) color: vec4<f32>,
+    @location(8) tint: vec3<f32>,
+};
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(100) var layer_array: texture_2d_array<f32>;
 @group(#{MATERIAL_BIND_GROUP}) @binding(104) var alpha_array: texture_2d_array<f32>;
@@ -61,6 +70,7 @@ struct TerrainVsOut {
     // carried torch is (1.4, 0.87, 0.40)) saturates one vertex and falls off linearly from it,
     // where clamping per pixel would pin a wide plateau at white.
     @location(6) primary: vec3<f32>,
+    @location(7) tint: vec3<f32>,
 }
 
 // Terrain's point-light candidacy half-width (yd): `w + 10`, `w` being the chunk's bounding-sphere
@@ -68,6 +78,10 @@ struct TerrainVsOut {
 // This takes the flat `w` everywhere, so steep chunks gather slightly narrower than the reference;
 // the lights that differ are 33 yd out or more, where att ≈ 0.02.
 const TERRAIN_REACH: f32 = 33.570166;
+
+fn terrain_diffuse_term(color: vec3<f32>, tint: vec3<f32>, primary: vec3<f32>, shadow_lit: f32) -> vec3<f32> {
+    return color * tint * primary * (0.3 * shadow_lit + 0.7);
+}
 
 // The dynamic point-light term. The reference commits at most three point lights per draw, the
 // nearest by squared distance to the receiving unit, into GL slots 1-3; terrain's unit is the MCNK
@@ -132,7 +146,7 @@ fn mcnk_cell_anchor(P: vec3<f32>) -> vec3<f32> {
 }
 
 @vertex
-fn vertex(in: Vertex) -> TerrainVsOut {
+fn vertex(in: TerrainVertex) -> TerrainVsOut {
     var out: TerrainVsOut;
     let world_from_local = mesh_functions::get_world_from_local(in.instance_index);
     out.world_position =
@@ -142,6 +156,7 @@ fn vertex(in: Vertex) -> TerrainVsOut {
     out.uv = in.uv;
     out.uv_b = in.uv_b;
     out.color = in.color;
+    out.tint = in.tint;
 
     // Sun specular per vertex: white material, row-9 colour, shininess `light_spec.w` (20), local
     // viewer; clamped here, then Gouraud-interpolated.
@@ -224,7 +239,8 @@ fn fragment(in: TerrainVsOut) -> @location(0) vec4<f32> {
     // The `terrainp_s.bls` combine, then an LDR clamp:
     //   diffuse  = tex · primary · (0.3·shadow + 0.7)   (a flat −30% in shadow, no tint)
     //   specular = sheen · mask · shadow                 (none in shadow)
-    let diffuse_term = color * primary * (0.3 * shadow_lit + 0.7);
+    // Modern MCCV modulates diffuse only (BGRA/255 ×2); original terrain's tint is white.
+    let diffuse_term = terrain_diffuse_term(color, in.tint, primary, shadow_lit);
     let spec_term = in.specular * specmask * shadow_lit;
     var tuned = clamp(diffuse_term + spec_term, vec3<f32>(0.0), vec3<f32>(1.0));
 

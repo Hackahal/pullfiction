@@ -591,6 +591,7 @@ mod tests {
                 seqs: None,
                 rot: None,
                 scale: None,
+                weight: None,
                 single: Some(std::sync::Arc::new(KeyAnim {
                     period: 2.0,
                     step: false,

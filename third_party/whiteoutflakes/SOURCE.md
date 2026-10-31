@@ -13,4 +13,10 @@ Pinned implementation references:
 - `src/renderer/particle/output/particle_geometry.cpp`: extra-layer UV construction.
 - `src/renderer/shaders/particle_multitex.slang`: separate color-stage and alpha Mod2/Mod4 products.
 
+The self-contained external M2 skeleton relocation uses the SKL1/SKS1/SKB1/SKA1
+layout definitions from WhiteoutLib revision `f3e57087f10119a3deeeed4799b0269effbc146a`,
+`src/whiteout/models/m2/structures/skeleton.h`, also BSD-3-Clause. The relocation
+code is original. It rewrites pointers while preserving authored key bytes,
+sequence durations and lookup values.
+
 The upstream AI-derived works notice confirms that derived code retains the BSD copyright, conditions and disclaimer. Original game files and downloaded research snapshots are not distributed here.

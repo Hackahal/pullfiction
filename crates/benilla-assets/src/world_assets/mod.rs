@@ -922,6 +922,7 @@ impl WorldAssets {
                 anim_slots: Vec4::ZERO,
                 stage1: Vec4::ZERO, // a tuft is one texture
                 stage1_uv: Vec4::ZERO,
+                texture_weights: Vec4::X,
                 stage1_texture: None,
                 third_texture: None,
                 light_buf: self.shared_light.clone(),

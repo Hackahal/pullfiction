@@ -38,6 +38,107 @@ def simple_chain(texture=123):
 
 
 class SpellTest(unittest.TestCase):
+    def test_reference_closure_is_sparse_cycle_safe_and_preserves_float_bits_and_stand(self):
+        definitions={
+            'Positioner':{7:{'ID':7,'FirstStateID':8},999:{'ID':999}},
+            'PositionerState':{8:{'ID':8,'NextStateID':8,'PosEntryID':20,'TransformMatrixID':40}},
+            'PositionerStateEntry':{20:{'ID':20,'CurveID':10,'ParamA':0x3e800000}},
+            'TransformMatrix':{40:{'ID':40,'Pos':[0,0,0],'Scale':0x3f800000,'Pitch':0x7fc00000}},
+            'Curve':{10:{'ID':10,'Type':0,'Flags':0},999:{'ID':999}},
+            'CurvePoint':{100:{'ID':100,'CurveID':10,'OrderIndex':0,'Pos':[0,0]},
+                          101:{'ID':101,'CurveID':10,'OrderIndex':1,'Pos':[0x3f800000,0x40000000]},
+                          999:{'ID':999,'CurveID':999,'Pos':[0,0]}},
+            'AnimKit':{30:{'ID':30,'OneShotStopAnimKitID':30}},
+            'AnimKitSegment':{300:{'ID':300,'ParentAnimKitID':30,'AnimID':0,'AnimKitConfigID':50}},
+            'AnimationData':{0:{'ID':0,'Fallback':0}},
+            'AnimKitConfig':{50:{'ID':50}},
+            'AnimKitConfigBoneSet':{500:{'ID':500,'ParentAnimKitConfigID':50,'AnimKitBoneSetID':60,'AnimKitPriorityID':70}},
+            'AnimKitBoneSet':{60:{'ID':60}},'AnimKitBoneSetAlias':{},
+            'AnimKitPriority':{70:{'ID':70,'Priority':1}},
+            'SpellMissileMotion':{9:{'ID':9,'Name':'motion','ScriptBody':'return source'}}}
+        calls=[]
+        def read(resource):calls.append(resource);return resource.encode()
+        with patch('classic_table_strings.named_table',side_effect=lambda raw,name:(definitions[name],'12345678')):
+            out=s.reference_definitions(read,{'SpellVisualMissile':{1:{'CastPositionerID':7,'AnimKitID':30,'SpellMissileMotionID':9}}})
+        self.assertEqual(out['missingReferences'],[])
+        self.assertEqual(set(out['tables']['Positioner']['rows']),{7})
+        self.assertEqual(set(out['tables']['CurvePoint']['rows']),{100,101})
+        self.assertIn(0,out['tables']['AnimationData']['rows'])
+        self.assertEqual(out['tables']['PositionerStateEntry']['rows'][20]['ParamA'],.25)
+        self.assertEqual(out['tables']['PositionerStateEntry']['rows'][20]['floatBits']['ParamA'],0x3e800000)
+        self.assertIsNone(out['tables']['TransformMatrix']['rows'][40]['Pitch'])
+        self.assertEqual(out['tables']['TransformMatrix']['rows'][40]['floatBits']['Pitch'],0x7fc00000)
+        self.assertEqual(out['tables']['SpellMissileMotion']['rows'][9]['ScriptBody'],'return source')
+        self.assertEqual(len(calls),len(set(calls)))
+        json.dumps(out,allow_nan=False)
+
+    def test_reference_closure_distinguishes_missing_rows_from_unavailable_tables(self):
+        def table(raw,name):
+            if name=='Positioner':return {7:{'ID':7,'FirstStateID':8}},'12345678'
+            if name=='PositionerState':return {},'12345678'
+            raise s.DB2Error('Unknown layout')
+        with patch('classic_table_strings.named_table',side_effect=table):
+            out=s.reference_definitions(lambda resource:b'fixed',{'SpellVisualMissile':{
+                1:{'CastPositionerID':7,'AnimKitID':9}}})
+        self.assertEqual({r['reason'] for r in out['missingReferences']},{'record-absent','table-unavailable'})
+        self.assertEqual(out['tables']['AnimKit']['status'],'unavailable')
+        self.assertEqual(out['tables']['PositionerState']['availableRecords'],0)
+        self.assertIn('sourceSha256',out['tables']['AnimKit'])
+
+    def test_attachment_animation_phases_retain_stand_zero_and_explicit_overrides(self):
+        tables={name:{} for name in s.TABLES}
+        tables['SpellVisualKit']={7:{}}
+        tables['SpellVisualKitEffect']={1:{'ParentSpellVisualKitID':7,'EffectType':2,'Effect':8}}
+        tables['SpellVisualKitModelAttach']={8:{'SpellVisualEffectNameID':9,'AttachmentID':34,
+            'Offset':[0]*3,'Yaw':0,'Pitch':0,'Roll':0,'Scale':0x3f800000,'StartDelay':0,
+            'PositionerID':0,'Flags':4,'StartAnimID':0,'AnimID':144,'EndAnimID':193}}
+        with patch.object(s,'read_tables',return_value=(tables,{})):
+            graph=s.spell_catalog(lambda _:b'',{})
+        self.assertEqual(graph['kits'][7]['effects'][0]['animation'],{'start':0,'loop':144,'end':193})
+
+    def test_model_format_headers_are_bounded_deduplicated_and_never_full_read(self):
+        m2=b'MD21'+struct.pack('<I',100)+b'MD20'
+        wmo=b'REVM'+struct.pack('<II',4,17)
+        self.assertEqual(s.model_asset_format(m2),'m2')
+        self.assertEqual(s.model_asset_format(b'MD20'+struct.pack('<II',256,0)),'m2')
+        self.assertEqual(s.model_asset_format(wmo),'wmo')
+        self.assertEqual(s.model_asset_format(b'REVM'+struct.pack('<II',4,18)),'unknown')
+        for header in (b'',m2[:4],bytes(12),b'REVM'+struct.pack('<II',8,17)):
+            self.assertEqual(s.model_asset_format(header),'unknown')
+        tables={name:{} for name in s.TABLES}
+        row=lambda fid:{'ModelFileDataID':fid,'Type':0,'Scale':0x3f800000,
+                        'Alpha':0x3f800000,'BaseMissileSpeed':0}
+        tables['SpellVisualEffectName']={1:row(100),2:row(100),3:row(200),4:row(300),5:row(0)}
+        calls=[]
+        def header(resource,offset,size):
+            calls.append((resource,offset,size))
+            if resource=='id:300':raise FileNotFoundError('not locally available')
+            return {'id:100':m2,'id:200':wmo}[resource]
+        def full(_):raise AssertionError('Model full reads are forbidden during catalog generation')
+        with patch.object(s,'read_tables',return_value=(tables,{})):
+            graph=s.spell_catalog(full,{},header)
+        self.assertEqual(calls,[('id:100',0,12),('id:200',0,12),('id:300',0,12)])
+        self.assertEqual([graph['effects'][i].get('assetFormat') for i in range(1,6)],
+                         ['m2','m2','wmo','unknown',None])
+        self.assertEqual(graph['effects'][4]['assetFormatEvidence']['probeBytes'],0)
+
+    def test_authored_metadata_keeps_unmapped_nondefault_fields_without_duplicate_defaults(self):
+        row={'ID':7,'Offset':[0,0,0],'Scale':0x3f800000,
+             'OffsetVariation':[0,0x3f800000,0],'StartAnimID':-1,
+             'AnimID':158,'EndAnimID':159,'Flags':[0,0],'AnimKitID':0}
+        self.assertEqual(s.authored_extra(row,{'Offset','Scale'}),{
+            'OffsetVariation':[0,0x3f800000,0],'AnimID':158,'EndAnimID':159})
+
+    def test_particle_palette_transposes_slots_and_preserves_rgb_without_alpha(self):
+        row={'Start':[0xaa010203,0xff102030,0],
+             'MID':[0xbb040506,0xff405060,0],
+             'End':[0xcc070809,0xff708090,0]}
+        with patch.object(s,'read_tables',return_value=({'ParticleColor':{7:row}},{})):
+            palettes=s.particle_colors(lambda _:b'')
+        self.assertEqual(palettes[7][0],[[v/255 for v in rgb] for rgb in ([1,2,3],[4,5,6],[7,8,9])])
+        self.assertEqual(palettes[7][1][2],[0x70/255,0x80/255,0x90/255])
+        self.assertEqual(palettes[7][2],[[0.,0.,0.]]*3)
+
     def test_pinned_procedural_and_chain_layouts_match_installed_build(self):
         self.assertEqual(s.schema('SpellProceduralEffect', 'fd22050d')[0], ['ID', 'Type', 'Value'])
         fields, parent, types = s.schema('SpellChainEffects', '3e3b28f5')
@@ -83,6 +184,45 @@ class SpellTest(unittest.TestCase):
         self.assertEqual(graph['spells'][7]['summonCue'], cue)
         self.assertNotIn('summonCue', graph['spells'][8])
         self.assertNotIn(99, graph['spells'])
+
+    def test_procedures_are_checked_before_chain_conversion_and_invalid_bits_survive_json(self):
+        bits = lambda v: struct.unpack('<I', struct.pack('<f', v))[0]
+        for ty in (1, 2, 14, 17):
+            proc = s.procedure({'Type': ty, 'Value': [bits(-.25), 0, 0, 0]})
+            self.assertIsNone(s.chain_procedure_id(proc))
+            self.assertEqual(proc['values'][0], -.25)
+        for values in ([8.5, 1, 0, 0], [8, 1.5, 0, 0], [8, 1, -1, 0],
+                       [0, 1, 0, 0], [8, 1, 0, float('inf')]):
+            proc = s.procedure({'Type': 0, 'Value': [bits(v) for v in values]})
+            self.assertIsNone(s.chain_procedure_id(proc))
+            self.assertFalse(proc['rendererCompatible'])
+            json.dumps(proc, allow_nan=False)
+        for bad in (float('nan'), float('inf'), -float('inf')):
+            raw = [bits(bad), bits(1), 0, 0]
+            proc = s.procedure({'Type': 12, 'Value': raw})
+            self.assertIsNone(proc['values'][0])
+            self.assertEqual(proc['rawValueBits'], raw)
+            self.assertIsNone(s.chain_procedure_id(proc))
+            json.dumps(proc, allow_nan=False)
+        self.assertEqual(s.chain_procedure_id(s.procedure({
+            'Type': 0, 'Value': [bits(8227), bits(3), bits(1), 0]})), 8227)
+
+    def test_authored_weapon_trail_is_exported_as_supported_without_becoming_a_chain(self):
+        bits = lambda v: struct.unpack('<I', struct.pack('<f', v))[0]
+        tables = {name: {} for name in s.TABLES}
+        tables['SpellVisualKit'] = {40: {}}
+        tables['SpellProceduralEffect'] = {7: {'Type': 8,
+            'Value': [bits(0xda4321), bits(20), bits(600), bits(100)]}}
+        tables['SpellVisualKitEffect'] = {1: {
+            'ParentSpellVisualKitID': 40, 'EffectType': 1, 'Effect': 7}}
+        with patch.object(s, 'read_tables', return_value=(tables, {})):
+            graph = s.spell_catalog(lambda _: b'', {})
+        proc = graph['kits'][40]['proceduralEffects'][0]
+        self.assertTrue(s.trail_procedure_compatible(proc))
+        self.assertIsNone(s.chain_procedure_id(proc))
+        self.assertEqual(graph['kits'][40]['unsupported'], [])
+        for value in (-1, .5, 256):
+            self.assertFalse(s.trail_procedure_compatible(dict(proc, values=[123, 20, 600, value])))
 
     def test_pinned_schema_keeps_parent_and_padded_scalar_widths(self):
         fields,parent,types=s.schema('SpellMisc','a1cc356a')

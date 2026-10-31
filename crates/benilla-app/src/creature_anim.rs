@@ -509,7 +509,12 @@ pub(crate) enum CastEventKind {
     /// The spell landed on this unit (a missile arrival, `0x61dc50`): impact kit, then state kit.
     /// `weapon_visual` is the caster's ranged-weapon `SpellVisual` (`0x60d450`), carried from the
     /// GO since the caster may despawn.
-    Impact { weapon_visual: Option<u32> },
+    Impact {
+        weapon_visual: Option<u32>,
+        /// The actual source preserved through flight or a recorded impact.
+        /// None never guesses a caster from selection or the aura owner.
+        caster: Option<Entity>,
+    },
     /// A projectile with no live target at arrival (`0x61d870`, a despawned target too): the kit
     /// plays on the caster (`entity`) at `pos` (`0x61d8e7`), `SpellVisual` field 13, stage 3. Sent
     /// here only for a dest-targeted GO's missile with no hit (`MissileSpawn::ground_aim`).

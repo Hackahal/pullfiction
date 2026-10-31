@@ -255,15 +255,16 @@ pub use talents::{load_talent_catalog, Talent, TalentCatalog, TalentTabInfo, MAX
 mod spell_visual;
 pub use spell_visual::{
     char_proc_small_int, char_proc_type, load_spell_visual_catalog, ChainEffect, ChainProc,
-    CharProc, EffectPlacement, SpellVisualCatalog, TrailProc, VisualKit, VisualStages,
-    CHAIN_MAX_BEAMS, KIT_CHAR_PROCS, KIT_SLOT_TAGS, MISSILE_ATTACH_TABLE, WORLD_EFFECT_TAG,
+    CharProc, EffectAnimation, EffectPlacement, SpellVisualCatalog, TrailProc, VisualKit,
+    VisualStages, CHAIN_MAX_BEAMS, KIT_CHAR_PROCS, KIT_SLOT_TAGS, MISSILE_ATTACH_TABLE,
+    WORLD_EFFECT_TAG,
 };
 mod emit_timing;
 pub use emit_timing::{EmitParams, EmitTiming, ParamsNow};
 mod particles;
 pub use particles::{
     parse_m2_particle_emitters, CellRamp, ModernParticleMaterial, OverLife, OverLifeSample,
-    ParticleBlend, ParticleEmitterDef, ParticleShape, SplineData,
+    ParticleBlend, ParticleColorPalette, ParticleEmitterDef, ParticleShape, SplineData,
 };
 mod ribbons;
 pub use ribbons::{parse_m2_ribbon_emitters, RibbonEmitterDef, RibbonVisibility};

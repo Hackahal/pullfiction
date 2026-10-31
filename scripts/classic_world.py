@@ -87,6 +87,9 @@ def adapt_wmo(data):
                 raise CompatError('Invalid WMO doodad model index')
             struct.pack_into('<I', doodads, pos, (name_flags & 0xff000000) | offsets[index])
         value['MODN'], value['MODD'] = bytes(strings), bytes(doodads)
+    # Private cache marker: native materials may select the modern MOMT shader table without
+    # changing the original 1.12 WMO material path.
+    value['PFW1'] = struct.pack('<I', 1)
     return pack(value)
 
 

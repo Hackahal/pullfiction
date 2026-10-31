@@ -30,6 +30,9 @@ pub struct ItemVisualCatalog {
 }
 
 impl ItemVisualCatalog {
+    pub fn from_modern_json(bytes: &[u8]) -> Result<Self> {
+        crate::modern_items::visual_catalog(bytes)
+    }
     /// The five slots for an ItemVisuals id, read signed as `0x479700` does, so `-1` and `0` name
     /// nothing.
     pub fn effects(&self, visual_id: i32) -> Option<&[Option<String>; ITEM_VISUAL_SLOTS]> {
@@ -69,6 +72,9 @@ const FLAG_BINDS_THE_ITEM: u32 = 0x1;
 const FLAG_TOOLTIP_HIDES_NAME: u32 = 0x2;
 
 impl EnchantCatalog {
+    pub fn from_modern_json(bytes: &[u8]) -> Result<Self> {
+        crate::modern_items::enchant_catalog(bytes)
+    }
     /// The ItemVisuals id the enchant glows with; signed, as one shipped row carries `-1`.
     pub fn visual(&self, enchant_id: u32) -> Option<i32> {
         self.visuals.get(&enchant_id).copied()
@@ -185,6 +191,21 @@ pub(crate) fn spell_item_enchantment_schema() -> Schema {
 
 /// Load and join `ItemVisuals.dbc` and `ItemVisualEffects.dbc`, applying the reference's skips.
 pub fn load_item_visual_catalog(chain: &mut Chain) -> Result<ItemVisualCatalog> {
+    #[cfg(target_arch = "wasm32")]
+    if crate::browser_local::active() {
+        return ItemVisualCatalog::from_modern_json(
+            &chain.read_file("__classic/item-appearances.json")?,
+        );
+    }
+    load_legacy_item_visual_catalog(chain).or_else(|legacy| {
+        let bytes = chain
+            .read_file("__classic/item-appearances.json")
+            .with_context(|| format!("legacy item visual catalog unavailable: {legacy:#}"))?;
+        ItemVisualCatalog::from_modern_json(&bytes)
+    })
+}
+
+fn load_legacy_item_visual_catalog(chain: &mut Chain) -> Result<ItemVisualCatalog> {
     let bytes = chain
         .read_file(ITEM_VISUAL_EFFECTS)
         .with_context(|| format!("reading {ITEM_VISUAL_EFFECTS}"))?;
@@ -218,6 +239,21 @@ pub fn load_item_visual_catalog(chain: &mut Chain) -> Result<ItemVisualCatalog> 
 
 /// Load the [`EnchantCatalog`] from `SpellItemEnchantment.dbc`.
 pub fn load_enchant_catalog(chain: &mut Chain) -> Result<EnchantCatalog> {
+    #[cfg(target_arch = "wasm32")]
+    if crate::browser_local::active() {
+        return EnchantCatalog::from_modern_json(
+            &chain.read_file("__classic/item-appearances.json")?,
+        );
+    }
+    load_legacy_enchant_catalog(chain).or_else(|legacy| {
+        let bytes = chain
+            .read_file("__classic/item-appearances.json")
+            .with_context(|| format!("legacy enchant catalog unavailable: {legacy:#}"))?;
+        EnchantCatalog::from_modern_json(&bytes)
+    })
+}
+
+fn load_legacy_enchant_catalog(chain: &mut Chain) -> Result<EnchantCatalog> {
     let bytes = chain
         .read_file(SPELL_ITEM_ENCHANTMENT)
         .with_context(|| format!("reading {SPELL_ITEM_ENCHANTMENT}"))?;

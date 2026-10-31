@@ -137,14 +137,20 @@ def adapt_adt(root, textures, objects, big_alpha=True, liquid_types=None):
         struct.pack_into('<I', header, 0, (flags & ~0x1003c) | liquid_flags)
         struct.pack_into('<I', header, 0xc, len(layers) // 16)
         body = bytearray(header)
-        for field in (0x14, 0x18, 0x1c, 0x24, 0x28, 0x2c, 0x30, 0x60, 0x64):
+        for field in (0x14, 0x18, 0x1c, 0x24, 0x28, 0x2c, 0x30, 0x60, 0x64, 0x74):
             struct.pack_into('<I', body, field, 0)
+        if 'MCCV' in nested and len(nested['MCCV']) != 145 * 4:
+            raise CompatError('Expected 145 authored terrain vertex colors')
         if liquid:
             nested['MCLQ'] = liquid
-        for tag, field in [('MCVT',0x14),('MCNR',0x18),('MCLY',0x1c),('MCAL',0x24),('MCSH',0x2c),('MCLQ',0x60)]:
+        for tag, field in [('MCVT',0x14),('MCNR',0x18),('MCLY',0x1c),('MCAL',0x24),('MCSH',0x2c),('MCLQ',0x60),('MCCV',0x74)]:
             if nested.get(tag):
                 struct.pack_into('<I', body, field, len(body) + 8)
                 body.extend(chunk(tag, nested[tag]))
+        if flags & 0x10000:
+            # Private cache metadata: preserve each authored 8x8 cell. The legacy mask above
+            # remains for old readers, but cannot represent a partially holed 2x2 block.
+            body.extend(chunk('PFH1', struct.pack('<Q', holes)))
         struct.pack_into('<I', body, 0x28, len(nested.get('MCAL', b'')))
         struct.pack_into('<I', body, 0x64, len(liquid))
         result.extend(chunk('MCNK', body))

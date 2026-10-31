@@ -585,6 +585,43 @@ pub fn wmo_group_submeshes(group_bytes: &[u8], root: &WmoRoot) -> Result<Vec<Ren
             {
                 (submesh.wrap_x, submesh.wrap_y) = sampler_policy::repeat_axes(flags);
             }
+            if root.modern_materials {
+                // MIT primary reference: noclip.website wow/wmo.rs STATIC_SHADERS and
+                // WorldOfWarcraft/program.ts WmoProgram. The private combine range keeps the
+                // selector in existing material keys/uniforms, including appearance fade twins.
+                anyhow::ensure!(
+                    material.is_some(),
+                    "modern WMO batch has no material record"
+                );
+                let shader = material.unwrap().shader;
+                anyhow::ensure!(
+                    matches!(shader, 0 | 1 | 3 | 4 | 21),
+                    "unsupported modern WMO shader {shader}"
+                );
+                submesh.combine = 32 + shader as u8;
+                if shader == 3 {
+                    let offset = material.unwrap().texture_2;
+                    let texture = root
+                        .texture_offset_index_map
+                        .get(&offset)
+                        .and_then(|i| root.textures.get(*i as usize))
+                        .filter(|name| !name.is_empty())
+                        .cloned();
+                    anyhow::ensure!(
+                        texture.is_some(),
+                        "modern WMO Env has no reflection texture"
+                    );
+                    submesh.stage1 = Some(crate::TextureStage {
+                        uv: None,
+                        third_texture: None,
+                        texture,
+                        wrap_x: submesh.wrap_x,
+                        wrap_y: submesh.wrap_y,
+                        env_map: true,
+                        combine: 18,
+                    });
+                }
+            }
             submesh.wmo_batch = Some(class);
             submesh.sidn = (flags & 0x10 != 0)
                 .then(|| material.map(|m| m.sidn_rgb))

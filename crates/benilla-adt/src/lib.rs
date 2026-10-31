@@ -161,11 +161,32 @@ pub struct McnkChunk {
     pub header: McnkHeader,
     pub heights: Option<McvtChunk>,
     pub normals: Option<McnrChunk>,
+    /// Optional modern MCCV, one raw BGRA color per MCVT vertex; absent in original terrain.
+    pub vertex_colors: Option<Vec<[u8; 4]>>,
     pub layers: Option<MclyChunk>,
     pub alpha: Option<McalChunk>,
     pub shadow: Option<McshChunk>,
     /// The MCLQ liquid blocks in disk order: none on a dry chunk, two at a river mouth.
     pub liquids: Vec<MclqChunk>,
+    /// Adapter-only PFH1 cache trailer: one hole bit per 8x8 terrain cell.
+    pub holes_high_res: Option<u64>,
+}
+
+impl McnkChunk {
+    /// Normalize legacy 2x2-block holes and modern per-cell holes to the same 8x8 bitmap.
+    pub fn hole_mask(&self) -> u64 {
+        self.holes_high_res.unwrap_or_else(|| {
+            let mut mask = 0;
+            for row in 0..8 {
+                for col in 0..8 {
+                    if self.header.holes_low_res & (1 << ((row >> 1) * 4 + (col >> 1))) != 0 {
+                        mask |= 1 << (row * 8 + col);
+                    }
+                }
+            }
+            mask
+        })
+    }
 }
 
 /// MDDF: a placed M2 doodad (36 bytes).
@@ -388,11 +409,25 @@ fn read_mcnk(data: &[u8]) -> Result<McnkChunk> {
         header,
         heights: None,
         normals: None,
+        vertex_colors: None,
         layers: None,
         alpha: None,
         shadow: None,
         liquids: Vec::new(),
+        holes_high_res: None,
     };
+    // Original MCNK subchunks need not be contiguous. Only the adapter's terminal extension
+    // has this fixed location; never reinterpret the original header's offset fields as holes.
+    if let Some(at) = data.len().checked_sub(16) {
+        if data.bytes_at(at, 4) == Some(b"1HFP") {
+            if data.u32_at(at + 4) != Some(8) {
+                return Err(Error::Truncated("PFH1"));
+            }
+            chunk.holes_high_res = Some(u64::from_le_bytes(
+                data[at + 8..at + 16].try_into().unwrap(),
+            ));
+        }
+    }
 
     // Sub-chunks sit at the header's offsets, not in sequence (AhnQiraj's are not contiguous).
     // An offset may count from the MCNK magic or from its data, so the reversed magic is checked
@@ -412,6 +447,16 @@ fn read_mcnk(data: &[u8]) -> Result<McnkChunk> {
     };
     // `locate` proves `start` in bounds; `len` is unvalidated, so the end saturates, then clamps.
     let slice = |start: usize, len: usize| &data[start..start.saturating_add(len).min(data.len())];
+
+    if let Some((p, n)) = locate(
+        h.u32_at(0x74).ok_or(Error::Truncated("MCNK header"))?,
+        b"VCCM",
+    ) {
+        if n != 145 * 4 || slice(p, n).len() != n {
+            return Err(Error::Truncated("MCCV: expected 145 BGRA colors"));
+        }
+        chunk.vertex_colors = Some(slice(p, n).as_chunks::<4>().0.to_vec());
+    }
 
     if let Some((p, n)) = locate(
         h.u32_at(0x14).ok_or(Error::Truncated("MCNK header"))?,
@@ -573,6 +618,40 @@ mod tests {
 
     fn parse(bytes: &[u8]) -> Result<ParsedAdt> {
         parse_adt(&mut Cursor::new(bytes))
+    }
+
+    #[test]
+    fn adapter_high_resolution_holes_preserve_single_cells_and_legacy_blocks() {
+        let mut data = mcnk_with_mcvt();
+        data[0x3c..0x3e].copy_from_slice(&1u16.to_le_bytes());
+        let legacy = read_mcnk(&data).unwrap();
+        assert_eq!(legacy.hole_mask(), 0x303);
+        data.extend(chunk(b"1HFP", &(1u64 << 63).to_le_bytes()));
+        let modern = read_mcnk(&data).unwrap();
+        assert_eq!(modern.hole_mask(), 1u64 << 63);
+        assert_eq!(modern.header.holes_low_res, 1);
+        let size = data.len() - 12;
+        data[size..size + 4].copy_from_slice(&7u32.to_le_bytes());
+        assert!(read_mcnk(&data).is_err());
+    }
+
+    #[test]
+    fn authored_mccv_requires_one_bgra_color_per_height_vertex() {
+        let plain = mcnk_with_mcvt();
+        assert!(read_mcnk(&plain).unwrap().vertex_colors.is_none());
+        for count in [144, 145, 146] {
+            let mut data = plain.clone();
+            let offset = data.len() as u32;
+            data[0x74..0x78].copy_from_slice(&offset.to_le_bytes());
+            data.extend(chunk(b"VCCM", &[0, 127, 255, 91].repeat(count)));
+            if count == 145 {
+                let colors = read_mcnk(&data).unwrap().vertex_colors.unwrap();
+                assert_eq!(colors.len(), 145);
+                assert_eq!(colors[0], [0, 127, 255, 91]);
+                data.pop();
+            }
+            assert!(read_mcnk(&data).is_err());
+        }
     }
 
     #[test]

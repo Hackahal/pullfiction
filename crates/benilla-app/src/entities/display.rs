@@ -111,6 +111,7 @@ impl EntityPart {
             single: self.uv_anim.clone(),
             rot: self.uv_rot_seq.clone(),
             scale: self.uv_scale_seq.clone(),
+            weight: None,
         }
     }
 }
@@ -129,6 +130,8 @@ pub(crate) struct DisplayModel {
     /// A held item's object skin, the `ItemDisplayInfo` texture bound to type-2 batches
     /// ([`CharSkinSlot::Object`]) from [`Self::dir`].
     pub(super) object_texture: Option<String>,
+    /// Display-owned palette; the shared M2 asset always retains its authored colors.
+    pub(super) particle_colors: Option<benilla_formats::ParticleColorPalette>,
     pub(super) parts: Option<Vec<EntityPart>>,
     pub(super) emitters: Vec<ModelEmitter>,
     pub(super) ribbons: Vec<benilla_assets::ModelRibbon>,
@@ -273,6 +276,7 @@ pub(super) fn new_creature_display(
 ) -> DisplayModel {
     match catalog.model(display_id) {
         Some(m) if m.scale > 0.0 => DisplayModel {
+            particle_colors: catalog.particle_colors(display_id).copied(),
             handle: ModelHandle::M2(asset_server.load(m2_url(&m.model_path))),
             dir: model_dir(&m.model_path).to_string(),
             skins: m.textures,
@@ -315,6 +319,7 @@ pub(crate) fn empty_shell() -> DisplayModel {
         skins: Default::default(),
         npc_appearance: None,
         object_texture: None,
+        particle_colors: None,
         parts: None,
         emitters: Vec::new(),
         ribbons: Vec::new(),
@@ -351,6 +356,24 @@ pub(super) fn empty_display() -> DisplayModel {
 
 /// Build a display's spawn parts once its asset and render forms are ready, filling a creature skin
 /// slot from the display's variation (`<dir>\<name>.blp`); until then `parts` stays `None`.
+/// Display-owned definitions also feed portrait and preview mirrors. The cached M2
+/// retains its authored colors when several displays share the same model.
+fn display_emitters(
+    authored: &[ModelEmitter],
+    palette: Option<&benilla_formats::ParticleColorPalette>,
+) -> Vec<ModelEmitter> {
+    authored
+        .iter()
+        .map(|emitter| {
+            let mut instance = emitter.clone();
+            if let Some(palette) = palette {
+                instance.def = emitter.def.with_particle_colors(palette);
+            }
+            instance
+        })
+        .collect()
+}
+
 pub(super) fn build_parts(
     dm: &mut DisplayModel,
     m2s: &Assets<M2Model>,
@@ -398,7 +421,7 @@ pub(super) fn build_parts(
             if !forms.require_rigged(h, 0) {
                 return; // forms still building
             }
-            emitters = model.emitters.clone();
+            emitters = display_emitters(&model.emitters, dm.particle_colors.as_ref());
             ribbons = model.ribbons.clone();
             lights = model.lights.clone();
             terrain_tilt = (model.global_flags & 3) as u8;
@@ -619,6 +642,47 @@ fn model_dir(model_path: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn display_particle_palettes_clone_definitions_without_mutating_shared_m2() {
+        let mut def = benilla_world::testing::plain_particle_def();
+        def.life_color_curve = vec![[0., 1., 1., 1.], [0.4, 1., 1., 1.], [1., 1., 1., 1.]];
+        def.modern_material = Some(benilla_formats::ModernParticleMaterial {
+            color_index: 11,
+            particle_colors: None,
+            flags: 0,
+            textures: [None, None, None],
+            uv_scale: [0.; 2],
+            uv_velocity: [[0.; 2]; 2],
+            uv_velocity_variation: [[0.; 2]; 2],
+            color_multiplier: 1.,
+            alpha_multiplier: 1.,
+            alpha_cutoff: Vec::new(),
+            z_source: None,
+        });
+        let emitter = ModelEmitter {
+            def,
+            texture: None,
+            extra_textures: None,
+            bone_pivot: [0.; 3],
+            billboard: None,
+            recursion: None,
+            geometry: None,
+            owner_reach: 0.,
+            water_bound: (Vec3::ZERO, 0.),
+            idle_seq: 0,
+        };
+        let authored = vec![emitter];
+        let red = [[[1., 0., 0.]; 3]; 3];
+        let blue = [[[0., 0., 1.]; 3]; 3];
+        let a = display_emitters(&authored, Some(&red));
+        let b = display_emitters(&authored, Some(&blue));
+        assert_eq!(a[0].def.life_color_curve[1], [0.4, 1., 0., 0.]);
+        assert_eq!(b[0].def.life_color_curve[1], [0.4, 0., 0., 1.]);
+        assert_eq!(authored[0].def.life_color_curve[1], [0.4, 1., 1., 1.]);
+        assert!(authored[0].def.particle_colors().is_none());
+        assert_eq!(a[0].def.particle_colors(), Some(&red));
+    }
 
     /// Both kinds carry the same empty `parts` once built, so only the handle tells a display that
     /// named no model from one whose model draws nothing.

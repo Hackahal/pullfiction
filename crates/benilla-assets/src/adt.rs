@@ -22,6 +22,14 @@ use crate::terrain::{
     alpha_array_image, layer_array_image, pack_layers, shadow_array_image, RawLayer, LAYER_TEX_SIZE,
 };
 
+/// Authored terrain tint, independent of COLOR's four layer-array indices.
+pub(crate) const ATTRIBUTE_TERRAIN_TINT: bevy::mesh::MeshVertexAttribute =
+    bevy::mesh::MeshVertexAttribute::new(
+        "Terrain_Tint",
+        988_540_925,
+        bevy::render::render_resource::VertexFormat::Float32x3,
+    );
+
 /// A loaded ADT tile; the app builds its meshes with [`chunk_to_mesh`].
 #[derive(Asset, TypePath)]
 pub struct AdtTile {
@@ -87,6 +95,7 @@ pub fn chunks_to_mesh(parts: &[(&ChunkMesh, &ChunkShading)]) -> Option<Mesh> {
     let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(total);
     let mut uv1: Vec<[f32; 2]> = Vec::with_capacity(total);
     let mut colors: Vec<[f32; 4]> = Vec::with_capacity(total);
+    let mut tints: Vec<[f32; 3]> = Vec::with_capacity(total);
     let mut indices: Vec<u32> = Vec::with_capacity(live.iter().map(|(c, _)| c.indices.len()).sum());
     for (chunk, shading) in live {
         let base = u32::try_from(positions.len()).expect("a cell's vertex count fits u32");
@@ -108,6 +117,11 @@ pub fn chunks_to_mesh(parts: &[(&ChunkMesh, &ChunkShading)]) -> Option<Mesh> {
             n,
         ));
         colors.extend(std::iter::repeat_n(col, n));
+        if chunk.vertex_colors.len() == n {
+            tints.extend_from_slice(&chunk.vertex_colors);
+        } else {
+            tints.extend(std::iter::repeat_n([1.0; 3], n));
+        }
         uvs.extend_from_slice(&chunk.uvs);
         indices.extend(chunk.indices.iter().map(|i| i + base));
         positions.extend(chunk_positions);
@@ -121,8 +135,48 @@ pub fn chunks_to_mesh(parts: &[(&ChunkMesh, &ChunkShading)]) -> Option<Mesh> {
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_1, uv1);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    mesh.insert_attribute(ATTRIBUTE_TERRAIN_TINT, tints);
     mesh.insert_indices(Indices::U32(indices));
     Some(mesh)
+}
+
+#[cfg(test)]
+mod terrain_tint_tests {
+    use super::*;
+
+    #[test]
+    fn terrain_tint_attribute_is_independent_of_layer_indices_and_defaults_to_white() {
+        let mut source = vec![0u8; 8 + 128];
+        source[..4].copy_from_slice(b"KNCM");
+        source[8 + 0x14..8 + 0x18].copy_from_slice(&136u32.to_le_bytes());
+        source.extend_from_slice(b"TVCM");
+        source.extend_from_slice(&(145u32 * 4).to_le_bytes());
+        source.extend_from_slice(&[0u8; 145 * 4]);
+        let size = source.len() as u32 - 8;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        let mut chunks = adt_to_tile_mesh(&source).unwrap().chunks;
+        let mut authored = chunks[0].clone();
+        authored.vertex_colors = vec![[2.0, 254.0 / 255.0, 0.0]; 145];
+        let shading = ChunkShading {
+            layers: [2, 3, 5, 7],
+            ..Default::default()
+        };
+        let mesh = chunks_to_mesh(&[(&chunks.remove(0), &shading), (&authored, &shading)]).unwrap();
+        let Some(bevy::mesh::VertexAttributeValues::Float32x4(layers)) =
+            mesh.attribute(Mesh::ATTRIBUTE_COLOR)
+        else {
+            panic!("missing layer indices")
+        };
+        assert!(layers.iter().all(|v| *v == [2.0, 3.0, 5.0, 7.0]));
+        let Some(bevy::mesh::VertexAttributeValues::Float32x3(tints)) =
+            mesh.attribute(ATTRIBUTE_TERRAIN_TINT)
+        else {
+            panic!("missing independent terrain tint")
+        };
+        assert_eq!(tints.len(), 290);
+        assert!(tints[..145].iter().all(|v| *v == [1.0; 3]));
+        assert!(tints[145..].iter().all(|v| *v == [2.0, 254.0 / 255.0, 0.0]));
+    }
 }
 
 /// Loads a `*.adt` tile into an [`AdtTile`].

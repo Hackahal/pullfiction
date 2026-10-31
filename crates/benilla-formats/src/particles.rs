@@ -3,7 +3,7 @@
 //! (`0x70ebd0`). Rate and enabled bake one loop per sequence into [`EmitTiming`], since the
 //! reference samples both in the playing sequence's key window (`0x713d50`).
 
-use std::io::Cursor;
+use std::{io::Cursor, sync::Arc};
 
 use anyhow::Result;
 use benilla_m2::{parse_m2, M2ScalarTrack};
@@ -246,6 +246,10 @@ impl SplineData {
 /// Authored modern particle material inputs retained by the browser adapter's PFP5 extension.
 #[derive(Debug, Clone)]
 pub struct ModernParticleMaterial {
+    /// Display-selected ParticleColor slot (11..13), zero keeps authored RGB.
+    pub color_index: u16,
+    /// Instance palette retained for recursively loaded child emitters.
+    pub particle_colors: Option<Arc<ParticleColorPalette>>,
     pub flags: u32,
     pub textures: [Option<String>; 3],
     pub uv_scale: [f32; 2],
@@ -255,6 +259,23 @@ pub struct ModernParticleMaterial {
     pub alpha_multiplier: f32,
     pub alpha_cutoff: Vec<[f32; 2]>,
     pub z_source: Option<f32>,
+}
+
+/// Slot 11/12/13 × start/mid/end × RGB. Alpha and timestamps belong to the model.
+pub type ParticleColorPalette = [[[f32; 3]; 3]; 3];
+
+fn replace_particle_rgb(curve: &mut [[f32; 4]], index: u16, palette: &ParticleColorPalette) {
+    let Some(slot) = index.checked_sub(11).filter(|&s| s < 3) else {
+        return;
+    };
+    // The adapter validates this before publishing a replaceable emitter. Keep
+    // the bounds rule here too for manually constructed or older definitions.
+    if curve.len() != 3 {
+        return;
+    }
+    for (key, rgb) in curve.iter_mut().zip(palette[slot as usize]) {
+        key[1..].copy_from_slice(&rgb);
+    }
 }
 
 impl ModernParticleMaterial {
@@ -362,6 +383,20 @@ pub struct ParticleEmitterDef {
 }
 
 impl ParticleEmitterDef {
+    /// Instance-local RGB replacement. Shared model definitions and every alpha,
+    /// timestamp and unrelated lifetime channel retain their authored values.
+    pub fn with_particle_colors(&self, palette: &ParticleColorPalette) -> Self {
+        let mut def = self.clone();
+        if let Some(material) = &mut def.modern_material {
+            replace_particle_rgb(&mut def.life_color_curve, material.color_index, palette);
+            material.particle_colors = Some(Arc::new(*palette));
+        }
+        def
+    }
+
+    pub fn particle_colors(&self) -> Option<&ParticleColorPalette> {
+        self.modern_material.as_ref()?.particle_colors.as_deref()
+    }
     /// Classic flipbook keys keep their authored lifetime clock, including discontinuities.
     pub fn sample_life(&self, age: f32) -> OverLifeSample {
         let mut value = self.over_life.sample(age);
@@ -709,6 +744,8 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                     if stride >= 160 {
                         let flags = le_u32(bytes, at + 76);
                         let material = ModernParticleMaterial {
+                            color_index: u16::from(bytes[base + i * STRIDE + 45]),
+                            particle_colors: None,
                             flags,
                             textures: std::array::from_fn(|j| {
                                 textures
@@ -729,6 +766,12 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                             z_source: (le_u32(bytes, at + 156) != 0)
                                 .then(|| le_f32(bytes, at + 148)),
                         };
+                        anyhow::ensure!(
+                            material.color_index == 0
+                                || ((11..=13).contains(&material.color_index)
+                                    && life_curves[i].0.len() == 3),
+                            "unsupported modern particle palette slot or RGB key count"
+                        );
                         anyhow::ensure!(
                             material
                                 .uv_scale
@@ -1283,6 +1326,37 @@ mod classic_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn display_particle_palette_preserves_authored_key_times_and_shared_curve() {
+        let original = [
+            [0., 0.1, 0.2, 0.3],
+            [0.125, 0.4, 0.5, 0.6],
+            [1., 0.7, 0.8, 0.9],
+        ];
+        let palettes = [
+            [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.]],
+            [[0.25, 0.5, 0.75]; 3],
+            [[0.75, 0.5, 0.25]; 3],
+        ];
+        let mut curve = original;
+        replace_particle_rgb(&mut curve, 11, &palettes);
+        assert_eq!(
+            curve,
+            [[0., 1., 0., 0.], [0.125, 0., 1., 0.], [1., 0., 0., 1.]]
+        );
+        assert_eq!(original[1], [0.125, 0.4, 0.5, 0.6]);
+        let mut other = original;
+        replace_particle_rgb(&mut other, 12, &palettes);
+        assert_eq!(other[1], [0.125, 0.25, 0.5, 0.75]);
+        for index in [0, 10, 14, u16::MAX] {
+            let mut untouched = original;
+            replace_particle_rgb(&mut untouched, index, &palettes);
+            assert_eq!(untouched, original);
+        }
+        let mut short = original[..2].to_vec();
+        replace_particle_rgb(&mut short, 11, &palettes);
+        assert_eq!(short, original[..2]);
+    }
 
     #[test]
     fn bit_one_is_the_unlit_flag_and_mod_blends_never_light() {

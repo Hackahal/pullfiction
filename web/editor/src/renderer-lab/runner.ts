@@ -2,8 +2,53 @@ import { prepareOriginalUnits } from "../original-client-assets";
 import { prepareOriginalSpellEffects } from "../original-spell-assets";
 import type { EditorController } from "../controller";
 import type { Engine } from "../types";
-import { SMOKE_CASES, validateRendererCase, type RendererCase } from "./cases";
+import {
+  SMOKE_CASES,
+  validateRendererCase,
+  type RendererCase,
+  type RendererActor,
+} from "./cases";
 import { applySpellActions, spellTimeline } from "./spell-timeline";
+/** Preserve the production equipment payload, including both enchant slots. */
+export function resolveFixtureEquipment(
+  equipment: RendererActor["equipment"],
+  items: Record<string, any>,
+) {
+  return (equipment ?? []).map((g) => {
+    let itemId = g.itemId;
+    let info =
+      items.items?.[g.itemId ?? 0] ?? items.unresolvedItems?.[g.itemId ?? 0];
+    if (!itemId && g.displayId) {
+      const matches = Object.entries(items.items ?? {}).filter(
+        ([, row]: [string, any]) => row.display === g.displayId,
+      ) as [string, Record<string, any>][];
+      const fields = ["class", "subclass", "inventory", "material", "sheath"];
+      const variants = new Set(
+        matches.map(([, row]) => JSON.stringify(fields.map((k) => row[k]))),
+      );
+      // A display-directed fixture can borrow actual item metadata only when
+      // its renderer-relevant values agree. Never guess a weapon/armor kind.
+      if (matches.length && variants.size === 1) {
+        [itemId, info] = [Number(matches[0][0]), matches[0][1]];
+      }
+    }
+    if (!info || !(g.displayId ?? info.display))
+      throw Object.assign(
+        new Error(`No local item/display join for ${g.itemId ?? g.displayId}`),
+        { name: "RendererFixtureUnsupported" },
+      );
+    return {
+      id: itemId ?? 0,
+      slot: g.slot,
+      ...info,
+      display: g.displayId ?? info?.display ?? 0,
+      name: `Item ${g.itemId ?? g.displayId}`,
+      quality: 0,
+      enchant: g.enchant ?? 0,
+      temporary: g.temporary ?? 0,
+    };
+  });
+}
 export interface LabEngine extends Engine {
   rendererArtifactIdentity?(): { schema: number; wasmSha256: string } | null;
   renderer_lab_configure(json: string): void;
@@ -101,6 +146,24 @@ export function validateBatch(value: unknown): RendererCase[] {
     ids.add(c.id);
   }
   return batch;
+}
+
+/** A frozen scene needs positive steps before its ordinary actor fade can finish. */
+export async function clearPreviousActors(
+  status: () => Promise<any>,
+  advance: (frames: number) => Promise<void>,
+  signal: AbortSignal,
+) {
+  signal.throwIfAborted();
+  await advance(30);
+  const end = performance.now() + 10000;
+  while ((await status()).resources?.replayBodies > 0) {
+    signal.throwIfAborted();
+    if (performance.now() > end)
+      throw new Error("Previous actors did not clear");
+    await advance(1);
+    await wait(30, signal);
+  }
 }
 export class RendererRunner {
   private expectedMap: number | null = null;
@@ -340,26 +403,7 @@ export class RendererRunner {
               new Error(`No authored display for NPC ${a.npcId}`),
               { name: "RendererFixtureUnsupported" },
             );
-          const gear = (a.equipment ?? []).map((g) => {
-            const info = items.items?.[g.itemId ?? 0];
-            if (!(g.displayId ?? info?.display))
-              throw Object.assign(
-                new Error(
-                  `No local item/display join for ${g.itemId ?? g.displayId}`,
-                ),
-                { name: "RendererFixtureUnsupported" },
-              );
-            return {
-              id: g.itemId ?? 0,
-              slot: g.slot,
-              ...info,
-              display: g.displayId ?? info?.display ?? 0,
-              name: `Item ${g.itemId ?? g.displayId}`,
-              quality: 0,
-              enchant: 0,
-              temporary: 0,
-            };
-          });
+          const gear = resolveFixtureEquipment(a.equipment, items);
           const race = a.race ?? 1,
             sex = a.sex ?? 0;
           const look = a.look ?? [0, 0, 0, 0, 0];
@@ -461,15 +505,11 @@ export class RendererRunner {
             portalCull: c.portalCull,
           }),
         );
-        const clearEnd = performance.now() + 10000;
-        while (
-          (await this.request("status", signal)).resources?.replayBodies > 0
-        ) {
-          if (performance.now() > clearEnd)
-            throw new Error("Previous actors did not clear");
-          await wait(30, signal);
-        }
-        await this.advance(30, signal); // Finish the production two-second teardown fade.
+        await clearPreviousActors(
+          () => this.request("status", signal),
+          (frames) => this.advance(frames, signal),
+          signal,
+        );
         setupPhases.push({
           ...(await this.request("status", signal)),
           localPreparedBytes: files.preparedBytes,

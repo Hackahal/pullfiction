@@ -3624,6 +3624,35 @@ test("planned and recorded reference poses share the edge cache and invalidate m
   c.stop();
 });
 
+test("missing optional presentation cues preserve replay preparation but cancellation still aborts", async () => {
+  for (const aborted of [false, true]) {
+    const f = fixture();
+    const error = new Error(aborted ? "Cancelled" : "Client effect is unavailable");
+    error.name = aborted ? "AbortError" : "NotFoundError";
+    const internals = f.c as unknown as {
+      localFiles: unknown;
+      browserBridge: unknown;
+      prepareReplayForInstall: (input: RawReplay) => Promise<{replay: {actors: unknown[]}}>;
+    };
+    internals.localFiles = { prepare: async () => {} };
+    internals.browserBridge = {
+      map: async () => ({ floors: [], areas: [] }),
+      catalog: async (kind: string) => {
+        if (kind === "spells") throw error;
+        return {};
+      },
+    };
+    const input = { ...raw, actors: [], events: [], abilities: [{gameID: 440802, name: "Frozen Orb"}] };
+    if (aborted) await assert.rejects(internals.prepareReplayForInstall(input), (e: unknown) => e === error);
+    else {
+      const prepared = await internals.prepareReplayForInstall(input);
+      assert.equal(prepared.replay.actors.length, 0);
+      assert.match(f.c.getSnapshot().notice, /Some spell effects are unavailable/);
+    }
+    f.c.stop();
+  }
+});
+
 test("Appearance edits prepare before publishing and merge pending fields without stale commits", async () => {
   const f = fixture();
   const actor = f.c.getSnapshot().replay!.actors[0];

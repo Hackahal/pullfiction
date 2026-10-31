@@ -63,6 +63,12 @@ from classic_talents import talent_catalog
 def local_read(name):
     return bytes(_read_js(name).to_py())
 
+def local_range(name, offset, size):
+    value = _range_js(name, offset, size)
+    if value is False:
+        raise EncryptedSectionError('Local section key unavailable')
+    return bytes(value.to_py())
+
 def prepare_model(name):
     data = local_read(name)
     parts, cursor = {}, 0
@@ -80,7 +86,7 @@ def prepare_model(name):
     # The viewer uses the first skin profile. Do not prepare unused LOD profiles.
     skin = local_read('id:' + str(read(ids, '<I', 0)[0]))
     try:
-        return adapt_model(data, [skin])
+        return adapt_model(data, [skin], local_read)
     except UnsupportedFeatureError as error:
         return str(error)
 
@@ -175,7 +181,9 @@ json.dumps(_characters.appearance(json.loads(_appearance_json)), separators=(','
       py.globals.set("_source_json", JSON.stringify(build));
       const expression = {
         creatures: "creature_catalog(local_read, json.loads(_source_json))",
-        spells: "spell_catalog(local_read, json.loads(_source_json))",
+        spells: typeof readRange === "function"
+          ? "spell_catalog(local_read, json.loads(_source_json), local_range)"
+          : "spell_catalog(local_read, json.loads(_source_json))",
         items: "item_catalog(local_read, json.loads(_source_json))",
         world: "world_catalog(local_read, json.loads(_source_json))",
         lighting: "lighting_catalog(local_read, json.loads(_source_json))",

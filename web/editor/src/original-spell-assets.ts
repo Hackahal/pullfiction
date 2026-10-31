@@ -54,6 +54,83 @@ export function preparedModelDependencies(bytes: Uint8Array) {
   return { textures: [...textures], models: [...models] };
 }
 
+/** Static WMO spell hosts reuse the world loader and its base-group naming convention. */
+export function preparedWmoDependencies(bytes: Uint8Array, path: string) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const chunks = new Map<string, Uint8Array>();
+  for (let at = 0; at < bytes.length;) {
+    if (at + 8 > bytes.length || chunks.size >= 4096)
+      throw new Error("Invalid prepared WMO chunk header");
+    const tag = new TextDecoder()
+      .decode(bytes.subarray(at, at + 4))
+      .split("")
+      .reverse()
+      .join("");
+    const size = view.getUint32(at + 4, true);
+    if (size > bytes.length - at - 8 || chunks.has(tag))
+      throw new Error("Invalid prepared WMO chunk range");
+    chunks.set(tag, bytes.subarray(at + 8, at + 8 + size));
+    at += 8 + size;
+  }
+  const version = chunks.get("MVER");
+  if (
+    !version ||
+    version.length !== 4 ||
+    new DataView(version.buffer, version.byteOffset, 4).getUint32(0, true) !==
+      17
+  )
+    throw new Error("Spell preparation needs an adapted WMO version17");
+  const root = chunks.get("MOHD");
+  if (!root) {
+    if (!chunks.has("MOGP"))
+      throw new Error("Prepared WMO has no root or group");
+    return { textures: [] as string[], models: [] as string[] };
+  }
+  if (root.length !== 64) throw new Error("Invalid prepared WMO root header");
+  // The effect display path supplies static parts. Placed-world child doodads/lights have
+  // their own owning systems and are not silently credited to this consumer.
+  if ((chunks.get("MODD")?.length ?? 0) || (chunks.get("MOLT")?.length ?? 0))
+    throw new Error(
+      "WMO spell-host child doodads or lights need their owning world context",
+    );
+  const count = new DataView(
+    root.buffer,
+    root.byteOffset,
+    root.byteLength,
+  ).getUint32(4, true);
+  if (count > 2048 || !/\.wmo$/i.test(path))
+    throw new Error("Invalid prepared WMO group count or path");
+  const materials = chunks.get("MOMT") ?? new Uint8Array();
+  const names = chunks.get("MOTX") ?? new Uint8Array();
+  if (materials.length % 64) throw new Error("Invalid prepared WMO materials");
+  const materialView = new DataView(
+    materials.buffer,
+    materials.byteOffset,
+    materials.byteLength,
+  );
+  const textures = new Set<string>();
+  for (let at = 0; at < materials.length; at += 64) {
+    for (const field of [12, 24, 36]) {
+      const start = materialView.getUint32(at + field, true);
+      if (start >= names.length)
+        throw new Error("Invalid prepared WMO texture name");
+      const end = names.indexOf(0, start);
+      if (end < start || end - start > 1024)
+        throw new Error("Invalid prepared WMO texture name");
+      const name = new TextDecoder("utf-8", { fatal: true }).decode(
+        names.subarray(start, end),
+      );
+      if (name) textures.add(localFileKey(name));
+    }
+  }
+  return {
+    textures: [...textures],
+    models: Array.from({ length: count }, (_, i) =>
+      path.replace(/\.wmo$/i, `_${String(i).padStart(3, "0")}.wmo`),
+    ),
+  };
+}
+
 /** Prepare a selected spell closure, including explicitly mapped presentation hosts. */
 export async function prepareOriginalSpellEffects(
   files: LocalClientFiles,
@@ -67,13 +144,26 @@ export async function prepareOriginalSpellEffects(
     models = new Set<string>(),
     textures = new Set<string>();
   const displays = new Set<number>();
-  const file = (id: unknown, extension: "m2" | "blp") =>
+  const file = (id: unknown, extension: "m2" | "blp" | "wmo") =>
     typeof id === "number" && Number.isSafeInteger(id) && id > 0
       ? `__classic/${id}.${extension}`
       : null;
   const model = (effect: unknown) => {
     const row = graph.effects?.[String(effect)];
-    const path = row?.type === 0 ? file(row.fileDataID, "m2") : null;
+    if (
+      row?.type === 0 &&
+      row.fileDataID &&
+      row.assetFormat !== undefined &&
+      row.assetFormat !== "m2" &&
+      row.assetFormat !== "wmo"
+    )
+      throw new Error(
+        "Spell model format is unavailable in the selected client",
+      );
+    const path =
+      row?.type === 0
+        ? file(row.fileDataID, row.assetFormat === "wmo" ? "wmo" : "m2")
+        : null;
     if (path) models.add(path);
   };
   for (const spellId of spells) {
@@ -131,7 +221,9 @@ export async function prepareOriginalSpellEffects(
     if (models.size > 256)
       throw new Error("Spell dependency closure exceeds 256 models");
     await files.prepare([path], signal);
-    const dependencies = preparedModelDependencies(files.readSync(path));
+    const dependencies = /\.wmo$/i.test(path)
+      ? preparedWmoDependencies(files.readSync(path), path)
+      : preparedModelDependencies(files.readSync(path));
     dependencies.textures.forEach((texture) => textures.add(texture));
     dependencies.models.forEach((model) => models.add(model));
   }
