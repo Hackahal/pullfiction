@@ -1977,7 +1977,7 @@ test("Label drawing retains the captured unselected actor and its name", () => {
   f.c.stop();
 });
 
-test("Marker release preserves explicit actor selection without waiting for a hover", () => {
+test("Marker release preserves explicit actor selection after validating the release hit", () => {
   const f = fixture();
   f.c.seek(1000);
   f.c.setTool("marker");
@@ -1986,8 +1986,52 @@ test("Marker release preserves explicit actor selection without waiting for a ho
   const requests: unknown[] = [];
   f.engine.hover_annotation = (...args) => requests.push(args);
   f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks().length, 0);
+  assert.deepEqual(requests, [[30, 40, true, 1]]);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 1,
+      pixel: [30, 40],
+      actor: null,
+      point: [9, 8, 7],
+    }),
+  );
   assert.equal(f.c.displayMarks()[0].actor, actor.key);
-  assert.equal(requests.length, 0);
+  f.c.stop();
+});
+
+test("Selected-actor marker release over native UI cannot attach a marker", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  f.c.selectActor(actor.key);
+  f.engine.hover_annotation = () => {};
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 1,
+      pixel: [30, 40],
+      nativeUI: true,
+      actor: actor.key,
+    }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.stop();
+});
+
+test("Reduced engines retain explicit actor attachment without a hover API", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  f.c.selectActor(actor.key);
+  assert.equal(f.engine.hover_annotation, undefined);
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks()[0].actor, actor.key);
   f.c.stop();
 });
 

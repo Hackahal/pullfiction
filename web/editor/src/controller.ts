@@ -189,6 +189,7 @@ export class EditorController {
     epoch: number;
     projectEpoch: number;
     request: number;
+    selectedActor: string | null;
   }[] = [];
   private markDrag: {
     id: string;
@@ -2551,9 +2552,8 @@ export class EditorController {
   placeSceneMarkerAt(x: number, y: number) {
     if (this.state.tool !== "marker" || ![x, y].every(Number.isFinite)) return;
     const selected = this.selectedActorForDrawing();
-    if (selected && this.startActorDrawing(selected)) return;
     if (!this.engine?.hover_annotation) {
-      this.pick(x, y);
+      if (!selected || !this.startActorDrawing(selected)) this.pick(x, y);
       return;
     }
     this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
@@ -2568,6 +2568,7 @@ export class EditorController {
       epoch: this.pickEpoch,
       projectEpoch: this.projectEpoch,
       request: this.markerRequest,
+      selectedActor: selected,
     });
     this.engine.hover_annotation(x, y, true, this.markerRequest);
   }
@@ -4728,7 +4729,8 @@ export class EditorController {
           basis.nativeUI
         )
           return;
-        if (!basis.actor || !this.startActorDrawing(basis.actor)) {
+        const actor = click.selectedActor ?? basis.actor;
+        if (!actor || !this.startActorDrawing(actor)) {
           if (
             Array.isArray(basis.point) &&
             basis.point.length === 3 &&
