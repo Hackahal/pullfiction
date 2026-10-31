@@ -44,15 +44,15 @@ def tables(path):
     return result
 
 
-def project(data):
+def project(data, maps=MAPS):
     templates = {int(t['entry']): t for t in data['creature_template']}
     variants = {}
     for row in data.get('creature_spawn_entry', []):
         variants.setdefault(int(row['guid']), []).append(int(row['entry']))
-    raids = {str(m): [] for m in MAPS}
+    raids = {str(m): [] for m in maps}
     for row in data['creature']:
         map_id = int(row['map'])
-        if map_id not in MAPS:
+        if map_id not in maps:
             continue
         entries = [int(row['id'])] if int(row['id']) else sorted(variants.get(int(row['guid']), []))
         # Random-entry slots use a deterministic representative, never stacked variants.
@@ -86,12 +86,16 @@ def main():
     parser.add_argument('--source', required=True, type=Path)
     parser.add_argument('--source-url', required=True)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--maps', default=','.join(map(str, MAPS)), help='Comma-separated native map IDs')
     args = parser.parse_args()
+    maps = tuple(int(value) for value in args.maps.split(','))
+    if not maps or len(maps) != len(set(maps)) or any(value <= 0 for value in maps):
+        raise ValueError('Map IDs must be distinct positive integers')
     value = {'schema': 1, 'provider': 'CMaNGOS Classic DB',
         'sourceURL': args.source_url, 'sourceSHA256': hashlib.sha256(args.source.read_bytes()).hexdigest(),
-        'ruleset': 'vanilla', 'maps': project(tables(args.source))}
+        'ruleset': 'vanilla', 'maps': project(tables(args.source), maps)}
     if not all(value['maps'].values()):
-        raise ValueError('Expected reference spawns for every supported Vanilla raid')
+        raise ValueError('Expected reference spawns for every requested map')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(value, separators=(',', ':')) + '\n', encoding='utf-8')
     print({m: len(rows) for m, rows in value['maps'].items()})

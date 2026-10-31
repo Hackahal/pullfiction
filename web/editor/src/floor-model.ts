@@ -72,7 +72,8 @@ export function replayFloorHints(
   const anchors: Anchor[] = [];
   for (const actor of replay.actors) {
     if (actor.type !== "NPC") continue;
-    if (actor.spawn) result.set(actor.key, actor.spawn.position[2]);
+    const spawnHeight = actor.spawn?.position[2] ?? actor.spawn?.floorHint;
+    if (spawnHeight != null) result.set(actor.key, spawnHeight);
     if (actor.spawn?.synthetic || !actor.samples.length) continue;
     let cached = actorSeeds.get(actor);
     if (cached?.catalog !== catalog) {
@@ -88,9 +89,15 @@ export function replayFloorHints(
       };
       actorSeeds.set(actor, cached);
     }
-    const seed: Seed | undefined = actor.spawn
-      ? [replay.map, ...actor.spawn.position]
-      : cached.seed;
+    const seed: Seed | undefined =
+      actor.spawn && spawnHeight != null
+        ? [
+            replay.map,
+            actor.spawn.position[0],
+            actor.spawn.position[1],
+            spawnHeight,
+          ]
+        : cached.seed;
     if (!seed) continue;
     result.set(actor.key, seed[3]);
     if (members && !members.has(actor.id)) continue;

@@ -4,6 +4,7 @@ import {
   referenceRaidActors,
   referenceNpcModels,
   referenceSpawnNotice,
+  referenceCoverage,
   spawnStatus,
 } from "./spawn-model";
 import { poseAt } from "./domain";
@@ -27,12 +28,50 @@ test("every Vanilla raid has stable reference actors with authored XYZ and facin
   }
 });
 
-test("SoD and unsupported maps cannot silently use Vanilla placements", () => {
+test("SoD maps use explicit SoD data or a disclosed Classic baseline without identity collisions", () => {
   for (const map of [48, 90, 109, 249, 309, 409, 469, 509, 531, 533, 2856]) {
-    assert.deepEqual(referenceRaidActors(map, "sod", {}), []);
-    assert.match(referenceSpawnNotice(map, "sod"), /not yet available/);
+    const actors = referenceRaidActors(map, "sod", {});
+    assert.ok(actors.length > 0, String(map));
+    assert.equal(new Set(actors.map((a) => a.key)).size, actors.length);
+    assert.ok(actors.every((a) => a.key.startsWith(`spawn:sod:${map}:`)));
+    assert.ok(
+      actors.every((a) => a.samples.length === 0 && a.deaths.length === 0),
+    );
+    if ([90, 531, 2856].includes(map)) {
+      assert.equal(referenceCoverage(map, "sod").kind, "sod-reference");
+      assert.ok(actors.every((a) => a.spawn?.position[2] === null));
+    } else if (map === 48) {
+      assert.equal(referenceCoverage(map, "sod").kind, "mixed-reference");
+      const bosses = actors.filter((a) => a.class === "Boss");
+      assert.equal(bosses.length, 7);
+      assert.deepEqual(
+        new Set(bosses.map((a) => a.gameID)),
+        new Set([202699, 201722, 204068, 204921, 207356, 209678, 213334]),
+      );
+      assert.ok(
+        !actors.some((a) =>
+          [4829, 4830, 4831, 4832, 4887, 6243, 12902, 12876].includes(a.gameID),
+        ),
+      );
+      assert.match(referenceSpawnNotice(map, "sod"), /guide bosses/);
+    } else {
+      assert.equal(referenceCoverage(map, "sod").kind, "classic-baseline");
+      assert.match(referenceSpawnNotice(map, "sod"), /Classic baseline/);
+    }
   }
-  assert.deepEqual(referenceRaidActors(1, "vanilla", {}), []);
+  assert.equal(referenceRaidActors(90, "sod", {}).length, 292);
+  assert.equal(referenceRaidActors(531, "sod", {}).length, 164);
+  assert.equal(referenceRaidActors(2856, "sod", {}).length, 594);
+  assert.equal(referenceCoverage(2856, "sod").unplaced, 68);
+  assert.equal(referenceCoverage(2856, "sod").approximate, 220);
+  assert.equal(
+    referenceRaidActors(2856, "sod", {}).filter(
+      (a) => a.spawn?.confidence === "approximate",
+    ).length,
+    220,
+  );
+  assert.deepEqual(referenceRaidActors(90, "vanilla", {}), []);
+  assert.deepEqual(referenceRaidActors(1, "sod", {}), []);
   assert.match(referenceSpawnNotice(409, "vanilla"), /reference spawns/);
 });
 

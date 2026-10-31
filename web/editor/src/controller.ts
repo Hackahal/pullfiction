@@ -290,6 +290,7 @@ export class EditorController {
   private catalogs: Promise<void> | null = null;
   private models: Record<string, unknown> = {};
   private browserModels: NpcModels = { vanilla: {}, sod: {} };
+  private referenceModels: NpcModels = { vanilla: {}, sod: {} };
   private browserCreatures: Record<string, any> = {};
   private items: Record<string, unknown> = {};
   private spells: Record<string, unknown> = {};
@@ -2021,7 +2022,7 @@ export class EditorController {
     if (this.state.replay || this.displaySnapshot()?.report) return [];
     const { mapId: map, gameVersion: version } = this.state.plan;
     const models = this.state.browserAssets
-      ? this.browserModels[version]
+      ? this.referenceModels[version]
       : this.models;
     const cached = this.defaultActorsCache;
     if (
@@ -2100,6 +2101,37 @@ export class EditorController {
       this.state.workspaceMode === "plan"
         ? this.displaySnapshot()?.actors.find((a) => a.key === actor.key)
         : undefined;
+    if (
+      !planned &&
+      !this.state.replay &&
+      actor.spawn &&
+      pose &&
+      pose.pos[2] === null
+    ) {
+      const geometry = this.loadedFloors.get(this.state.plan.mapId);
+      const hint =
+        actor.spawn.floorHint ??
+        raidByMap(this.state.plan.mapId)?.spawn[2] ??
+        0;
+      const height = geometry
+        ? this.actorFloorHeights.height(
+            actor,
+            geometry,
+            pose.pos[0],
+            pose.pos[1],
+            hint,
+            true,
+          )
+        : undefined;
+      return {
+        ...pose,
+        pos: [pose.pos[0], pose.pos[1], height ?? hint] as [
+          number,
+          number,
+          number,
+        ],
+      };
+    }
     return planned
       ? {
           ...(pose ?? {}),
@@ -4024,9 +4056,16 @@ export class EditorController {
       throw new Error("The selected client returned incomplete catalogs.");
     this.browserCreatures = creatures;
     this.browserModels = resolveNpcModels(npcIndex, creatures);
-    this.browserModels.vanilla = {
-      ...referenceNpcModels(creatures),
-      ...this.browserModels.vanilla,
+    // Reference-only baseline models must not fill gaps in a SoD log catalog.
+    this.referenceModels = {
+      vanilla: {
+        ...referenceNpcModels(creatures),
+        ...this.browserModels.vanilla,
+      },
+      sod: {
+        ...referenceNpcModels(creatures, "sod"),
+        ...this.browserModels.sod,
+      },
     };
     this.models = this.browserModels[this.state.gameVersion];
     this.items = items.items;
@@ -4535,7 +4574,7 @@ export class EditorController {
         ...referenceRaidActors(
           plan.mapId,
           plan.gameVersion,
-          this.browserModels[plan.gameVersion],
+          this.referenceModels[plan.gameVersion],
         ),
         ...plan.steps.flatMap((step) => step.snapshot?.actors ?? []),
       ].map((actor) => ({

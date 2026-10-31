@@ -6,6 +6,7 @@ import type { Engine, NativeFrame, RawReplay } from "./types";
 import { STORAGE_KEY } from "./domain";
 import luaparse from "luaparse";
 import { IDBFactory } from "fake-indexeddb";
+import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import { IndexedProjectStore, newProject, replaySource } from "./project-store";
 import { emptyPlan } from "./domain";
 const raw = {
@@ -3048,8 +3049,9 @@ test("no-log reference spawns reach native frames, obey visibility and do not le
   assert.ok(frame.every((a) => a.key.startsWith("spawn:vanilla:469:")));
   c.setGameVersion("sod");
   c.render();
-  assert.deepEqual(frame, []);
-  assert.match(c.referenceSpawnNotice()!, /not yet available/);
+  assert.equal(frame.length, 311);
+  assert.ok(frame.every((a) => a.key.startsWith("spawn:sod:469:")));
+  assert.match(c.referenceSpawnNotice()!, /Classic baseline/);
   c.stop();
 });
 
@@ -3214,5 +3216,53 @@ test("standalone reference comparison sends recorded poses to native frames and 
   assert.deepEqual(native().position, planned.position);
   assert.equal(native().facing, planned.facing);
   assert.deepEqual(c.snapshot(), snapshot);
+  c.stop();
+});
+
+test("SoD reference XY reaches native frames and local geometry supplies missing height before editing", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  c.setWorkspaceMode("plan");
+  const actor = c.sceneActors()[0],
+    original = actor.spawn!.position;
+  assert.equal(c.sceneActors().length, 292);
+  assert.equal(original[2], null);
+  const [x, y] = original;
+  const geometry = new ReplayFloorGeometry([
+    {
+      area: "test-floor",
+      interior: true,
+      vertices: [
+        [x - 2, y - 2, 12.5],
+        [x + 2, y - 2, 12.5],
+        [x + 2, y + 2, 12.5],
+        [x - 2, y + 2, 12.5],
+      ],
+      indices: [0, 1, 2, 0, 2, 3],
+    },
+  ]);
+  (
+    c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
+  ).loadedFloors.set(90, geometry);
+  c.render();
+  assert.deepEqual(f.frame.find((a) => a.key === actor.key)?.position, [
+    x,
+    y,
+    12.5,
+  ]);
+  c.selectActor(actor.key);
+  c.setSnapBypass(true);
+  c.nudgeActors(1, 0);
+  const planned = c.snapshot()!.actors.find((a) => a.key === actor.key)!;
+  assert.deepEqual(planned.recorded, [x, y, 12.5]);
+  assert.deepEqual(planned.position, [x + 1, y, 12.5]);
+  c.setCompareRecorded(true);
+  assert.deepEqual(f.frame.find((a) => a.key === actor.key)?.position, [
+    x,
+    y,
+    12.5,
+  ]);
+  assert.equal(actor.spawn!.position[2], null);
   c.stop();
 });

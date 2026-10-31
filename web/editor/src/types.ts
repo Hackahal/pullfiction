@@ -141,7 +141,9 @@ export interface Gear {
 }
 export interface SpawnPlacement {
   key: string;
-  position: Point;
+  position: [number, number, number | null];
+  floorHint?: number;
+  referenceKind?: "sod-reference" | "classic-baseline" | "classic-reference";
   facing: number;
   distance: number | null;
   confidence: "near" | "approximate" | "unobserved";
