@@ -25,7 +25,7 @@ use benilla_assets::{m2_url_on, quantize, M2Model, WorldAssets, MPQ_LOOSE_SOURCE
 use benilla_formats::{SeqLoops, UvAnim};
 use benilla_ui::script::{ModelPaneFrame, ModelWanted, UiScript};
 use benilla_ui::widget::{FrameHandle, ModelFileFacts, ModelFog, ModelLight, SequenceFacts};
-use benilla_world::doodad_anim::spawn_anim_host;
+use benilla_world::doodad_anim::{spawn_anim_host, UvLoops};
 use benilla_world::lighting::LightBlob;
 use benilla_world::mat_anim_table::{affine_row, MatAnimMirrors, MatAnimTable};
 use benilla_world::model_forms::ModelForms;
@@ -407,6 +407,34 @@ struct UvPart {
 }
 
 impl UvPart {
+    fn allocate(loops: &UvLoops, table: &mut MatAnimTable) -> Option<Self> {
+        if loops.single.is_none()
+            && loops.seqs.is_none()
+            && loops.rot.is_none()
+            && loops.scale.is_none()
+        {
+            return None;
+        }
+        let trans = (loops.single.is_some() || loops.seqs.is_some())
+            .then(|| table.alloc())
+            .flatten()
+            .map(|slot| (slot, loops.open_offset()));
+        let affine = (loops.rot.is_some() || loops.scale.is_some())
+            .then(|| table.alloc())
+            .flatten();
+        let part = Self {
+            material: Handle::default(),
+            trans,
+            affine,
+            uv_anim: loops.single.clone(),
+            uv_seq: loops.seqs.clone(),
+            uv_rot: loops.rot.clone(),
+            uv_scale: loops.scale.clone(),
+        };
+        part.write_rows(table, None, 0.0, 0.0);
+        Some(part)
+    }
+
     /// Write the translation delta, quantized like the world's lane, and the affine row.
     fn write_rows(
         &self,
@@ -1824,36 +1852,45 @@ fn build_tile(
             lane,
         )?;
         // An animated texture transform also gets its own table rows, off this pane's play head.
-        let animated = sub.uv_anim.is_some()
-            || sub.uv_seq.is_some()
-            || sub.uv_rot_seq.is_some()
-            || sub.uv_scale_seq.is_some();
+        let loops = UvLoops::of(sub);
         {
             let mut own = render.mats.materials().get(&twin).cloned()?;
             own.extension.anim_slots.w = clip_slot.map_or(0.0, f32::from);
-            let seed = [own.extension.sun_scale.z, own.extension.sun_scale.w];
-            let trans = (animated && (sub.uv_anim.is_some() || sub.uv_seq.is_some()))
-                .then(|| render.table.alloc())
-                .flatten()
-                .map(|slot| {
-                    own.extension.anim_slots.x = f32::from(slot);
-                    (slot, seed)
-                });
-            let affine = (animated && (sub.uv_rot_seq.is_some() || sub.uv_scale_seq.is_some()))
-                .then(|| render.table.alloc())
-                .flatten()
-                .inspect(|&slot| own.extension.anim_slots.z = f32::from(slot));
+            // Leave both inherited world lanes: this pane samples its own play head and gseq clock.
+            own.extension.anim_slots.x = 0.0;
+            own.extension.anim_slots.z = 0.0;
+            own.extension.stage1_uv.z = 0.0;
+            own.extension.stage1_uv.w = 0.0;
+            let mut pending = Vec::new();
+            for (second, channels) in [(false, Some(&loops)), (true, loops.stage1.as_deref())] {
+                let Some(channels) = channels else {
+                    continue;
+                };
+                let seed = channels.open_offset();
+                if second {
+                    own.extension.stage1_uv.x = seed[0];
+                    own.extension.stage1_uv.y = seed[1];
+                } else {
+                    own.extension.sun_scale.z = seed[0];
+                    own.extension.sun_scale.w = seed[1];
+                }
+                if let Some(part) = UvPart::allocate(channels, &mut render.table) {
+                    let trans = part.trans.map_or(0.0, |(slot, _)| f32::from(slot));
+                    let affine = part.affine.map_or(0.0, f32::from);
+                    if second {
+                        own.extension.stage1_uv.z = trans;
+                        own.extension.stage1_uv.w = affine;
+                    } else {
+                        own.extension.anim_slots.x = trans;
+                        own.extension.anim_slots.z = affine;
+                    }
+                    pending.push(part);
+                }
+            }
             let handle = render.mats.materials().add(own);
-            if animated {
-                uv_parts.push(UvPart {
-                    material: handle.clone(),
-                    trans,
-                    affine,
-                    uv_anim: sub.uv_anim.clone(),
-                    uv_seq: sub.uv_seq.clone(),
-                    uv_rot: sub.uv_rot_seq.clone(),
-                    uv_scale: sub.uv_scale_seq.clone(),
-                });
+            for mut part in pending {
+                part.material = handle.clone();
+                uv_parts.push(part);
             }
             part_mats.push(handle);
         }
@@ -1983,6 +2020,68 @@ fn build_tile(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn both_ui_texture_stages_use_the_panes_clip_and_global_clocks_and_release_rows() {
+        let base = UvLoops {
+            single: Some(Arc::new(UvAnim {
+                period: 2.0,
+                step: false,
+                wrap: false,
+                gseq: false,
+                keys: vec![(0.0, [0.2, 0.1]), (2.0, [0.6, 0.5])],
+            })),
+            ..Default::default()
+        };
+        let second = UvLoops {
+            single: Some(Arc::new(UvAnim {
+                period: 2.0,
+                step: false,
+                wrap: false,
+                gseq: true,
+                keys: vec![(0.0, [0.0, 0.0]), (2.0, [1.0, 0.0])],
+            })),
+            scale: Some(Arc::new(
+                SeqLoops::new(vec![
+                    None,
+                    Some(UvAnim {
+                        period: 2.0,
+                        step: false,
+                        wrap: false,
+                        gseq: false,
+                        keys: vec![(0.0, [1.0; 2]), (2.0, [3.0; 2])],
+                    }),
+                ])
+                .unwrap(),
+            )),
+            ..Default::default()
+        };
+        let mut table = MatAnimTable::default();
+        let a = UvPart::allocate(&base, &mut table).unwrap();
+        let b = UvPart::allocate(&second, &mut table).unwrap();
+        a.write_rows(&mut table, Some(1), 0.5, 1.5);
+        b.write_rows(&mut table, Some(1), 0.5, 1.5);
+        let row0 = table.row(a.trans.unwrap().0);
+        let row1 = table.row(b.trans.unwrap().0);
+        assert!((row0[0] - 0.1).abs() < 0.0003 && (row0[1] - 0.1).abs() < 0.0003);
+        assert_eq!(row1, [0.75, 0.0, 0.0, 0.0]);
+        assert_eq!(table.row(b.affine.unwrap()), [0.0, 0.0, 0.5, 0.5]);
+        b.write_rows(&mut table, Some(0), 0.5, 1.5);
+        assert_eq!(
+            table.row(b.affine.unwrap()),
+            [0.0; 4],
+            "sequence zero has no scale"
+        );
+        let mut slots = vec![a.trans.unwrap().0, b.trans.unwrap().0, b.affine.unwrap()];
+        slots.sort_unstable();
+        slots.dedup();
+        assert_eq!(slots.len(), 3);
+        a.free(&mut table);
+        b.free(&mut table);
+        let mut reclaimed: Vec<_> = (0..3).map(|_| table.alloc().unwrap()).collect();
+        reclaimed.sort_unstable();
+        assert_eq!(reclaimed, slots);
+    }
 
     /// A file rig of one ambient-only directional and one point light.
     fn file_rig() -> SceneRig {

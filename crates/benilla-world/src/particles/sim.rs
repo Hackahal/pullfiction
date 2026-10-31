@@ -21,6 +21,7 @@ use super::{
 struct StepEnv {
     dt: f32,
     gravity: f32,
+    vector_acceleration: Option<Vec3>,
     drag: f32,
     anchored: bool,
     kill_origin: Option<Vec3>,
@@ -53,7 +54,10 @@ fn integrate_particle(p: &mut Particle, env: &StepEnv) -> bool {
     }
     let step_vel = p.vel;
     p.pos += p.vel * dt;
-    if env.anchored {
+    if let Some(acceleration) = env.vector_acceleration {
+        p.pos += acceleration * (0.5 * dt * dt);
+        p.vel += acceleration * dt;
+    } else if env.anchored {
         p.pos.y -= 0.5 * g * dt * dt;
         p.vel.y -= g * dt;
     } else {
@@ -70,6 +74,25 @@ fn integrate_particle(p: &mut Particle, env: &StepEnv) -> bool {
         }
     }
     true
+}
+
+/// Modern gravity uses the stored frame, not the emitter's rotation. WhiteoutFlakes
+/// Emitter2::ApplyAnimated scales world-stored forces by the placement's unit scale;
+/// local pools keep model units and receive the placement at draw. Transport storage
+/// additionally folds that world vector through the deck's inverse linear transform.
+fn stored_acceleration(
+    vector: [f32; 3],
+    anchored: bool,
+    placement: &Transform,
+    ride: &crate::ride_frame::StoredFrame,
+) -> Vec3 {
+    if !anchored {
+        return Vec3::from(vector);
+    }
+    let unit_scale = placement.scale.x.abs();
+    let world = wow_to_bevy(vector) * if unit_scale > 0. { unit_scale } else { 1. };
+    ride.matrix()
+        .map_or(world, |deck| deck.inverse().transform_vector3(world))
 }
 
 /// The follow-delta fraction (file flag `0x4000`, rt `0x40000`): the share of the emitter's
@@ -862,6 +885,10 @@ pub(super) fn simulate_particles(
             let env = StepEnv {
                 dt,
                 gravity: g,
+                vector_acceleration: def
+                    .params
+                    .vector_gravity(clock_seq, elapsed_s, gseq_now)
+                    .map(|v| stored_acceleration(v, anchored, placement, ride)),
                 drag,
                 anchored,
                 kill_origin,
@@ -997,6 +1024,11 @@ pub(super) fn simulate_particles(
                 let c_env = StepEnv {
                     dt,
                     gravity: c_now.gravity,
+                    vector_acceleration: child
+                        .def
+                        .params
+                        .vector_gravity(None, *age, f64::from(*age))
+                        .map(|v| stored_acceleration(v, anchored, placement, ride)),
                     drag: child.def.drag,
                     anchored,
                     kill_origin: None,
@@ -1252,10 +1284,11 @@ mod zero_delta_tests;
 mod tests {
     use super::{
         birth_age, booth_frozen, fold_committed_light, follow_fraction, inherit_trigger,
-        integrate_particle, is_above, scene_frozen, ChildEmitter, EffectLighting, EffectVertex,
-        Particle, StepEnv, Vec3,
+        integrate_particle, is_above, scene_frozen, stored_acceleration, ChildEmitter,
+        EffectLighting, EffectVertex, Particle, StepEnv, Vec3,
     };
-    use bevy::prelude::{Quat, Transform};
+    use benilla_assets::coords::wow_to_bevy;
+    use bevy::prelude::{Entity, Quat, Transform};
 
     /// The burst loop passes `w = 0` (`0x7b5600`): the whole puff ages as one.
     #[test]
@@ -1400,10 +1433,49 @@ mod tests {
         StepEnv {
             dt: 0.1,
             gravity: 0.0,
+            vector_acceleration: None,
             drag: 0.0,
             anchored: true,
             kill_origin,
             follow,
+        }
+    }
+
+    #[test]
+    fn vector_gravity_uses_the_stored_deck_frame_and_legacy_scalar_is_unchanged() {
+        use bevy::math::Affine3A;
+        let vector = [6.8548656, 0., -0.8619167];
+        let placement =
+            Transform::from_rotation(Quat::from_rotation_y(1.2)).with_scale(Vec3::splat(2.));
+        let mut ride = crate::ride_frame::StoredFrame::default();
+        let deck = Affine3A::from_rotation_translation(
+            Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+            Vec3::splat(100.),
+        );
+        ride.retarget(Some((Entity::from_raw_u32(7).unwrap(), deck)));
+        let acceleration = stored_acceleration(vector, true, &placement, &ride);
+        assert!(
+            deck.transform_vector3(acceleration)
+                .distance(wow_to_bevy(vector) * 2.)
+                < 1e-5,
+            "world acceleration follows coordinate conversion and scale, not emitter rotation"
+        );
+        assert_eq!(
+            stored_acceleration(vector, false, &placement, &ride),
+            Vec3::from(vector),
+            "model pools defer coordinate conversion and placement until draw"
+        );
+        for anchored in [false, true] {
+            let mut step = env(None, Vec3::ZERO);
+            step.gravity = 2.5;
+            step.anchored = anchored;
+            let mut p = particle(Vec3::ZERO, Vec3::ZERO);
+            for _ in 0..10 {
+                assert!(integrate_particle(&mut p, &step));
+            }
+            let down = if anchored { -Vec3::Y } else { -Vec3::Z };
+            assert!(p.pos.distance(down * 1.25) < 1e-5);
+            assert!(p.vel.distance(down * 2.5) < 1e-5);
         }
     }
 

@@ -48,6 +48,7 @@ struct ModelParams {
     // Stage 1: x bound, y gx combine 0-5 or modern reflection-add 6, z stage-0 preset + 1,
     // w generated reflection coordinates.
     stage1: vec4<f32>,
+    stage1_uv: vec4<f32>,
 };
 @group(#{MATERIAL_BIND_GROUP}) @binding(100) var<uniform> m: ModelParams;
 // Stage 1's texture, sampled at the generated coordinate `env_uv` when `m.stage1.x` is set.
@@ -180,6 +181,39 @@ fn stage1_rgb(preset: u32, prev: vec3<f32>, tex: vec4<f32>, diffuse_a: f32) -> v
 // Combine samples before lighting; opacity remains the opaque diffuse alpha.
 fn modern_three_stage_rgb(tex0: vec3<f32>, tex1: vec3<f32>, tex2: vec4<f32>) -> vec3<f32> {
     return mix(2.0 * tex0 * tex1, tex2.rgb, vec3<f32>(tex2.a));
+}
+
+// MIT references: pinned noclip.website WoW program.ts and wow.export m2.fragment.shader;
+// see third_party/noclip/SOURCE.md and third_party/wowexport/SOURCE.md. `diffuse` is unhalved.
+// Keep the authored HDR result intact until lighting/fog and framebuffer conversion.
+fn modern_two_stage_rgba(preset: u32, diffuse: vec4<f32>, tex0: vec4<f32>, tex1: vec4<f32>) -> vec4<f32> {
+    var rgb = tex0.rgb * tex1.rgb;
+    var alpha = tex0.a * tex1.a;
+    switch preset {
+        case 8u: { rgb *= 2.0; alpha *= 2.0; } // Mod_Mod2x
+        case 9u: { rgb *= 2.0; alpha = tex0.a; } // Mod_Mod2xNA
+        case 11u: { rgb = tex0.rgb; alpha = tex0.a + tex1.a; } // Mod_Add
+        case 12u: { rgb = tex0.rgb; alpha = tex0.a; } // Mod_AddNA
+        case 13u: { alpha = 1.0; } // Opaque_Opaque
+        case 14u: { rgb = tex0.rgb; alpha = 1.0; } // Opaque_AddAlpha
+        case 15u: { rgb *= 2.0; alpha = tex1.a * 2.0; } // Opaque_Mod2x
+        case 16u: { rgb *= 2.0; alpha = 1.0; } // Opaque_Mod2xNA
+        case 17u: { alpha = tex1.a; } // Opaque_Mod
+        default: {} // Mod_Mod
+    }
+    return diffuse * vec4<f32>(rgb, alpha);
+}
+
+fn modern_two_stage_specular(preset: u32, tex1: vec4<f32>) -> vec3<f32> {
+    if (preset == 11u || preset == 12u) { return tex1.rgb; }
+    if (preset == 14u) { return tex1.rgb * tex1.a; }
+    return vec3<f32>(0.0);
+}
+
+fn model_uv_transform(uv: vec2<f32>, offset: vec2<f32>, affine: vec4<f32>) -> vec2<f32> {
+    let d = (uv + offset - vec2<f32>(0.5)) * (vec2<f32>(1.0) + affine.zw);
+    let c = 1.0 + affine.x;
+    return vec2<f32>(0.5 + d.x * c - d.y * affine.y, 0.5 + d.x * affine.y + d.y * c);
 }
 
 // A stage's alpha on `prev`, the previous stage's (the diffuse alpha, for stage 0), by gx preset
@@ -536,11 +570,9 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     if ((u32(m.clutter_fade.z) & 4096u) != 0u) {
         vo.uv = in.uv;
     } else {
-        let uv_t = in.uv + m.sun_scale.zw + wow_light.matanim[u32(m.anim_slots.x)].xy;
-        let affine = wow_light.matanim[u32(m.anim_slots.z)];
-        let d = (uv_t - vec2<f32>(0.5, 0.5)) * vec2<f32>(1.0 + affine.z, 1.0 + affine.w);
-        let c = 1.0 + affine.x;
-        vo.uv = vec2<f32>(0.5 + d.x * c - d.y * affine.y, 0.5 + d.x * affine.y + d.y * c);
+        vo.uv = model_uv_transform(in.uv,
+            m.sun_scale.zw + wow_light.matanim[u32(m.anim_slots.x)].xy,
+            wow_light.matanim[u32(m.anim_slots.z)]);
     }
 #endif
 #ifdef VERTEX_UVS_B
@@ -607,11 +639,18 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     // alpha the cutout reads (the blend's is `faded_alpha`, below); its colour combines after the light (below).
     let stage1_on = m.stage1.x > 0.5;
     let stage1_preset = u32(m.stage1.y);
+    let modern_two = stage1_on && stage1_preset >= 8u && stage1_preset <= 17u;
     let tex0_alpha = base_color.a;
     var tex1 = vec4<f32>(1.0);
     if (stage1_on) {
-        tex1 = textureSampleBias(stage1_texture, stage1_sampler, in.env_uv, view.mip_bias);
-        base_color.a = stage_alpha(stage1_preset, base_color.a, tex1.a);
+        var uv1 = in.env_uv;
+        if (m.stage1.w < 0.5) {
+            uv1 = model_uv_transform(uv1,
+                m.stage1_uv.xy + wow_light.matanim[u32(m.stage1_uv.z)].xy,
+                wow_light.matanim[u32(m.stage1_uv.w)]);
+        }
+        tex1 = textureSampleBias(stage1_texture, stage1_sampler, uv1, view.mip_bias);
+        if (!modern_two) { base_color.a = stage_alpha(stage1_preset, base_color.a, tex1.a); }
     }
 
     // The MeshTag (mesh_tag.rs): bit 31 = highlight, bit 30 = interior fog; payload bits 0-5 = the
@@ -641,6 +680,16 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
         vec3<f32>(1.0),
         tint_word == 0u,
     );
+#ifdef VERTEX_UVS_A
+    if (modern_two) {
+        let tex0 = textureSampleBias(pbr_bindings::base_color_texture, pbr_bindings::base_color_sampler, vo.uv, view.mip_bias);
+        var diffuse = pbr_bindings::material.base_color;
+#ifdef VERTEX_COLORS
+        diffuse *= in.color;
+#endif
+        base_color = modern_two_stage_rgba(stage1_preset, diffuse, tex0, tex1);
+    }
+#endif
     // The blend twin re-applies its source's cutout: the reference scales ALPHAREF with the fade,
     // so the cutoff stays tex.a < 224/255 on the unfaded alpha. Only for a source batch that
     // alpha-tests (bit 10): ALPHAREF keys on the stored blend mode.
@@ -655,7 +704,7 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     // (`0x811f8c`) blends by the fade alone and the texel's alpha never reaches the frame. Stage 1
     // follows on that. `m.stage1.z` is the stage-0 preset + 1, 0 for a batch with none.
     var faded_alpha = base_color.a * obj_fade;
-    if (m.stage1.z > 0.5) {
+    if (m.stage1.z > 0.5 && !modern_two) {
         faded_alpha = stage_alpha(u32(m.stage1.z) - 1u, obj_fade, tex0_alpha);
         if (stage1_on) {
             faded_alpha = stage_alpha(stage1_preset, faded_alpha, tex1.a);
@@ -872,10 +921,11 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
         rgb = base.rgb;
     }
     // Stage 1 combines with the stage-0 result, the lit texel, before the fog.
-    if (stage1_on && stage1_preset != 7u) {
+    if (stage1_on && stage1_preset != 7u && !modern_two) {
         // The diffuse alpha is the batch and instance alpha, the shader's `obj_fade`.
         rgb = stage1_rgb(stage1_preset, rgb, tex1, obj_fade);
     }
+    if (modern_two) { rgb += modern_two_stage_specular(stage1_preset, tex1); }
 
     // Linear fog by planar eye depth, as in terrain.wgsl. Per-batch colour policy (`clutter_fade.z`
     // bits 4-6, the M2 state setter `0x70baf0`): 0 scene, 1 black (additive), 2 white (Mod),

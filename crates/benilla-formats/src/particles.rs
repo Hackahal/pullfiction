@@ -635,12 +635,18 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
     let mut life_curves = vec![(Vec::new(), Vec::new(), Vec::new()); count];
     let mut modern_variations = vec![None; count];
     let mut modern_materials = vec![None; count];
+    let mut vector_gravity_tracks: Vec<Option<[M2ScalarTrack; 3]>> = vec![None; count];
     if bytes.len() >= 12 {
         let magic = &bytes[bytes.len() - 12..bytes.len() - 8];
-        if matches!(magic, b"PFPV" | b"PFP2" | b"PFP3" | b"PFP4" | b"PFP5") {
+        if matches!(
+            magic,
+            b"PFPV" | b"PFP2" | b"PFP3" | b"PFP4" | b"PFP5" | b"PFP6"
+        ) {
             let offset = le_u32(bytes, bytes.len() - 8) as usize;
             let entries = le_u32(bytes, bytes.len() - 4) as usize;
-            let stride = if magic == b"PFP5" {
+            let stride = if magic == b"PFP6" {
+                248
+            } else if magic == b"PFP5" {
                 160
             } else if magic == b"PFP4" {
                 76
@@ -700,7 +706,7 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                         curve(bytes, at + 32, offset)?,
                         curve(bytes, at + 40, offset)?,
                     );
-                    if stride == 160 {
+                    if stride >= 160 {
                         let flags = le_u32(bytes, at + 76);
                         let material = ModernParticleMaterial {
                             flags,
@@ -741,6 +747,51 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                             "unsupported or unresolved modern particle texture stages"
                         );
                         modern_materials[i] = Some(material);
+                    }
+                    if stride == 248 {
+                        let marker = le_u32(bytes, at + 160);
+                        anyhow::ensure!(marker <= 1, "invalid modern vector gravity marker");
+                        if marker == 1 {
+                            for axis in 0..3 {
+                                let track = at + 164 + axis * 28;
+                                anyhow::ensure!(
+                                    le_u16(bytes, track) <= 1,
+                                    "unsupported modern vector gravity interpolation"
+                                );
+                                for (field, element) in [(4, 8usize), (12, 4), (20, 4)] {
+                                    let n = le_u32(bytes, track + field) as usize;
+                                    let p = le_u32(bytes, track + field + 4) as usize;
+                                    anyhow::ensure!(
+                                        p.checked_add(n.saturating_mul(element))
+                                            .is_some_and(|end| end <= offset),
+                                        "invalid modern vector gravity track bounds"
+                                    );
+                                }
+                                let n = le_u32(bytes, track + 20) as usize;
+                                let p = le_u32(bytes, track + 24) as usize;
+                                anyhow::ensure!(
+                                    le_u32(bytes, track + 12) as usize == n,
+                                    "modern vector gravity key counts disagree"
+                                );
+                                let rn = le_u32(bytes, track + 4) as usize;
+                                let ro = le_u32(bytes, track + 8) as usize;
+                                anyhow::ensure!(
+                                    (0..rn).all(|i| {
+                                        let first = le_u32(bytes, ro + i * 8) as usize;
+                                        let last = le_u32(bytes, ro + i * 8 + 4) as usize;
+                                        first <= last && last < n
+                                    }),
+                                    "invalid modern vector gravity key window"
+                                );
+                                anyhow::ensure!(
+                                    (0..n).all(|i| le_f32(bytes, p + i * 4).is_finite()),
+                                    "invalid modern vector gravity value"
+                                );
+                            }
+                            vector_gravity_tracks[i] = Some(std::array::from_fn(|axis| {
+                                read_raw_track(bytes, at + 164 + axis * 28, 4, le_f32)
+                            }));
+                        }
                     }
                 }
                 if stride >= 24 {
@@ -919,7 +970,8 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
                 ],
                 &seq_slots,
                 &gseq,
-            ),
+            )
+            .with_vector_gravity(vector_gravity_tracks[i].as_ref(), &seq_slots, &gseq),
             drag: le_f32(bytes, e + 0x194),
             tail_time: le_f32(bytes, e + 0x17c),
             angular_velocity_min: le_vec3(bytes, e + 0x19c),
@@ -943,6 +995,126 @@ pub fn parse_m2_particle_emitters(bytes: &[u8]) -> Result<Vec<ParticleEmitterDef
 #[cfg(test)]
 mod classic_tests {
     use super::*;
+    #[test]
+    fn modern_packed_gravity_real_models() {
+        let Some(root) = std::env::var_os("PULLFICTION_PACKED_GRAVITY_FIXTURES") else {
+            eprintln!("real-model check requires PULLFICTION_PACKED_GRAVITY_FIXTURES");
+            return;
+        };
+        let root = std::path::PathBuf::from(root);
+        for model in [1367069, 1367070, 1367253, 1722376] {
+            let bytes = std::fs::read(root.join(format!("{model}.m2"))).unwrap();
+            let defs = parse_m2_particle_emitters(&bytes).unwrap();
+            let expected: &[(usize, [f32; 3])] = if model == 1722376 {
+                &[(1, [6.8548656, 0., -0.8619167])]
+            } else {
+                &[
+                    (3, [0., -0.2914005, 0.6123709]),
+                    (4, [0., -0.48213536, 0.47692546]),
+                ]
+            };
+            for &(emitter, vector) in expected {
+                let actual = defs[emitter].params.vector_gravity(None, 0., 0.).unwrap();
+                for axis in 0..3 {
+                    assert!(
+                        (actual[axis] - vector[axis]).abs() < 1e-6,
+                        "model{model}, emitter{emitter}, axis{axis}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn modern_vector_gravity_footer_preserves_sequence_and_global_clocks() {
+        fn put(bytes: &mut [u8], at: usize, value: u32) {
+            bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        let mut bytes = vec![0u8; 0x144 + STRIDE];
+        bytes[..4].copy_from_slice(b"MD20");
+        put(&mut bytes, 4, 256);
+        put(&mut bytes, HDR_COUNT, 1);
+        put(&mut bytes, HDR_PTR, 0x144);
+        let sequences = bytes.len();
+        bytes.resize(sequences + 2 * 0x44, 0);
+        put(&mut bytes, 0x1c, 2);
+        put(&mut bytes, 0x20, sequences as u32);
+        for (i, start) in [1000, 3000].into_iter().enumerate() {
+            put(&mut bytes, sequences + i * 0x44 + 4, start);
+            put(&mut bytes, sequences + i * 0x44 + 8, start + 1000);
+            put(&mut bytes, sequences + i * 0x44 + 16, 1); // one-shot bands
+        }
+        let global = bytes.len();
+        bytes.extend(1000u32.to_le_bytes());
+        put(&mut bytes, 0x14, 1);
+        put(&mut bytes, 0x18, global as u32);
+        let ranges = bytes.len();
+        for value in [0u32, 1, 2, 3] {
+            bytes.extend(value.to_le_bytes());
+        }
+        let times = bytes.len();
+        for value in [1000u32, 2000, 3000, 4000] {
+            bytes.extend(value.to_le_bytes());
+        }
+        let values = bytes.len();
+        for axis in 0..3 {
+            for value in [axis as f32 * 2., axis as f32 * 2. + 2., -4., -8.] {
+                bytes.extend(value.to_le_bytes());
+            }
+        }
+        let table = bytes.len();
+        bytes.resize(table + 248, 0);
+        put(&mut bytes, table + 160, 1);
+        for axis in 0..3 {
+            let at = table + 164 + axis * 28;
+            bytes[at..at + 2].copy_from_slice(&1u16.to_le_bytes());
+            bytes[at + 2..at + 4].copy_from_slice(&u16::MAX.to_le_bytes());
+            for (field, value) in [
+                (4, 2),
+                (8, ranges as u32),
+                (12, 4),
+                (16, times as u32),
+                (20, 4),
+                (24, (values + axis * 16) as u32),
+            ] {
+                put(&mut bytes, at + field, value);
+            }
+        }
+        bytes.extend(b"PFP6");
+        bytes.extend((table as u32).to_le_bytes());
+        bytes.extend(1u32.to_le_bytes());
+        let defs = parse_m2_particle_emitters(&bytes).unwrap();
+        assert_eq!(
+            defs[0].params.vector_gravity(Some(0), 0.5, 17.),
+            Some([1., 3., 5.])
+        );
+        assert_eq!(
+            defs[0].params.vector_gravity(Some(1), 0.5, 17.),
+            Some([-6.; 3])
+        );
+        assert_eq!(
+            defs[0].params.vector_gravity(Some(1), 3., 17.),
+            Some([-8.; 3])
+        );
+        // Global clocks ignore the selected clip and sample the instance's shared age.
+        for (i, value) in [0u32, 1000, 2000, 3000].into_iter().enumerate() {
+            put(&mut bytes, times + i * 4, value);
+        }
+        for axis in 0..3 {
+            bytes[table + 166 + axis * 28..table + 168 + axis * 28].fill(0);
+        }
+        let defs = parse_m2_particle_emitters(&bytes).unwrap();
+        assert_eq!(
+            defs[0].params.vector_gravity(Some(1), 0.9, 1.25),
+            Some([0.5, 2.5, 4.5])
+        );
+        put(&mut bytes, table + 188, u32::MAX);
+        assert!(
+            parse_m2_particle_emitters(&bytes).is_err(),
+            "invalid explicit vector tracks are terminal errors"
+        );
+    }
+
     #[test]
     fn modern_multitexture_footer_preserves_stages_and_lifetime_materials() {
         let mut bytes = vec![0u8; 0x144 + STRIDE];

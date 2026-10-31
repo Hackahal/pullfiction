@@ -10,7 +10,8 @@ pub struct SkinSection {
     /// `skinSectionId`, the geoset id `group*100 + variant` that character geoset selection
     /// toggles; 0 on a single-geoset model.
     pub id: u16,
-    pub triangle_start: u16,
+    /// Offset in the triangle-index array; modern sections supply its upper bits in `level`.
+    pub triangle_start: u32,
     pub triangle_count: u16,
 }
 
@@ -93,6 +94,10 @@ impl M2Model {
 
         // M2SkinSection: 32 bytes before v260, 48 from it; the triangle range is @8 and @10.
         let sec = if self.version < 260 { 32 } else { 48 };
+        // The adapter preserves modern section `level` in the otherwise legacy-shaped record.
+        // Do not reinterpret the original embedded format's field at +2.
+        let adapted_modern = bytes.get(..8) == Some(b"MD20\x00\x01\x00\x00")
+            && bytes.get(0x144..0x14c) == Some(b"PFM1\x01\x00\x00\x00");
         // `n_sub` and `n_bat` are unvalidated, so the reservations are capped.
         let sub_avail = bytes.len().saturating_sub(o_sub);
         let mut submeshes = Vec::with_capacity(capped(n_sub, sec, sub_avail));
@@ -100,10 +105,18 @@ impl M2Model {
             let s = bytes
                 .bytes_at(o_sub + i * sec, sec)
                 .ok_or(Error::Truncated)?;
+            let mut triangle_start = u32::from(s.u16_at(8).ok_or(Error::Truncated)?);
+            let triangle_count = s.u16_at(10).ok_or(Error::Truncated)?;
+            if adapted_modern {
+                triangle_start |= u32::from(s.u16_at(2).ok_or(Error::Truncated)?) << 16;
+                if u64::from(triangle_start) + u64::from(triangle_count) > n_tri as u64 {
+                    return Err(Error::Truncated);
+                }
+            }
             submeshes.push(SkinSection {
                 id: s.u16_at(0).ok_or(Error::Truncated)?, // skinSectionId @ +0x00
-                triangle_start: s.u16_at(8).ok_or(Error::Truncated)?,
-                triangle_count: s.u16_at(10).ok_or(Error::Truncated)?,
+                triangle_start,
+                triangle_count,
             });
         }
         // M2TextureUnit, a batch: 24 bytes.

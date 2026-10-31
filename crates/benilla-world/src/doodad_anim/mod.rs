@@ -30,7 +30,6 @@ pub use mat_anim::{
 /// it before this.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MatAnimTick;
-pub(crate) use mat_anim::{register_uv, UvLoop};
 
 /// What a placed doodad model animates, decided per model at spawn.
 pub enum DoodadAnimTier<'a> {

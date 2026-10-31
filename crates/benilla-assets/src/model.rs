@@ -104,6 +104,7 @@ pub struct ModelSubmesh {
 /// ([`benilla_formats::TextureStage`]).
 #[derive(Clone)]
 pub struct Stage1 {
+    pub uv: Option<std::sync::Arc<benilla_formats::TextureUvAnimations>>,
     /// The static third-stage sample of a validated modern material.
     pub third_texture: Option<Handle<Image>>,
     /// The third stage repeats the base appearance texture, filled at spawn.

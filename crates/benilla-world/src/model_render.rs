@@ -129,6 +129,7 @@ type StageTextureKey = (
     Option<AssetId<Image>>,
     bool,
     (bool, bool),
+    Option<usize>,
 );
 
 fn stage_texture_key(stage: &benilla_assets::Stage1) -> StageTextureKey {
@@ -139,6 +140,10 @@ fn stage_texture_key(stage: &benilla_assets::Stage1) -> StageTextureKey {
         stage.third_texture.as_ref().map(Handle::id),
         stage.third_uses_base_texture,
         stage.third_wrap,
+        stage
+            .uv
+            .as_ref()
+            .map(|uv| std::sync::Arc::as_ptr(uv) as usize),
     )
 }
 
@@ -350,6 +355,7 @@ pub fn model_material(
                 // Zero until a sampler registers this material and bakes its table slot in once.
                 anim_slots: Vec4::ZERO,
                 stage1: stage1_params(stage1, combine),
+                stage1_uv: stage1_uv_seed(stage1),
                 stage1_texture: stage1.map(|s| s.texture.clone()),
                 third_texture: stage1.and_then(|s| {
                     if s.third_uses_base_texture {
@@ -415,6 +421,7 @@ pub fn zfill_material(
     texture: Option<Handle<Image>>,
     env_map: bool,
     stage1: Option<&benilla_assets::Stage1>,
+    uv_anim: Option<&std::sync::Arc<benilla_formats::UvAnim>>,
     two_sided: bool,
     cutout: bool,
     light: &Buffer,
@@ -423,6 +430,7 @@ pub fn zfill_material(
     // reference's depth-only element binds the same coordinates as the colour pass (`0x70b833`).
     let env_map = env_map && cutout;
     let stage1 = stage1.filter(|_| cutout);
+    let uv_anim = uv_anim.filter(|_| cutout);
     let key = MatKey {
         light: light.id(),
         texture: texture.as_ref().map(Handle::id),
@@ -445,7 +453,7 @@ pub fn zfill_material(
         combine: None,
         shade: ShadeSel::Lit,
         batch_order: 0,
-        uv_anim: None,
+        uv_anim: uv_anim.map(|a| std::sync::Arc::as_ptr(a) as usize),
         rgb_anim: None,
         wmo_class: None,
         sidn: None,
@@ -485,11 +493,15 @@ pub fn zfill_material(
                 ),
                 // `y` stays 0: the zfill pipeline forces its own depth write.
                 model_flags: Vec4::ZERO,
-                sun_scale: Vec4::new(ShadeSel::Lit.selector(), 0.0, 0.0, 0.0),
+                sun_scale: {
+                    let seed = uv_anim.map_or([0.0; 2], |a| a.sample(0.0));
+                    Vec4::new(ShadeSel::Lit.selector(), 0.0, seed[0], seed[1])
+                },
                 tint: Vec4::new(1.0, 1.0, 1.0, 0.0),
                 sidn: Vec4::ZERO,
                 anim_slots: Vec4::ZERO,
                 stage1: stage1_params(stage1, None),
+                stage1_uv: stage1_uv_seed(stage1),
                 stage1_texture: stage1.map(|s| s.texture.clone()),
                 third_texture: stage1.and_then(|s| {
                     if s.third_uses_base_texture {
@@ -508,6 +520,17 @@ pub fn zfill_material(
 
 /// `WowModelExt::stage1`: `x` = stage 1 bound, `y` = its combine preset, `z` = the stage-0 preset
 /// plus one (`0` for a batch without one, which keeps the texel's alpha, the modulate).
+fn stage1_uv_seed(stage1: Option<&benilla_assets::Stage1>) -> Vec4 {
+    let seed = stage1.and_then(|s| s.uv.as_ref()).map_or([0.0; 2], |uv| {
+        uv.seqs
+            .as_ref()
+            .and_then(|set| set.seq(None))
+            .or(uv.single.as_deref())
+            .map_or([0.0; 2], |a| a.sample(0.0))
+    });
+    Vec4::new(seed[0], seed[1], 0.0, 0.0)
+}
+
 fn stage1_params(stage1: Option<&benilla_assets::Stage1>, combine: Option<u8>) -> Vec4 {
     Vec4::new(
         f32::from(u8::from(stage1.is_some())),
@@ -1018,8 +1041,41 @@ mod tests {
     }
 
     #[test]
+    fn color_and_depth_materials_share_the_authored_stage1_uv_seed() {
+        let anim = std::sync::Arc::new(benilla_formats::UvAnim {
+            period: 0.0,
+            step: false,
+            wrap: false,
+            gseq: false,
+            keys: vec![(0.0, [0.25, -0.75])],
+        });
+        let stage = benilla_assets::Stage1 {
+            uv: Some(std::sync::Arc::new(benilla_formats::TextureUvAnimations {
+                single: Some(anim),
+                seqs: None,
+                rot: None,
+                scale: None,
+            })),
+            texture: Default::default(),
+            combine: 9,
+            env_map: false,
+            third_texture: None,
+            third_uses_base_texture: false,
+            third_shares_base_slot: false,
+            third_wrap: (true, true),
+        };
+        // Both constructors use this same initializer; registration adds rows measured from it.
+        assert_eq!(
+            super::stage1_uv_seed(Some(&stage)),
+            bevy::prelude::Vec4::new(0.25, -0.75, 0.0, 0.0)
+        );
+        assert_eq!(super::stage1_uv_seed(None), bevy::prelude::Vec4::ZERO);
+    }
+
+    #[test]
     fn third_stage_texture_alias_and_sampler_are_material_cache_inputs() {
         let base = benilla_assets::Stage1 {
+            uv: None,
             texture: Default::default(),
             combine: 7,
             env_map: true,
@@ -1052,6 +1108,7 @@ mod tests {
         assert_eq!(z(Some(5)), 6.0);
         // Stage 1's own fields do not move with it.
         let stage = benilla_assets::Stage1 {
+            uv: None,
             env_map: true,
             texture: Default::default(),
             combine: 3,

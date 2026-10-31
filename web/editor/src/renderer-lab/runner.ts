@@ -282,12 +282,6 @@ export class RendererRunner {
     engine.set_annotations('{"marks":[]}');
     for (const original of cases) {
       const c = resolveStage(original);
-      await prepareOriginalSpellEffects(
-        files,
-        bridge,
-        c.effects.flatMap((effect) => (effect.spellId ? [effect.spellId] : [])),
-        signal,
-      );
       this.expectedMap = c.mapId;
       const isolateWorld = original.mapId === null;
       signal.throwIfAborted();
@@ -304,6 +298,14 @@ export class RendererRunner {
             ),
             { name: "RendererFixtureUnsupported" },
           );
+        await prepareOriginalSpellEffects(
+          files,
+          bridge,
+          c.effects.flatMap((effect) =>
+            effect.spellId ? [effect.spellId] : [],
+          ),
+          signal,
+        );
         const models: {
           key: string;
           path: string;

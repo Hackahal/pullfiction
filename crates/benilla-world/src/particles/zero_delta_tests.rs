@@ -141,6 +141,117 @@ fn state(app: &App, entity: Entity) -> Vec<u32> {
     out
 }
 
+/// Build the adapter's public PFP6 wire format and consume it through the real parser;
+/// no test-only mutation of EmitParams' private animation channels.
+fn vector_params(vector: [f32; 3]) -> benilla_formats::EmitParams {
+    fn put(bytes: &mut [u8], at: usize, value: u32) {
+        bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
+    }
+    let mut bytes = vec![0u8; 0x144 + 504];
+    bytes[..4].copy_from_slice(b"MD20");
+    put(&mut bytes, 4, 256);
+    put(&mut bytes, 0x13c, 1);
+    put(&mut bytes, 0x140, 0x144);
+    let time = bytes.len();
+    bytes.extend(0u32.to_le_bytes());
+    let values = bytes.len();
+    for value in vector {
+        bytes.extend(value.to_le_bytes());
+    }
+    let table = bytes.len();
+    bytes.resize(table + 248, 0);
+    put(&mut bytes, table + 160, 1);
+    for axis in 0..3 {
+        let at = table + 164 + axis * 28;
+        bytes[at + 2..at + 4].copy_from_slice(&u16::MAX.to_le_bytes());
+        for (field, value) in [
+            (12, 1),
+            (16, time as u32),
+            (20, 1),
+            (24, (values + axis * 4) as u32),
+        ] {
+            put(&mut bytes, at + field, value);
+        }
+    }
+    bytes.extend(b"PFP6");
+    bytes.extend((table as u32).to_le_bytes());
+    bytes.extend(1u32.to_le_bytes());
+    benilla_formats::parse_m2_particle_emitters(&bytes)
+        .unwrap()
+        .remove(0)
+        .params
+}
+
+#[test]
+fn modern_packed_gravity_drives_main_and_child_trajectories_and_frozen_redraw() {
+    // Real decoder results: the first three affected files share the first two vectors;
+    // Cannon Fire's model1722376 uses the third, with negative Z hemisphere.
+    let vectors = [
+        [0., -0.2914005, 0.6123709],
+        [0., -0.48213536, 0.47692546],
+        [6.8548656, 0., -0.8619167],
+    ];
+    for vector in vectors {
+        for model_space in [false, true] {
+            let mut app = fixture();
+            let (owner, emitter) = spawn(&mut app, false);
+            let placement =
+                Transform::from_rotation(Quat::from_rotation_y(1.2)).with_scale(Vec3::splat(3.5));
+            *app.world_mut().get_mut::<GlobalTransform>(owner).unwrap() =
+                GlobalTransform::from(placement);
+            {
+                let mut pool = app.world_mut().get_mut::<ParticleEmitter>(emitter).unwrap();
+                pool.def.params = vector_params(vector);
+                pool.def.timing = benilla_formats::EmitTiming::constant(0.);
+                pool.def.flags = if model_space { 0x10 } else { 0 };
+                let particle = || Particle {
+                    pos: Vec3::ZERO,
+                    vel: Vec3::ZERO,
+                    age: 0.,
+                    life: 10.,
+                    phase: 0,
+                    fresh: false,
+                    quat: Quat::IDENTITY,
+                    angvel: Vec3::ZERO,
+                };
+                pool.particles.push(particle());
+                let child = &mut pool.children[0];
+                child.def.params = vector_params(vector);
+                child.def.timing = benilla_formats::EmitTiming::constant(0.);
+                child.particles.push(particle());
+            }
+            for _ in 0..10 {
+                frame(&mut app, 0.1);
+            }
+            let expected = if model_space {
+                Vec3::from(vector)
+            } else {
+                benilla_assets::coords::wow_to_bevy(vector) * 3.5
+            };
+            let pool = app.world().get::<ParticleEmitter>(emitter).unwrap();
+            assert_eq!(pool.particles.len(), 1);
+            assert_eq!(pool.children[0].particles.len(), 1);
+            for particle in [&pool.particles[0], &pool.children[0].particles[0]] {
+                assert!(
+                    particle.vel.distance(expected) < 0.0001,
+                    "main and child use the same authored acceleration in the stored frame"
+                );
+                assert!(
+                    particle.pos.distance(expected * 0.5) < 0.0001,
+                    "one-second trajectory integrates acceleration without emitter rotation"
+                );
+            }
+            let saved = state(&app, emitter);
+            frame(&mut app, 0.);
+            assert_eq!(
+                state(&app, emitter),
+                saved,
+                "frozen redraw never advances vector gravity"
+            );
+        }
+    }
+}
+
 #[test]
 fn zero_delta_redraws_live_quads_without_simulating_and_retires_replaced_owners() {
     let mut app = fixture();

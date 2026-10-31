@@ -188,16 +188,10 @@ fn parse_skin(b: &[u8], vertex_count: usize) -> Result<ClassicSkin> {
     }
     let mut sections = Vec::new();
     for s in array(b, 28, 48)?.chunks_exact(48) {
-        let level = s.u16_at(2).unwrap();
-        // A nonzero level supplies upper triangle index bits. Current shared SkinSection is u16.
-        if level != 0 {
-            return Err(ClassicError(
-                "large Classic skin sections require 32-bit triangle ranges",
-            ));
-        }
-        let start = s.u16_at(8).unwrap();
+        // Elements remain u16; `level` extends the section's offset into that array.
+        let start = u32::from(s.u16_at(8).unwrap()) | (u32::from(s.u16_at(2).unwrap()) << 16);
         let count = s.u16_at(10).unwrap();
-        if usize::from(start) + usize::from(count) > triangles.len() {
+        if u64::from(start) + u64::from(count) > triangles.len() as u64 {
             return Err(ClassicError("SKIN section exceeds triangle array"));
         }
         sections.push(crate::SkinSection {
@@ -482,6 +476,24 @@ mod tests {
         assert_eq!(model.skin.triangles, [0, 1, 2]);
         assert_eq!(model.skin.sections[0].triangle_count, 3);
         assert_eq!(model.skin_file_ids, [77]);
+    }
+    #[test]
+    fn modern_skin_extends_section_range_start_with_u16_elements() {
+        let (_, mut skin) = fixture();
+        let triangles = skin.len();
+        skin.resize(triangles + 65_541 * 2, 0);
+        skin[triangles + 65_538 * 2..triangles + 65_541 * 2].copy_from_slice(&[0, 0, 1, 0, 2, 0]);
+        put(&mut skin, 12, 65_541);
+        put(&mut skin, 16, triangles as u32);
+        skin[62..64].copy_from_slice(&1u16.to_le_bytes()); // level
+        skin[68..70].copy_from_slice(&2u16.to_le_bytes()); // low start
+        let decoded = parse_skin(&skin, 3).unwrap();
+        assert_eq!(decoded.sections[0].triangle_start, 65_538);
+        assert_eq!(decoded.triangles.len(), 65_541);
+        assert_eq!(decoded.indices, [0u16, 1, 2]);
+        assert_eq!(&decoded.triangles[65_538..], &[0u16, 1, 2]);
+        skin[68..70].copy_from_slice(&3u16.to_le_bytes());
+        assert!(parse_skin(&skin, 3).is_err());
     }
     #[test]
     fn full_model_rejects_invalid_joints_aliases_and_skin_indices() {

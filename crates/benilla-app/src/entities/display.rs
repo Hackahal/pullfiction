@@ -101,6 +101,12 @@ impl EntityPart {
     /// `None` on the channel you would check first.
     pub(super) fn uv_loops(&self) -> benilla_world::doodad_anim::UvLoops {
         benilla_world::doodad_anim::UvLoops {
+            stage1: self
+                .geometry
+                .stage1
+                .as_ref()
+                .and_then(|s| s.uv.as_deref())
+                .map(benilla_world::doodad_anim::UvLoops::second),
             seqs: self.uv_seq.clone(),
             single: self.uv_anim.clone(),
             rot: self.uv_rot_seq.clone(),

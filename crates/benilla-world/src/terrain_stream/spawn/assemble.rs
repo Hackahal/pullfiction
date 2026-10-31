@@ -163,7 +163,8 @@ pub fn spawn_model_entities(
         // A batch whose UV or tint loop differs by sequence gets a material keyed by this
         // placement's host, since placements re-roll their variations independently. Without a
         // host it shares and stays at the built seed.
-        let per_seq = sub.uv_seq.is_some() || sub.rgb_seq.is_some();
+        let uv_loops = crate::doodad_anim::UvLoops::of(sub);
+        let per_seq = uv_loops.per_sequence() || sub.rgb_seq.is_some();
         let seq_owner = per_seq.then_some(rig_root).flatten();
         let cutout = model_material(
             mat_cache,
@@ -239,7 +240,7 @@ pub fn spawn_model_entities(
                 || sub.billboard.is_some()
                 || sub.alpha_anim.is_some()
                 || seq_owner.is_some()
-                || sub.uv_anim.is_some()
+                || uv_loops.any()
                 || sub.rgb_anim.is_some(),
             interior_prop: interior_probe,
             order_free: matches!(sub.blend, ModelBlend::Opaque | ModelBlend::AlphaTest)
@@ -417,29 +418,10 @@ pub fn spawn_model_entities(
         // Register both materials for the UV scroll (idempotent per material). A per-sequence set
         // replaces the shared loop when there is a host to read; a period-0 loop is a constant the
         // seed already wrote, so it stays out.
-        if let (Some(seqs), Some(host)) = (sub.uv_seq.as_ref(), seq_owner) {
-            for id in [cutout.id(), blend.id()] {
-                crate::doodad_anim::register_uv(
-                    uv_reg,
-                    anim_table,
-                    materials,
-                    id,
-                    crate::doodad_anim::UvLoop::PerSeq {
-                        seqs: seqs.clone(),
-                        host,
-                    },
-                );
-            }
-        } else if let Some(anim) = sub.uv_anim.as_ref().filter(|a| a.period > 0.0) {
-            for id in [cutout.id(), blend.id()] {
-                crate::doodad_anim::register_uv(
-                    uv_reg,
-                    anim_table,
-                    materials,
-                    id,
-                    crate::doodad_anim::UvLoop::Shared(Some(anim.clone())),
-                );
-            }
+        for id in [cutout.id(), blend.id()] {
+            crate::doodad_anim::register_entity_uv(
+                uv_reg, anim_table, materials, id, &uv_loops, seq_owner,
+            );
         }
         // Likewise for the animated M2Color RGB tint.
         if let (Some(seqs), Some(host)) = (sub.rgb_seq.as_ref(), seq_owner) {
@@ -568,7 +550,7 @@ pub fn spawn_model_entities(
         // The scan marker, by the registration's own predicate, so `tick_anim_materials` visits
         // only marked parts. A batch whose colour alpha animates or dims gets its own sampler,
         // which the visibility authority composes into the tag and the A ≤ 0 cull.
-        if sub.uv_anim.as_ref().is_some_and(|a| a.period > 0.0)
+        if uv_loops.animates()
             || sub.rgb_anim.as_ref().is_some_and(|a| a.period > 0.0)
             || seq_owner.is_some()
         {

@@ -80,6 +80,30 @@ def particle_geometry_fixture(geometry_ids=None):
 
 
 class AdapterTest(unittest.TestCase):
+    def test_skin_section_level_extends_range_start_with_u16_triangle_elements(self):
+        source, skin = fixture()
+        skin = bytearray(skin)
+        triangle_count = 65541
+        put(skin, 12, triangle_count, len(skin))
+        skin.extend(bytes(triangle_count * 2))
+        section_at = len(skin)
+        put(skin, 28, 1, section_at)
+        section = bytearray(48)
+        struct.pack_into('<H', section, 2, 1)
+        struct.pack_into('<HH', section, 8, 2, 3)
+        skin.extend(section)
+        output = adapt_model(source, [bytes(skin)])
+        _, view_at = read(output, '<II', 0x4c)
+        self.assertEqual(read(output, '<I', view_at + 8)[0], triangle_count)
+        _, sections_at = read(output, '<II', view_at + 24)
+        self.assertEqual(output[sections_at:sections_at + 32], section[:32])
+        low, count = read(output, '<HH', sections_at + 8)
+        self.assertEqual(low + (read(output, '<H', sections_at + 2)[0] << 16), 65538)
+        self.assertEqual(count, 3)
+        struct.pack_into('<H', skin, section_at + 8, 3)
+        with self.assertRaisesRegex(CompatError, 'section exceeds triangle array'):
+            adapt_model(source, [bytes(skin)])
+
     def test_multitexture_stages_scroll_and_exp2_are_retained_without_signed_short_aliasing(self):
         source, skin = particle_geometry_fixture()
         body = bytearray(source[8:])
@@ -105,7 +129,7 @@ class AdapterTest(unittest.TestCase):
         raw += b'EXP2' + struct.pack('<I',len(exp)) + exp
         output = adapt_model(raw,[skin])
         magic, offset, count = read(output,'<4sII',len(output)-12)
-        self.assertEqual((magic,count),(b'PFP5',1))
+        self.assertEqual((magic,count),(b'PFP6',1))
         self.assertEqual(read(output,'<4I',offset+76),(0x70830021,0,1,2))
         self.assertEqual(read(output,'<2f',offset+92),(1.0,0.5))
         self.assertEqual(read(output,'<4f',offset+100),(-25/512,0.75,0.25,0.25))
@@ -119,6 +143,47 @@ class AdapterTest(unittest.TestCase):
         self.assertEqual(adapt_model(raw+b'TXAC'+struct.pack('<I2H',4,0,0x303),[skin]),output)
         with self.assertRaisesRegex(UnsupportedFeatureError,'animated particle texture'):
             adapt_model(raw+b'TXAC'+struct.pack('<I2H',4,1,0),[skin])
+
+    def test_packed_gravity_decodes_vectors_before_interpolation_and_keeps_empty_sequences(self):
+        import math
+        source, skin = particle_geometry_fixture()
+        body = bytearray(source[8:])
+        _, start = read(body, '<II', 0x128)
+        put(body, 0x128, 1, start)
+        put(body, start+4, 0x800021)
+        def append(data):
+            at = len(body)
+            body.extend(data)
+            return at
+        times = append(struct.pack('<2I', 0, 1000))
+        values = append(struct.pack('<bbhbbh', 0, -55, 16, 127, 0, -163))
+        ta = append(struct.pack('<4I', 2, times, 0, 0))
+        va = append(struct.pack('<4I', 2, values, 0, 0))
+        struct.pack_into('<Hh4I', body, start+132, 1, -1, 2, ta, 2, va)
+        output = adapt_model(b'MD21'+struct.pack('<I',len(body))+body, [skin])
+        magic, table, count = read(output, '<4sII', len(output)-12)
+        self.assertEqual((magic,count,len(output)-12-table), (b'PFP6',1,248))
+        self.assertEqual(read(output,'<I',table+160)[0],1)
+        actual = []
+        for axis in range(3):
+            interpolation, global_id, rn, ro, tn, to, vn, vo = read(output,'<Hh6I',table+164+axis*28)
+            self.assertEqual((interpolation,global_id,rn,tn,vn),(1,-1,2,3,3))
+            self.assertEqual(read(output,'<4I',ro),(0,1,2,2))
+            keys = read(output,'<3f',vo)
+            self.assertEqual(keys[2],0, 'empty second sequence holds zero acceleration')
+            actual.append(keys)
+        expected = [(0,-55/128*16*.042385526,math.sqrt(1-(55/128)**2)*16*.042385526),
+                    (127/128*163*.042385526,0,-math.sqrt(1-(127/128)**2)*163*.042385526)]
+        for key, vector in enumerate(expected):
+            for axis in range(3): self.assertAlmostEqual(actual[axis][key],vector[axis],places=6)
+        # Existing vertical-only compressed tracks retain their original scalar values.
+        struct.pack_into('<bbhbbh',body,values,0,0,16,0,0,-163)
+        vertical = adapt_model(b'MD21'+struct.pack('<I',len(body))+body,[skin])
+        table = read(vertical,'<I',len(vertical)-8)[0]
+        self.assertEqual(read(vertical,'<I',table+160)[0],0)
+        particle = read(vertical,'<I',0x140)[0]
+        vo = read(vertical,'<I',particle+164+24)[0]
+        self.assertAlmostEqual(read(vertical,'<f',vo)[0],-16*.04238648,places=6)
 
     def test_gpid_preserves_geometry_particle_indices_and_legacy_fallback(self):
         source, skin = particle_geometry_fixture((101, 0, 103))
@@ -233,6 +298,7 @@ class AdapterTest(unittest.TestCase):
         with self.assertRaises(CompatError): shader_coordinates(0x80ff,1)
         self.assertEqual(shader_coordinates(0x8009,3), (0,65535,0))
         with self.assertRaises(UnsupportedFeatureError): shader_coordinates(0x8003,3)
+        with self.assertRaises(UnsupportedFeatureError): shader_coordinates(0x8003,2)
 
     def test_invalid_track_modes_are_not_cached_as_capability_limits(self):
         for interpolation in (2, 3, 4, 65535):
@@ -304,13 +370,28 @@ class AdapterTest(unittest.TestCase):
             self.assertEqual(read(output, '<I', textures + 2 * 16 + 4)[0], 0)
 
     def test_third_stage_unknown_shader_animation_and_runtime_bindings_stay_unsupported(self):
-        for options, message in [({'shader': 0x4014}, 'more than two'),
+        for options, message in [({'shader': 0x8003}, 'more than two'),
                                  ({'transforms': (0, 65535, 65535)}, 'texture animation'),
                                  ({'kinds': (2, 3, 0), 'ids': (0, 0, 103)}, 'second-stage runtime'),
                                  ({'kinds': (11, 0, 12), 'ids': (0, 102, 0)}, 'third-stage runtime')]:
             source, skin = three_stage_fixture(**options)
             with self.subTest(options=options), self.assertRaisesRegex(UnsupportedFeatureError, message):
                 adapt_model(source, [skin])
+
+    def test_packed_two_sampler_shader_retains_unused_third_binding_and_independent_transforms(self):
+        for shader in (0x4014, 0x4016):
+            source, skin = three_stage_fixture(shader=shader, ids=(101, 102, 0), transforms=(0, 1, 2))
+            output = adapt_model(source, [skin])
+            count, coords = read(output, '<II', 0x9c)
+            self.assertEqual((count, read(output, '<2H', coords)), (2, (0, 1)))
+            _, profile = read(output, '<II', 0x4c)
+            _, batches = read(output, '<II', profile + 32)
+            self.assertEqual(read(output, '<H', batches + 2)[0], shader)
+            self.assertEqual(read(output, '<H', batches + 14)[0], 3)
+            self.assertEqual(read(output, '<I', 0x5c)[0], 3)
+        source, skin = three_stage_fixture(shader=0x4016, ids=(101, 0, 103))
+        with self.assertRaisesRegex(UnsupportedFeatureError, 'second-stage runtime texture'):
+            adapt_model(source, [skin])
 
     def test_bad_array_offsets_and_aliases_fail(self):
         source, skin = fixture()
