@@ -3516,3 +3516,84 @@ test("approximate room pins keep authored XY and nearby floor height through nat
   assert.deepEqual(actor.spawn!.position, [x, y, null]);
   c.stop();
 });
+
+test("nearby reference scans cache misses and invalidate for actor identity, hints and geometry", () => {
+  const c = new EditorController();
+  c.selectRaid(2856, true, "sod");
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  let calls = 0;
+  const geometry = (answer: number | undefined) => {
+    const value = new ReplayFloorGeometry([]);
+    value.nearbyStructureHeight = () => {
+      calls++;
+      return answer;
+    };
+    return value;
+  };
+  (c as any).loadedFloors.set(2856, geometry(undefined));
+  for (let i = 0; i < 20; i++) c.actorPose(actor);
+  assert.equal(calls, 1, "undefined is a cached answer");
+  c.actorPose({ ...actor });
+  assert.equal(calls, 2, "same key on a different actor is independent");
+  actor.spawn!.floorHint = 180;
+  c.actorPose(actor);
+  c.actorPose(actor);
+  assert.equal(calls, 3);
+  (c as any).loadedFloors.set(2856, geometry(185));
+  for (let i = 0; i < 20; i++) assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(calls, 4, "a new geometry instance invalidates the old answer");
+  c.stop();
+});
+
+test("planned and recorded reference poses share the edge cache and invalidate moved coordinates", () => {
+  const c = new EditorController();
+  c.selectRaid(2856, true, "sod");
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  const [x, y] = actor.spawn!.position;
+  let calls = 0;
+  const geometry = new ReplayFloorGeometry([]);
+  geometry.nearbyStructureHeight = (_x, queryY) => {
+    calls++;
+    return queryY === y ? 185 : undefined;
+  };
+  (c as any).loadedFloors.set(2856, geometry);
+  assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(c.beginActorDrag(actor.key, [x, y, 185]), true);
+  c.finishDrawing();
+  c.selectActor(actor.key);
+  const held = (position: number[], nearby: boolean) => {
+    const pose = c.actorPose(actor)!;
+    assert.deepEqual(pose.pos, position);
+    assert.ok("nearbyGround" in pose);
+    assert.equal(pose.nearbyGround, nearby);
+    const before = calls;
+    for (let i = 0; i < 20; i++) c.actorPose(actor);
+    assert.equal(
+      calls,
+      before,
+      "held planned poses reuse positive and negative answers",
+    );
+  };
+  held([x, y, 185], true);
+  const beforeMove = calls;
+  c.nudgeActors(0, 1);
+  held([x, y + 1, 185], false);
+  assert.equal(calls, beforeMove + 1);
+  const beforeCompare = calls;
+  c.setCompareRecorded(true);
+  held([x, y, 185], true);
+  assert.equal(calls, beforeCompare + 1);
+  c.setCompareRecorded(false);
+  held([x, y + 1, 185], false);
+  assert.equal(calls, beforeCompare + 2);
+  c.nudgeActors(1, 0);
+  held([x + 1, y + 1, 185], false);
+  assert.equal(calls, beforeCompare + 3);
+  c.stop();
+});

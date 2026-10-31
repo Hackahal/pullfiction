@@ -253,6 +253,16 @@ export class EditorController {
   >();
   private loadedFloors = new Map<number, ReplayFloorGeometry>();
   private actorFloorHeights = new ReplayHeightCache();
+  private nearbyFloorHeights = new WeakMap<
+    Actor,
+    {
+      geometry: ReplayFloorGeometry;
+      x: number;
+      y: number;
+      hint: number;
+      value: number | undefined;
+    }
+  >();
   private fromFloorHeights = new ReplayHeightCache();
   private toFloorHeights = new ReplayHeightCache();
   private floorHintCache: {
@@ -2094,6 +2104,27 @@ export class EditorController {
         ),
     ];
   }
+  private nearbyReferenceHeight(
+    actor: Actor,
+    geometry: ReplayFloorGeometry | undefined,
+    x: number,
+    y: number,
+    hint: number,
+  ) {
+    if (!geometry) return undefined;
+    const entry = this.nearbyFloorHeights.get(actor);
+    if (
+      entry &&
+      entry.geometry === geometry &&
+      Object.is(entry.x, x) &&
+      Object.is(entry.y, y) &&
+      Object.is(entry.hint, hint)
+    )
+      return entry.value;
+    const value = geometry.nearbyStructureHeight(x, y, hint, 3);
+    this.nearbyFloorHeights.set(actor, { geometry, x, y, hint, value });
+    return value;
+  }
   actorPose(actor: Actor, lookupPose: typeof poseAt = poseAt) {
     const pose = lookupPose(
       actor,
@@ -2128,7 +2159,13 @@ export class EditorController {
         : undefined;
       const nearbyHeight =
         actor.spawn.referenceKind === "map-registered-reference"
-          ? geometry?.nearbyStructureHeight(pose.pos[0], pose.pos[1], hint, 3)
+          ? this.nearbyReferenceHeight(
+              actor,
+              geometry,
+              pose.pos[0],
+              pose.pos[1],
+              hint,
+            )
           : undefined;
       return {
         ...pose,
@@ -2152,14 +2189,13 @@ export class EditorController {
           nearbyGround:
             !this.state.replay &&
             actor.spawn?.referenceKind === "map-registered-reference" &&
-            this.loadedFloors
-              .get(this.state.plan.mapId)
-              ?.nearbyStructureHeight(
-                plannedPosition![0],
-                plannedPosition![1],
-                plannedPosition![2],
-                3,
-              ) !== undefined,
+            this.nearbyReferenceHeight(
+              actor,
+              this.loadedFloors.get(this.state.plan.mapId),
+              plannedPosition![0],
+              plannedPosition![1],
+              plannedPosition![2],
+            ) !== undefined,
           facing: this.state.compareRecorded
             ? (planned.recordedFacing ?? planned.facing)
             : planned.facing,
