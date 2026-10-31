@@ -18,6 +18,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checks:
+    needs: build
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.build.outputs.commit }}
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -87,7 +93,7 @@ jobs:
           retention-days: 30
 
   deploy:
-    needs: build
+    needs: [build, checks]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -118,7 +124,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Set the CLOUDFLARE_ACCOUNT_ID repository variable.' >&2; exit 1; }
           bash scripts/deploy-static.sh .agent/work/browser-static/release
       - name: Check production delivery
-        run: python3 scripts/verify-deployment.py https://pullfiction.com .agent/work/browser-static/release --attempts 12 --delay 5
+        run: python3 scripts/verify-deployment.py https://pullfiction.com .agent/work/browser-static/release --attempts 4 --delay 3
       - name: Record deployment
         env:
           RELEASE_COMMIT: ${{ needs.build.outputs.commit }}

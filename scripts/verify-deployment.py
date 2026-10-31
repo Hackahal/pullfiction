@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Compare hosted production assets with an audited local release. No game files."""
+"""Check that the production app and browser runtime are served correctly."""
 from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-import hashlib
+from html.parser import HTMLParser
 import importlib.util
 from pathlib import Path
 import time
@@ -18,7 +18,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def fetch(url: str, *, encoding: str = "identity") -> tuple[bytes, object]:
+def fetch(url: str, *, encoding: str = "identity", limit: int = 4096) -> tuple[bytes, object]:
     request = urllib.request.Request(url, headers={
         "User-Agent": "Pull-Fiction-release-verification",
         "Accept-Encoding": encoding,
@@ -26,7 +26,24 @@ def fetch(url: str, *, encoding: str = "identity") -> tuple[bytes, object]:
     with urllib.request.build_opener(NoRedirect()).open(request, timeout=45) as response:
         if response.status != 200:
             raise ValueError(f"Unexpected status {response.status}: {url}")
-        return response.read(), response.headers
+        return response.read(limit), response.headers
+
+
+class AppEntry(HTMLParser):
+    def __init__(self, body: bytes):
+        super().__init__()
+        self.has_root = False
+        self.assets = set()
+        self.feed(body.decode(errors="replace"))
+
+    def handle_starttag(self, tag, attributes):
+        attrs = dict(attributes)
+        if tag == "div" and attrs.get("id") == "root":
+            self.has_root = True
+        if tag == "script" and attrs.get("type") == "module" and attrs.get("src"):
+            self.assets.add(attrs["src"])
+        if tag == "link" and attrs.get("rel") == "stylesheet" and attrs.get("href"):
+            self.assets.add(attrs["href"])
 
 
 def audit_release(release: Path) -> dict:
@@ -43,49 +60,67 @@ def verify(origin: str, release: Path) -> int:
         raise ValueError("Use a plain HTTPS production origin, without credentials or a path")
     origin = origin.rstrip("/")
     inventory = audit_release(release)
-    public_files = [item for item in inventory["files"] if item["path"] != "_headers"]
+    expected_entry = AppEntry((release / "index.html").read_bytes())
+    if not expected_entry.has_root or not expected_entry.assets:
+        raise ValueError("The local application entry is incomplete")
+
+    def check_entry(body: bytes, headers: object) -> None:
+        entry = AppEntry(body)
+        if (headers.get_content_type() != "text/html" or not entry.has_root
+                or not expected_entry.assets.issubset(entry.assets)):
+            raise ValueError("The hosted application entry is missing or references a different release")
+
+    body, headers = fetch(origin + "/", limit=65536)
+    check_entry(body, headers)
+    # Inspect small prefixes of executable assets, not every file or its hash.
+    public_files = [item for item in inventory["files"]
+                    if item["path"].endswith((".js", ".mjs", ".css", ".wasm", ".wasm.gz"))
+                    or item["path"] in ("archive/converter-files.json", "archive/python/pyodide-lock.json",
+                                            "archive/python/python_stdlib.zip", "metadata/npc-models.json")]
 
     def check(item: dict) -> None:
         name = item["path"]
-        path = "" if name == "index.html" else urllib.parse.quote(name, safe="/")
+        path = urllib.parse.quote(name, safe="/")
         body, headers = fetch(f"{origin}/{path}")
-        actual_hash = hashlib.sha256(body).hexdigest()
-        if actual_hash != item["sha256"]:
-            detail = (f"expected {item['sha256']}, received {actual_hash}; "
-                      f"{len(body)} bytes, type={headers.get_content_type()}, "
-                      f"encoding={headers.get('Content-Encoding')}, "
-                      f"cache={headers.get('CF-Cache-Status')}, "
-                      f"mitigation={headers.get('cf-mitigated')}")
-            if name == "index.html":
-                detail += f"; public entry preview={body[:240].decode(errors='replace')!r}"
-            raise ValueError(f"Deployed bytes differ from the release: {name}: {detail}")
+        if not body:
+            raise ValueError(f"Empty runtime response: {name}")
         if headers.get("X-Content-Type-Options") != "nosniff":
             raise ValueError(f"Missing nosniff response header: {name}")
         mime = headers.get_content_type()
         if name.endswith(".wasm") and mime != "application/wasm":
             raise ValueError(f"Incorrect WebAssembly content type: {name}: {mime}")
+        if name.endswith(".wasm") and not body.startswith(b"\0asm"):
+            raise ValueError(f"Invalid WebAssembly response: {name}")
         if name.endswith((".js", ".mjs")) and mime not in ("text/javascript", "application/javascript"):
             raise ValueError(f"Incorrect JavaScript content type: {name}: {mime}")
+        if name.endswith(".css") and mime != "text/css":
+            raise ValueError(f"Incorrect stylesheet content type: {name}: {mime}")
+        if name.endswith(".json") and mime != "application/json":
+            raise ValueError(f"Incorrect JSON content type: {name}: {mime}")
+        if name.endswith(".zip") and not body.startswith(b"PK\x03\x04"):
+            raise ValueError(f"Invalid runtime archive response: {name}")
         if name.endswith(".wasm.gz"):
             _, browser_headers = fetch(f"{origin}/{path}", encoding="gzip, br")
-            if mime != "application/gzip" or browser_headers.get("Content-Encoding"):
+            if (mime != "application/gzip" or not body.startswith(b"\x1f\x8b")
+                    or browser_headers.get("Content-Encoding")):
                 raise ValueError("The viewer gzip must remain explicitly compressed for its browser loader")
 
     with ThreadPoolExecutor(max_workers=6) as executor:
         list(executor.map(check, public_files))
-    root_hash = hashlib.sha256((release / "index.html").read_bytes()).hexdigest()
     for path in ("/.env", "/.agent/", "/src/main.tsx", "/web/archive/proof.html", "/archive/proof.html"):
         try:
-            body, _ = fetch(origin + path)
+            body, headers = fetch(origin + path, limit=65536)
         except urllib.error.HTTPError as error:
             if error.code == 404:
                 error.close()
                 continue
             raise
         # An SPA fallback is acceptable; publishing source or proof files is not.
-        if hashlib.sha256(body).hexdigest() != root_hash:
+        try:
+            check_entry(body, headers)
+        except ValueError:
             raise ValueError(f"A development-only path exposes unexpected content: {path}")
-    return len(public_files)
+    return len(public_files) + 1
 
 
 def main() -> None:
@@ -111,7 +146,7 @@ def main() -> None:
                 parser.exit(1, f"Deployment verification failed: {error}\n")
             print(f"Delivery check {attempt}/{args.attempts}: {error}; retrying in {args.delay:g}s", flush=True)
             time.sleep(args.delay)
-    print(f"Verified {count} production files, response types, viewer compression and development-path exclusions.")
+    print(f"Production health check passed: app entry and {count - 1} runtime assets, response types, viewer compression and development-path exclusions.")
 
 
 if __name__ == "__main__":

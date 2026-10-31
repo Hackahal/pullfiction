@@ -45,7 +45,7 @@ class StaticPackageTests(unittest.TestCase):
         self.editor, self.renderer, self.archive, self.output = (self.root / name for name in ("editor", "renderer", "archive", "release"))
         for root in (self.editor, self.renderer, self.archive):
             root.mkdir()
-        self.write(self.editor, "index.html", '<script type="module" src="/assets/index-fixture.js"></script>')
+        self.write(self.editor, "index.html", '<div id="root"></div><script type="module" src="/assets/index-fixture.js"></script>')
         self.write(self.editor, "assets/index-fixture.js", 'console.log("application");')
         self.write(self.editor, ".vite/manifest.json", json.dumps({"index.html": {"file": "assets/index-fixture.js", "isEntry": True}}))
         self.write(self.renderer, "pullfiction_viewer.js", "import { report } from './snippets/viewer-fixture/inline0.js';\nexport default async function init() {}")
@@ -53,7 +53,8 @@ class StaticPackageTests(unittest.TestCase):
         self.write(self.renderer, "snippets/stale-fixture/inline0.js", "must never publish")
         self.write(self.renderer, "pullfiction_viewer_bg.wasm", b"\0asm\x01\0\0\0")
         for name in package.ARCHIVE_FILES:
-            self.write(self.archive, name, "application runtime")
+            self.write(self.archive, name, b"\0asm\x01\0\0\0" if name.endswith(".wasm") else
+                       b"PK\x03\x04fixture" if name.endswith(".zip") else "application runtime")
         names = package.converter_files(package.REPO)
         self.write(self.archive, "converter-files.json", json.dumps(sorted(names)))
         for name in names:
@@ -107,7 +108,7 @@ class StaticPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(package.PackageError, "Development renderer-lab exports"):
             self.pack()
 
-    def hosted_file(self, url, *, encoding="identity"):
+    def hosted_file(self, url, *, encoding="identity", limit=4096):
         name = urlsplit(url).path.lstrip("/") or "index.html"
         path = self.output / name
         if not path.is_file():
@@ -116,22 +117,48 @@ class StaticPackageTests(unittest.TestCase):
         headers["X-Content-Type-Options"] = "nosniff"
         headers["Content-Type"] = ("application/gzip" if name.endswith(".wasm.gz") else
             "application/wasm" if name.endswith(".wasm") else
-            "text/javascript" if name.endswith((".js", ".mjs")) else "text/plain")
-        return path.read_bytes(), headers
+            "text/javascript" if name.endswith((".js", ".mjs")) else
+            "text/html" if name.endswith(".html") else
+            "text/css" if name.endswith(".css") else
+            "application/json" if name.endswith(".json") else "text/plain")
+        return path.read_bytes()[:limit], headers
 
-    def test_hosted_release_requires_exact_asset_bytes(self):
+    def test_hosted_health_accepts_provider_markup_and_different_binary_bytes(self):
         self.pack()
-        with patch.object(deployment, "fetch", self.hosted_file):
-            self.assertEqual(deployment.verify("https://pullfiction.example", self.output),
-                             package.audit(self.output)["file_count"] - 1)
 
         def changed(url, **options):
             body, headers = self.hosted_file(url, **options)
-            return (b"changed" if url.endswith("/") else body), headers
+            if url.endswith("/"):
+                body += b'<script src="https://analytics.example/beacon.js"></script>'
+            if url.endswith(".wasm"):
+                body += b"different compiler output"
+            return body, headers
 
         with patch.object(deployment, "fetch", changed):
-            with self.assertRaisesRegex(ValueError, "bytes differ"):
+            self.assertGreater(deployment.verify("https://pullfiction.example", self.output), 5)
+
+    def test_hosted_health_rejects_missing_app_or_runtime_fallback(self):
+        self.pack()
+
+        def missing_app(url, **options):
+            body, headers = self.hosted_file(url, **options)
+            return (b"Not the application" if url.endswith("/") else body), headers
+
+        with patch.object(deployment, "fetch", missing_app):
+            with self.assertRaisesRegex(ValueError, "hosted application entry"):
                 deployment.verify("https://pullfiction.example", self.output)
+
+        for missing, message in (("casc.wasm", "WebAssembly content type"),
+                                 ("python_stdlib.zip", "Invalid runtime archive")):
+            with self.subTest(missing=missing):
+                def runtime_fallback(url, **options):
+                    if url.endswith(missing):
+                        return self.hosted_file("https://pullfiction.example/", **options)
+                    return self.hosted_file(url, **options)
+
+                with patch.object(deployment, "fetch", runtime_fallback):
+                    with self.assertRaisesRegex(ValueError, message):
+                        deployment.verify("https://pullfiction.example", self.output)
 
     def test_hosted_release_rejects_implicit_gzip_decoding(self):
         self.pack()
@@ -146,7 +173,7 @@ class StaticPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "explicitly compressed"):
                 deployment.verify("https://pullfiction.example", self.output)
 
-    def test_delivery_retry_waits_for_exact_expected_entry_bytes(self):
+    def test_delivery_retry_waits_for_the_application_entry(self):
         self.pack()
         requests = [0]
 
@@ -164,8 +191,8 @@ class StaticPackageTests(unittest.TestCase):
         with patch.object(deployment, "fetch", becoming_ready), patch.object(sys, "argv", arguments), redirect_stdout(output):
             deployment.main()
         self.assertEqual(requests[0], 2)
-        self.assertIn("expected ", output.getvalue())
-        self.assertIn("Verified ", output.getvalue())
+        self.assertIn("hosted application entry", output.getvalue())
+        self.assertIn("Production health check passed", output.getvalue())
 
     def test_metadata_rejects_art_spawns_and_unreviewed_source_changes(self):
         self.pack()

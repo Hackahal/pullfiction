@@ -48,12 +48,14 @@ Production builds exclude the renderer-lab screen and WASM diagnostics. Vite dev
 
 ## Publish a release
 
-Normal pushes to `main` run CI and do not deploy. Use either release entry point:
+Pushes and pull requests do not start workflows. Publishing a release runs the source and renderer checks, builds the production package, and deploys only after those checks pass. Use either release entry point:
 
 1. In GitHub, open **Releases → Draft a new release**, choose a version tag and target commit, and publish it. The **Release** workflow builds and deploys that commit.
 2. For a direct deployment or an older version, open **Actions → Release → Run workflow** and enter the commit or tag in **ref**. The default is `main`.
 
-The workflow builds on a clean GitHub-hosted runner, checks the packaging rules, uploads only the audited production directory, and verifies hosted bytes and response headers. Delivery checks retry briefly while a new deployment becomes visible; every attempt still requires the exact expected bytes and headers. Build and deployment run in separate jobs. The Cloudflare credential is available only to the deployment step. Each run retains the static package and a separate audit inventory for 30 days.
+The workflow builds on a clean GitHub-hosted runner, checks the packaging rules, and uploads only the audited production directory. A lightweight hosted health check confirms that the app references the expected bundles, the browser runtime is available, and WebAssembly and gzip responses have the right types. It reads small response prefixes and does not compare file hashes. Delivery checks retry briefly while a new deployment becomes visible. Build and deployment run in separate jobs. The Cloudflare credential is available only to the deployment step. Each run retains the static package and a separate audit inventory for 30 days.
+
+The **Pull Fiction checks** workflow can also be started manually for a commit or tag. It is reused by the release workflow and has no push or pull-request trigger.
 
 The repository requires these Actions settings:
 
@@ -64,6 +66,8 @@ The repository requires these Actions settings:
 | `VITE_WCL_CLIENT_ID` | Variable | Public Warcraft Logs PKCE client ID |
 
 Production uses the `pullfiction` Worker and the custom domain `pullfiction.com`. There is no Worker application server, database, game-data endpoint, or paid-service requirement.
+
+Optional Cloudflare RUM is disabled under **Speed → Real user monitoring**. Cloudflare can otherwise [inject an analytics snippet outside the EU by default](https://blog.cloudflare.com/the-rum-diaries-enabling-web-analytics-by-default/). The hosted health check tolerates extra analytics markup. RUM is not required for the application.
 
 ## Deploy a local build
 

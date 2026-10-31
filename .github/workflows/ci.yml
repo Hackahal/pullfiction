@@ -1,10 +1,17 @@
 name: Pull Fiction checks
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit or tag to check'
+        required: true
+        default: main
 
 permissions:
   contents: read
@@ -20,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.ref || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -45,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
