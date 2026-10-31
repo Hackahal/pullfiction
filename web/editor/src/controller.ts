@@ -2864,8 +2864,14 @@ export class EditorController {
   selectAllMarks() {
     if (this.state.selectionFilter !== "actors")
       this.selectMarks(this.displayMarks().map((a) => a.id));
-    if (this.state.selectionFilter !== "drawings")
-      this.selectActors(this.sceneActors().map((a) => a.key));
+    if (this.state.selectionFilter !== "drawings") {
+      // Logged actors become editable through a snapshot. Standalone reference
+      // actors can be materialized lazily by the next editing operation.
+      const actors = this.state.replay
+        ? (this.snapshot()?.actors ?? [])
+        : this.sceneActors();
+      this.selectActors(actors.map((a) => a.key));
+    }
   }
   boxSelect(
     x1: number,
