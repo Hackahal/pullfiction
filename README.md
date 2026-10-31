@@ -1,5 +1,7 @@
 # Pull Fiction
 
+[Open Pull Fiction](https://pullfiction.com/) · [Leave feedback or report a bug](https://github.com/Hackahal/pullfiction/issues/new/choose)
+
 Pull Fiction is a browser tool for analysing World of Warcraft runs and planning future ones. It combines Warcraft Logs data with a 3D encounter view, a 2D tactical map, live statistics and a timeline-based planning editor.
 
 The renderer builds on [Wenilla](https://github.com/Arnesen/wenilla) and [Benilla](https://github.com/samwhosung/benilla). The application uses React and TypeScript around the Rust/Bevy WebAssembly renderer. Upstream engine source and its licence notices remain in this repository.
