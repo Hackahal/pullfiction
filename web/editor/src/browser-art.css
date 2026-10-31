@@ -1,0 +1,4 @@
+/* The existing artwork comes from the selected client, without changing layout or fonts. */
+.browser-assets .plan-raid-icon {
+  background-image: var(--local-raid-icon-atlas);
+}

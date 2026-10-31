@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "product": "Pull Fiction",
+  "anchors": {
+    "3": "broken or unclear",
+    "5": "usable but rough",
+    "7": "coherent with notable defects",
+    "9": "polished and trustworthy",
+    "10": "exceptional with no observed issue"
+  },
+  "preserve": [
+    "original renderer",
+    "native UI",
+    "configurable panes",
+    "saved layouts",
+    "right-drag camera",
+    "click selection",
+    "UI-led tools",
+    "browser-local game assets"
+  ],
+  "captures": {
+    "library-plans": "Saved plans, search, row actions and local save context",
+    "library-runs": "Recent cached runs and selection",
+    "library-find-logs": "Saved guilds, guild search/realm and report link entry",
+    "library-report-picker": "Encounter/run preview with open-for-Analyse/Plan",
+    "library-new-plan": "Named project with game version and instance selection",
+    "client-setup": "Local client preparation or recoverable access state",
+    "analyse-3d": "Paused 3D replay with native raid frames and nameplates",
+    "analyse-map": "Same encounter in tactical 2D with actor icons/health",
+    "analyse-panels": "Configured analytical workspace, preserved docking",
+    "focus": "Selected player health/power/target/gear/auras",
+    "plan-3d": "Plan workspace, scene tools and separate Edits/Pages",
+    "plan-map": "Same planning material in tactical 2D",
+    "plan-properties": "Selected drawing or actor, properties and attachment affordance",
+    "plan-pages": "Named pages, layer/timing and notes controls",
+    "drawing-selected": "Visible selected geometry and direct-manipulation handles",
+    "settings": "Native UI and replay visibility options",
+    "dock-actions": "Pane menu and non-drag layout actions",
+    "run-navigator": "Boss/mob overview and named plan rows",
+    "cast-timeline": "By-player timeline, search and ability/buff drill-down",
+    "charts-statistics": "Populated chart/table controls and player emphasis"
+  },
+  "interactions": {
+    "project-duplicate-open": "Duplicate and open a disposable cached project; original unchanged",
+    "local-save-reopen": "Save edits and reopen the QA project through the UI",
+    "mode-switch": "Analyse/Plan retain context and expose appropriate controls",
+    "scene-toggle": "3D/Map retain encounter/time and selection",
+    "camera-3d-analyse": "Right-drag look and WASD, release, Frame recovery",
+    "camera-3d-plan": "Same basic camera contract while editing",
+    "camera-2d-analyse": "Pan/zoom/frame with playback context retained",
+    "camera-2d-plan": "Pan/zoom while editing, no unintended drawing",
+    "selection": "Click actor/edit and show stable selection with relevant options",
+    "drawing-edit": "Drag a drawing, numeric size, visible resize/move, undo",
+    "actor-attachment": "Selected actor exposes drawing attachment/marker flow",
+    "timeline-scrub": "Seek paused and during playback, complete encounter navigator",
+    "timeline-pan-zoom": "Right-drag pan, zoom and Full run recovery",
+    "pane-drag-resize": "Move and resize panes while preserving full-height left zone",
+    "pane-menu-alternative": "Pane actions provide non-drag move/open/close/recovery",
+    "native-ui-options": "Friendly/enemy nameplates independently toggle; raid frames resizable"
+  },
+  "exploratory": [
+    "gear-tooltip",
+    "cast-tooltip",
+    "drawing-in-progress",
+    "dock-drop-preview",
+    "native-frame-resize",
+    "error-recovery",
+    "loading",
+    "empty",
+    "long-run",
+    "compact-width"
+  ],
+  "stop": {
+    "maximum_improvement_rounds": 3,
+    "plateau_rounds": 2,
+    "essential_failures_allowed": 0
+  }
+}

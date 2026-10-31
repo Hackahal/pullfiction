@@ -1,0 +1,219 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Pull Fiction modern asset checks</title>
+<style>
+  body {
+    font: 15px system-ui;
+    background: #17191d;
+    color: #eee;
+    padding: 24px;
+    max-width: 1100px;
+  }
+  button,
+  input {
+    font: inherit;
+    margin: 4px;
+    padding: 10px;
+  }
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  canvas {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+  }
+  button:disabled {
+    opacity: 0.4;
+  }
+</style>
+<h1>Modern asset checks</h1>
+<p>
+  Read-only local files. No game data uploads. This is an isolated developer
+  check, not the editor.
+</p>
+<input id="files" type="file" webkitdirectory multiple />
+<button id="raw" disabled>Archive checks</button>
+<button id="models" disabled>Model and cache checks</button>
+<button id="catalog" disabled>Catalog checks</button>
+<button id="appearance" disabled>Modern character appearance</button>
+<canvas id="icon" width="64" height="64"></canvas>
+<div id="atlases"></div>
+<pre id="result">Select the World of Warcraft root folder.</pre>
+<script type="module">
+  import { openFiles } from "./client.mjs";
+  import initialize, {
+    inspect_model,
+    decode_texture,
+  } from "./pullfiction_asset_codec.js";
+  const out = document.querySelector("#result");
+  let reader, codec;
+  const sha = async (bytes) =>
+    Array.from(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+      (b) => b.toString(16).padStart(2, "0"),
+    ).join("");
+  async function run(action) {
+    for (const button of document.querySelectorAll("button"))
+      button.disabled = true;
+    try {
+      await action();
+    } catch (error) {
+      out.textContent = String(error.stack || error);
+    } finally {
+      for (const button of document.querySelectorAll("button"))
+        button.disabled = !reader;
+    }
+  }
+  const progress = (value) => {
+    out.textContent = "Preparing " + JSON.stringify(value);
+  };
+  async function archiveChecks() {
+    const expected = await (await fetch("./expected.json")).json();
+    const result = { build: reader.build, ...reader.timing, resources: [] };
+    for (const entry of expected) {
+      const { bytes, ...timing } = await reader.read(entry.name),
+        hash = await sha(bytes);
+      result.resources.push({
+        name: entry.name,
+        bytes: bytes.byteLength,
+        hash,
+        match: hash === entry.sha256 && bytes.byteLength === entry.size,
+        ...timing,
+      });
+      if (entry.name === "id:135846") {
+        codec ??= await initialize();
+        const texture = decode_texture(new Uint8Array(bytes));
+        const canvas = document.querySelector("#icon");
+        canvas.width = texture.width;
+        canvas.height = texture.height;
+        canvas
+          .getContext("2d")
+          .putImageData(
+            new ImageData(
+              new Uint8ClampedArray(texture.pixels()),
+              texture.width,
+              texture.height,
+            ),
+            0,
+            0,
+          );
+        texture.free();
+      }
+    }
+    result.passed = result.resources.every((value) => value.match);
+    out.textContent = JSON.stringify(result, null, 2);
+  }
+  document.querySelector("#files").onchange = () =>
+    run(async () => {
+      reader?.close();
+      reader = undefined;
+      out.textContent = "Opening local archive…";
+      const start = performance.now();
+      reader = await openFiles(
+        document.querySelector("#files").files,
+        progress,
+      );
+      out.textContent = JSON.stringify(
+        {
+          build: reader.build,
+          ...reader.timing,
+          totalMs: performance.now() - start,
+        },
+        null,
+        2,
+      );
+    });
+  document.querySelector("#raw").onclick = () => run(archiveChecks);
+  document.querySelector("#models").onclick = () =>
+    run(async () => {
+      codec ??= await initialize();
+      const expected = await (await fetch("./expected-models.json")).json(),
+        result = [];
+      for (const entry of expected) {
+        const { bytes, ...timing } = await reader.model(entry.name),
+          hash = await sha(bytes);
+        const model = JSON.parse(inspect_model(new Uint8Array(bytes)));
+        const repeat = await reader.model(entry.name);
+        result.push({
+          name: entry.name,
+          bytes: bytes.byteLength,
+          match: hash === entry.sha256 && bytes.byteLength === entry.size,
+          ...timing,
+          repeatCached: repeat.cached,
+          repeatMs: repeat.prepareMs,
+          model,
+        });
+      }
+      out.textContent = JSON.stringify(
+        {
+          passed: result.every(
+            (value) =>
+              value.match && value.model.batches > 0 && value.repeatCached,
+          ),
+          models: result,
+        },
+        null,
+        2,
+      );
+    });
+  document.querySelector("#catalog").onclick = () =>
+    run(async () => {
+      const result = {};
+      for (const kind of ["creatures", "items", "spells"]) {
+        const start = performance.now(),
+          catalog = await reader.catalog(kind);
+        result[kind] = {
+          ms: performance.now() - start,
+          collections: Object.fromEntries(
+            Object.entries(catalog)
+              .filter(
+                ([name, value]) =>
+                  name !== "layouts" &&
+                  name !== "source" &&
+                  value &&
+                  typeof value === "object",
+              )
+              .map(([name, value]) => [name, Object.keys(value).length]),
+          ),
+        };
+        out.textContent = JSON.stringify(result, null, 2);
+      }
+    });
+  document.querySelector("#appearance").onclick = () =>
+    run(async () => {
+      const start = performance.now();
+      const result = await reader.appearance({ race: 7, sex: 1 });
+      const host = document.querySelector("#atlases");
+      host.replaceChildren();
+      for (const texture of result.textures) {
+        const canvas = document.createElement("canvas");
+        canvas.width = texture.width;
+        canvas.height = texture.height;
+        canvas.style.width = "256px";
+        canvas.style.height = "256px";
+        canvas
+          .getContext("2d")
+          .putImageData(
+            new ImageData(
+              new Uint8ClampedArray(texture.pixels),
+              texture.width,
+              texture.height,
+            ),
+            0,
+            0,
+          );
+        host.append(canvas);
+      }
+      out.textContent = JSON.stringify(
+        {
+          ms: performance.now() - start,
+          recipe: result.recipe,
+          textures: result.textures.map(({ pixels, ...info }) => info),
+        },
+        null,
+        2,
+      );
+    });
+</script>

@@ -1,0 +1,172 @@
+[
+  {
+    "map": 409,
+    "name": "Molten Core",
+    "short": "MC",
+    "directory": "MoltenCore",
+    "aliases": [],
+    "spawn": [
+      1080,
+      -481,
+      -108
+    ],
+    "facing": -1.05
+  },
+  {
+    "map": 249,
+    "name": "Onyxia's Lair",
+    "short": "Onyxia",
+    "directory": "OnyxiaLairInstance",
+    "aliases": [
+      "Onyxia"
+    ],
+    "spawn": [
+      30.8916,
+      -54.079,
+      -5.02784
+    ],
+    "facing": 4.71239
+  },
+  {
+    "map": 469,
+    "name": "Blackwing Lair",
+    "short": "BWL",
+    "directory": "BlackwingLair",
+    "aliases": [],
+    "spawn": [
+      -7672.32,
+      -1107.05,
+      396.651
+    ],
+    "facing": 0.785398
+  },
+  {
+    "map": 309,
+    "name": "Zul'Gurub",
+    "short": "ZG",
+    "directory": "Zul'gurub",
+    "aliases": [
+      "Zul Gurub"
+    ],
+    "spawn": [
+      -11916.6,
+      -1243.52,
+      92.5338
+    ],
+    "facing": 4.71239
+  },
+  {
+    "map": 509,
+    "name": "Ruins of Ahn'Qiraj",
+    "short": "AQ20",
+    "directory": "AhnQiraj",
+    "aliases": [
+      "Ruins of Ahn\u2019Qiraj"
+    ],
+    "spawn": [
+      -8436.53,
+      1519.17,
+      31.907
+    ],
+    "facing": 2.61799
+  },
+  {
+    "map": 531,
+    "name": "Temple of Ahn'Qiraj",
+    "short": "AQ40",
+    "directory": "AhnQirajTemple",
+    "aliases": [
+      "Ahn'Qiraj Temple",
+      "Ahn'Qiraj",
+      "Temple of Ahn\u2019Qiraj"
+    ],
+    "spawn": [
+      -8221.35,
+      2014.34,
+      129.071
+    ],
+    "facing": 0.872665
+  },
+  {
+    "map": 533,
+    "name": "Naxxramas",
+    "short": "Naxx",
+    "directory": "Stratholme Raid",
+    "aliases": [],
+    "spawn": [
+      3005.87,
+      -3435.01,
+      293.882
+    ],
+    "facing": 0
+  },
+  {
+    "map": 48,
+    "name": "Blackfathom Deeps",
+    "short": "BFD",
+    "directory": "Blackfathom",
+    "aliases": [],
+    "spawn": [
+      -150.233,
+      106.594,
+      -39.779
+    ],
+    "facing": 0,
+    "rulesets": [
+      "sod"
+    ]
+  },
+  {
+    "map": 90,
+    "name": "Gnomeregan",
+    "short": "Gnomer",
+    "directory": "GnomeragonInstance",
+    "aliases": [],
+    "spawn": [
+      -330,
+      -3,
+      -152
+    ],
+    "facing": 0,
+    "rulesets": [
+      "sod"
+    ]
+  },
+  {
+    "map": 109,
+    "name": "Sunken Temple",
+    "short": "ST",
+    "directory": "SunkenTemple",
+    "aliases": [
+      "The Temple of Atal'Hakkar",
+      "Temple of Atal'Hakkar"
+    ],
+    "spawn": [
+      -316,
+      99,
+      -131
+    ],
+    "facing": 0,
+    "rulesets": [
+      "sod"
+    ]
+  },
+  {
+    "map": 2856,
+    "name": "Scarlet Enclave",
+    "short": "Scarlet",
+    "directory": "2856",
+    "aliases": [
+      "The Scarlet Enclave"
+    ],
+    "spawn": [
+      2270,
+      -5330,
+      125
+    ],
+    "facing": 0,
+    "rulesets": [
+      "sod"
+    ]
+  }
+]

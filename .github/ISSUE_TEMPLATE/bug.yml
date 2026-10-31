@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a Pull Fiction rendering, analysis or planning problem.
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Describe the visible problem. Do not attach game archives, credentials or private reports.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the view, encounter and replay time when relevant.
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Browser and client build
+      placeholder: Chromium version, OS, Classic/SoD/Forever and client build

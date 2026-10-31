@@ -1,0 +1,14 @@
+[package]
+name = "pullfiction-asset-codec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Browser-local replay asset decoding without a game, UI or world bootstrap"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+benilla-formats = { path = "../benilla-formats", default-features = false }
+wasm-bindgen = "=0.2.122"
+serde_json = "1"

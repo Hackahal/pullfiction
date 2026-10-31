@@ -1,0 +1,45 @@
+# Check the browser renderer
+
+Build a separate static package with `scripts/browser-static-build.sh OUTPUT_DIRECTORY` and serve that directory on a separate localhost port. Open `/?renderer-lab=1` there. Keep the normal editor tab and its saved projects separate.
+
+1. Choose the installed World of Warcraft root folder. The workbench uses the normal browser asset reader and converter; it does not start or inspect the official game.
+2. If the workbench restored cached assets, click **Connect client source** and choose the installation before an uncached batch. The runner pauses readiness deadlines while the folder is needed. Run the smoke fixtures. Check that the synthetic subject, creature and spell appear before running a large batch.
+3. Import a JSON array of 1–256 `RendererCase` records. Start with batches of 24–32 cases to bound browser memory and review effort.
+4. Run the batch with duplicate frozen captures enabled, then export the evidence JSON.
+5. Extract the actual GPU images and contact sheets:
+
+   ```sh
+   python3 scripts/renderer-evidence.py REPORT.json --output NEW_OUTPUT_DIRECTORY --sheet
+   ```
+
+   `--sheet` requires Pillow. Without it, extraction still produces individual PNGs, an HTML contact sheet and a summary. Existing evidence directories are never overwritten.
+6. Inspect each subject or room. Record visible defects separately from unsupported assets, unavailable data and unsuitable cameras. A loaded mesh, successful capture or matching frozen hash does not establish visual correctness.
+7. Fix a shared cause, rebuild into a new output directory, and rerun the affected cases plus nearby control cases. Keep the earlier evidence.
+
+## Generate coverage
+
+Use `scripts/renderer-coverage.py --help` to generate catalog and dependency manifests. Use `scripts/renderer-model-audit.py --help` for read-only model adaptation checks and `scripts/renderer-world-audit.py --help` for terrain/WMO checks and floor-camera candidates. Use `scripts/renderer-world-cameras.py --help` to refine those candidates against static placed WMO triangles; this step requires NumPy and still needs browser visibility approval. Supply catalogs from the same product, version and build key. Store output under an ignored local work directory, outside the installation.
+
+Metadata enumeration, conversion, GPU rendering, visual approval and regression evidence are separate dimensions. Preserve that distinction when resuming a manifest. A camera generated from a walkable floor still needs a visibility check. The evidence extractor also compares the configured, rendered and portal-culling camera poses when the native report includes them. A different culling camera can create false missing-room reports even when the renderer is correct.
+
+## Fixture limits
+
+`cases.ts` defines native WoW XYZ coordinates, radians, requested sample ages and coverage identifiers. `runner.ts` resolves isolated fixtures into a known Molten Core entry stage and records the translated case. Diagnostic world isolation removes surrounding geometry while retaining the production lighting and subject assembly. World fixtures retain their authored map and camera. A future client profile needs its own available stage; the current default is for the retained Era/SoD client.
+
+Subjects pass through the production creature, character/equipment and spell-effect paths. The runner clears previous actors and advances the normal appearance/teardown fades before sampling. After reaching each requested age it freezes simulation and waits for child model draws and resource counts to settle before readback. Both capture statuses are retained for frozen-repeat diagnosis. Raw model fixtures can request an animation. Character/creature samples use their production idle state; they do not implement arbitrary actor animation IDs. Raw effect models sample the asset, rather than reconstructing a server mechanic. Spell-event fixtures currently support cast/flight events with real caster and target bodies. Unimplemented kit/visual/stage routing earns no render credit.
+
+Simulation advances in bounded fixed-step chunks and freezes for readback. Seed 1 resets the shared animation RNG. Persistent world timestamp origins, asynchronous loading and draw order prevent a claim of complete scene determinism. Frozen-repeat identity is reported separately; differing second images are retained for diagnosis.
+
+The exported report records the client identity, loaded WASM SHA-256, resolved fixtures, native readiness, model/emitter counts, GPU backend, PNG hashes and repeat results. Converter revisions are retained in the corresponding static build log. The native status explicitly marks unknown asset-queue/GPU readiness fields and isolation limits. Keep the package audit and build log with the report.
+
+Keep extracted game assets and screenshots local. The static package contains application code and approved numeric metadata only. Do not create goldens from blank, occluded or unverified frames, and do not label current-build screenshots as official-client references.
+
+## Asset memory during long batches
+
+The native asynchronous loader uses `LocalClientFiles.readStreaming()` for transient source buffers. Bevy and the audio path retain their own decoded or copied resources. Explicit `prepare()` and synchronous `readSync()` dependencies still use the bounded preparation cache. Do not put every asynchronously streamed world texture or mesh into that cache: a successful short fixture can otherwise hide exhaustion when a later map loads. Record `localPreparedBytes` across a multi-map batch as well as native loading failures. This number measures retained raw preparation buffers, not total browser or GPU memory.
+
+## Check effect fragments without game assets
+
+Run `python3 scripts/renderer-effects-gpu-check.py --output NEW_OUTPUT_DIRECTORY` after a native build has produced compatible `wgpu` and `futures-lite` rlibs under `target/debug/deps`. Explicit dependency paths are available through `--help`. This tool uses `rustc`, a native GPU adapter, current production policy functions and complete production WGSL fragments with self-authored pixels. It does not invoke Cargo, download dependencies or access a game installation. It refuses an existing output directory.
+
+Keep its source-policy and analytical GPU results separate from the browser batches. Passing a one-pixel blend test does not prove BC texture decoding, Bevy specialization, model assembly, world lighting or whole-spell appearance.

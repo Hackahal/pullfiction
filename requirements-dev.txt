@@ -1,0 +1,3 @@
+# Renderer camera fixtures and image-evidence tests; not browser runtime dependencies.
+numpy==2.3.5
+Pillow==12.3.0

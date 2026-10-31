@@ -1,0 +1,35 @@
+{
+  "name": "pullfiction-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "check": "tsc --noEmit",
+    "build": "npm run check && vite build",
+    "test": "tsx --test src/*.test.ts src/renderer-lab/*.test.ts",
+    "format": "prettier --write src vite.config.ts tsconfig.json package.json",
+    "format:check": "prettier --check src vite.config.ts tsconfig.json package.json"
+  },
+  "dependencies": {
+    "konva": "^10.9.0",
+    "oauth4webapi": "3.8.8",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-konva": "^19.3.2",
+    "react-resizable-panels": "^4.15.0"
+  },
+  "devDependencies": {
+    "@types/luaparse": "^0.2.13",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "fake-indexeddb": "6.2.6",
+    "luaparse": "^0.3.1",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}

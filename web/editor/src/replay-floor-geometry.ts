@@ -1,0 +1,102 @@
+import type { MapFloor } from "./map-model";
+
+type Point = [number, number, number];
+type Triangle = {
+  a: Point;
+  ab: Point;
+  ac: Point;
+  nz: number;
+  interior: boolean;
+  structure: boolean;
+};
+const CELL = 32;
+
+/** Seek-safe floor context from local client geometry, independent of 3D streaming.
+ * Index once per map; actor updates inspect only their column's nearby triangles.
+ */
+export class ReplayFloorGeometry {
+  private triangles: Triangle[] = [];
+  private columns = new Map<string, number[]>();
+  private broad: number[] = [];
+  constructor(floors: MapFloor[]) {
+    for (const floor of floors) {
+      for (let i = 0; i < floor.indices.length; i += 3) {
+        const [a, b, c] = floor.indices
+          .slice(i, i + 3)
+          .map((j) => floor.vertices[j]);
+        if (
+          ![a, b, c].every((p) => p?.length === 3 && p.every(Number.isFinite))
+        )
+          throw new Error("Invalid replay floor geometry");
+        const ab = b.map((v, j) => v - a[j]) as Point;
+        const ac = c.map((v, j) => v - a[j]) as Point;
+        const n = [
+          ab[1] * ac[2] - ab[2] * ac[1],
+          ab[2] * ac[0] - ab[0] * ac[2],
+          ab[0] * ac[1] - ab[1] * ac[0],
+        ];
+        if (n[2] / Math.hypot(...n) < 0.45 || !n[2]) continue;
+        const id =
+          this.triangles.push({
+            a,
+            ab,
+            ac,
+            nz: n[2],
+            interior: floor.interior === true,
+            structure: floor.area !== "terrain",
+          }) - 1;
+        const minX = Math.floor(Math.min(a[0], b[0], c[0]) / CELL),
+          maxX = Math.floor(Math.max(a[0], b[0], c[0]) / CELL);
+        const minY = Math.floor(Math.min(a[1], b[1], c[1]) / CELL),
+          maxY = Math.floor(Math.max(a[1], b[1], c[1]) / CELL);
+        if ((maxX - minX + 1) * (maxY - minY + 1) > 256) {
+          this.broad.push(id);
+          continue;
+        }
+        for (let x = minX; x <= maxX; x++)
+          for (let y = minY; y <= maxY; y++) {
+            const key = `${x}:${y}`,
+              list = this.columns.get(key) ?? [];
+            list.push(id);
+            this.columns.set(key, list);
+          }
+      }
+    }
+  }
+  height(
+    x: number,
+    y: number,
+    hint: number,
+    preferInterior: boolean,
+  ): number | undefined {
+    if (![x, y, hint].every(Number.isFinite)) return;
+    let best: number | undefined,
+      inside: number | undefined,
+      structure: number | undefined;
+    const ids =
+      this.columns.get(`${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`) ?? [];
+    for (const id of [...ids, ...this.broad]) {
+      const { a, ab, ac, nz, interior, structure: built } = this.triangles[id];
+      const u = ((x - a[0]) * ac[1] - (y - a[1]) * ac[0]) / nz;
+      const v = (ab[0] * (y - a[1]) - ab[1] * (x - a[0])) / nz;
+      if (u < -1e-5 || v < -1e-5 || u + v > 1.00001) continue;
+      const z = a[2] + u * ab[2] + v * ac[2];
+      if (best === undefined || Math.abs(z - hint) < Math.abs(best - hint))
+        best = z;
+      if (
+        interior &&
+        (inside === undefined || Math.abs(z - hint) < Math.abs(inside - hint))
+      )
+        inside = z;
+      if (
+        built &&
+        (structure === undefined ||
+          Math.abs(z - hint) < Math.abs(structure - hint))
+      )
+        structure = z;
+    }
+    // Open cloisters and decks are authored exterior groups, but still carry
+    // the walkable floor above or below the terrain. Never treat them as terrain.
+    return preferInterior ? (inside ?? structure ?? best) : best;
+  }
+}

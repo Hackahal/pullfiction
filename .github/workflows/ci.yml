@@ -1,0 +1,63 @@
+name: Pull Fiction checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pullfiction-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/editor/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python check dependencies
+        run: python3 -m pip install -r requirements-dev.txt
+      - name: Editor dependencies
+        run: npm ci --prefix web/editor
+      - name: Current project source checks
+        run: bash scripts/check.sh --source-only
+      - name: Editor production build
+        run: npm run build --prefix web/editor -- --outDir "$RUNNER_TEMP/pullfiction-editor"
+
+  renderer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pullfiction-browser
+          cache-directories: tools
+      - name: WebAssembly C toolchain
+        run: scripts/web-setup.sh
+      - name: Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Production renderer check
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS: -C target-feature=+simd128
+        run: cargo check --locked --target wasm32-unknown-unknown -p pullfiction-viewer --no-default-features --features browser-static

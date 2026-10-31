@@ -1,0 +1,9 @@
+{
+  // Local packaging configuration only. No account, route, domain, or secret.
+  "name": "pullfiction-static",
+  "compatibility_date": "2026-10-27",
+  "assets": {
+    "directory": ".agent/work/browser-static/release",
+    "not_found_handling": "single-page-application"
+  }
+}

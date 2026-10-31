@@ -1,0 +1,17 @@
+<!-- Planner camera commands use the existing native input channels. -->
+<Bindings>
+    <Binding name="TURNORACTION" runOnUp="true" hidden="true">
+        local change = keystate == 'down' and TurnOrActionStart or TurnOrActionStop
+        change()
+    </Binding>
+    <Binding name="CAMERAORSELECTORMOVE" runOnUp="true" hidden="true">
+        local change = keystate == 'down' and CameraOrSelectOrMoveStart or CameraOrSelectOrMoveStop
+        change()
+    </Binding>
+    <Binding name="CAMERAZOOMIN">
+        CameraZoomIn(1)
+    </Binding>
+    <Binding name="CAMERAZOOMOUT">
+        CameraZoomOut(1)
+    </Binding>
+</Bindings>
