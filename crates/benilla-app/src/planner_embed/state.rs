@@ -121,7 +121,7 @@ pub(super) fn plate_chunk(
 ) -> String {
     let mut candidates = Vec::new();
     let mut data = HashMap::new();
-    if frame.nameplates {
+    {
         for unit in &frame.units {
             if !unit.visible || unit.health_known && unit.health == 0 || unit.distance > 80. {
                 continue;
@@ -136,7 +136,8 @@ pub(super) fn plate_chunk(
             }
             let selected = frame.selected == Some(unit.guid);
             let friendly = unit.player || unit.friendly;
-            if friendly && !frame.friendly_nameplates || !friendly && !frame.enemy_nameplates {
+            let name_only = friendly && (!frame.nameplates || !frame.friendly_nameplates);
+            if !friendly && (!frame.nameplates || !frame.enemy_nameplates) {
                 continue;
             }
             let color = crate::planner_unit_colors::nameplate_color(
@@ -153,6 +154,9 @@ pub(super) fn plate_chunk(
                 .collect();
             auras.sort_by_key(|a| (!a.debuff, a.spell));
             auras.truncate(if friendly && !selected { 2 } else { 4 });
+            if name_only {
+                auras.clear();
+            }
             let width = if selected {
                 154.
             } else if friendly {
@@ -160,10 +164,13 @@ pub(super) fn plate_chunk(
             } else {
                 140.
             };
-            let height = 13.
-                + if friendly && !selected { 5. } else { 10. }
-                + if unit.cast.is_some() { 14. } else { 0. }
-                + if auras.is_empty() { 0. } else { 18. };
+            let height = if name_only {
+                13.
+            } else {
+                13. + if friendly && !selected { 5. } else { 10. }
+                    + if unit.cast.is_some() { 14. } else { 0. }
+                    + if auras.is_empty() { 0. } else { 18. }
+            };
             candidates.push(Candidate {
                 key: unit.guid,
                 anchor: screen,
@@ -206,6 +213,7 @@ pub(super) fn plate_chunk(
             let cast = unit
                 .cast
                 .as_ref()
+                .filter(|_| !name_only)
                 .map(|c| {
                     format!(
                         "{{name={},icon={},progress={:.4},remaining={}}}",
@@ -217,7 +225,7 @@ pub(super) fn plate_chunk(
                 })
                 .unwrap_or("nil".into());
             data.insert(unit.guid, format!(
-                "key={},name={},w={width},h={height},friendly={friendly},selected={selected},r={},g={},b={},health={:.4},hptext={},cast={cast},auras={{{aura_text}}}",
+                "key={},name={},w={width},h={height},friendly={friendly},selected={selected},name_only={name_only},r={},g={},b={},health={:.4},hptext={},cast={cast},auras={{{aura_text}}}",
                 quote(&unit.guid.to_string()), quote(&name), color[0], color[1], color[2], health.clamp(0., 1.), quote(&hptext),
             ));
         }

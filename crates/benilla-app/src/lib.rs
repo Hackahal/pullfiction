@@ -83,6 +83,9 @@ mod planner_editor_camera;
 /// The original planner Lua and quad renderer with browser-local assets and no game bootstrap.
 #[cfg(target_arch = "wasm32")]
 pub mod planner_embed;
+#[cfg(test)]
+#[path = "planner_embed/state.rs"]
+mod planner_embed_state;
 #[cfg(any(target_arch = "wasm32", test))]
 mod planner_observer;
 #[cfg(any(target_arch = "wasm32", test))]

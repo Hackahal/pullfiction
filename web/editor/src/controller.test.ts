@@ -1904,6 +1904,197 @@ test("Raid dimensions cross the native bridge and persist independently from the
   assert.deepEqual(sizes.at(-1), [300, 700]);
   c.stop();
 });
+test("Marker release resolves fresh hit coordinates instead of a stale hovered actor", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  const requests: unknown[] = [];
+  f.engine.hover_annotation = (...args) => requests.push(args);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ pixel: [10, 20], actor: actor.key, point: [1, 2, 3] }),
+  );
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.deepEqual(requests, [[30, 40, true, 1]]);
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ pixel: [10, 20], actor: actor.key, point: [1, 2, 3] }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 1,
+      pixel: [30, 40],
+      actor: null,
+      point: [9, 8, 7],
+    }),
+  );
+  const mark = f.c.displayMarks()[0];
+  assert.equal(mark.actor, undefined);
+  assert.deepEqual(mark.points, [[9, 8, 7]]);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: 1, pixel: [30, 40], point: [9, 8, 7] }),
+  );
+  assert.equal(f.c.displayMarks().length, 1);
+  f.c.stop();
+});
+
+test("Marker release attaches to the actor at release rather than the actor at press", () => {
+  const f = fixture();
+  f.c.seek(5000);
+  f.c.setTool("marker");
+  const [before, after] = f.c.getSnapshot().replay!.actors;
+  f.engine.hover_annotation = () => {};
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ pixel: [10, 20], actor: before.key }),
+  );
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: 1, pixel: [30, 40], actor: after.key }),
+  );
+  assert.equal(f.c.displayMarks()[0].actor, after.key);
+  f.c.stop();
+});
+
+test("Label drawing retains the captured unselected actor and its name", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("label");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  assert.equal(f.c.selectedActorForDrawing(), null);
+  assert.equal(f.c.startActorDrawing(actor.key), true);
+  f.c.finishDrawing();
+  const label = f.c.displayMarks()[0];
+  assert.equal(label.type, "label");
+  assert.equal(label.actor, actor.key);
+  assert.equal(label.label, actor.name);
+  f.c.stop();
+});
+
+test("Marker release preserves explicit actor selection after validating the release hit", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  f.c.selectActor(actor.key);
+  const requests: unknown[] = [];
+  f.engine.hover_annotation = (...args) => requests.push(args);
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks().length, 0);
+  assert.deepEqual(requests, [[30, 40, true, 1]]);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 1,
+      pixel: [30, 40],
+      actor: null,
+      point: [9, 8, 7],
+    }),
+  );
+  assert.equal(f.c.displayMarks()[0].actor, actor.key);
+  f.c.stop();
+});
+
+test("Selected-actor marker release over native UI cannot attach a marker", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  f.c.selectActor(actor.key);
+  f.engine.hover_annotation = () => {};
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 1,
+      pixel: [30, 40],
+      nativeUI: true,
+      actor: actor.key,
+    }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.stop();
+});
+
+test("Reduced engines retain explicit actor attachment without a hover API", () => {
+  const f = fixture();
+  f.c.seek(1000);
+  f.c.setTool("marker");
+  const actor = f.c.getSnapshot().replay!.actors[0];
+  f.c.selectActor(actor.key);
+  assert.equal(f.engine.hover_annotation, undefined);
+  f.c.placeSceneMarkerAt(30, 40);
+  assert.equal(f.c.displayMarks()[0].actor, actor.key);
+  f.c.stop();
+});
+
+test("Cancelled marker release hits cannot place after a tool change or over native UI", () => {
+  const f = fixture();
+  f.c.setTool("marker");
+  f.engine.hover_annotation = () => {};
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.setTool("label");
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: 1, pixel: [30, 40], point: [9, 8, 7] }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.setTool("marker");
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.cancelDrawing();
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: 1, pixel: [30, 40], point: [9, 8, 7] }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({
+      request: 3,
+      pixel: [30, 40],
+      nativeUI: true,
+      point: [9, 8, 7],
+    }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.stop();
+});
+
+test("Same-pixel hover and cancelled marker callbacks cannot complete a newer release", () => {
+  const f = fixture();
+  f.c.setTool("marker");
+  const requests: number[] = [];
+  f.engine.hover_annotation = (_x, _y, _placing, request) => {
+    if (request !== undefined) requests.push(request);
+  };
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.cancelDrawing();
+  f.c.placeSceneMarkerAt(30, 40);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ pixel: [30, 40], point: [1, 2, 3] }),
+  );
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: requests[0], pixel: [30, 40], point: [1, 2, 3] }),
+  );
+  assert.equal(f.c.displayMarks().length, 0);
+  f.c.receive(
+    "plan-hover",
+    JSON.stringify({ request: requests[1], pixel: [30, 40], point: [9, 8, 7] }),
+  );
+  assert.deepEqual(f.c.displayMarks()[0].points, [[9, 8, 7]]);
+  f.c.stop();
+});
+
 test("Exact click coordinates select actors in Analyse and obey selection filters", () => {
   const f = fixture(),
     actor = f.c.getSnapshot().replay!.actors[0];
