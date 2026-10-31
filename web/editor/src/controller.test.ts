@@ -3389,3 +3389,38 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
   }
   f.c.stop();
 });
+
+test("standalone SoD reference grounding respects its own level hint in stacked rooms", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  const actor = c.sceneActors()[0],
+    [x, y] = actor.spawn!.position;
+  actor.spawn!.floorHint = 30;
+  const floors = [10, 30].map((z) => ({
+    area: "stacked-room",
+    interior: true,
+    vertices: [
+      [x - 2, y - 2, z],
+      [x + 2, y - 2, z],
+      [x + 2, y + 2, z],
+      [x - 2, y + 2, z],
+    ] as [number, number, number][],
+    indices: [0, 1, 2, 0, 2, 3],
+  }));
+  const geometry = new ReplayFloorGeometry(floors, [
+    { id: "stacked-room", name: "stacked room", height: 20 },
+  ]);
+  (
+    c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
+  ).loadedFloors.set(90, geometry);
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 30);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 30);
+  delete actor.spawn!.floorHint;
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 10);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 10);
+  assert.equal(actor.spawn!.position[2], null);
+  c.stop();
+});

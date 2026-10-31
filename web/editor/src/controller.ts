@@ -2123,7 +2123,7 @@ export class EditorController {
             pose.pos[0],
             pose.pos[1],
             hint,
-            true,
+            actor.spawn.floorHint === undefined,
           )
         : undefined;
       return {

@@ -220,7 +220,7 @@ export function referenceSpawnNotice(
   if (source.kind === "classic-baseline")
     return `Classic baseline: ${source.rows.length} placements. SoD changes are not fully mapped.`;
   if (source.kind === "sod-reference")
-    return `SoD reference: ${source.rows.length} placements${source.approximate ? `, ${source.approximate} approximate` : ""}.${source.unplaced ? ` ${source.unplaced} interior placements need world registration.` : ""}`;
+    return `SoD reference: ${source.rows.length} placements${source.approximate ? `, ${source.approximate} approximate` : ""}.${source.unplaced ? ` ${source.unplaced} interior positions are not mapped.` : ""}`;
   return "Classic reference spawns. Patrols and random packs may differ.";
 }
 
