@@ -1,3 +1,4 @@
+import { resetLocalMaps } from "./local-map";
 import type {
   WclSpeedCategory,
   WclSpeedSelection,
@@ -5071,6 +5072,7 @@ export class EditorController {
     this.patch({ clientPrefetchProgress: "" });
     try {
       await this.clientCache?.forget();
+      resetLocalMaps();
       this.patch({ clientCacheStatus: "none" });
       this.notify(
         "Local game asset cache cleared. Your plans and logs are unchanged.",

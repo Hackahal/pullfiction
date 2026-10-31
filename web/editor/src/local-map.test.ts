@@ -9,6 +9,8 @@ import {
   mapAreaBounds,
   projectedFloor,
   localFloorHeight,
+  resetLocalMaps,
+  subscribeLocalMaps,
   type LocalMap,
   type MapImagePorts,
 } from "./local-map";
@@ -149,6 +151,8 @@ test("Local map preserves source image orientation, adjacent edges and WoW floor
   );
   lease.release();
   lease.release();
+  assert.deepEqual(f.revoked, []);
+  f.assets.dispose();
   assert.deepEqual(f.revoked, f.created);
 });
 
@@ -208,14 +212,16 @@ test("Changing maps during metadata or texture decoding cannot publish stale blo
   assert.deepEqual(f.revoked, []);
 });
 
-test("Map release frees decoded tiles and client replacement invalidates the old generation", async () => {
+test("Map release retains shared decoded tiles and client replacement invalidates the old generation", async () => {
   const f = fixture();
   const first = f.assets.load(409, "MoltenCore");
   await first.ready;
   const second = f.assets.load(409, "MoltenCore");
   await second.ready;
   first.release();
-  assert.deepEqual(f.revoked, f.created.slice(0, 2));
+  assert.deepEqual(f.revoked, []);
+  assert.equal(f.created.length, 2);
+  assert.deepEqual(f.reads, ["id:10", "id:11"]);
   f.assets.dispose();
   assert.deepEqual(f.revoked, f.created);
   await assert.rejects(f.assets.load(409, "MoltenCore").ready, {
@@ -268,4 +274,151 @@ test("Map edits use the actual triangle height and preserve a chosen stacked flo
   assert.equal(localFloorHeight(map, 16, 30, "*", 14), 15);
   assert.equal(localFloorHeight(map, 16, 30, "*", 6), 7);
   assert.equal(localFloorHeight(map, 1000, 1000, "room:0"), undefined);
+});
+
+test("Warm mounts reuse manifest, every floor and decoded URLs without reading metadata or tiles", async () => {
+  let metadata = 0,
+    decoded = 0;
+  const f = fixture(mapFixture(), {
+    decode: async () => {
+      decoded++;
+      return new Blob();
+    },
+  });
+  const original = f.provider.map;
+  f.provider.map = async (...args) => {
+    metadata++;
+    return original(...args);
+  };
+  const first = f.assets.load(409, "MoltenCore");
+  const result = await first.ready;
+  first.release();
+  const warm = f.assets.load(409, "moltencore");
+  assert.equal(await warm.ready, result);
+  assert.equal(metadata, 1);
+  assert.equal(decoded, 2);
+  assert.equal(
+    localFloorHeight((await warm.ready).manifest, 16, 30, "room:1"),
+    15,
+  );
+  warm.release();
+  f.assets.dispose();
+  assert.deepEqual(f.revoked, f.created);
+});
+
+test("Concurrent consumers share a pending map and releasing one does not cancel the other", async () => {
+  const metadata = deferred<LocalMap>();
+  let calls = 0;
+  const f = fixture();
+  f.provider.map = async () => {
+    calls++;
+    return metadata.promise;
+  };
+  const first = f.assets.load(409, "MoltenCore"),
+    second = f.assets.load(409, "MoltenCore");
+  const rejected = assert.rejects(first.ready, { name: "AbortError" });
+  first.release();
+  metadata.resolve(mapFixture());
+  await rejected;
+  assert.equal((await second.ready).manifest.tiles.length, 2);
+  assert.equal(calls, 1);
+  second.release();
+  f.assets.dispose();
+});
+
+test("Incomplete tile results retry on next mount instead of freezing missing images", async () => {
+  let missing = true;
+  const f = fixture(mapFixture(), {
+    decode: async () => {
+      if (missing) throw Error("locked");
+      return new Blob();
+    },
+  });
+  const first = f.assets.load(409, "MoltenCore");
+  assert.equal((await first.ready).missingTiles, 2);
+  first.release();
+  missing = false;
+  const retry = f.assets.load(409, "MoltenCore");
+  assert.equal((await retry.ready).missingTiles, 0);
+  assert.equal(f.reads.length, 4);
+  retry.release();
+  f.assets.dispose();
+});
+
+test("Idle LRU isolates raid directories, protects active leases and bounds retained bytes", async () => {
+  const revoked: string[] = [];
+  let id = 0,
+    metadata = 0;
+  const provider = {
+    map: async (map: number) => {
+      metadata++;
+      return { ...mapFixture(), map };
+    },
+    read: async () => {
+      const bytes = new Uint8Array(20),
+        header = new DataView(bytes.buffer);
+      bytes.set(new TextEncoder().encode("BLP2"));
+      header.setUint32(12, 256, true);
+      header.setUint32(16, 256, true);
+      return bytes;
+    },
+  };
+  const ports = {
+    decode: async () => new Blob([new Uint8Array(1024)]),
+    create: () => `blob:${id++}`,
+    revoke: (url: string) => revoked.push(url),
+  };
+  const cache = new LocalMapAssets(provider, ports, 1, 128 * 1024 * 1024);
+  const active = cache.load(409, "one");
+  await active.ready;
+  const second = cache.load(533, "two");
+  await second.ready;
+  second.release();
+  const third = cache.load(409, "different-directory");
+  await third.ready;
+  third.release();
+  assert.equal(metadata, 3);
+  assert.equal(revoked.length, 2, "only the idle old raid is evicted");
+  const same = cache.load(409, "one");
+  await same.ready;
+  same.release();
+  assert.equal(metadata, 3, "active map survives eviction");
+  active.release();
+  cache.dispose();
+  assert.equal(revoked.length, id);
+  const tiny = new LocalMapAssets(provider, ports, 2, 400_000);
+  const overBudget = tiny.load(409, "one");
+  await overBudget.ready;
+  overBudget.release();
+  const before = metadata;
+  const retried = tiny.load(409, "one");
+  await retried.ready;
+  assert.equal(metadata, before + 1, "oversized idle maps are evicted");
+  retried.release();
+  tiny.dispose();
+});
+
+test("Explicit cache clear invalidates decoded maps and notifies mounted consumers", async () => {
+  const f = fixture();
+  installLocalMaps(f.provider);
+  const old = getLocalMaps()!;
+  const lease = old.load(409, "MoltenCore");
+  await lease.ready;
+  let notifications = 0;
+  const unsubscribe = subscribeLocalMaps(() => {
+    notifications++;
+  });
+  resetLocalMaps();
+  assert.equal(notifications, 1);
+  unsubscribe();
+  lease.release();
+  assert.notEqual(getLocalMaps(), old);
+  await assert.rejects(old.load(409, "MoltenCore").ready, {
+    name: "AbortError",
+  });
+  const next = getLocalMaps()!.load(409, "MoltenCore");
+  await next.ready;
+  assert.equal(f.reads.length, 4);
+  next.release();
+  removeLocalMaps(f.provider);
 });
