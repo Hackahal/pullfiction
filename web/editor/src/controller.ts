@@ -3956,7 +3956,23 @@ export class EditorController {
   }
   focusCurrent() {
     const replay = this.state.replay;
-    if (!replay || this.state.options.followRaid) return false;
+    if (!replay) {
+      const geometry = this.loadedFloors.get(this.state.plan.mapId);
+      const actor = this.defaultRaidActors().find((candidate) => {
+        if (!candidate.displayID) return false;
+        const pose = this.actorPose(candidate);
+        if (!pose) return false;
+        return (
+          candidate.spawn?.position[2] != null ||
+          ("nearbyGround" in pose && pose.nearbyGround) ||
+          geometry?.height(pose.pos[0], pose.pos[1], pose.pos[2] ?? 0, true) !==
+            undefined
+        );
+      });
+      if (actor) this.focus(actor.key, false);
+      return !!actor;
+    }
+    if (this.state.options.followRaid) return false;
     const chapter = chapterAt(replay, this.clockTime),
       enemies = new Set(chapter?.enemyNPCs?.map((a) => a.id));
     const candidates = replay.actors.filter((a) => {

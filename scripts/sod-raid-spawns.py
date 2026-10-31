@@ -20,7 +20,7 @@ REGISTRATION_PATH = Path(__file__).resolve().parent.parent / "third_party/raid-s
 # Pins reviewed factual room landmarks and image identities, not image/client bytes.
 REGISTRATION_SHA256 = "9999f5b447b0adf23df5b28843565c9667460a2e6cc73049f4933dfc2ee503f4"
 DUNGEONS = {
-    "90": ("gnomeregan_sod", "identity"),
+    "90": ("gnomeregan_sod", "native-ui"),
     "531": ("temple_of_ahnqiraj_classic", "rotated"),
     "2856": ("scarlet_enclave", "rotated"),
 }
@@ -131,7 +131,12 @@ def world_position(floor: dict, lat: float, lng: float, axes: str, *, rounding=T
         return None
     x = x0 + (x1 - x0) * (1 - lng / 384)
     y = y0 + (y1 - y0) * (1 + lat / 256)
-    if axes == 'rotated':
+    if axes == 'native-ui':
+        # Native WoW X increases vertically on these UI maps; Y horizontally.
+        # Swap normalized source components before applying unequal XY extents.
+        x = x0 + (x1 - x0) * (1 + lat / 256)
+        y = y0 + (y1 - y0) * (1 - lng / 384)
+    elif axes == 'rotated':
         x, y = y, -x
     elif axes != 'identity':
         raise SourceError(f'Unsupported coordinate convention: {axes}')
@@ -372,11 +377,46 @@ def generate(source_dir: Path) -> dict:
             ].decode('utf-8')) for index in (1, 2)}
             registrations = {2: scarlet_floor2_registration(dungeon, mapping['id'], markers), **room_registrations}
         maps[map_id] = project_map(dungeon, versions, npcs, names, enemies, axes, registrations)
+        if map_id == '90':
+            maps[map_id]['coordinateSystem'] = 'native-ui'
+            precision = 'published-bounds-map-registration-approximate'
+            positions = {str(enemy['id']): [enemy['lat'], enemy['lng']]
+                         for rows in enemies.values() for enemy in rows}
+            for actor in maps[map_id]['placements']:
+                actor.update({'kind': 'map-registered-reference', 'precision': precision,
+                              'confidence': precision, 'registration': 'gnomeregan-published-bounds',
+                              'sourcePosition': positions[actor['id']]})
+            maps[map_id]['registrations'] = [{
+                'id': 'gnomeregan-published-bounds', 'kind': precision,
+                'method': 'Published native bounds with independently verified vertical-X/horizontal-Y UI orientation; no landmark fit.',
+                'coordinateSystem': 'native-ui', 'mappingVersion': 304,
+                'sourceFloors': [1, 2, 3, 4],
+                'bounds': [{'floor': f['index'], 'nativeBounds': [f['ingame_' + key] for key in
+                           ('min_x', 'min_y', 'max_x', 'max_y')]} for f in dungeon['floors']],
+                'uncertainty': 'Hand-authored 2D planning references, not authoritative server spawns. '
+                               'Three-yard tolerance describes map-pin grounding uncertainty only, not server accuracy. '
+                               'Authored XY is retained; source Z and facing are unknown.',
+                'validation': {'roomOutlineLandmarks': 8, 'roomOutlineToleranceYards': 3,
+                               'hostilePlacementCount': 292, 'exactWmoFloorIntersections': 284,
+                               'nearEdgeReferences': 8, 'maximumNearEdgeDistanceYards': 2.247,
+                               'groundingToleranceYards': 3,
+                               'scope': 'All four floor plans agree with unique native room, stair, gear and pillar outlines; no NPC or combat positions used as fit anchors.'}}]
+
     return {'schema': 1, 'ruleset': 'sod', 'provider': 'Keystone.guru',
             'sourceRevision': SOURCE_REVISION, 'sourceURL': f'{SOURCE_ROOT}/tree/{SOURCE_REVISION}',
             'sourceFiles': [{'path': path, 'sha256': identities['sha256'], 'gitBlob': identities['gitBlob']}
                             for path, identities in sorted(SOURCE_FILES.items())],
-            'registrationFacts': registration_facts, 'maps': maps}
+            'registrationFacts': registration_facts,
+            'coordinateMethods': {
+                '90': {'axes': 'native-ui', 'nativeX': 'minX+(maxX-minX)*(1+lat/256)',
+                       'nativeY': 'minY+(maxY-minY)*(1-lng/384)',
+                       'validation': 'All four authored floor plans independently agree with native room, gear, stair and pillar footprints.'},
+                '531': {'axes': 'rotated', 'nativeX': 'minY+(maxY-minY)*(1+lat/256)',
+                        'nativeY': '-(minX+(maxX-minX)*(1-lng/384))'},
+                '2856': {'axes': 'rotated', 'nativeX': 'minY+(maxY-minY)*(1+lat/256)',
+                         'nativeY': '-(minX+(maxX-minX)*(1-lng/384))',
+                         'registrationOverrides': [2, 4, 5]}},
+            'maps': maps}
 
 
 def main():

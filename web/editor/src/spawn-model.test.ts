@@ -60,6 +60,14 @@ test("SoD maps use explicit SoD data or a disclosed Classic baseline without ide
     }
   }
   assert.equal(referenceRaidActors(90, "sod", {}).length, 292);
+  assert.equal(referenceCoverage(90, "sod").approximate, 292);
+  assert.ok(
+    referenceRaidActors(90, "sod", {}).every(
+      (a) =>
+        a.spawn?.referenceKind === "map-registered-reference" &&
+        a.spawn.confidence === "approximate",
+    ),
+  );
   assert.equal(referenceRaidActors(531, "sod", {}).length, 164);
   assert.equal(referenceRaidActors(2856, "sod", {}).length, 662);
   assert.equal(referenceCoverage(2856, "sod").unplaced, 0);

@@ -14,7 +14,7 @@ SoD layout. Counts exclude two friendly Gnomeregan records.
 | Raid | Native map | Displayed references | Reference type | Remaining limitation |
 | --- | ---: | ---: | --- | --- |
 | Blackfathom Deeps | 48 | 212 | Seven current SoD guide bosses and 205 Classic trash references | Boss pins are approximate; SoD trash changes are not fully mapped |
-| Gnomeregan | 90 | 292 | Explicit SoD mapping 304 | Source map coverage does not establish live patrol phases |
+| Gnomeregan | 90 | 292 | Explicit SoD mapping 304 with checked map registration | Hand-authored map pins are approximate; eight are within 2.25 yards of a structural edge |
 | Sunken Temple | 109 | 230 | Classic dungeon baseline | SoD bosses, removed lower rooms, and changed packs need corrections |
 | Onyxia's Lair | 249 | 5 | Classic baseline | SoD encounter changes and script-only summons are not mapped |
 | Zul'Gurub | 309 | 620 | Classic baseline | SoD additions and changed packs need corrections |
@@ -80,12 +80,25 @@ references come from each NPC's source record.
 
 Keystone uses a 384 by 256 map plane. Native registration follows its published
 floor bounds and coordinate conversion, with independently checked map axes.
-Gnomeregan uses the calculated XY directly. AQ40 and Scarlet's exterior use
-`[calculatedY, -calculatedX]`. Bounds may descend and must not be sorted.
-Independent room anchors include Gnomeregan entries 7603 and 6230, within
-approximately 3.0 and 4.3 yards of their Classic room references, and AQ40
-Emperor Vek'lor, within 0.01 yards. These checks validate the transform, not
-exact live spawn accuracy.
+AQ40 and Scarlet's exterior use `[calculatedY, -calculatedX]`. Bounds may
+descend and must not be sorted. Gnomeregan's bounds instead describe native
+X/Y directly, with the map's vertical component mapped to native X and its
+horizontal component mapped to native Y:
+
+```text
+nativeX = x0 + (x1 - x0) * (1 + latitude / 256)
+nativeY = y0 + (y1 - y0) * (1 - longitude / 384)
+```
+
+Unique native room outlines, central structures and exits were checked against
+the authored artwork on every Gnomeregan floor. Nearby matches among repeated
+NPC types do not establish map orientation. The checked conversion places the
+first four references on their upper tunnel floor rather than lower rooms at
+the same region. Eight hand-authored pins lie within 2.247 yards of a structural
+edge; their original XY remains unchanged and local grounding may use a nearby
+edge within three yards. They are approximate map references, not server spawn
+measurements. AQ40 Emperor Vek'lor is within 0.01 yards of its independent
+Classic room reference; that check does not establish live patrol accuracy.
 
 Scarlet's Forbidding Expanse has no published native bounds. Its approximate
 registration pairs public portal markers 2027 with 2028 and 2029 with 2026.
@@ -111,7 +124,7 @@ accuracy. No NPC positions or combat-log observations are fit anchors.
 All 53 monastery pins and 11 chapel pins intersect the exported native WMO at
 their transformed XY. Four chapel pins lie 0.091–1.694 yards outside a WMO edge.
 The catalog preserves those XY coordinates without snapping and keeps source Z
-and facing null. For these approximate map references, runtime grounding can
+and facing null. For approximate map references, runtime grounding can
 use a structural edge within three yards when the exact column has no walkable
 structure. That inferred height passes through the existing native frame
 without a second terrain snap. Exact room intersections, other reference types

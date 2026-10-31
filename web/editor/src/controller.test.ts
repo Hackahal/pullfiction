@@ -515,6 +515,41 @@ test("Explicit actor focus updates global selection while automatic raid framing
   f.c.stop();
 });
 
+test("no-log scene readiness and Frame focus a modeled reference with a local floor without changing selection", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  const [unsupported, grounded] = c.sceneActors();
+  unsupported.displayID = grounded.displayID = 764;
+  const [x, y] = grounded.spawn!.position;
+  (c as any).loadedFloors.set(
+    90,
+    new ReplayFloorGeometry([
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [x - 1, y - 1, -206],
+          [x + 1, y - 1, -206],
+          [x + 1, y + 1, -206],
+          [x - 1, y + 1, -206],
+        ],
+        indices: [0, 1, 2, 0, 2, 3],
+      },
+    ]),
+  );
+  c.setOption("followRaid", true);
+  const selected = c.getSnapshot().selected;
+  c.receive("scene", "90");
+  assert.equal(c.getSnapshot().sceneReady, true);
+  assert.deepEqual(f.focus.at(-1), [x, y, -206]);
+  assert.equal(c.getSnapshot().selected, selected);
+  c.frameSelection();
+  assert.deepEqual(f.focus.at(-1), [x, y, -206]);
+  assert.equal(c.getSnapshot().selected, selected);
+  c.stop();
+});
+
 test("Raid switching isolates saved plans, unsaved drafts and undo history without overwriting MC", () => {
   const f = fixture();
   f.c.rename("MC saved");

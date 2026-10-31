@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import math
 from pathlib import Path
 import tempfile
 import unittest
@@ -42,17 +43,73 @@ class SoDReferenceTests(unittest.TestCase):
         self.assertEqual(spawns.world_position(f, -256, 384, 'identity'), [10, 20, None])
         self.assertEqual(spawns.world_position(f, -128, 192, 'identity'), [202, 148, None])
         self.assertEqual(spawns.world_position(f, -128, 192, 'rotated'), [148, -202, None])
+        self.assertEqual(spawns.world_position(f, -64, 288, 'native-ui'), [298, 84, None])
+        self.assertEqual(spawns.world_position(f, 0, 0, 'native-ui'), [394, 276, None])
+        self.assertEqual(spawns.world_position(f, -256, 384, 'native-ui'), [10, 20, None])
         descending = floor((394, 276, 10, 20))
         self.assertEqual(spawns.world_position(descending, 0, 0, 'identity'), [10, 20, None])
 
-    def test_independently_checked_gnomer_and_aq_native_anchors(self):
-        # Gnomer7603 is already nativeXY. AQ Emperor15276 needs the rotated plane.
-        gnomer = floor((-967.33, -127.77, -387.55, 741.89))
+    def test_independently_checked_aq_native_anchor(self):
+        # Unique AQ Emperor15276 is an independent native-axis check.
         aq = floor((-138.07, -9510.98, -2915.62, -7659.28))
-        self.assertEqual(spawns.world_position(gnomer, -188.78, 282.08, 'identity'),
-                         [-813.4467, 100.5837, None])
         self.assertEqual(spawns.world_position(aq, -167.15, 236.36, 'rotated'),
                          [-8868.3099, 1205.9801, None])
+
+    def test_gnomer_native_ui_unique_room_vertices_on_every_floor(self):
+        # Eight independently reviewed source-art/native WMO corners, not NPC matches.
+        # Native groups: floor1 :11, floor2 :21, floor3 :47/:54, floor4 :0.
+        bounds = {1: (-694, -277.77, -180.88, 491.89),
+                  2: (-714, -77.77, -200.88, 691.89),
+                  3: (-967.33, -127.77, -387.55, 741.89),
+                  4: (-937.33, 72.99, -357.55, 942.66)}
+        landmarks = [(1, 'Hall of Gears northwest octagon corner', [605, 447], [-404.103088, 188.502884]),
+         (1, 'Hall of Gears southeast octagon corner', [923, 576], [-470.415161, 29.578762]),
+         (2,
+          'lower Hall of Gears north octagon corner',
+          [1108, 312],
+          [-357.641388, 136.798904]),
+         (2, 'lower Hall of Gears east octagon corner', [1320, 524], [-464.938324, 29.502171]),
+         (3, 'Launch Bay outer eastern corner', [615, 251], [-528.102051, 393.827789]),
+         (3,
+          'Engineering Labs western platform upper corner',
+          [542, 733],
+          [-803.252808, 434.154633]),
+         (4, 'Tinker Court northern octagon vertex', [484, 151], [-442.484863, 668.757507]),
+         (4, 'Tinker Court northeast corner', [634, 276], [-512.160889, 583.599121])]
+        self.assertEqual(spawns.DUNGEONS['90'][1], 'native-ui')
+        for index, label, pixel, native in landmarks:
+            with self.subTest(floor=index, landmark=label):
+                actual = spawns.world_position(floor(bounds[index]), -pixel[1] / 4, pixel[0] / 4, 'native-ui')
+                self.assertLess(math.hypot(actual[0] - native[0], actual[1] - native[1]), 3)
+        # Unequal normalized extents distinguish vertical X from horizontal Y.
+        self.assertEqual(spawns.world_position(floor(), -128, 288, 'native-ui'), [202, 84, None])
+        self.assertEqual(spawns.world_position(floor(), -64, 192, 'native-ui'), [298, 148, None])
+        value = json.loads((ROOT / 'third_party/raid-spawns/sod.json').read_text())
+        self.assertEqual(value['maps']['90']['coordinateSystem'], 'native-ui')
+        self.assertEqual(value['coordinateMethods']['90']['axes'], 'native-ui')
+        gnomer = value['maps']['90']
+        self.assertEqual(gnomer['kind'], 'sod-reference')
+        self.assertEqual(gnomer['mappingVersion'], 304)
+        registration, = gnomer['registrations']
+        self.assertIn('not authoritative server spawns', registration['uncertainty'])
+        self.assertIn('not server accuracy', registration['uncertainty'])
+        self.assertEqual(registration['validation']['groundingToleranceYards'], 3)
+        self.assertEqual(registration['validation']['exactWmoFloorIntersections'], 284)
+        self.assertEqual(len(gnomer['placements']), 292)
+        self.assertEqual(gnomer['excludedFriendly'], 2)
+        for actor in gnomer['placements']:
+            self.assertEqual(actor['kind'], 'map-registered-reference')
+            self.assertEqual(actor['precision'], 'published-bounds-map-registration-approximate')
+            self.assertEqual(actor['registration'], 'gnomeregan-published-bounds')
+            self.assertEqual(actor['position'], spawns.world_position(floor(bounds[actor['floor']]),
+                *actor['sourcePosition'], 'native-ui'))
+            self.assertIsNone(actor['position'][2]); self.assertIsNone(actor['facing'])
+
+        actors = {r['id']: r for r in value['maps']['90']['placements']}
+        expected = {'49803': [-380.9968, 60.9606], '49804': [-409.2585, 38.6124],
+                    '49805': [-417.3762, 38.7527], '49806': [-367.2267, 82.6473]}
+        for identity, xy in expected.items():
+            self.assertEqual(actors[identity]['position'], xy + [None])
 
     def test_selects_explicit_sod_mapping_not_classic_or_raw_log_import(self):
         self.assertEqual(spawns.select_mapping(versions(), 138)['id'], 539)
