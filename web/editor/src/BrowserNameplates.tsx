@@ -1,3 +1,4 @@
+import { actorNameplateEnabled } from "./nameplate-model";
 import { CLASS_COLORS } from "./domain";
 import { resourcePercent } from "./BrowserRaidFrames";
 import type { EditorController } from "./controller";
@@ -10,7 +11,6 @@ export function BrowserNameplates({
   state: Snapshot;
   controller: EditorController;
 }) {
-  if (!state.options.nameplates) return null;
   const actors = new Map(
     (state.replay?.actors ?? []).map((actor) => [actor.key, actor]),
   );
@@ -19,32 +19,46 @@ export function BrowserNameplates({
     const actor = actors.get(plate.key);
     const friendly =
       actor?.type === "Player" ? friendlyPlayers.has(actor.id) : plate.friendly;
-    return friendly
-      ? state.options.friendlyNameplates
-      : state.options.enemyNameplates;
+    return (
+      friendly ||
+      (state.options.nameplates &&
+        state.options.enemyNameplates &&
+        actorNameplateEnabled(actor ?? { class: "" }, state.options))
+    );
   });
   if (!plates.length) return null;
   return (
     <div className="browser-nameplates" role="group" aria-label="Nameplates">
       {plates.map((plate) => {
         const actor = actors.get(plate.key);
-        const health = resourcePercent(plate.health, plate.maxHealth);
+        const friendly =
+          actor?.type === "Player"
+            ? friendlyPlayers.has(actor.id)
+            : plate.friendly;
+        const nameOnly =
+          friendly &&
+          (!state.options.nameplates || !state.options.friendlyNameplates);
+        const health = nameOnly
+          ? null
+          : resourcePercent(plate.health, plate.maxHealth);
         const color =
           actor?.type === "Player"
             ? CLASS_COLORS[actor.class]
-            : plate.friendly
+            : friendly
               ? "#6db580"
               : "#bc6258";
         return (
           <button
             key={plate.key}
-            className="browser-nameplate"
+            className={`browser-nameplate${nameOnly ? " browser-nameplate-name-only" : ""}`}
             aria-label={`Select ${plate.name}`}
             aria-pressed={state.selected === plate.key}
             title={
-              health == null
-                ? `${plate.name}, health unavailable`
-                : `${plate.name}, ${Math.round(health)}% health`
+              nameOnly
+                ? plate.name
+                : health == null
+                  ? `${plate.name}, health unavailable`
+                  : `${plate.name}, ${Math.round(health)}% health`
             }
             style={{ left: plate.x, top: plate.y }}
             onPointerDown={(event) => event.stopPropagation()}

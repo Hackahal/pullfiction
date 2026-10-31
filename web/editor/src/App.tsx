@@ -1,3 +1,4 @@
+import { nameplateShortcut } from "./nameplate-model";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
 import { EditsPanel } from "./EditsPanel";
@@ -294,6 +295,17 @@ export function App({ controller }: { controller: EditorController }) {
           );
           return;
         }
+      }
+      const plateOption = nameplateShortcut(event);
+      if (plateOption) {
+        event.preventDefault();
+        if (!event.repeat) {
+          controller.setOption(
+            plateOption,
+            !controller.getSnapshot().options[plateOption],
+          );
+        }
+        return;
       }
       const scene = context === "scene";
 
@@ -1074,8 +1086,10 @@ export function App({ controller }: { controller: EditorController }) {
                 {(
                   [
                     ["raidFrames", "Raid frames"],
-                    ["friendlyNameplates", "Friendly nameplates"],
-                    ["enemyNameplates", "Enemy nameplates"],
+                    ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
+                    ["enemyNameplates", "Enemy nameplates (V)"],
+                    ["trashNameplates", "Trash nameplates"],
+                    ["bossNameplates", "Boss nameplates"],
                     ["auras", "Buffs and debuffs"],
                     ["spells", "Spell effects"],
                     ["smoothGaps", "Smooth gaps as wisps"],
