@@ -447,7 +447,6 @@ export function App({ controller }: { controller: EditorController }) {
           >
             Pull <span>Fiction</span>
           </button>
-          <GitHubLink />
           <select
             aria-label="Game version"
             value={state.gameVersion}
@@ -578,6 +577,7 @@ export function App({ controller }: { controller: EditorController }) {
               ))}
             </select>
           </label>
+          <GitHubLink />
           {state.clientNeedsFiles && state.clientPromptHidden && (
             <button onClick={() => controller.showClientSource()}>
               Load game assets

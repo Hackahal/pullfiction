@@ -22,12 +22,6 @@
   row-gap: 8px;
   background: #171a1c;
 }
-.library-identity {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 12px;
-}
 .library-brand {
   font:
     bold 24px Georgia,

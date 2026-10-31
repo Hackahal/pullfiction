@@ -128,11 +128,8 @@ export function Library({
       }}
     >
       <header className="library-header">
-        <div className="library-identity">
-          <div className="library-brand">
-            Pull <span>Fiction</span>
-          </div>
-          <GitHubLink />
+        <div className="library-brand">
+          Pull <span>Fiction</span>
         </div>
         <nav aria-label="Library sections">
           <button
@@ -185,6 +182,7 @@ export function Library({
             Cancel loading
           </button>
         )}
+        <GitHubLink />
       </header>
       {state.notice && (
         <div className="library-notice" role="status">
