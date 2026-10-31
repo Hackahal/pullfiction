@@ -29,3 +29,50 @@ test("Empty, unknown and encounter-only states stay explicit", () => {
   assert.match(render(replay), /Encounter preview/);
   assert.doesNotMatch(render(replay), /Mob requirements/);
 });
+
+test("Naxx panel renders actual same-boss WR plus/minus despite a different wing order", async () => {
+  const { patchwerkFirstReplay, praxisCategory, praxisWinner, praxisReport } =
+    await import("./speedrun-wr-live-fixture");
+  const { fetchSpeedWorldRecord, defaultSpeedSelection } =
+    await import("./speedrun-world-record");
+  const selection = defaultSpeedSelection(praxisCategory);
+  const record = await fetchSpeedWorldRecord(
+    async (q) =>
+      q.includes("fightRankings")
+        ? {
+            worldData: {
+              encounter: { fightRankings: { rankings: [praxisWinner] } },
+            },
+          }
+        : praxisReport,
+    "sod",
+    533,
+    praxisCategory,
+    selection,
+  );
+  const html = renderToStaticMarkup(
+    createElement(SpeedrunTimer, {
+      replay: patchwerkFirstReplay(),
+      time: 600000,
+      seek() {},
+      recordState: {
+        record,
+        category: praxisCategory,
+        selection,
+        loading: false,
+        error: null,
+        select() {},
+        retry() {},
+        refresh() {},
+      } as any,
+    }),
+  );
+  assert.match(html, /−22:04.5/);
+  assert.match(html, /−21:26.5/);
+  assert.match(html, /−21:17.9/);
+  assert.match(html, /is-ahead/);
+  assert.doesNotMatch(
+    html,
+    /Boss order differs|exact start\/end|split comparison is unavailable/,
+  );
+});

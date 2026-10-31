@@ -324,13 +324,11 @@ export function SpeedrunTimer({
             : (reference.splitNote ??
               (!comparison.categoryMatches
                 ? "Select the matching difficulty, heat and raid size for WR deltas."
-                : !comparison.routeMatches
-                  ? "Boss order differs from the WR. Cumulative deltas are unavailable."
-                  : index.estimated
-                    ? "Start is estimated. WR deltas are unavailable."
-                    : !run.coverage
-                      ? "Split deltas need the missing combat data."
-                      : "Projection holds your last completed split delta."))}{" "}
+                : index.estimated
+                  ? "Start is estimated. WR deltas are unavailable."
+                  : !run.coverage
+                    ? "Split deltas need the missing combat data."
+                    : "Projection holds your last completed split delta."))}{" "}
           <a href={reference.leaderboardUrl} target="_blank" rel="noreferrer">
             WCL leaderboard
           </a>
