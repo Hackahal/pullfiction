@@ -1,219 +1,202 @@
-import type { Actor, Point, Replay, SpawnPlacement } from "./types";
+import reference from "../../../third_party/raid-spawns/vanilla.json";
+import dungeons from "../../../third_party/raid-spawns/classic-dungeons.json";
+import sod from "../../../third_party/raid-spawns/sod.json";
+import guides from "../../../third_party/raid-spawns/sod-guides.json";
+import type { Actor, GameVersion } from "./types";
+import type { NpcDisplayModel } from "./npc-models";
+import type { ModernCatalog } from "./browser-assets";
 
-type StaticSpawn = { id: string; map: number; position: Point; facing: number };
-type Model = {
-  name?: string;
-  displayID?: number;
-  scale?: number;
-  rank?: number;
-  spawns?: StaticSpawn[];
-};
-type Slot = {
-  key: string;
+type Model = { displayID?: number; scale?: number };
+type ReferenceRow = {
+  id: string;
   entry: number;
-  model: Model;
-  spawn: StaticSpawn;
-  lives: Actor[];
+  name: string;
+  displayID: number;
+  boss: boolean;
+  position: [number, number, number | null];
+  facing: number | null;
+  floor?: number;
+  kind?:
+    | "sod-reference"
+    | "portal-registered-reference"
+    | "map-registered-reference"
+    | "guide-reference";
+  displaySourceURL?: string;
 };
-const BATCH_MS = 5000;
-const MATCH_DISTANCE = 180;
-
-/** Rectangular minimum-cost assignment. Dummy columns let uncertain rows remain unmatched. */
-function assignment(costs: number[][]): number[] {
-  const n = costs.length;
-  if (!n) return [];
-  const m = costs[0].length;
-  const u = new Float64Array(n + 1),
-    v = new Float64Array(m + 1);
-  const p = new Int32Array(m + 1),
-    way = new Int32Array(m + 1);
-  for (let i = 1; i <= n; i++) {
-    p[0] = i;
-    let j0 = 0;
-    const min = new Float64Array(m + 1).fill(Infinity),
-      used = new Uint8Array(m + 1);
-    do {
-      used[j0] = 1;
-      const i0 = p[j0];
-      let delta = Infinity,
-        j1 = 0;
-      for (let j = 1; j <= m; j++) {
-        if (used[j]) continue;
-        const cost = costs[i0 - 1][j - 1] - u[i0] - v[j];
-        if (cost < min[j]) {
-          min[j] = cost;
-          way[j] = j0;
-        }
-        if (min[j] < delta) {
-          delta = min[j];
-          j1 = j;
-        }
-      }
-      for (let j = 0; j <= m; j++) {
-        if (used[j]) {
-          u[p[j]] += delta;
-          v[j] -= delta;
-        } else min[j] -= delta;
-      }
-      j0 = j1;
-    } while (p[j0] !== 0);
-    do {
-      const j1 = way[j0];
-      p[j0] = p[j1];
-      j0 = j1;
-    } while (j0 !== 0);
+const maps = reference.maps as unknown as Record<string, ReferenceRow[]>;
+const dungeonMaps = dungeons.maps as unknown as Record<string, ReferenceRow[]>;
+const sodMaps = sod.maps as unknown as Record<
+  string,
+  {
+    placements: ReferenceRow[];
+    unplaced: unknown[];
+    sourceCount: number;
+    mappingVersion: number;
   }
-  const result = new Array<number>(n).fill(-1);
-  for (let j = 1; j <= m; j++) if (p[j]) result[p[j] - 1] = j - 1;
-  return result;
-}
-function lastDeath(actor: Actor): number {
-  const last = actor.deaths.at(-1);
-  return last?.[1] ? last[0] : Infinity;
-}
-function distance(actor: Actor, slot: Slot): number {
-  const first = actor.samples[0];
-  if (!first) return Infinity;
-  return Math.hypot(
-    first[1] - slot.spawn.position[0],
-    first[2] - slot.spawn.position[1],
-  );
-}
-function placement(slot: Slot, actor?: Actor, visibleFrom = 0): SpawnPlacement {
-  const d = actor ? distance(actor, slot) : null;
+>;
+
+export function referenceCoverage(map: number, version: GameVersion) {
+  if (version === "sod" && map === 48) {
+    // All SoD BFD bosses have different identities. Remove the old bosses and
+    // patrol alternatives before adding one current guide reference per boss.
+    const replaced = new Set([
+      12876, 4829, 4830, 4831, 4832, 4887, 6243, 12902,
+    ]);
+    const baseline = (dungeonMaps[map] ?? []).filter(
+      (row) => !replaced.has(row.entry),
+    );
+    return {
+      rows: [...baseline, ...(guides.maps["48"] as unknown as ReferenceRow[])],
+      kind: "mixed-reference" as const,
+      sourceURL: guides.sourceURL,
+      unplaced: 0,
+      approximate: guides.maps["48"].length,
+    };
+  }
+  if (version === "sod" && sodMaps[map]) {
+    const source = sodMaps[map];
+    return {
+      rows: source.placements,
+      kind: "sod-reference" as const,
+      sourceURL: sod.sourceURL,
+      unplaced: source.unplaced.length,
+      approximate: source.placements.filter(
+        (row) =>
+          row.kind === "portal-registered-reference" ||
+          row.kind === "map-registered-reference",
+      ).length,
+    };
+  }
+  const rows =
+    maps[map] ?? (version === "sod" ? dungeonMaps[map] : undefined) ?? [];
   return {
-    key: slot.key,
-    position: [...slot.spawn.position],
-    facing: slot.spawn.facing,
-    distance: d !== null && Number.isFinite(d) ? d : null,
-    confidence: actor
-      ? d !== null && d <= 40
-        ? "near"
-        : "approximate"
-      : "unobserved",
-    visibleFrom,
-    synthetic: !actor,
+    rows,
+    kind:
+      version === "sod"
+        ? ("classic-baseline" as const)
+        : ("classic-reference" as const),
+    sourceURL: reference.sourceURL,
+    unplaced: 0,
+    approximate: 0,
   };
 }
-/** Static reference identity stays separate from report actor+instance identity.
- * Matching never moves samples or manufactures deaths. The same slot may bind a
- * later life only after an actual death, and its respawn starts when observed.
- */
-export function populateRaidSpawns(
-  replay: Replay,
-  catalog: Record<string, unknown>,
-): Replay {
-  const slots = new Map<string, Slot>();
-  for (const [entry, value] of Object.entries(catalog).sort(
-    ([a], [b]) => Number(a) - Number(b),
-  )) {
-    const model = value as Model;
-    if (!model?.displayID) continue;
-    for (const spawn of model.spawns ?? []) {
-      if (
-        spawn.map !== replay.map ||
-        !/^\d{1,16}$/.test(String(spawn.id)) ||
-        spawn.position?.length !== 3 ||
-        !spawn.position.every(
-          (n) => Number.isFinite(n) && Math.abs(n) < 20000,
-        ) ||
-        !Number.isFinite(spawn.facing)
-      )
-        continue;
-      const key = `spawn:${replay.map}:${spawn.id}`;
-      if (!slots.has(key))
-        slots.set(key, { key, entry: Number(entry), model, spawn, lives: [] });
+
+// Reference maps lack native Z. Reuse nearby Classic height only as a floor hint;
+// actual placement is grounded against the selected client's walkable geometry.
+function floorHints(map: number, rows: ReferenceRow[]) {
+  const byEntry = new Map<number, ReferenceRow[]>();
+  for (const row of maps[map] ?? dungeonMaps[map] ?? []) {
+    const list = byEntry.get(row.entry) ?? [];
+    list.push(row);
+    byEntry.set(row.entry, list);
+  }
+  const hints = new Map<string, number>(),
+    floors = new Map<number, number[]>();
+  for (const row of rows) {
+    const nearest = (byEntry.get(row.entry) ?? [])
+      .map((candidate) => ({
+        z: candidate.position[2],
+        distance: Math.hypot(
+          candidate.position[0] - row.position[0],
+          candidate.position[1] - row.position[1],
+        ),
+      }))
+      .filter((p) => p.z !== null && p.distance <= 40)
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (nearest?.z == null) continue;
+    hints.set(row.id, nearest.z);
+    if (row.floor !== undefined) {
+      const values = floors.get(row.floor) ?? [];
+      values.push(nearest.z);
+      floors.set(row.floor, values);
     }
   }
-  if (!slots.size) return replay;
-  // Rebuilding from the same normalized object must not duplicate synthetic actors.
-  replay.actors = replay.actors.filter((a) => !a.spawn?.synthetic);
-  const byEntry = new Map<number, Slot[]>();
-  for (const slot of [...slots.values()].sort((a, b) =>
-    a.key.localeCompare(b.key),
-  )) {
-    const list = byEntry.get(slot.entry) ?? [];
-    list.push(slot);
-    byEntry.set(slot.entry, list);
+  for (const values of floors.values()) values.sort((a, b) => a - b);
+  for (const row of rows) {
+    const values = row.floor === undefined ? undefined : floors.get(row.floor);
+    if (!hints.has(row.id) && values?.length)
+      hints.set(row.id, values[Math.floor(values.length / 2)]);
   }
-  const npcs = new Map<number, Actor[]>();
-  for (const actor of replay.actors) {
-    if (actor.type !== "NPC") continue;
-    delete actor.spawn;
-    actor.spawnObservedOnly = true;
-    const list = npcs.get(actor.gameID) ?? [];
-    if (Number.isFinite(actor.firstSeen)) list.push(actor);
-    npcs.set(actor.gameID, list);
-  }
-  for (const [entry, actors] of npcs) {
-    actors.sort(
-      (a, b) => a.firstSeen - b.firstSeen || a.key.localeCompare(b.key),
-    );
-    const candidates = byEntry.get(entry) ?? [];
-    for (let start = 0; start < actors.length;) {
-      let end = start + 1;
-      while (
-        end < actors.length &&
-        actors[end].firstSeen <= actors[start].firstSeen + BATCH_MS
-      )
-        end++;
-      const batch = actors.slice(start, end);
-      const available = candidates.filter(
-        (s) =>
-          !s.lives.length || lastDeath(s.lives.at(-1)!) <= batch[0].firstSeen,
-      );
-      if (available.length) {
-        const transposed = batch.length > available.length;
-        const left = transposed ? available.length : batch.length,
-          right = transposed ? batch.length : available.length;
-        const cost = (i: number, j: number) => {
-          const actor = batch[transposed ? j : i],
-            slot = available[transposed ? i : j];
-          const d =
-            !actor.samples.length &&
-            batch.length === 1 &&
-            available.length === 1
-              ? 0
-              : distance(actor, slot);
-          return d <= MATCH_DISTANCE ? d * d : 1e12;
+  return hints;
+}
+
+/** Resolve only the authored reference display in the selected local client. */
+export function referenceNpcModels(
+  creatures: ModernCatalog,
+  version: GameVersion = "vanilla",
+) {
+  const models: Record<string, NpcDisplayModel> = {};
+  const mapIds =
+    version === "vanilla"
+      ? Object.keys(maps)
+      : [
+          ...new Set([
+            ...Object.keys(maps),
+            ...Object.keys(dungeonMaps),
+            ...Object.keys(sodMaps),
+          ]),
+        ];
+  for (const map of mapIds)
+    for (const row of referenceCoverage(Number(map), version).rows) {
+      const display = creatures.displays?.[row.displayID];
+      const model = creatures.models?.[display?.modelID];
+      const scale = display?.scale * model?.scale;
+      if (model?.fileDataID > 0 && Number.isFinite(scale) && scale > 0)
+        models[row.entry] = {
+          name: row.name,
+          displayID: row.displayID,
+          scale,
+          displaySource:
+            row.displaySourceURL ??
+            (referenceCoverage(Number(map), version).kind ===
+              "mixed-reference" && !row.kind
+              ? reference.sourceURL
+              : referenceCoverage(Number(map), version).sourceURL),
         };
-        const matches = assignment(
-          Array.from({ length: left }, (_, i) =>
-            Array.from({ length: right + left }, (_, j) =>
-              j < right ? cost(i, j) : 1e8,
-            ),
-          ),
-        );
-        for (let i = 0; i < matches.length; i++) {
-          const j = matches[i];
-          if (j < 0 || j >= right || cost(i, j) >= 1e8) continue;
-          const actor = batch[transposed ? j : i],
-            slot = available[transposed ? i : j];
-          actor.spawn = placement(
-            slot,
-            actor,
-            slot.lives.length ? actor.firstSeen : 0,
-          );
-          slot.lives.push(actor);
-        }
-      }
-      start = end;
     }
-  }
-  let id = Math.min(0, ...replay.actors.map((a) => a.id)) - 1;
-  for (const slot of slots.values()) {
-    if (slot.lives.length) continue;
-    replay.actors.push({
-      key: slot.key,
-      id: id--,
+  return models;
+}
+
+/** Defaults exist only without a log. No reference slots are mixed into replays. */
+export function referenceRaidActors(
+  map: number,
+  version: GameVersion,
+  models: Record<string, unknown>,
+): Actor[] {
+  const source = referenceCoverage(map, version),
+    hints = floorHints(map, source.rows);
+  return source.rows.map((row, index) => {
+    const model = models[row.entry] as Model | undefined;
+    return {
+      key: `spawn:${version}:${map}:${row.id}`,
+      id: -index - 1,
       instance: 1,
-      name: slot.model.name ?? `NPC ${slot.entry}`,
+      name: row.name,
       type: "NPC",
-      class: slot.model.rank === 3 ? "Boss" : "NPC",
-      gameID: slot.entry,
-      displayID: slot.model.displayID!,
-      scale: slot.model.scale ?? 1,
-      spawn: placement(slot),
+      class: row.boss ? "Boss" : "NPC",
+      gameID: row.entry,
+      displayID: model?.displayID ?? null,
+      scale: model?.scale ?? 1,
+      spawn: {
+        key: `spawn:${version}:${map}:${row.id}`,
+        position: [...row.position],
+        facing: row.facing ?? 0,
+        floorHint: row.position[2] ?? hints.get(row.id),
+        referenceKind:
+          row.kind ??
+          (source.kind === "mixed-reference"
+            ? "classic-baseline"
+            : source.kind),
+        distance: null,
+        confidence:
+          row.kind === "portal-registered-reference" ||
+          row.kind === "map-registered-reference" ||
+          row.kind === "guide-reference"
+            ? "approximate"
+            : "unobserved",
+        visibleFrom: 0,
+        synthetic: true,
+      },
       samples: [],
       deaths: [],
       firstSeen: Infinity,
@@ -228,15 +211,29 @@ export function populateRaidSpawns(
       casts: [],
       auras: [],
       initialAuras: [],
-    });
-  }
-  return replay;
+    };
+  });
+}
+
+export function referenceSpawnNotice(
+  map: number,
+  version: GameVersion,
+): string {
+  const source = referenceCoverage(map, version);
+  if (!source.rows.length)
+    return "No reference placements are mapped for this area.";
+  if (source.kind === "mixed-reference")
+    return `SoD guide bosses with Classic trash: ${source.rows.length} references. Boss map pins are approximate.`;
+  if (source.kind === "classic-baseline")
+    return `Classic baseline: ${source.rows.length} placements. SoD changes are not fully mapped.`;
+  if (source.kind === "sod-reference")
+    return `SoD reference: ${source.rows.length} placements${source.approximate ? `, ${source.approximate} approximate` : ""}.${source.unplaced ? ` ${source.unplaced} interior positions are not mapped.` : ""}`;
+  return "Classic reference spawns. Patrols and random packs may differ.";
 }
 
 export function spawnStatus(actor: Actor, time: number): string | null {
   if (!actor.spawn) return null;
-  if (actor.spawn.synthetic || time < actor.firstSeen)
-    return "Unobserved spawn";
+  if (actor.spawn.synthetic || time < actor.firstSeen) return "Reference spawn";
   const dead = actor.deaths.filter(([t]) => t <= time).at(-1)?.[1] ?? false;
   return dead ? "Killed in log" : "Observed in log";
 }

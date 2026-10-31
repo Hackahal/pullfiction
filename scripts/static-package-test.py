@@ -91,6 +91,9 @@ class StaticPackageTests(unittest.TestCase):
         self.assertNotIn("snippets/stale-fixture/inline0.js", output_names)
         self.assertEqual(package.audit(self.output), result)
         self.assertTrue((self.output / "metadata/npc-models.json").is_file())
+        for notice in ("SOURCE", "LICENSE", "COPYRIGHT"):
+            self.assertEqual((self.output / f"metadata/RaidSpawns-{notice}.md").read_bytes(),
+                             (package.REPO / f"third_party/raid-spawns/{notice}.md").read_bytes())
 
     def test_development_entry_is_rejected_even_when_reachable_from_the_app(self):
         self.write(self.editor, ".vite/manifest.json", json.dumps({

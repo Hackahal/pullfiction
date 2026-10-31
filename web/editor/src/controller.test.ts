@@ -515,6 +515,41 @@ test("Explicit actor focus updates global selection while automatic raid framing
   f.c.stop();
 });
 
+test("no-log scene readiness and Frame focus a modeled reference with a local floor without changing selection", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  const [unsupported, grounded] = c.sceneActors();
+  unsupported.displayID = grounded.displayID = 764;
+  const [x, y] = grounded.spawn!.position;
+  (c as any).loadedFloors.set(
+    90,
+    new ReplayFloorGeometry([
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [x - 1, y - 1, -206],
+          [x + 1, y - 1, -206],
+          [x + 1, y + 1, -206],
+          [x - 1, y + 1, -206],
+        ],
+        indices: [0, 1, 2, 0, 2, 3],
+      },
+    ]),
+  );
+  c.setOption("followRaid", true);
+  const selected = c.getSnapshot().selected;
+  c.receive("scene", "90");
+  assert.equal(c.getSnapshot().sceneReady, true);
+  assert.deepEqual(f.focus.at(-1), [x, y, -206]);
+  assert.equal(c.getSnapshot().selected, selected);
+  c.frameSelection();
+  assert.deepEqual(f.focus.at(-1), [x, y, -206]);
+  assert.equal(c.getSnapshot().selected, selected);
+  c.stop();
+});
+
 test("Raid switching isolates saved plans, unsaved drafts and undo history without overwriting MC", () => {
   const f = fixture();
   f.c.rename("MC saved");
@@ -591,6 +626,7 @@ test("Free camera movement belongs to the focused 3D canvas and pauses for typin
   const typing: boolean[] = [];
   c.attachEngine({
     set_annotations() {},
+    set_replay_frame() {},
     set_typing(on: boolean) {
       typing.push(on);
     },
@@ -1262,6 +1298,7 @@ test("A raid chosen before the native client is ready loads on attachment withou
   assert.equal(c.getSnapshot().ready, false);
   c.attachEngine({
     load_raid: (map: number) => maps.push(map),
+    set_replay_frame: () => {},
     set_annotations: () => {},
   } as unknown as Engine);
   assert.deepEqual(maps, [533]);
@@ -1543,7 +1580,10 @@ test("Standalone planning can add player placeholders and restore native model i
   c.setWorkspaceMode("plan");
   c.addPlanActor("Healer", "Priest");
   assert.equal(c.snapshot()!.actors[0].name, "Healer");
-  assert.equal(c.sceneActors()[0].class, "Priest");
+  assert.equal(
+    c.sceneActors().find((a) => a.key === c.snapshot()!.actors[0].key)?.class,
+    "Priest",
+  );
   assert.equal(c.getSnapshot().selectedActors.length, 1);
   c.setSnap({ position: true, yards: 5, mode: "relative" });
   const a = c.snapshot()!.actors[0];
@@ -1670,10 +1710,10 @@ test("Orbit requires a selected player, retargets on player selection and releas
     targets: string[] = [];
   f.c.attachEngine({
     set_annotations() {},
+    set_replay_frame() {},
     set_typing(on: boolean) {
       typing.push(on);
     },
-    set_replay_frame() {},
     set_replay_nameplates() {},
     set_replay_raid_frames() {},
     replay_events() {},
@@ -1892,6 +1932,7 @@ test("Raid dimensions cross the native bridge and persist independently from the
   });
   c.attachEngine({
     set_raid_frame_size: (w: number, h: number) => sizes.push([w, h]),
+    set_replay_frame: () => {},
     set_annotations: () => {},
     load_raid: () => {},
   } as unknown as Engine);
@@ -2994,6 +3035,273 @@ test("native movement requires a known height for each endpoint and keeps ground
   }
 });
 
+test("log mode places Vanilla and SoD NPCs at their first log position without reference actors", () => {
+  for (const gameVersion of ["vanilla", "sod"] as const) {
+    const f = fixture();
+    f.c.installReplay({ ...structuredClone(raw), gameVersion });
+    f.c.seek(0);
+    const npcs = f.c.sceneActors().filter((a) => a.type === "NPC");
+    assert.equal(npcs.length, 1);
+    assert.equal(npcs[0].spawn, undefined);
+    assert.deepEqual(
+      f.frame.find((a) => a.key === npcs[0].key)?.position,
+      [3, -2, 0],
+    );
+    f.c.seek(10000);
+    assert.equal(
+      f.frame.some((a) => a.key === npcs[0].key),
+      false,
+    );
+    f.c.seek(0);
+    assert.deepEqual(f.c.actorPose(npcs[0])?.pos, [3, -2, null]);
+    f.c.stop();
+  }
+});
+
+test("no-log reference spawns reach native frames, obey visibility and do not leak across maps or rulesets", () => {
+  const c = new EditorController();
+  let frame: NativeFrame[] = [];
+  c.attachEngine({
+    set_replay_frame: (json: string) => {
+      frame = JSON.parse(json);
+    },
+    load_raid: () => {},
+    replay_events: () => {},
+    set_annotations: () => {},
+  } as unknown as Engine);
+  assert.equal(c.sceneActors().length, 233);
+  assert.equal(frame.length, 233);
+  const first = c.sceneActors()[0];
+  assert.deepEqual(frame[0].position, first.spawn?.position);
+  assert.equal(frame[0].friendly, false);
+  c.setOption("actors", false);
+  assert.equal(frame.length, 0);
+  c.setOption("actors", true);
+  assert.equal(frame.length, 233);
+  c.selectRaid(469);
+  c.render();
+  assert.equal(frame.length, 311);
+  assert.ok(frame.every((a) => a.key.startsWith("spawn:vanilla:469:")));
+  c.setGameVersion("sod");
+  c.render();
+  assert.equal(frame.length, 311);
+  assert.ok(frame.every((a) => a.key.startsWith("spawn:sod:469:")));
+  assert.match(c.referenceSpawnNotice()!, /Classic baseline/);
+  c.stop();
+});
+
+test("default NPC can be edited in a no-log plan without duplicating its reference slot", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  const actor = c.sceneActors()[0],
+    pos = c.actorPose(actor)!.pos as [number, number, number];
+  assert.equal(c.beginActorDrag(actor.key, pos), true);
+  c.finishDrawing();
+  assert.equal(c.snapshot()?.actors[0].key, actor.key);
+  assert.equal(c.sceneActors().length, 233);
+  c.setSnapBypass(true);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(
+    c.actorPose(c.sceneActors().find((a) => a.key === actor.key)!)?.pos,
+    [pos[0] + 10, pos[1], pos[2]],
+  );
+  c.stop();
+});
+
+test("untouched reference NPC selection supports group nudges, coordinates, rotation and attached ranges", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actors = c.sceneActors().slice(0, 2),
+    keys = actors.map((a) => a.key),
+    positions = actors.map((a) => c.actorPose(a)!.pos);
+  c.selectActors(keys);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(c.getSnapshot().selectedActors, keys);
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual(c.snapshot()!.actors[i].position, [
+      positions[i][0] + 10,
+      positions[i][1],
+      positions[i][2],
+    ]);
+  c.positionActors(0, positions[0][0] + 20);
+  assert.equal(c.snapshot()!.actors[0].position[0], positions[0][0] + 20);
+  c.transformSelection(90);
+  assert.equal(
+    c.snapshot()!.actors[0].facing,
+    actors[0].spawn!.facing + Math.PI / 2,
+  );
+  const untouched = c.sceneActors().find((a) => !keys.includes(a.key))!;
+  c.attachRange(untouched.key, 30);
+  assert.equal(
+    c.getSnapshot().plan.steps[0].annotations.at(-1)?.actor,
+    untouched.key,
+  );
+  c.stop();
+});
+
+test("group drag moves both edited and untouched reference NPCs together", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const [a, b] = c.sceneActors();
+  c.selectActors([a.key]);
+  c.nudgeActors(1, 0);
+  c.selectActors([a.key, b.key]);
+  const p = c.actorPose(a)!.pos as [number, number, number],
+    q = c.actorPose(b)!.pos;
+  assert.equal(c.beginActorDrag(a.key, p), true);
+  c.receive("point", JSON.stringify([p[0] + 10, p[1] + 20, p[2]]));
+  c.finishDrawing();
+  assert.deepEqual(c.getSnapshot().selectedActors, [a.key, b.key]);
+  assert.deepEqual(
+    c.snapshot()!.actors.find((v) => v.key === b.key)!.position,
+    [q[0] + 10, q[1] + 20, q[2]],
+  );
+  assert.equal(c.sceneActors().length, 233);
+  c.stop();
+});
+
+test("Select All includes untouched and edited reference NPCs with drawings and respects selection filters", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  const keys = c.sceneActors().map((a) => a.key);
+  assert.equal(c.snapshot(), undefined);
+  c.selectAllMarks();
+  assert.deepEqual(c.getSnapshot().selectedActors, keys);
+  assert.equal(c.snapshot(), undefined);
+  c.selectActors([keys[0]]);
+  c.setSnapBypass(true);
+  c.nudgeActors(5, 0);
+  c.attachRange(keys[1], 30);
+  const mark = c.getSnapshot().selectedMark!;
+  c.selectAllMarks();
+  assert.deepEqual(new Set(c.getSnapshot().selectedActors), new Set(keys));
+  assert.deepEqual(c.getSnapshot().selectedMarks, [mark]);
+  c.selectMark(null);
+  c.clearActorSelection();
+  c.setSelectionFilter("actors");
+  c.selectAllMarks();
+  assert.deepEqual(new Set(c.getSnapshot().selectedActors), new Set(keys));
+  assert.deepEqual(c.getSnapshot().selectedMarks, []);
+  c.clearActorSelection();
+  c.setSelectionFilter("drawings");
+  c.selectAllMarks();
+  assert.deepEqual(c.getSnapshot().selectedActors, []);
+  assert.deepEqual(c.getSnapshot().selectedMarks, [mark]);
+  c.stop();
+});
+
+test("range attachment to an untouched reference NPC survives materialization and follows edits", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c.sceneActors()[0],
+    start = c.actorPose(actor)!.pos;
+  c.attachRange(actor.key, 30);
+  const id = c.getSnapshot().selectedMark!,
+    displayed = () => c.displayMarks().find((m) => m.id === id)!;
+  assert.equal(c.snapshot(), undefined);
+  assert.equal(displayed().actor, actor.key);
+  assert.deepEqual(displayed().points[0], start);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.equal(displayed().actor, actor.key);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.setCompareRecorded(true);
+  assert.deepEqual(displayed().points[0], start);
+  c.setCompareRecorded(false);
+  c.attachEdit(id, null);
+  assert.equal(displayed().actor, undefined);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(displayed().points[0], [start[0] + 10, start[1], start[2]]);
+  c.stop();
+});
+
+test("standalone reference comparison sends recorded poses to native frames and restores unchanged planned edits", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(469);
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c.sceneActors()[0],
+    original = c.actorPose(actor)!;
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  c.transformSelection(90);
+  c.render();
+  const planned = structuredClone(
+    c.snapshot()!.actors.find((a) => a.key === actor.key)!,
+  );
+  const snapshot = structuredClone(c.snapshot());
+  const native = () => f.frame.find((a) => a.key === actor.key)!;
+  assert.notDeepEqual(planned.position, original.pos);
+  assert.notEqual(planned.facing, original.facing);
+  assert.deepEqual(native().position, planned.position);
+  assert.equal(native().facing, planned.facing);
+  c.setCompareRecorded(true);
+  assert.deepEqual(native().position, original.pos);
+  assert.equal(native().facing, original.facing);
+  assert.deepEqual(c.actorPose(actor)!.pos, native().position);
+  assert.deepEqual(c.snapshot(), snapshot);
+  c.setCompareRecorded(false);
+  assert.deepEqual(native().position, planned.position);
+  assert.equal(native().facing, planned.facing);
+  assert.deepEqual(c.snapshot(), snapshot);
+  c.stop();
+});
+
+test("SoD reference XY reaches native frames and local geometry supplies missing height before editing", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  c.setWorkspaceMode("plan");
+  const actor = c.sceneActors()[0],
+    original = actor.spawn!.position;
+  assert.equal(c.sceneActors().length, 292);
+  assert.equal(original[2], null);
+  const [x, y] = original;
+  const geometry = new ReplayFloorGeometry([
+    {
+      area: "test-floor",
+      interior: true,
+      vertices: [
+        [x - 2, y - 2, 12.5],
+        [x + 2, y - 2, 12.5],
+        [x + 2, y + 2, 12.5],
+        [x - 2, y + 2, 12.5],
+      ],
+      indices: [0, 1, 2, 0, 2, 3],
+    },
+  ]);
+  (
+    c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
+  ).loadedFloors.set(90, geometry);
+  c.render();
+  assert.deepEqual(f.frame.find((a) => a.key === actor.key)?.position, [
+    x,
+    y,
+    12.5,
+  ]);
+  c.selectActor(actor.key);
+  c.setSnapBypass(true);
+  c.nudgeActors(1, 0);
+  const planned = c.snapshot()!.actors.find((a) => a.key === actor.key)!;
+  assert.deepEqual(planned.recorded, [x, y, 12.5]);
+  assert.deepEqual(planned.position, [x + 1, y, 12.5]);
+  c.setCompareRecorded(true);
+  assert.deepEqual(f.frame.find((a) => a.key === actor.key)?.position, [
+    x,
+    y,
+    12.5,
+  ]);
+  assert.equal(actor.spawn!.position[2], null);
+  c.stop();
+});
+
 test("native movement resolves both ramp endpoint heights independently of the current actor floor", () => {
   const f = fixture();
   const replay = f.c.getSnapshot().replay!;
@@ -3115,4 +3423,177 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
     }
   }
   f.c.stop();
+});
+
+test("standalone SoD reference grounding respects its own level hint in stacked rooms", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(90, true, "sod");
+  const actor = c.sceneActors()[0],
+    [x, y] = actor.spawn!.position;
+  actor.spawn!.floorHint = 30;
+  const floors = [10, 30].map((z) => ({
+    area: "stacked-room",
+    interior: true,
+    vertices: [
+      [x - 2, y - 2, z],
+      [x + 2, y - 2, z],
+      [x + 2, y + 2, z],
+      [x - 2, y + 2, z],
+    ] as [number, number, number][],
+    indices: [0, 1, 2, 0, 2, 3],
+  }));
+  const geometry = new ReplayFloorGeometry(floors, [
+    { id: "stacked-room", name: "stacked room", height: 20 },
+  ]);
+  (
+    c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
+  ).loadedFloors.set(90, geometry);
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 30);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 30);
+  delete actor.spawn!.floorHint;
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 10);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 10);
+  assert.equal(actor.spawn!.position[2], null);
+  c.stop();
+});
+
+test("approximate room pins keep authored XY and nearby floor height through native frames and plan edits", () => {
+  const f = fixture(),
+    c = f.c;
+  c.selectRaid(2856, true, "sod");
+  c.setWorkspaceMode("plan");
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  const [x, y] = actor.spawn!.position;
+  const setGeometry = (edge: number) => {
+    const rectangle = (z: number, left: number, room: boolean) => ({
+      area: room ? "room" : "terrain",
+      interior: room,
+      vertices: [
+        [left, y - 5, z],
+        [x + 10, y - 5, z],
+        [x + 10, y + 5, z],
+        [left, y + 5, z],
+      ] as [number, number, number][],
+      indices: [0, 1, 2, 0, 2, 3],
+    });
+    (c as any).loadedFloors.set(
+      2856,
+      new ReplayFloorGeometry(
+        [rectangle(330, x - 10, false), rectangle(185, x + edge, true)],
+        [{ id: "room", name: "chapel", height: 186 }],
+      ),
+    );
+    c.render();
+  };
+  setGeometry(1);
+  assert.deepEqual(c.actorPose(actor)?.pos, [x, y, 185]);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, false);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.position?.[2], 185);
+  assert.deepEqual(actor.spawn!.position, [x, y, null]);
+  actor.spawn!.referenceKind = "sod-reference";
+  c.render();
+  assert.equal(c.actorPose(actor)?.pos[2], 330);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, true);
+  actor.spawn!.referenceKind = "map-registered-reference";
+  setGeometry(4);
+  assert.equal(c.actorPose(actor)?.pos[2], 330);
+  setGeometry(-1);
+  assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, true);
+  setGeometry(1);
+  c.setSnapBypass(true);
+  assert.equal(c.beginActorDrag(actor.key, [x, y, 185]), true);
+  c.finishDrawing();
+  c.selectActor(actor.key);
+  c.nudgeActors(0, 0.1);
+  assert.deepEqual(c.actorPose(actor)?.pos, [x, y + 0.1, 185]);
+  assert.equal(f.frame.find((a) => a.key === actor.key)?.ground, false);
+  assert.deepEqual(actor.spawn!.position, [x, y, null]);
+  c.stop();
+});
+
+test("nearby reference scans cache misses and invalidate for actor identity, hints and geometry", () => {
+  const c = new EditorController();
+  c.selectRaid(2856, true, "sod");
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  let calls = 0;
+  const geometry = (answer: number | undefined) => {
+    const value = new ReplayFloorGeometry([]);
+    value.nearbyStructureHeight = () => {
+      calls++;
+      return answer;
+    };
+    return value;
+  };
+  (c as any).loadedFloors.set(2856, geometry(undefined));
+  for (let i = 0; i < 20; i++) c.actorPose(actor);
+  assert.equal(calls, 1, "undefined is a cached answer");
+  c.actorPose({ ...actor });
+  assert.equal(calls, 2, "same key on a different actor is independent");
+  actor.spawn!.floorHint = 180;
+  c.actorPose(actor);
+  c.actorPose(actor);
+  assert.equal(calls, 3);
+  (c as any).loadedFloors.set(2856, geometry(185));
+  for (let i = 0; i < 20; i++) assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(calls, 4, "a new geometry instance invalidates the old answer");
+  c.stop();
+});
+
+test("planned and recorded reference poses share the edge cache and invalidate moved coordinates", () => {
+  const c = new EditorController();
+  c.selectRaid(2856, true, "sod");
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actor = c
+    .sceneActors()
+    .find((a) => a.spawn?.referenceKind === "map-registered-reference")!;
+  const [x, y] = actor.spawn!.position;
+  let calls = 0;
+  const geometry = new ReplayFloorGeometry([]);
+  geometry.nearbyStructureHeight = (_x, queryY) => {
+    calls++;
+    return queryY === y ? 185 : undefined;
+  };
+  (c as any).loadedFloors.set(2856, geometry);
+  assert.equal(c.actorPose(actor)?.pos[2], 185);
+  assert.equal(c.beginActorDrag(actor.key, [x, y, 185]), true);
+  c.finishDrawing();
+  c.selectActor(actor.key);
+  const held = (position: number[], nearby: boolean) => {
+    const pose = c.actorPose(actor)!;
+    assert.deepEqual(pose.pos, position);
+    assert.ok("nearbyGround" in pose);
+    assert.equal(pose.nearbyGround, nearby);
+    const before = calls;
+    for (let i = 0; i < 20; i++) c.actorPose(actor);
+    assert.equal(
+      calls,
+      before,
+      "held planned poses reuse positive and negative answers",
+    );
+  };
+  held([x, y, 185], true);
+  const beforeMove = calls;
+  c.nudgeActors(0, 1);
+  held([x, y + 1, 185], false);
+  assert.equal(calls, beforeMove + 1);
+  const beforeCompare = calls;
+  c.setCompareRecorded(true);
+  held([x, y, 185], true);
+  assert.equal(calls, beforeCompare + 1);
+  c.setCompareRecorded(false);
+  held([x, y + 1, 185], false);
+  assert.equal(calls, beforeCompare + 2);
+  c.nudgeActors(1, 0);
+  held([x + 1, y + 1, 185], false);
+  assert.equal(calls, beforeCompare + 3);
+  c.stop();
 });

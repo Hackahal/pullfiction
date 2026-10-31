@@ -141,7 +141,15 @@ export interface Gear {
 }
 export interface SpawnPlacement {
   key: string;
-  position: Point;
+  position: [number, number, number | null];
+  floorHint?: number;
+  referenceKind?:
+    | "sod-reference"
+    | "classic-baseline"
+    | "classic-reference"
+    | "guide-reference"
+    | "portal-registered-reference"
+    | "map-registered-reference";
   facing: number;
   distance: number | null;
   confidence: "near" | "approximate" | "unobserved";
@@ -151,7 +159,6 @@ export interface SpawnPlacement {
 export interface Actor {
   bufferedRanges?: [number, number][];
   spawn?: SpawnPlacement;
-  spawnObservedOnly?: boolean;
   key: string;
   id: number;
   instance: number;

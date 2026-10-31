@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 import { EditorController } from "./controller";
-import { IndexedProjectStore } from "./project-store";
+import { IndexedProjectStore, newProject } from "./project-store";
 import { emptyPlan, STORAGE_KEY } from "./domain";
 import type { Engine, RawReplay } from "./types";
 const raw = {
@@ -44,6 +44,78 @@ function setup() {
     projectStore: store,
   });
   return { controller, store, memory, storage };
+}
+for (const extra of ["none", "report-free", "no-snapshot"] as const) {
+  test(`opening a project prepares reference textures only for pages that need them: ${extra}`, async () => {
+    const { controller: c, store } = setup();
+    const plan = emptyPlan(249);
+    plan.steps[0].snapshot = {
+      report: "DyN7vF94QR8aj1Lc",
+      time: 0,
+      actors: [
+        {
+          key: "saved",
+          name: "Recorded NPC",
+          class: "NPC",
+          type: "NPC",
+          displayID: 22222,
+          position: [1, 2, 3],
+          facing: 0,
+        },
+      ],
+    };
+    if (extra !== "none") {
+      plan.steps.push({ ...plan.steps[0], id: "blank", name: "Blank page" });
+      plan.steps[1].snapshot =
+        extra === "report-free"
+          ? { report: "", time: 0, actors: [] }
+          : undefined;
+    }
+    const project = newProject(plan);
+    await store.put(project);
+    const prepared: string[] = [];
+    const referenceTexture = "__classic/991.blp";
+    (c as any).referenceModels.vanilla = { 10184: { displayID: 11111 } };
+    (c as any).localFiles = {
+      close() {},
+      async prepare(resources: string[]) {
+        prepared.push(...resources);
+        if (extra === "none" && resources.includes(referenceTexture))
+          throw new Error("Missing unused reference texture");
+      },
+    };
+    (c as any).browserBridge = {
+      async map() {
+        return { floors: [], areas: [] };
+      },
+      async catalog(kind: string) {
+        return kind === "creatures"
+          ? {
+              displays: {
+                11111: { textures: [991] },
+                22222: { textures: [992] },
+              },
+            }
+          : {};
+      },
+    };
+    try {
+      assert.equal(
+        await c.openProject(project.id),
+        true,
+        c.getSnapshot().error ?? "",
+      );
+      assert.ok(prepared.includes("__classic/992.blp"));
+      assert.equal(prepared.includes(referenceTexture), extra !== "none");
+      assert.equal(c.getSnapshot().projectId, project.id);
+      assert.equal(
+        c.getSnapshot().plan.steps[0].snapshot?.actors[0].key,
+        "saved",
+      );
+    } finally {
+      c.stop();
+    }
+  });
 }
 test("projects on one map keep independent edits, undo and local source context", async () => {
   const { controller: c, store } = setup();
