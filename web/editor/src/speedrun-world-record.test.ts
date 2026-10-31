@@ -1,4 +1,6 @@
 import test from "node:test";
+import { fullRunFight } from "../../planner/wcl-report.mjs";
+import { normalizeReplay } from "./domain";
 import assert from "node:assert/strict";
 import {
   fetchSpeedCategory,
@@ -240,7 +242,14 @@ test("Complete-raid ranking bounds work without a synthetic fight ID", async () 
       encounter: {
         fightRankings: {
           rankings: [
-            { ...winner, report: { code, startTime: 2000, endTime: 16000 } },
+            {
+              ...winner,
+              report: {
+                code,
+                startTime: 1738013433529,
+                endTime: 1738013447529,
+              },
+            },
           ],
         },
       },
@@ -250,7 +259,10 @@ test("Complete-raid ranking bounds work without a synthetic fight ID", async () 
     async (q) =>
       q.includes("fightRankings")
         ? boundsRanked
-        : { fights: report.fights.filter((f) => !f.completeRaid) },
+        : {
+            startTime: 1738013431529,
+            fights: report.fights.filter((f) => !f.completeRaid),
+          },
     "sod",
     48,
     category,
@@ -258,7 +270,15 @@ test("Complete-raid ranking bounds work without a synthetic fight ID", async () 
   );
   assert.equal(wr!.fightID, null);
   assert.equal(wr!.splits.length, 3);
-  assert.match(wr!.url, /boss=-3&start=2000&end=16000/);
+  assert.match(wr!.url, /boss=-3&start=1738013433529&end=1738013447529/);
+  assert.deepEqual(
+    wr!.splits.map((s) => [s.start, s.end]),
+    [
+      [0, 3000],
+      [4000, 9000],
+      [10000, 14000],
+    ],
+  );
 });
 test("Estimated clocks and mismatched MC heat never produce WR deltas", async () => {
   const wr = await fetchSpeedWorldRecord(
@@ -358,4 +378,88 @@ test("live WCL epoch timestamps without exact run bounds retain only the total",
   assert.equal(wr?.guild, "Fake Fresh");
   assert.deepEqual(wr?.splits, []);
   assert.match(wr?.splitNote ?? "", /exact start\/end/);
+});
+
+test("mixed known categories survive full-run import and JSON reopen, suppressing every comparison", async () => {
+  const wr = await fetchSpeedWorldRecord(
+    async (q) => (q.includes("fightRankings") ? ranked : report),
+    "sod",
+    48,
+    category,
+    selection,
+  );
+  for (const field of ["difficulty", "size"] as const) {
+    for (const mixed of [false, true]) {
+      const seed = fixture();
+      const raw = structuredClone(seed.raw);
+      const fights = seed.chapters.map((f, i) => ({
+        id: f.id,
+        name: f.name,
+        encounterID: f.encounterID,
+        kill: f.kill,
+        startTime: raw.fight.startTime + f.start,
+        endTime: raw.fight.startTime + f.end,
+        difficulty: 3,
+        size: 10,
+        gameZone: raw.fight.gameZone,
+        ...(mixed && i === 2
+          ? { [field]: field === "difficulty" ? 4 : 20 }
+          : {}),
+      }));
+      raw.fight = fullRunFight({ gameVersion: "sod", fights }, 48);
+      const reopened = normalizeReplay(JSON.parse(JSON.stringify(raw)), {});
+      assert.equal(reopened.fight.categoryMixed, mixed);
+      const index = indexSpeedrun(reopened);
+      const comparison = compareSpeedrun(index, speedrunAt(index, 10000), wr);
+      if (mixed) {
+        assert.equal(comparison.categoryMatches, false);
+        assert.equal(comparison.delta, null);
+        assert.equal(comparison.previousSegment, null);
+        assert.equal(comparison.projected, null);
+        assert.ok(comparison.rows.every((r) => r.delta === null));
+      } else {
+        assert.equal(comparison.categoryMatches, true);
+        assert.notEqual(comparison.delta, null);
+        assert.notEqual(comparison.projected, null);
+      }
+    }
+  }
+});
+
+test("epoch bounds cannot become split targets without a valid report origin", async () => {
+  for (const origin of [undefined, NaN, 1738013435529]) {
+    const wr = await fetchSpeedWorldRecord(
+      async (q) =>
+        q.includes("fightRankings")
+          ? {
+              worldData: {
+                encounter: {
+                  fightRankings: {
+                    rankings: [
+                      {
+                        ...winner,
+                        report: {
+                          code,
+                          startTime: 1738013433529,
+                          endTime: 1738013447529,
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            }
+          : {
+              startTime: origin,
+              fights: report.fights.filter((f) => !f.completeRaid),
+            },
+      "sod",
+      48,
+      category,
+      selection,
+    );
+    assert.equal(wr?.duration, 14000);
+    assert.deepEqual(wr?.splits, []);
+    assert.match(wr?.splitNote ?? "", /exact start\/end/);
+  }
 });

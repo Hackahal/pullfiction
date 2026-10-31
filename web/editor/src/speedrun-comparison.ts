@@ -13,8 +13,9 @@ export function compareSpeedrun(
       : index.replay.fight.difficulty;
   const categoryMatches =
     !reference ||
-    ((expectedDifficulty === undefined ||
-      expectedDifficulty === reference.category.difficulty) &&
+    (!index.replay.fight.categoryMixed &&
+      (expectedDifficulty === undefined ||
+        expectedDifficulty === reference.category.difficulty) &&
       (index.replay.fight.size === undefined ||
         reference.category.size === null ||
         index.replay.fight.size === reference.category.size));

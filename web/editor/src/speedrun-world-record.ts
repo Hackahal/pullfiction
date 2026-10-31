@@ -213,21 +213,28 @@ export async function fetchSpeedWorldRecord(
   };
   try {
     const report = await query(
-      "query($code:String!){reportData{report(code:$code){code fights{id name encounterID startTime endTime kill completeRaid gameZone{id name}}}}}",
+      "query($code:String!){reportData{report(code:$code){code startTime fights{id name encounterID startTime endTime kill completeRaid gameZone{id name}}}}}",
       { code: reportCode },
       version,
       signal,
     );
     if (!Array.isArray(report.fights))
       throw new Error("WCL did not return reference fights.");
-    const run =
-      rankingBounds ??
-      report.fights.find(
-        (f: any) =>
-          f.id === fightID &&
-          f.completeRaid &&
-          raidForZone(f.gameZone, version)?.map === map,
-      );
+    // Ranking links use epoch milliseconds; report fights are relative to the
+    // report origin. Never infer an end from duration, which may include penalties.
+    const run = rankingBounds
+      ? Number.isFinite(report.startTime) && report.startTime >= 0
+        ? {
+            startTime: rankingBounds.startTime - report.startTime,
+            endTime: rankingBounds.endTime - report.startTime,
+          }
+        : null
+      : report.fights.find(
+          (f: any) =>
+            f.id === fightID &&
+            f.completeRaid &&
+            raidForZone(f.gameZone, version)?.map === map,
+        );
     const reportEnd = Math.max(
       0,
       ...report.fights.map((f: any) =>
@@ -236,6 +243,7 @@ export async function fetchSpeedWorldRecord(
     );
     if (
       !run ||
+      run.startTime < 0 ||
       run.endTime > reportEnd ||
       !Number.isFinite(run.startTime) ||
       !Number.isFinite(run.endTime) ||

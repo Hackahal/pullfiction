@@ -194,6 +194,7 @@ export interface Chapter {
   enemyNPCs?: { id: number }[];
 }
 export interface Fight {
+  categoryMixed?: boolean;
   difficulty?: number;
   size?: number;
   id: number | string;

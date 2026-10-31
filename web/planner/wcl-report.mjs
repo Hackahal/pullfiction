@@ -65,8 +65,12 @@ export function fullRunFight(report, map) {
       ? bossChapters[0][field]
       : undefined;
   };
+  const mixedKnown = (field) => new Set(
+    bossChapters.map((f) => f[field]).filter(Number.isSafeInteger),
+  ).size > 1;
   return {
     id: "run",
+    categoryMixed: mixedKnown("difficulty") || mixedKnown("size"),
     difficulty: common("difficulty"),
     size: common("size"),
     name: `Full ${raid.name} run`,
