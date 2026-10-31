@@ -200,3 +200,43 @@ test("same-boss comparison supports positive deltas and unknown previous targets
   assert.equal(result.previousSegment, null);
   assert.equal(result.rows[1].delta, null);
 });
+
+test("nullable category metadata on terminal and intermediate kills remains unknown", async () => {
+  for (const ids of [[31], [3], [3, 31]]) {
+    for (const field of ["difficulty", "size", "both"]) {
+      const report = {
+        ...praxisReport,
+        fights: praxisReport.fights.map((f) =>
+          ids.includes(f.id)
+            ? {
+                ...f,
+                ...(field !== "size" ? { difficulty: null } : {}),
+                ...(field !== "difficulty" ? { size: null } : {}),
+              }
+            : f,
+        ),
+      };
+      const wr = await load(report);
+      assert.equal(wr?.splitNote, null, `${ids}:${field}`);
+      assert.equal(wr?.splits.length, 14, `${ids}:${field}`);
+      assert.equal(
+        wr?.splits.find((s) => s.encounterID === 201118)?.end,
+        1613851,
+      );
+    }
+  }
+  // An unrelated null value must not hide a known conflict in another field.
+  for (const conflict of [
+    { difficulty: null, size: 40 },
+    { difficulty: 3, size: null },
+  ]) {
+    const wr = await load({
+      ...praxisReport,
+      fights: praxisReport.fights.map((f) =>
+        f.id === 3 ? { ...f, ...conflict } : f,
+      ),
+    });
+    assert.deepEqual(wr?.splits, []);
+    assert.match(wr?.splitNote ?? "", /exact start\/end/);
+  }
+});

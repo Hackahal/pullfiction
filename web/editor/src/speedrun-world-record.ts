@@ -178,10 +178,8 @@ function recordedRunBounds(
       finish.some((name) => key(name) === key(f.name)) &&
       f.startTime >= startTime &&
       f.endTime > f.startTime &&
-      (f.difficulty === undefined || f.difficulty === selection.difficulty) &&
-      (f.size === undefined ||
-        selection.size === null ||
-        f.size === selection.size),
+      (f.difficulty == null || f.difficulty === selection.difficulty) &&
+      (f.size == null || selection.size === null || f.size === selection.size),
   );
   if (endings.length !== 1) return null;
   const endTime = endings[0].endTime;
@@ -193,8 +191,8 @@ function recordedRunBounds(
       f.encounterID > 0 &&
       f.startTime >= startTime &&
       f.endTime <= endTime &&
-      ((f.difficulty !== undefined && f.difficulty !== selection.difficulty) ||
-        (f.size !== undefined &&
+      ((f.difficulty != null && f.difficulty !== selection.difficulty) ||
+        (f.size != null &&
           selection.size !== null &&
           f.size !== selection.size)),
   );
