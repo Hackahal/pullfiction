@@ -21,6 +21,19 @@ test("short inferred segments offer bounded continuous floor pairs instead of un
     { from: 317, to: 317 },
   );
 });
+test("floor precision differences cannot consume both alternative slots with one storey", () => {
+  const noisy = {
+    heightCandidates: (x: number) =>
+      x === 0 ? [293.00001, 304, 317] : [297.99999, 317],
+  };
+  assert.deepEqual(
+    movementFloorCandidates(noisy, from, to, 293, 298, true, true),
+    [
+      { from: 304, to: 298 },
+      { from: 317, to: 317 },
+    ],
+  );
+});
 test("fixed and observed endpoint heights cannot be replaced", () => {
   assert.deepEqual(
     movementFloorCandidates(geometry, from, to, 293, 298, false, false),

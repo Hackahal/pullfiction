@@ -28,13 +28,18 @@ export function movementFloorCandidates(
     point: readonly number[],
     height: number,
     inferred: boolean,
-  ) =>
-    inferred
-      ? [...new Set([height, ...geometry.heightCandidates(point[0], point[1])])]
-          .filter((z) => Number.isFinite(z) && Math.abs(z - height) <= 32)
-          .sort((a, b) => Math.abs(a - height) - Math.abs(b - height) || a - b)
-          .slice(0, 8)
-      : [height];
+  ) => {
+    if (!inferred) return [height];
+    const levels = [height, ...geometry.heightCandidates(point[0], point[1])]
+      .filter((z) => Number.isFinite(z) && Math.abs(z - height) <= 32)
+      .sort((a, b) => Math.abs(a - height) - Math.abs(b - height) || a - b);
+    const unique: number[] = [];
+    for (const z of levels) {
+      if (unique.every((other) => Math.abs(z - other) > 0.05)) unique.push(z);
+      if (unique.length === 8) break;
+    }
+    return unique;
+  };
   const context = (fromHeight + toHeight) / 2;
   const score = ({ from, to }: MovementFloorPair) =>
     Math.abs(from - to) * 4 + Math.abs(from - context) + Math.abs(to - context);
