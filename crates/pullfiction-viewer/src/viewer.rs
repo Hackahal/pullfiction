@@ -68,6 +68,7 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
     }
     if actors.iter().any(|a| {
         a.key.len() > 80
+            || a.channel_target.as_ref().is_some_and(|key| key.len() > 80)
             || a.name.len() > 120
             || !a.facing.is_finite()
             || !a.speed.is_finite()

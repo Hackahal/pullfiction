@@ -1,5 +1,7 @@
 //! Explicitly enabled diagnostics for the shipping browser renderer. No filesystem or account I/O.
 use std::{cell::RefCell, time::Duration};
+#[path = "renderer_clock.rs"]
+mod clock;
 
 use benilla_assets::{
     coords::{bevy_to_wow, wow_to_bevy},
@@ -43,6 +45,8 @@ struct Config {
     step_seconds: Option<f64>,
     frozen: Option<bool>,
     advance_frames: Option<u32>,
+    /// Diagnostic replay clock, advanced alongside every fixed simulation step.
+    replay_time_ms: Option<f64>,
     seed: Option<u32>,
     synthetic: Option<bool>,
     models: Option<Vec<benilla_app::renderer_fixture::RendererModelFixture>>,
@@ -115,6 +119,12 @@ fn validate(config: &Config) -> Result<(), &'static str> {
     {
         return Err("Invalid fixed step or advanceFrames (maximum 600)");
     }
+    if config
+        .replay_time_ms
+        .is_some_and(|n| !n.is_finite() || !(0.0..=120_000.0).contains(&n))
+    {
+        return Err("Invalid diagnostic replay time");
+    }
     if config.seed.is_some_and(|n| n != 1) {
         return Err("Only animation RNG seed 1 is supported");
     }
@@ -174,6 +184,7 @@ pub fn renderer_lab_advance(frames: u32) -> Result<(), JsValue> {
 struct Lab {
     config: Option<Config>,
     prior_clock: Option<TimeUpdateStrategy>,
+    prior_replay_clock: Option<(f64, f64, bool)>,
     prior_rng: Option<AnimRng>,
     prior_camera: Option<Transform>,
     remaining: u32,
@@ -364,6 +375,7 @@ fn control(
     mut virtual_time: ResMut<Time<Virtual>>,
     mut generic_time: ResMut<Time>,
     real_time: Res<Time<Real>>,
+    mut replay: ResMut<benilla_app::planner_replay::ReplayControl>,
 ) {
     lab.frame = lab.frame.saturating_add(1);
     let requests = REQUESTS.with(|queue| std::mem::take(&mut *queue.borrow_mut()));
@@ -436,6 +448,16 @@ fn control(
                             lab.animation_seed = Some(1);
                         }
                     }
+                    if let Some(time) = config.replay_time_ms {
+                        lab.prior_replay_clock.get_or_insert((
+                            replay.time,
+                            replay.rate,
+                            replay.playing,
+                        ));
+                        replay.time = time;
+                        replay.rate = 1.;
+                        replay.playing = false;
+                    }
                     lab.remaining = config.advance_frames.unwrap_or(0);
                     lab.advanced = 0;
                     lab.failures.clear();
@@ -443,6 +465,11 @@ fn control(
                     lab.config = Some(config);
                 } else {
                     lab.config = None;
+                    if let Some((time, rate, playing)) = lab.prior_replay_clock.take() {
+                        replay.time = time;
+                        replay.rate = rate;
+                        replay.playing = playing;
+                    }
                     if let Some(previous) = lab.prior_clock.take() {
                         *strategy = previous;
                     }
@@ -484,14 +511,17 @@ fn control(
     if let Some(config) = lab.config.as_ref() {
         let advancing = lab.remaining > 0;
         let frozen = config.frozen.unwrap_or(true) || config.advance_frames.is_some();
-        *strategy = TimeUpdateStrategy::ManualDuration(
-            if lab.in_flight.is_none() && (advancing || !frozen) {
-                Duration::from_secs_f64(config.step_seconds.unwrap_or(1. / 60.))
-            } else {
-                Duration::ZERO
-            },
+        let dt = clock::delta_seconds(
+            config.step_seconds.unwrap_or(1. / 60.),
+            advancing,
+            frozen,
+            lab.in_flight.is_some(),
         );
-        if advancing && lab.in_flight.is_none() {
+        *strategy = TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(dt));
+        if config.replay_time_ms.is_some() {
+            replay.time += dt * 1000.;
+        }
+        if advancing && dt > 0. {
             lab.remaining -= 1;
             lab.advanced += 1;
         }
@@ -537,6 +567,7 @@ fn visibility_snapshot(entity: Entity, states: &VisibilitySnapshot) -> serde_jso
 
 #[allow(clippy::too_many_arguments)]
 fn capture(
+    actor_diagnostics: Res<benilla_app::renderer_actor_diagnostics::ActorDiagnostics>,
     mut commands: Commands,
     mut lab: ResMut<Lab>,
     clocks: (Res<Time>, Res<Time<Real>>),
@@ -628,6 +659,11 @@ fn capture(
             .iter()
             .filter(|subject| subject["loadedMeshes"].as_u64().unwrap_or(0) > 0)
             .count();
+        let ready_visual_bodies = actor_diagnostics
+            .0
+            .iter()
+            .filter(|actor| actor.visual_ready())
+            .count();
         let mut payload = json!({
             "type":if wants_image {"capture"} else {"status"}, "token":token,
             "frame":lab.frame, "simulationSeconds":time.elapsed_secs_f64(),
@@ -636,12 +672,14 @@ fn capture(
             "portalCull":renderer.2.portal_cull,
             "portalCullOverride":config.portal_cull,
             "pvs":{"eye":bevy_to_wow(world_context.6.eye),"camera":renderer.3.0.as_ref().map(|pose|json!({"eye":bevy_to_wow(pose.translation),"target":bevy_to_wow(pose.translation+*pose.forward())})),"exteriorWindows":format!("{:?}",*world_context.7),"instances":world_context.8.iter().take(16).map(|instance|json!({"position":bevy_to_wow(instance.world_from_local.translation.into()),"groups":instance.visible.len(),"visibleGroups":instance.visible.iter().enumerate().filter_map(|(index,visible)|visible.then_some(index)).take(256).collect::<Vec<_>>()})).collect::<Vec<_>>(),"instancesTruncated":world_context.8.iter().count()>16},
+            "actorDiagnostics":actor_diagnostics.0,
+            "cueDiagnostics":actor_diagnostics.1,
             "clock":{"resetApplied":lab.reset_applied,"startSimulationSeconds":lab.case_start_seconds,"startRealSeconds":lab.case_start_real_seconds,"realSeconds":clocks.1.elapsed_secs_f64(),"realClockReset":false},
             "advancedFrames":lab.advanced, "remainingFrames":lab.remaining,
             "frozen":lab.remaining == 0 && (config.frozen.unwrap_or(true) || config.advance_frames.is_some()),
             "camera":camera.map(|c|json!({"eye":bevy_to_wow(c.translation),"target":bevy_to_wow(c.translation + *c.forward())})),
             "configuredCamera":config.camera.as_ref().map(|c|json!({"eye":c.eye,"target":c.target})),
-            "resources":{"replayBodies":bodies.iter().count(),"replayBodiesWithLoadedMeshes":loaded_bodies,"meshInstances":mesh_instances.iter().count(),"images":images.len(),"meshes":meshes.len(),"modelMaterials":models.len(),"terrainMaterials":terrain.len(),"standardMaterials":standard.len()},
+            "resources":{"replayBodies":bodies.iter().count(),"replayBodiesWithLoadedMeshes":loaded_bodies,"replayBodiesWithReadyVisuals":ready_visual_bodies,"meshInstances":mesh_instances.iter().count(),"images":images.len(),"meshes":meshes.len(),"modelMaterials":models.len(),"terrainMaterials":terrain.len(),"standardMaterials":standard.len()},
             "subjects":subjects,
             "gpu":renderer.0.as_ref().map(|a|json!({"name":a.name,"backend":format!("{:?}",a.backend),"deviceType":format!("{:?}",a.device_type),"driver":a.driver,"driverInfo":a.driver_info})),
             "models":renderer.1.statuses,

@@ -317,6 +317,7 @@ export interface NativeFrame {
   }[];
   cast: number;
   channel?: boolean;
+  channel_target?: string | null;
   auras: number[];
 }
 export interface Engine {

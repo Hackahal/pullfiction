@@ -109,6 +109,8 @@ pub struct ReplayUnit {
     #[serde(default)]
     pub channel: bool,
     #[serde(default)]
+    pub channel_target: Option<String>,
+    #[serde(default)]
     pub cast: u32,
     #[serde(default)]
     pub auras: Vec<u32>,
@@ -226,6 +228,8 @@ pub struct ReplayBody {
 }
 
 pub fn install(app: &mut App) {
+    #[cfg(feature = "renderer-lab")]
+    crate::renderer_actor_diagnostics::install(app);
     app.init_resource::<ReplayControl>();
     crate::planner_camera::install(app);
     crate::planner_nameplates::install(app);
@@ -390,6 +394,22 @@ pub(crate) fn apply(
     // Retain the owned input, not a cloned actor graph. Native assets may finish after JS settles.
     if let Some(batch) = floor_context.7.ready(readiness_revision, control.playing) {
         let mut spawned = false;
+        // Resolve after all actors have identities, including targets later in this
+        // frame. An absent recorded target stays absent rather than being guessed.
+        let channel_targets: Vec<_> = batch
+            .iter()
+            .map(|unit| {
+                (
+                    unit.key.clone(),
+                    unit.player,
+                    if unit.channel && !unit.dead {
+                        unit.channel_target.clone()
+                    } else {
+                        None
+                    },
+                )
+            })
+            .collect();
         let keep: HashSet<_> = batch.iter().map(|u| u.key.as_str()).collect();
         ground_cache.retain(|key, _| keep.contains(key.as_str()));
         // A paused retry can reflect newly ready floor assets/placements without
@@ -532,6 +552,7 @@ pub(crate) fn apply(
             };
             let power_type = unit.power_type.min(4);
             let mut fields = vec![
+                (4, unit.scale.to_bits()),
                 (22, health),
                 (28, max),
                 (
@@ -750,7 +771,6 @@ pub(crate) fn apply(
                 (1, (guid >> 32) as u32),
                 (2, if unit.player { 0x19 } else { 9 }),
                 (3, unit.entry),
-                (4, unit.scale.to_bits()),
                 (34, 60),
                 (
                     35,
@@ -803,7 +823,10 @@ pub(crate) fn apply(
                     },
                     net::motion::RecordedFacing,
                     net::Guid(guid),
-                    net::ObjectStore(ObjectFields::from_pairs(&fields)),
+                    net::ObjectStore(crate::planner_replay_identity::initial_fields(
+                        unit.player,
+                        &fields,
+                    )),
                     transform,
                     visibility,
                     motion,
@@ -823,6 +846,35 @@ pub(crate) fn apply(
             index.0.insert(guid, id);
             units.insert(unit.key.clone(), (id, guid));
             spawned = true;
+        }
+        for (key, player, target) in channel_targets {
+            let Some(&(entity, guid)) = units.get(&key) else {
+                continue;
+            };
+            let target_guid = target.as_ref().and_then(|key| units.get(key)).map(|u| u.1);
+            commands.queue(move |world: &mut World| {
+                let Some(mut store) = world.get_mut::<net::ObjectStore>(entity) else {
+                    return;
+                };
+                let delta = crate::planner_replay_identity::channel_target_fields(target_guid);
+                let changed = net::write_fields(&mut store.0, delta);
+                drop(store);
+                for (field, old, new) in changed {
+                    world.write_message(net::FieldChanged {
+                        at: crate::lanes::stamp(),
+                        entity,
+                        guid,
+                        kind: if player {
+                            ObjectType::Player
+                        } else {
+                            ObjectType::Unit
+                        },
+                        index: field,
+                        old,
+                        new,
+                    });
+                }
+            });
         }
         floor_context.7.applied(readiness_revision);
         if spawned {
@@ -899,6 +951,7 @@ pub(crate) fn apply(
                         .and_then(|s| s.catalog.get(event.spell))
                         .map_or(0, |s| s.school);
                     control.pending_cues.push(crate::planner_cues::CastCue {
+                        spell_id: event.spell,
                         source,
                         at: event.t,
                         school,

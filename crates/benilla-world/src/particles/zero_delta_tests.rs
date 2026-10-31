@@ -47,6 +47,7 @@ fn spawn(app: &mut App, burst: bool) -> (Entity, Entity) {
     let model = benilla_assets::ModelEmitter {
         def,
         texture: Some(texture),
+        extra_textures: None,
         bone_pivot: [0.; 3],
         billboard: None,
         recursion: None,
@@ -79,6 +80,7 @@ fn spawn(app: &mut App, burst: bool) -> (Entity, Entity) {
         let mut child_def = crate::testing::plain_particle_def();
         child_def.emission_rate_variation = 0.5;
         pool.children.push(ChildEmitter {
+            extra_textures: None,
             def: child_def,
             texture,
             particles: Vec::new(),

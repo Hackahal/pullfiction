@@ -9,13 +9,19 @@ optional `sourceDocumentURL` identifies that exact document. Its retrieval time
 and hash apply to the zone page. The NPC URL remains an individual reference link.
 
 The prepared snapshot is partial. It resolves 205 of 505 requested `vanilla`
-NPC identifiers and 152 of 233 requested `sod` identifiers. The remaining
-300 vanilla and 81 SoD identifiers have no bundled reference. The 2026-10-28
-Scarlet Enclave pass added 146 references from validated individual NPC pages,
-including every boss. Three of the 149 valid NPC/pet identifiers in that pass
-remain unresolved. Retrieval stopped when the source denied access; no other
-source supplies missing values. The earlier snapshot also includes references
-recovered offline from validated cached zone pages.
+NPC identifiers and 224 of 233 requested `sod` identifiers. The remaining
+300 vanilla and nine SoD identifiers have no bundled reference. The 2026-10-31
+Temple of Ahn'Qiraj pass added 72 SoD references from validated individual NPC
+pages, including every boss in the retained full-run replay. All 81 mapped
+NPC and pet identifiers in that replay resolve to display and model file
+identifiers with positive authored scales in the retained 1.15.9.70576 catalog. Nine other valid
+NPC identifiers in that replay remain unresolved after source requests timed
+out. Three report identifiers exceed the supported NPC entry range.
+
+The 2026-10-28 Scarlet Enclave pass added 146 references, including every boss.
+The earlier snapshot also includes references recovered offline from validated
+cached zone pages. Missing references remain explicit; no other source supplies
+missing values.
 
 The developer generator discovers NPC IDs through the NPC Listview on these
 public Classic raid pages:

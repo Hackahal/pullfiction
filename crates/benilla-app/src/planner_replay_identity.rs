@@ -1,5 +1,22 @@
 //! Keep recorded player identity current when another report reuses actor keys.
 use crate::{names::NameCache, query_cache::Ask};
+use benilla_protocol::{messages::ObjectType, ObjectFields};
+
+/// Synthetic actors still need a typed create, just like wire-backed units.
+/// Without it `net::write_fields` merges later snapshots without notifying the
+/// native aura, appearance and other field watchers.
+pub(crate) fn initial_fields(player: bool, fields: &[(u16, u32)]) -> ObjectFields {
+    ObjectFields::from_pairs(fields).into_created(if player {
+        ObjectType::Player
+    } else {
+        ObjectType::Unit
+    })
+}
+
+pub(crate) fn channel_target_fields(target: Option<u64>) -> ObjectFields {
+    let guid = target.unwrap_or(0);
+    ObjectFields::from_pairs(&[(20, guid as u32), (21, (guid >> 32) as u32)])
+}
 
 pub(crate) struct ActorIdentity {
     player: bool,
@@ -32,6 +49,55 @@ pub(crate) fn refresh_player(names: &mut NameCache, guid: u64, name: &str, trait
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn channel_object_descriptor_preserves_guid_and_clears_without_target_evidence() {
+        let guid = 0xf130_0001_0034_5678;
+        let mut fields = initial_fields(true, &[(144, 689)]);
+        crate::net::write_fields(&mut fields, channel_target_fields(Some(guid)));
+        assert_eq!(fields.unit_channel_object(), Some(guid));
+        crate::net::write_fields(&mut fields, channel_target_fields(None));
+        assert_eq!(fields.unit_channel_object(), None);
+        assert_eq!(fields.unit_channel_spell(), 689);
+    }
+
+    #[test]
+    fn synthetic_actor_updates_notify_native_aura_channel_and_appearance_watchers() {
+        for player in [false, true] {
+            let mut fields = initial_fields(
+                player,
+                &[(22, 100), (47, 0), (95, 0), (131, 49), (144, 0), (193, 0)],
+            );
+            assert_eq!(
+                fields.created_as(),
+                Some(if player {
+                    ObjectType::Player
+                } else {
+                    ObjectType::Unit
+                })
+            );
+            let delta = [
+                (22, 50),
+                (47, 17),
+                (95, 2),
+                (131, 10045),
+                (144, 5143),
+                (193, 1),
+            ];
+            let edges = crate::net::write_fields(&mut fields, ObjectFields::from_pairs(&delta));
+            let mut changed: Vec<_> = edges.iter().map(|&(index, _, _)| index).collect();
+            changed.sort_unstable();
+            assert_eq!(changed, [22, 47, 95, 131, 144, 193]);
+            assert_eq!(
+                fields.unit_auras().map(|a| a.spell_id).collect::<Vec<_>>(),
+                [17]
+            );
+            assert_eq!(fields.unit_channel_spell(), 5143);
+            assert!(
+                crate::net::write_fields(&mut fields, ObjectFields::from_pairs(&delta)).is_empty()
+            );
+        }
+    }
 
     #[test]
     fn reused_report_actor_updates_the_original_name_cache() {

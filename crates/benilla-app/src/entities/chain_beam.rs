@@ -181,6 +181,7 @@ pub(super) fn spawn_chain_beams(
     mut consumed: Local<bevy::ecs::entity::EntityHashSet>,
 ) {
     consumed.clear();
+    let mut reaped = bevy::ecs::entity::EntityHashSet::default();
     for ev in kit_fx.read() {
         let SpellKitFx::Reap {
             entity,
@@ -194,6 +195,7 @@ pub(super) fn spawn_chain_beams(
         for (e, beam) in &beams {
             if beam.persistent && beam.caster == *entity && beam.spell_id == *spell_id {
                 commands.entity(e).despawn();
+                reaped.insert(e);
             }
         }
     }
@@ -230,7 +232,11 @@ pub(super) fn spawn_chain_beams(
         // A persistent beam replaces the one before it on the same caster and spell.
         if play.proc.flag {
             for (e, beam) in &beams {
-                if beam.persistent && beam.caster == play.entity && beam.spell_id == play.spell_id {
+                if beam.persistent
+                    && beam.caster == play.entity
+                    && beam.spell_id == play.spell_id
+                    && reaped.insert(e)
+                {
                     commands.entity(e).despawn();
                 }
             }
@@ -445,6 +451,18 @@ pub(crate) fn simulate_chain_beams(
             anchor_sum += (from + to) * 0.5;
             anchor_n += 1.0;
             for pts in bolt.strands.iter_mut() {
+                if dt == 0. && !pts.is_empty() {
+                    // Frozen redraws retain the same noise realization. Explicit
+                    // endpoint updates still translate the existing ribbon.
+                    let from_delta = from - pts[0];
+                    let to_delta = to - *pts.last().unwrap();
+                    let span = (pts.len() - 1) as f32;
+                    for (k, point) in pts.iter_mut().enumerate() {
+                        *point += from_delta.lerp(to_delta, k as f32 / span);
+                    }
+                    push_strand(batch.verts_mut(), pts, half_width, u_scroll, cam_forward);
+                    continue;
+                }
                 subdivide(from, to, effect, rng, &mut scratch);
                 if pts.len() == scratch.len() {
                     // Advect toward the fresh roll, interior only (`0x7afbe7`–`0x7afc81`).
@@ -540,6 +558,147 @@ mod tests {
         });
         app.add_systems(Update, spawn_chain_beams);
         app
+    }
+
+    #[test]
+    fn imported_channel_chain_uses_recorded_target_tracks_motion_and_cleans_up() {
+        use benilla_world::particles::buffer::{begin_effect_frame, EffectQuads};
+        let graph = serde_json::to_vec(&serde_json::json!({
+            "schema": 1, "effects": {},
+            "chainEffects": {"8": {"rendererCompatible": true, "avgSegLen": 2.78,
+                "halfWidth": 0.25, "noiseScale": 0.01, "scrollPeriod": -0.5,
+                "boltLifeMs": 1000, "boltStaggerMs": 200, "textureFileDataIDs": [186214, 0, 0]}},
+            "kits": {"402": {"effects": [], "animations": [], "proceduralEffects": [
+                {"type": 0, "values": [8, 1, 1, 0]}]}},
+            "visuals": {"177": {"events": [
+                {"start": "Channel Start", "target": "Target", "kit": 402}], "missiles": []}},
+            "spells": {"689": {"visuals": [{"id": 177, "priority": 1,
+                "difficulty": 0, "conditions": [0, 0, 0, 0]}]}}
+        }))
+        .unwrap();
+        let mut catalog = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        catalog.merge_modern_json(&graph).unwrap();
+        let kit = catalog.kit(catalog.stages(177).unwrap().channel).unwrap();
+        let proc = catalog.chain_procs(kit)[0];
+        let mut spells = SpellCatalog::from_displays(HashMap::new());
+        spells.merge_modern_json(&graph).unwrap();
+        let mut app = beam_app();
+        app.insert_resource(SpellVisuals(catalog));
+        app.insert_resource(crate::ui_action::Spells {
+            catalog: spells,
+            ..crate::ui_action::Spells::empty_for_tests()
+        });
+        app.insert_resource(bevy::time::TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::ZERO,
+        ));
+        app.init_resource::<EffectQuads>();
+        app.add_systems(
+            PostUpdate,
+            (begin_effect_frame, simulate_chain_beams).chain(),
+        );
+        app.world_mut()
+            .spawn((WorldCamera, GlobalTransform::IDENTITY));
+        let caster = unit(&mut app);
+        let target = unit(&mut app);
+        app.world_mut()
+            .entity_mut(caster)
+            .insert(GlobalTransform::from_xyz(0., 0., -5.));
+        app.world_mut()
+            .entity_mut(target)
+            .insert(GlobalTransform::from_xyz(8., 0., -5.));
+        app.world_mut()
+            .resource_mut::<GuidIndex>()
+            .0
+            .insert(7, target);
+        app.world_mut()
+            .get_mut::<ObjectStore>(caster)
+            .unwrap()
+            .0
+            .merge(benilla_protocol::ObjectFields::from_pairs(&[
+                (144, 689),
+                (20, 7),
+                (21, 0),
+            ]));
+        app.world_mut().write_message(ChainProcPlay {
+            entity: caster,
+            spell_id: 689,
+            proc,
+        });
+        app.update();
+        let beam_entity = app
+            .world_mut()
+            .query_filtered::<Entity, With<ChainBeam>>()
+            .single(app.world())
+            .unwrap();
+        assert_eq!(
+            app.world().get::<ChainBeam>(beam_entity).unwrap().nodes,
+            [caster, target]
+        );
+        let texture = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default());
+        app.world_mut()
+            .get_mut::<ChainBeam>(beam_entity)
+            .unwrap()
+            .texture = texture;
+        app.update();
+        let first: Vec<_> = app
+            .world()
+            .resource::<EffectQuads>()
+            .verts
+            .iter()
+            .map(|v| (v.pos, v.uv, v.color))
+            .collect();
+        assert!(
+            !first.is_empty(),
+            "resident authored texture produces ribbon vertices"
+        );
+        let rng = app.world().get::<ChainBeam>(beam_entity).unwrap().rng;
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<EffectQuads>()
+                .verts
+                .iter()
+                .map(|v| (v.pos, v.uv, v.color))
+                .collect::<Vec<_>>(),
+            first
+        );
+        assert_eq!(app.world().get::<ChainBeam>(beam_entity).unwrap().rng, rng);
+
+        app.world_mut()
+            .entity_mut(caster)
+            .insert(GlobalTransform::from_xyz(1., 2., -5.));
+        app.world_mut()
+            .entity_mut(target)
+            .insert(GlobalTransform::from_xyz(10., 3., -5.));
+        app.update();
+        let quads = app.world().resource::<EffectQuads>();
+        assert_eq!(quads.verts[0].pos, [1., 2., -5.]);
+        assert_eq!(quads.verts[quads.verts.len() - 2].pos, [10., 3., -5.]);
+        app.world_mut().write_message(SpellKitFx::Reap {
+            entity: caster,
+            spell_id: 689,
+            class: FxClass::Hold,
+            force: true,
+        });
+        app.update();
+        assert!(beams(&mut app).is_empty());
+        assert!(app.world().resource::<EffectQuads>().verts.is_empty());
+        app.world_mut().write_message(ChainProcPlay {
+            entity: caster,
+            spell_id: 689,
+            proc,
+        });
+        app.update();
+        assert_eq!(beams(&mut app).len(), 1);
+        app.world_mut().entity_mut(caster).despawn();
+        app.update();
+        assert!(
+            beams(&mut app).is_empty(),
+            "owner removal reclaims the channel beam"
+        );
     }
 
     /// A streamed unit: an empty descriptor store is all the spawner reads off a target.

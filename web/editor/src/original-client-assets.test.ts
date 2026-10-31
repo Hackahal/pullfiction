@@ -6,7 +6,75 @@ import {
   ORIGINAL_UI_FILES,
   ORIGINAL_WORLD_FILES,
   prepareOriginalClient,
+  prepareOriginalUnits,
 } from "./original-client-assets";
+import { bodyAppearanceResource } from "./appearance-assets";
+import { LocalClientFiles } from "./local-client-files";
+
+test("body atlas preparation matches the last descriptor write for repeated equipment slots", async () => {
+  const resources: string[] = [];
+  const files = new LocalClientFiles(
+    {
+      async read(name) {
+        resources.push(name);
+        return new Uint8Array([1]);
+      },
+    },
+    "duplicate-equipment",
+  );
+  const bridge = assetBridge({
+    build: {
+      version: "1.15.9.70576",
+      product: "wow_classic_era",
+      buildKey: "a".repeat(32),
+    },
+    read: async () => ({ bytes: new ArrayBuffer(0) }),
+    model: async () => ({ bytes: new ArrayBuffer(0) }),
+    async catalog(kind) {
+      return kind === "characters"
+        ? { sectionTextureTypes: [{ race: 1, sex: 0, types: [1] }] }
+        : kind === "items"
+          ? { displays: { 33691: {}, 34193: {}, 684817: {} } }
+          : {};
+    },
+    appearance: async () => ({}),
+    close() {},
+  });
+  const unit = {
+    player: true,
+    race: 1,
+    sex: 0,
+    gear: [
+      { slot: 4, display: 33691 },
+      { slot: 9, display: 34193 },
+      { slot: 9, display: 684817 },
+    ],
+  };
+  await prepareOriginalUnits(files, bridge, [unit]);
+  assert.deepEqual(resources, [
+    bodyAppearanceResource({
+      race: 1,
+      sex: 0,
+      look: [0, 0, 0, 0, 0],
+      displays: [0, 33691, 0, 0, 0, 0, 684817, 0],
+    }),
+  ]);
+  // A final missing/unknown display removes the old garment in the renderer too.
+  for (const display of [undefined, 0, 999999]) {
+    await prepareOriginalUnits(files, bridge, [
+      { ...unit, gear: [...unit.gear, { slot: 9, display }] },
+    ]);
+    assert.equal(
+      resources.at(-1),
+      bodyAppearanceResource({
+        race: 1,
+        sex: 0,
+        look: [0, 0, 0, 0, 0],
+        displays: [0, 33691, 0, 0, 0, 0, 0, 0],
+      }),
+    );
+  }
+});
 
 test("original startup prepares native UI bytes and modern catalogs without requesting old tables", async () => {
   const calls: string[] = [];

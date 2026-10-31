@@ -1920,6 +1920,7 @@ mod tests {
                 .map(|_| benilla_assets::ModelEmitter {
                     def: benilla_world::testing::plain_particle_def(),
                     texture: None,
+                    extra_textures: None,
                     bone_pivot: [0.0; 3],
                     billboard: None,
                     recursion: None,

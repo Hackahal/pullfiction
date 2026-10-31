@@ -1293,6 +1293,7 @@ mod tests {
         let mut em = benilla_assets::ModelEmitter {
             def: benilla_world::testing::plain_particle_def(),
             texture: Some(Handle::default()),
+            extra_textures: None,
             bone_pivot: [0.0; 3],
             billboard: None,
             recursion: None,

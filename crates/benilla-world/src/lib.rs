@@ -33,6 +33,7 @@ pub mod testing {
     /// A minimal emitter def for kernel tests; only the fields the emit kernel reads matter.
     pub fn particle_def(shape: ParticleShape) -> ParticleEmitterDef {
         ParticleEmitterDef {
+            modern_material: None,
             head_cell_curve: Vec::new(),
             modern_variation: None,
             life_color_curve: Vec::new(),

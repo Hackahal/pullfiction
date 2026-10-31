@@ -1,7 +1,9 @@
 import { prepareOriginalUnits } from "../original-client-assets";
+import { prepareOriginalSpellEffects } from "../original-spell-assets";
 import type { EditorController } from "../controller";
 import type { Engine } from "../types";
 import { SMOKE_CASES, validateRendererCase, type RendererCase } from "./cases";
+import { applySpellActions, spellTimeline } from "./spell-timeline";
 export interface LabEngine extends Engine {
   rendererArtifactIdentity?(): { schema: number; wasmSha256: string } | null;
   renderer_lab_configure(json: string): void;
@@ -67,6 +69,14 @@ export function cameraEye(c: RendererCase): [number, number, number] {
     target[1] + Math.sin(yaw) * Math.cos(pitch) * distance,
     target[2] + Math.sin(pitch) * distance,
   ];
+}
+/** Assembly readiness includes authored emitter-only and intentionally empty models. */
+export function readyReplayBodyCount(status: any): number {
+  const count =
+    status.resources?.replayBodiesWithReadyVisuals ??
+    status.resources?.replayBodiesWithLoadedMeshes ??
+    0;
+  return Number.isInteger(count) && count >= 0 ? count : 0;
 }
 export function labError(error: unknown): LabSample["status"] {
   if (error instanceof Error && error.name === "RendererFixtureUnsupported")
@@ -206,9 +216,8 @@ export class RendererRunner {
           ? fixtures.every(
               (m: any) => m.loaded && m.dependenciesReady && m.attached,
             )
-          : (status.resources?.replayBodiesWithLoadedMeshes ?? 0) > 0);
-      const bodiesReady =
-        (status.resources?.replayBodiesWithLoadedMeshes ?? 0) >= minimumBodies;
+          : readyReplayBodyCount(status) > 0);
+      const bodiesReady = readyReplayBodyCount(status) >= minimumBodies;
       const worldReady =
         !needsWorld ||
         (status.readiness?.worldPresentable &&
@@ -253,12 +262,32 @@ export class RendererRunner {
       bridge.catalog("creatures"),
       bridge.catalog("items"),
     ]);
+    let preparedSpellGraph: any;
+    let preparedSpellGraphHash: string | undefined;
+    if (cases.some((c) => c.effects.some((e) => e.spellId))) {
+      const bytes = files.readSync("__classic/spell-effects.json");
+      if (!bytes) throw new Error("Prepared spell graph is unavailable");
+      preparedSpellGraph = JSON.parse(new TextDecoder().decode(bytes));
+      preparedSpellGraphHash = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer),
+        ),
+      )
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
     const engine = this.engine();
     engine.set_replay_nameplates(false);
     engine.set_replay_raid_frames(false);
     engine.set_annotations('{"marks":[]}');
     for (const original of cases) {
       const c = resolveStage(original);
+      await prepareOriginalSpellEffects(
+        files,
+        bridge,
+        c.effects.flatMap((effect) => (effect.spellId ? [effect.spellId] : [])),
+        signal,
+      );
       this.expectedMap = c.mapId;
       const isolateWorld = original.mapId === null;
       signal.throwIfAborted();
@@ -331,10 +360,20 @@ export class RendererRunner {
           });
           const race = a.race ?? 1,
             sex = a.sex ?? 0;
+          const look = a.look ?? [0, 0, 0, 0, 0];
           await prepareOriginalUnits(
             files,
             bridge,
-            [{ player: a.kind === "character", race, sex, display, gear }],
+            [
+              {
+                player: a.kind === "character",
+                race,
+                sex,
+                display,
+                gear,
+                look,
+              },
+            ],
             [],
             signal,
           );
@@ -356,7 +395,7 @@ export class RendererRunner {
             friendly: true,
             race,
             sex,
-            look: [0, 0, 0, 0, 0],
+            look,
             gear,
             health: 100,
             max_health: 100,
@@ -370,18 +409,8 @@ export class RendererRunner {
             auras: [],
           });
         }
+        const timeline = spellTimeline(c);
         for (const fx of c.effects) {
-          if (
-            (!fx.modelFileId && !fx.spellId) ||
-            (fx.modelFileId && (fx.stage !== "model" || fx.startMs !== 0)) ||
-            (fx.spellId && !["cast", "flight"].includes(fx.stage))
-          )
-            throw Object.assign(
-              new Error(
-                `Fixture ${fx.id}: this stage/kit routing is not implemented; no rendering credit`,
-              ),
-              { name: "RendererFixtureUnsupported" },
-            );
           if (fx.modelFileId) {
             const path = `__classic/${fx.modelFileId}.m2`;
             await files.prepare([path], signal);
@@ -478,6 +507,7 @@ export class RendererRunner {
             camera,
             frozen: true,
             stepSeconds: 1 / 60,
+            replayTimeMs: 0,
             advanceFrames: 0,
             seed: 1,
             synthetic: c.category === "synthetic",
@@ -491,35 +521,43 @@ export class RendererRunner {
           units.length + models.length > 0,
           c.mapId !== null,
         );
-        let previousMs = 0;
+        let previousFrames = 0,
+          actionIndex = 0;
+        const advanceTo = async (timeMs: number) => {
+          const frame = Math.round((timeMs / 1000) * 60);
+          await this.advance(frame - previousFrames, signal);
+          previousFrames = frame;
+        };
         for (const timeMs of [...c.timesMs].sort((a, b) => a - b)) {
           signal.throwIfAborted();
-          engine.replay_clock?.(timeMs, 1, false);
-          const events = c.effects
-            .filter(
-              (e) =>
-                e.spellId &&
-                !e.modelFileId &&
-                e.startMs >= previousMs &&
-                e.startMs <= timeMs,
-            )
-            .map((e) => ({
-              kind: "go",
-              spell: e.spellId,
-              source: e.casterId,
-              target: e.targetId,
-              t: e.startMs,
-              amount: 0,
-            }));
-          if (events.length)
-            engine.replay_events(JSON.stringify(events), false);
-          await this.advance(
-            Math.round(((timeMs - previousMs) / 1000) * 60),
-            signal,
-          );
+          while (
+            actionIndex < timeline.length &&
+            timeline[actionIndex].atMs <= timeMs
+          ) {
+            const at = timeline[actionIndex].atMs;
+            await advanceTo(at);
+            const actions = [];
+            do {
+              actions.push(timeline[actionIndex++]);
+            } while (
+              actionIndex < timeline.length &&
+              timeline[actionIndex].atMs === at
+            );
+            const { changed, events } = applySpellActions(units, actions);
+            if (changed) engine.set_replay_frame(JSON.stringify(units));
+            if (events.length)
+              engine.replay_events(JSON.stringify(events), false);
+            await this.advance(0, signal); // Apply at this frozen age before advancing past it.
+          }
+          await advanceTo(timeMs);
           // Advancing can spawn model-particle children and their asynchronous assets.
           // Let those draws settle at the requested frozen age before the first readback.
-          await this.ready(signal, units.length + models.length > 0, c.mapId !== null, units.length);
+          await this.ready(
+            signal,
+            units.length + models.length > 0,
+            c.mapId !== null,
+            units.length,
+          );
           const native = await this.request("capture", signal);
           const image = native.image?.dataUrl;
           if (!image?.startsWith("data:image/png;base64,"))
@@ -535,8 +573,38 @@ export class RendererRunner {
             image,
             hash,
             native: {
+              preparedSpellGraph: preparedSpellGraph
+                ? {
+                    sha256: preparedSpellGraphHash,
+                    source: preparedSpellGraph.source,
+                    spells: c.effects
+                      .filter((e) => e.spellId)
+                      .map((e) => ({
+                        id: e.spellId,
+                        choices:
+                          preparedSpellGraph.spells?.[e.spellId!]?.visuals,
+                        visuals: (
+                          preparedSpellGraph.spells?.[e.spellId!]?.visuals ?? []
+                        ).map((v: any) => ({
+                          id: v.id,
+                          events: preparedSpellGraph.visuals?.[v.id]?.events,
+                          channelKits: (
+                            preparedSpellGraph.visuals?.[v.id]?.events ?? []
+                          )
+                            .filter((event: any) =>
+                              event.start?.includes("Channel"),
+                            )
+                            .map((event: any) => ({
+                              id: event.kit,
+                              present: !!preparedSpellGraph.kits?.[event.kit],
+                            })),
+                        })),
+                      })),
+                  }
+                : undefined,
               ...native,
               localPreparedBytes: files.preparedBytes,
+              synchronousPreparationMisses: files.preparationMisses,
               setupPhases,
             },
             preparationMs: performance.now() - start,
@@ -551,7 +619,6 @@ export class RendererRunner {
               sample.changedRepeatImage = second.image?.dataUrl;
           }
           emit(sample);
-          previousMs = timeMs;
         }
       } catch (error) {
         if (signal.aborted) throw error;

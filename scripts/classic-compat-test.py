@@ -80,6 +80,46 @@ def particle_geometry_fixture(geometry_ids=None):
 
 
 class AdapterTest(unittest.TestCase):
+    def test_multitexture_stages_scroll_and_exp2_are_retained_without_signed_short_aliasing(self):
+        source, skin = particle_geometry_fixture()
+        body = bytearray(source[8:])
+        count, particles = read(body, '<II', 0x128)
+        # Keep only the first sprite emitter, with three concrete authored texture stages.
+        put(body, 0x128, 1, particles)
+        textures = len(body)
+        body.extend(bytes(3 * 16))
+        put(body, 0x50, 3, textures)
+        put(body, 0x70, 1, len(body))
+        body.extend(bytes(4))
+        struct.pack_into('<I', body, particles+4, 0x70830021)
+        struct.pack_into('<H', body, particles+22, 0 | (1 << 5) | (2 << 10))
+        body[particles+44:particles+46] = bytes([32, 16])
+        struct.pack_into('<8H', body, particles+476, 0x8019, 384, 128, 128, 25, 25, 0, 0)
+        raw = b'MD21' + struct.pack('<I',len(body)) + body
+        raw += b'TXID' + struct.pack('<I3I',12,101,102,103)
+        exp = bytearray(48)
+        put(exp,0,1,8)
+        struct.pack_into('<3f',exp,8,2.5,1.5,0.75)
+        put(exp,20,2,36,2,40)
+        struct.pack_into('<2H2h',exp,36,0,32767,0,16384)
+        raw += b'EXP2' + struct.pack('<I',len(exp)) + exp
+        output = adapt_model(raw,[skin])
+        magic, offset, count = read(output,'<4sII',len(output)-12)
+        self.assertEqual((magic,count),(b'PFP5',1))
+        self.assertEqual(read(output,'<4I',offset+76),(0x70830021,0,1,2))
+        self.assertEqual(read(output,'<2f',offset+92),(1.0,0.5))
+        self.assertEqual(read(output,'<4f',offset+100),(-25/512,0.75,0.25,0.25))
+        self.assertEqual(read(output,'<2f',offset+132),(1.5,0.75))
+        n, at = read(output,'<II',offset+140)
+        self.assertEqual(n,2)
+        self.assertAlmostEqual(read(output,'<4f',at)[3],16384/32767)
+        self.assertEqual(read(output,'<f2I',offset+148),(2.5,0,1))
+        self.assertTrue(read(output,'<I',read(output,'<I',0x140)[0]+4)[0] & 1)
+        # Material TXAC entries follow emitter entries and do not select particle UV shaders.
+        self.assertEqual(adapt_model(raw+b'TXAC'+struct.pack('<I2H',4,0,0x303),[skin]),output)
+        with self.assertRaisesRegex(UnsupportedFeatureError,'animated particle texture'):
+            adapt_model(raw+b'TXAC'+struct.pack('<I2H',4,1,0),[skin])
+
     def test_gpid_preserves_geometry_particle_indices_and_legacy_fallback(self):
         source, skin = particle_geometry_fixture((101, 0, 103))
         output = adapt_model(source, [skin])

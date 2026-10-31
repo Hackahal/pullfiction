@@ -6,11 +6,13 @@ metadata, including unsupported primitives, rather than pretending it is 1.12 DB
 from pathlib import Path
 import re
 from classic_db2 import decode, DB2Error, f32
+from classic_spell_presentations import SUMMON_CUES
 
 DEFINITIONS = Path(__file__).resolve().parent.parent / 'third_party/wowdbdefs'
 TABLES = ['SpellXSpellVisual', 'SpellVisual', 'SpellVisualEvent', 'SpellVisualKit',
           'SpellVisualKitEffect', 'SpellVisualKitModelAttach', 'SpellVisualEffectName',
-          'SpellVisualAnim', 'SpellVisualMissile', 'SpellMisc', 'SpellCastTimes', 'SpellDuration', 'AnimationData', 'SpellName']
+          'SpellVisualAnim', 'SpellVisualMissile', 'SpellMisc', 'SpellCastTimes', 'SpellDuration', 'AnimationData', 'SpellName',
+          'SpellProceduralEffect', 'SpellChainEffects']
 
 
 def schema(name, layout):
@@ -72,6 +74,39 @@ def enum(name):
             for line in (DEFINITIONS / (name + '.dbde')).read_text().splitlines() if line.strip()}
 
 
+def chain_effect(row):
+    """Export the authored simple-chain subset the retained renderer implements.
+
+    Flag4 selects the original lightning ribbon. Joint, wave, arc, pulse, color,
+    multi-texture and width-curve variants retain their data and remain explicit.
+    """
+    advanced = ['JointCount', 'JointOffsetRadius', 'JointsPerMinorJoint',
+        'MinorJointsPerMajorJoint', 'MinorJointScale', 'MajorJointScale',
+        'JointMoveSpeed', 'JointSmoothness', 'MinDurationBetweenJointJumps',
+        'MaxDurationBetweenJointJumps', 'WaveHeight', 'WaveFreq', 'WaveSpeed',
+        'MinWaveAngle', 'MaxWaveAngle', 'MinWaveSpin', 'MaxWaveSpin', 'ArcHeight',
+        'MinArcAngle', 'MaxArcAngle', 'MinArcSpin', 'MaxArcSpin', 'DelayBetweenEffects',
+        'MinFlickerOnDuration', 'MaxFlickerOnDuration', 'MinFlickerOffDuration',
+        'MaxFlickerOffDuration', 'PulseSpeed', 'PulseOnLength', 'PulseFadeLength',
+        'WidthScaleCurveID', 'NumFlipFramesU', 'NumFlipFramesV',
+        'TextureParticleFileDataID', 'RenderLayer']
+    compatible = (row['Flags'] == 4
+        and not any(row.get(key, 0) for key in advanced)
+        and not any(row.get('SpellChainEffectID', []))
+        and row['StartWidth'] == row['EndWidth']
+        and all(row[key] == 255 for key in ['Alpha', 'Red', 'Green', 'Blue'])
+        and row['BlendMode'] == 3
+        and row['TextureFileDataID'][0] > 0
+        and not any(row['TextureFileDataID'][1:])
+        and row['TextureCoordScaleU'] == [0x3f800000] * 3
+        and not any(row['TextureCoordScaleV'] + row['TextureRepeatLengthU'] + row['TextureRepeatLengthV']))
+    return {'avgSegLen': f32(row['AvgSegLen']), 'halfWidth': f32(row['StartWidth']),
+        'noiseScale': f32(row['NoiseScale']), 'scrollPeriod': f32(row['TexCoordScale']),
+        'boltLifeMs': row['SegDuration'], 'boltStaggerMs': row['SegDelay'],
+        'textureFileDataIDs': row['TextureFileDataID'], 'rendererCompatible': compatible,
+        'authored': row}
+
+
 def spell_catalog(read, source):
     tables, layouts = read_tables(read)
     kinds, targets, effect_types = enum('SpellVisualEventEvent'), enum('SpellVisualEventTargetType'), enum('SpellVisualKitEffectType')
@@ -80,7 +115,11 @@ def spell_catalog(read, source):
         effects[key] = {'fileDataID': row['ModelFileDataID'], 'type': row['Type'],
                         'scale': f32(row['Scale']), 'alpha': f32(row['Alpha']),
                         'speed': f32(row['BaseMissileSpeed'])}
-    kits = {key: {'effects': [], 'animations': [], 'unsupported': []} for key in tables['SpellVisualKit']}
+    chains = {key: chain_effect(row) for key, row in tables['SpellChainEffects'].items()}
+    procedures = {key: {'type': row['Type'], 'values': [f32(v) for v in row['Value']]}
+                  for key, row in tables['SpellProceduralEffect'].items()}
+    kits = {key: {'effects': [], 'animations': [], 'proceduralEffects': [], 'unsupported': []}
+            for key in tables['SpellVisualKit']}
     for key, row in tables['SpellVisualKitEffect'].items():
         kit = kits.get(row['ParentSpellVisualKitID'])
         if kit is None:
@@ -95,6 +134,12 @@ def spell_catalog(read, source):
                 'positioner': a['PositionerID'], 'flags': a['Flags']})
         elif kind == 'SpellVisualAnimID' and ref in tables['SpellVisualAnim']:
             kit['animations'].append(tables['SpellVisualAnim'][ref])
+        elif kind == 'SpellProceduralEffectID' and ref in procedures:
+            proc = procedures[ref]
+            kit['proceduralEffects'].append(dict(proc, id=ref))
+            chain_id = int(proc['values'][0])
+            if proc['type'] not in (0, 12) or not chains.get(chain_id, {}).get('rendererCompatible'):
+                kit['unsupported'].append({'type': kind, 'id': ref})
         else:
             kit['unsupported'].append({'type': kind, 'id': ref})
     visuals = {key: {'events': [], 'missiles': [], 'hasMissile': bool(row['HasMissile']),
@@ -129,6 +174,10 @@ def spell_catalog(read, source):
         spell.update({'attributes': [v & 0xffffffff for v in row['Attributes'][:5]], 'iconFile': row['SpellIconFileDataID'], 'schoolMask': row['SchoolMask'], 'speed': f32(row['Speed']),
             'castMs': ct.get('Base', 0), 'durationMs': duration.get('Duration', 0),
             'channel': bool(row['Attributes'][1] & (4 | 64))})
+    for spell_id, cue in SUMMON_CUES.items():
+        if spell_id in spells:
+            spells[spell_id]['summonCue'] = dict(cue)
     return {'schema': 1, 'source': source, 'layouts': layouts, 'spells': spells,
             'visuals': visuals, 'kits': kits, 'effects': effects,
+            'chainEffects': chains,
             'animationFallbacks': {key: row['Fallback'] for key,row in tables['AnimationData'].items()}}

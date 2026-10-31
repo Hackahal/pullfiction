@@ -11,7 +11,7 @@ use super::buffer::{
     EffectBlend, EffectDrawSpec, EffectFog, EffectLightOverride, EffectLighting, EffectQuads,
     EffectVertex,
 };
-use super::quads::{expand_quads, CamBasis, DrawFrame};
+use super::quads::{expand_particle_quads, CamBasis, DrawFrame};
 use super::{
     accumulate_emission, emit_local, next_u32, rand01, rand_s11, ChildDraw, ChildEmitter,
     EmitterFade, OwnerLoss, Particle, ParticleEmitter, ParticleTuning, MAX_PARTICLES,
@@ -679,6 +679,7 @@ pub(super) fn simulate_particles(
             size_scale,
             water_bound,
             texture,
+            extra_textures,
             recursion: _,
             light_node: _,
             children,
@@ -795,7 +796,14 @@ pub(super) fn simulate_particles(
         //     local coordinates; we fold it into the local frame, because our world axes are
         //     Bevy's, not WoW's.
         let emitter_world = emit_place.transform_point(wow_to_bevy(def.position));
-        let now = def.params.sample(clock_seq, elapsed_s, gseq_now);
+        let mut now = def.params.sample(clock_seq, elapsed_s, gseq_now);
+        if let Some(z_source) = def
+            .modern_material
+            .as_ref()
+            .and_then(|material| material.z_source)
+        {
+            now.z_source = z_source;
+        }
         let emitting = !*draining && def.timing.emitting(clock_seq, elapsed_s, gseq_now);
         let mut rate = def.timing.rate(clock_seq, elapsed_s, gseq_now);
         let dist_lod =
@@ -966,7 +974,15 @@ pub(super) fn simulate_particles(
                 let c_emitting =
                     !*draining && child.def.timing.emitting(None, *age, f64::from(*age));
                 let c_rate = child.def.timing.rate(None, *age, f64::from(*age));
-                let c_now = child.def.params.sample(None, *age, f64::from(*age));
+                let mut c_now = child.def.params.sample(None, *age, f64::from(*age));
+                if let Some(z_source) = child
+                    .def
+                    .modern_material
+                    .as_ref()
+                    .and_then(|material| material.z_source)
+                {
+                    c_now.z_source = z_source;
+                }
                 drive_child(
                     child,
                     &c_now,
@@ -1013,7 +1029,16 @@ pub(super) fn simulate_particles(
             up: e_up,
         };
         // A geometry emitter draws instances ([`super::model`]), never quads.
-        let want_quads = def.geometry_model.is_none() && images.contains(&*texture);
+        let want_quads = def.geometry_model.is_none()
+            && images.contains(&*texture)
+            && (!def
+                .modern_material
+                .as_ref()
+                .is_some_and(|material| material.multi_texture())
+                || extra_textures.is_some())
+            && extra_textures
+                .as_ref()
+                .is_none_or(|textures| textures.iter().all(|texture| images.contains(texture)));
         // One rung for every effect of a model, plus the water interleave: a cloud on the eye's
         // far side sorts under the water pass, classified once per model (`0x7084a0`).
         let far = !is_booth
@@ -1045,7 +1070,7 @@ pub(super) fn simulate_particles(
             };
         let start = quads.begin();
         if want_quads && !particles.is_empty() {
-            expand_quads(def, particles, &frame, placement, &cam, &mut quads.verts);
+            expand_particle_quads(def, particles, &frame, placement, &cam, &mut quads);
         }
         // `$WOW_PARTICLE_DEPTHDUMP` over the quads just written; booths draw to their own target.
         if let Some(fidx) = dump_frame {
@@ -1090,7 +1115,7 @@ pub(super) fn simulate_particles(
         // The model's committed light, shared by its child draws: one light node per model.
         let committed = owner_mul.committed_light(lit_by);
         let lighting = fold_committed_light(&mut quads.verts[start as usize..], def.lit, committed);
-        quads.commit_quads(
+        quads.commit_particle_quads(
             start,
             EffectDrawSpec {
                 cam: draw_cam,
@@ -1109,27 +1134,41 @@ pub(super) fn simulate_particles(
                 // A UI model tile's pane cell (`set_clip`); `None` in the world.
                 clip: *clip,
             },
+            extra_textures
+                .as_ref()
+                .map(|textures| [textures[0].id(), textures[1].id()]),
         );
         // Child pools: their own texture, blend and fog, the parent's anchor and rung.
         for child in children.iter() {
-            if child.particles.is_empty() || !images.contains(&child.texture) {
+            if child.particles.is_empty()
+                || !images.contains(&child.texture)
+                || (child
+                    .def
+                    .modern_material
+                    .as_ref()
+                    .is_some_and(|material| material.multi_texture())
+                    && child.extra_textures.is_none())
+                || child.extra_textures.as_ref().is_some_and(|textures| {
+                    textures.iter().any(|texture| !images.contains(texture))
+                })
+            {
                 continue;
             }
             let cstart = quads.begin();
-            expand_quads(
+            expand_particle_quads(
                 &child.def,
                 &child.particles,
                 &frame,
                 placement,
                 &cam,
-                &mut quads.verts,
+                &mut quads,
             );
             let child_lighting = fold_committed_light(
                 &mut quads.verts[cstart as usize..],
                 child.def.lit,
                 committed,
             );
-            quads.commit_quads(
+            quads.commit_particle_quads(
                 cstart,
                 EffectDrawSpec {
                     cam: draw_cam,
@@ -1152,6 +1191,10 @@ pub(super) fn simulate_particles(
                     // The parent's cell and clip.
                     clip: *clip,
                 },
+                child
+                    .extra_textures
+                    .as_ref()
+                    .map(|textures| [textures[0].id(), textures[1].id()]),
             );
         }
     }

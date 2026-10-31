@@ -15,6 +15,7 @@ export default defineConfig(() => {
     },
     build: { outDir: "../../.agent/work/editor", emptyOutDir: false, target: "es2022" },
     server: {
+      hmr: process.env.PULLFICTION_RENDERER_LAB_NO_HMR === "1" ? false : undefined,
       proxy: Object.fromEntries(["/archive", "/metadata", "/snippets", "/pullfiction_viewer"].map(path => [path, runtime])),
     },
   };

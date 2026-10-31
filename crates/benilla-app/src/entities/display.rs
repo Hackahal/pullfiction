@@ -182,6 +182,47 @@ pub(crate) struct DisplayModel {
     pub(super) is_character_body: bool,
 }
 
+/// Asset/assembly state, independent of whether this model draws mesh batches.
+#[cfg(all(target_arch = "wasm32", feature = "renderer-lab"))]
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DisplayDiagnosticState {
+    pub model_loaded: bool,
+    pub dependencies_ready: bool,
+    pub parts_prepared: bool,
+    pub authored_mesh_parts: usize,
+    pub authored_emitters: usize,
+    pub authored_ribbons: usize,
+}
+
+#[cfg(all(target_arch = "wasm32", feature = "renderer-lab"))]
+pub(crate) fn diagnostic_creature_display(
+    creatures: &super::Creatures,
+    display_id: u32,
+    assets: &AssetServer,
+) -> Option<DisplayDiagnosticState> {
+    let display = creatures.models.get(&display_id)?;
+    let (model_loaded, dependencies_ready) = match &display.handle {
+        ModelHandle::M2(handle) => (
+            assets.is_loaded(handle.id()),
+            assets.is_loaded_with_dependencies(handle.id()),
+        ),
+        ModelHandle::Wmo(handle) => (
+            assets.is_loaded(handle.id()),
+            assets.is_loaded_with_dependencies(handle.id()),
+        ),
+        ModelHandle::None => (false, false),
+    };
+    Some(DisplayDiagnosticState {
+        model_loaded,
+        dependencies_ready,
+        parts_prepared: display.parts.is_some(),
+        authored_mesh_parts: display.parts.as_ref().map_or(0, Vec::len),
+        authored_emitters: display.emitters.len(),
+        authored_ribbons: display.ribbons.len(),
+    })
+}
+
 impl DisplayModel {
     /// Whether an emitter rides a bone the idle poses: the Corrupted Ashbringer's glow bones carry
     /// constant turns that set the plane of its XY quads.

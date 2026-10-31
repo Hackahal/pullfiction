@@ -17,6 +17,7 @@ use benilla_world::model_fade::{
 };
 
 use super::super::equipment::AppliedEquipment;
+use super::super::skin_composite::BodyAtlas;
 use super::super::{
     Characters, Creatures, EntityPart, Equipment, ItemDisplays, SkinComposites, SkinSections,
     VisualAttached,
@@ -106,26 +107,27 @@ pub(in crate::entities) fn redress_player_looks(
         if net.kind != EntityKind::Player || !live.settled || *live == applied.0 {
             continue;
         }
-        // Stamp first: a model-less player has nothing to re-dress and must not retry every frame.
-        applied.0 = *live;
         let Some(dm) = net
             .display_id
             .and_then(|disp| creatures.as_deref()?.models.get(&disp))
         else {
+            // A model-less player has nothing to re-dress and must not retry every frame.
+            applied.0 = *live;
             continue;
         };
         let Some(parts) = dm.parts.as_deref() else {
+            applied.0 = *live;
             continue;
         };
 
         let worn = resolve_worn_equip(net, Some(live), Some(dm));
         let look = resolve_char_look(net, Some(dm), entity, &stores);
         // A re-dress is the reference's incremental composite (`0x47789c`–`0x4778c3`): the new
-        // geosets apply at once and the atlas composites that frame when its sections are
-        // resident, never gated or withheld. So it composites here, in the frame, taking over a
-        // running composite of the same look; only an arriving body waits for its atlas.
-        let body_tex = look.as_ref().and_then(|l| {
-            forced_body_atlas(
+        // atlas composites that frame when its sections are resident, taking over a running
+        // composite. A browser-local preparation wait keeps the previous appearance intact
+        // and leaves AppliedEquipment unchanged so this same production path retries.
+        let body_tex = match look.as_ref() {
+            Some(l) => match forced_body_atlas(
                 l,
                 skin_key(l, worn.bodyslots, worn.emblem, worn.tabard_preview),
                 displays.as_deref(),
@@ -133,8 +135,13 @@ pub(in crate::entities) fn redress_player_looks(
                 &mut skin_composites,
                 &asset_server,
                 &mut images,
-            )
-        });
+            ) {
+                BodyAtlas::Ready(texture) => texture,
+                BodyAtlas::Pending => continue,
+            },
+            None => None,
+        };
+        applied.0 = *live;
         let eg = equip_geosets(
             displays.as_deref(),
             &worn.bodyslots,
@@ -594,6 +601,91 @@ mod tests {
             s.app.world().get::<AppliedEquipment>(s.player).unwrap().0,
             gear,
         );
+    }
+
+    /// The real re-dress system must leave both its retry marker and its standing materials
+    /// alone while the forced compositor reports a prepared-source wait.
+    #[test]
+    fn an_unprepared_forced_atlas_preserves_the_standing_look_and_retries() {
+        use super::super::super::skin_composite::TextureReadiness;
+        for terminal_atlas_present in [false, true] {
+            let mut s = stand(&[0, 401], &[0, 1], None);
+            let before = s.applied();
+            let old_parts: Vec<_> = s
+                .app
+                .world_mut()
+                .query::<(Entity, &MeshMaterial3d<WowModelMaterial>)>()
+                .iter(s.app.world())
+                .map(|(entity, material)| (entity, material.0.clone()))
+                .collect();
+            let mut gear = before;
+            gear.bodyslots[6] = 7;
+            let key = super::super::super::SkinKey {
+                race: 1,
+                sex: 0,
+                skin: 0,
+                face: 0,
+                facial_hair: 0,
+                hair_style: 0,
+                hair_color: 0,
+                equip: gear.bodyslots,
+                emblem: None,
+                tabard_preview: false,
+            };
+            s.app
+                .world_mut()
+                .resource_mut::<SkinComposites>()
+                .unprepared
+                .insert(
+                    key,
+                    TextureReadiness {
+                        path: "prepared-body.blp".into(),
+                        ready: Box::new(|| false),
+                    },
+                );
+            s.wear(gear);
+            for _ in 0..10 {
+                s.app.update();
+            }
+            assert_eq!(
+                s.applied(),
+                before,
+                "an unprepared atlas must keep the retry marker"
+            );
+            assert_eq!(s.showing(), vec![0, 1], "the previous body keeps drawing");
+            for (entity, material) in &old_parts {
+                assert_eq!(
+                    &s.app
+                        .world()
+                        .get::<MeshMaterial3d<WowModelMaterial>>(*entity)
+                        .unwrap()
+                        .0,
+                    material
+                );
+            }
+            assert!(s.app.world().get_entity(s.held).is_ok());
+
+            // A completed composite lands in this production cache. Ready(None), the real
+            // terminal unsupported/missing result, must also advance AppliedEquipment once.
+            let texture = terminal_atlas_present.then(|| {
+                s.app
+                    .world_mut()
+                    .resource_mut::<Assets<Image>>()
+                    .add(Image::default())
+            });
+            {
+                let mut composites = s.app.world_mut().resource_mut::<SkinComposites>();
+                composites.unprepared.remove(&key);
+                composites.done.insert(key, texture);
+            }
+            s.app.update();
+            assert_eq!(
+                s.applied(),
+                gear,
+                "the same system retries and commits a terminal result"
+            );
+            assert_eq!(s.showing(), vec![0, 1]);
+        }
     }
 
     /// Against the shipped tables: gloves hide the bare-hand 401 batch and show the item's 402, by

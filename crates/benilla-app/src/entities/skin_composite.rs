@@ -52,12 +52,24 @@ pub(super) struct SkinKey {
 pub(super) enum BodyAtlas {
     /// Ready to bind; `None` for a look with no atlas (no base skin row, or art that never read).
     Ready(Option<Handle<Image>>),
-    /// Its composite is running.
+    /// Its composite is running or its browser-local source still needs preparation.
     Pending,
 }
 
 /// A composite's whole work, run where it lands: reads, decodes and blits.
-type Work = Box<dyn FnOnce() -> Option<BlpMipChain> + Send>;
+type Work = Box<dyn FnOnce() -> CompositeResult + Send>;
+
+enum CompositeResult {
+    Complete(Option<BlpMipChain>),
+    /// The browser-local source has not prepared this file yet. Keep the body pending and
+    /// check its cheap readiness lookup before doing any more reads or decoding.
+    Unprepared(TextureReadiness),
+}
+
+pub(super) struct TextureReadiness {
+    pub(super) path: String,
+    pub(super) ready: Box<dyn Fn() -> bool + Send + Sync>,
+}
 
 /// Composited body skins by look, so every body wearing a look shares one atlas, and the
 /// composites still running.
@@ -67,10 +79,22 @@ pub(super) struct SkinComposites {
     /// no atlas, so it is never retried.
     pub(super) done: SpatialCache<SkinKey, Option<Handle<Image>>>,
     /// Composites on the async compute pool, one per look however many bodies wait on it.
-    running: HashMap<SkinKey, Task<Option<BlpMipChain>>>,
+    running: HashMap<SkinKey, Task<CompositeResult>>,
+    pub(super) unprepared: HashMap<SkinKey, TextureReadiness>,
 }
 
 impl SkinComposites {
+    /// A cached terminal answer or a preparation wait. No source tables are needed for either.
+    pub(super) fn cached_atlas(&mut self, key: SkinKey) -> Option<BodyAtlas> {
+        if let Some(done) = self.done.fetch(&key) {
+            return Some(BodyAtlas::Ready(done));
+        }
+        self.unprepared
+            .get(&key)
+            .is_some_and(|file| !(file.ready)())
+            .then_some(BodyAtlas::Pending)
+    }
+
     /// A world body's atlas: finished, or running, its composite started here on a miss. `plan` is
     /// read only then; `None` is a look with no atlas.
     pub(super) fn request(
@@ -90,6 +114,14 @@ impl SkinComposites {
         if self.running.contains_key(&key) {
             return BodyAtlas::Pending;
         }
+        if self
+            .unprepared
+            .get(&key)
+            .is_some_and(|file| !(file.ready)())
+        {
+            return BodyAtlas::Pending;
+        }
+        self.unprepared.remove(&key);
         let Some(work) = work() else {
             self.done.insert(key, None);
             return BodyAtlas::Ready(None);
@@ -112,7 +144,7 @@ impl SkinComposites {
         sections: &SkinSections,
         plan: impl FnOnce() -> Option<CompositePlan>,
         images: &mut Assets<Image>,
-    ) -> Option<Handle<Image>> {
+    ) -> BodyAtlas {
         self.force_with(
             key,
             || plan().map(|p| work(p, sections.chain.clone())),
@@ -126,15 +158,21 @@ impl SkinComposites {
         key: SkinKey,
         work: impl FnOnce() -> Option<Work>,
         images: &mut Assets<Image>,
-    ) -> Option<Handle<Image>> {
-        if let Some(done) = self.done.fetch(&key) {
-            return done;
+    ) -> BodyAtlas {
+        if let Some(cached) = self.cached_atlas(key) {
+            return cached;
         }
+        self.unprepared.remove(&key);
         let atlas = match self.running.remove(&key) {
             Some(task) => block_on(task),
-            None => work().and_then(|w| w()),
+            None => work().map_or(CompositeResult::Complete(None), |w| w()),
         };
-        self.install(key, atlas, images)
+        let atlas = self.install(key, atlas, images);
+        if self.unprepared.contains_key(&key) {
+            BodyAtlas::Pending
+        } else {
+            BodyAtlas::Ready(atlas)
+        }
     }
 
     /// Move every finished composite into [`Self::done`]; how many landed.
@@ -159,9 +197,20 @@ impl SkinComposites {
     fn install(
         &mut self,
         key: SkinKey,
-        atlas: Option<BlpMipChain>,
+        result: CompositeResult,
         images: &mut Assets<Image>,
     ) -> Option<Handle<Image>> {
+        let atlas = match result {
+            CompositeResult::Unprepared(file) => {
+                warn!(
+                    "body skin waits for prepared texture '{}' ({key:?})",
+                    file.path
+                );
+                self.unprepared.insert(key, file);
+                return None;
+            }
+            CompositeResult::Complete(atlas) => atlas,
+        };
         // Through the upload gate like every texture: a no-op on this RGBA8 composite, but it
         // keeps the format and the bytes in agreement.
         let handle = atlas.map(|a| {
@@ -180,20 +229,77 @@ impl SkinComposites {
         self.running.len()
     }
 
-    /// Drop every atlas and every running composite: the map-change teardown.
+    /// Drop every atlas, running composite and preparation wait: the map-change teardown.
     pub(super) fn clear(&mut self) {
         self.done.clear();
         self.running.clear();
+        self.unprepared.clear();
     }
 }
 
 /// A plan's work over the shared chain, which each read locks for its archive lookup alone.
 fn work(plan: CompositePlan, chain: Arc<Mutex<Chain>>) -> Work {
     Box::new(move || {
-        plan.run(|path| read_texture(&chain, path))
-            .inspect_err(|e| warn!("body skin composite failed: {e:#}"))
-            .ok()
+        let mut unprepared = None;
+        let result = plan.run(|path| {
+            let result = read_texture(&chain, path);
+            if result.as_ref().is_err_and(|error| source_unprepared(error)) {
+                unprepared = Some(path.to_owned());
+            }
+            result
+        });
+        finish_work(result, || {
+            let path = unprepared.expect("an unprepared read names its texture");
+            let probe_path = path.clone();
+            TextureReadiness {
+                path,
+                ready: Box::new(move || texture_prepared(&probe_path)),
+            }
+        })
     })
+}
+
+fn source_unprepared(error: &anyhow::Error) -> bool {
+    #[cfg(any(target_arch = "wasm32", test))]
+    {
+        error.chain().any(|cause| {
+            cause
+                .downcast_ref::<std::io::Error>()
+                .is_some_and(|error| error.kind() == std::io::ErrorKind::WouldBlock)
+        })
+    }
+    #[cfg(not(any(target_arch = "wasm32", test)))]
+    {
+        let _ = error;
+        false
+    }
+}
+
+/// Preserve the local provider's typed readiness error through the compositor's context.
+/// Missing files, invalid BLPs and unsupported appearances remain terminal cache entries.
+fn finish_work(
+    result: anyhow::Result<BlpMipChain>,
+    readiness: impl FnOnce() -> TextureReadiness,
+) -> CompositeResult {
+    match result {
+        Ok(atlas) => CompositeResult::Complete(Some(atlas)),
+        Err(error) if source_unprepared(&error) => CompositeResult::Unprepared(readiness()),
+        Err(error) => {
+            warn!("body skin composite failed: {error:#}");
+            CompositeResult::Complete(None)
+        }
+    }
+}
+
+fn texture_prepared(_path: &str) -> bool {
+    #[cfg(target_arch = "wasm32")]
+    if benilla_formats::browser_local::active() {
+        return !matches!(
+            benilla_formats::browser_local::contains_sync(_path),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock
+        );
+    }
+    true
 }
 
 /// Read and decode one BLP off `chain`, locked only to find its archive.
@@ -260,8 +366,8 @@ mod tests {
         let ran = ran.clone();
         let work: Work = Box::new(move || {
             ran.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            rx.recv_timeout(std::time::Duration::from_secs(2)).ok()?;
-            Some(atlas())
+            let finished = rx.recv_timeout(std::time::Duration::from_secs(2)).is_ok();
+            CompositeResult::Complete(finished.then(atlas))
         });
         (tx, work)
     }
@@ -331,10 +437,13 @@ mod tests {
             || panic!("a running look starts no second composite"),
             &mut images,
         );
-        assert!(forced.is_some(), "the running composite's atlas");
+        assert!(
+            matches!(forced, BodyAtlas::Ready(Some(_))),
+            "the running composite's atlas"
+        );
         assert_eq!(ran.load(std::sync::atomic::Ordering::SeqCst), 1);
         assert_eq!(c.running(), 0);
-        assert_eq!(c.request_with(key(3), || None), BodyAtlas::Ready(forced));
+        assert_eq!(c.request_with(key(3), || None), forced);
     }
 
     /// A look with no atlas is ready at once, as `None`, and never retried.
@@ -347,6 +456,153 @@ mod tests {
             BodyAtlas::Ready(None)
         );
         assert_eq!(c.running(), 0);
+    }
+
+    /// Exercise the actual async request/land/upload transition with the transport's typed
+    /// unprepared error, then real BLP bytes once that same source becomes ready.
+    #[test]
+    fn an_unprepared_texture_waits_without_recompositing_and_recovers_when_prepared() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        AsyncComputeTaskPool::get_or_init(bevy::tasks::TaskPool::new);
+        let mut c = SkinComposites::default();
+        let mut images = Assets::<Image>::default();
+        let ready = Arc::new(AtomicBool::new(false));
+        let reads = Arc::new(AtomicUsize::new(0));
+        let make_work = || {
+            let ready = ready.clone();
+            let reads = reads.clone();
+            Some(Box::new(move || {
+                reads.fetch_add(1, Ordering::SeqCst);
+                let result = if ready.load(Ordering::SeqCst) {
+                    // One BGRA texel in the same BLP2 input used by prepared browser atlases.
+                    let mut bytes = vec![0u8; 1176];
+                    bytes[..4].copy_from_slice(b"BLP2");
+                    bytes[4..8].copy_from_slice(&1u32.to_le_bytes());
+                    bytes[8..12].copy_from_slice(&[3, 8, 0, 1]);
+                    bytes[12..16].copy_from_slice(&1u32.to_le_bytes());
+                    bytes[16..20].copy_from_slice(&1u32.to_le_bytes());
+                    bytes[20..24].copy_from_slice(&1172u32.to_le_bytes());
+                    bytes[84..88].copy_from_slice(&4u32.to_le_bytes());
+                    bytes[1172..].copy_from_slice(&[30, 20, 10, 255]);
+                    blp_bytes_to_mip_chain(&bytes)
+                } else {
+                    Err(std::io::Error::new(std::io::ErrorKind::WouldBlock, "not prepared").into())
+                }
+                .context("reading base skin 'prepared-body.blp'");
+                finish_work(result, || TextureReadiness {
+                    path: "prepared-body.blp".into(),
+                    ready: Box::new(move || ready.load(Ordering::SeqCst)),
+                })
+            }) as Work)
+        };
+        assert_eq!(c.request_with(key(1), make_work), BodyAtlas::Pending);
+        land_until(&mut c, &mut images, key(1));
+        assert!(
+            c.done.is_empty(),
+            "unprepared is not a permanent missing atlas"
+        );
+        assert_eq!(c.unprepared.len(), 1);
+        for _ in 0..100 {
+            assert_eq!(
+                c.request_with(key(1), || panic!("no new read before readiness")),
+                BodyAtlas::Pending
+            );
+        }
+        assert_eq!(
+            c.force_with(
+                key(1),
+                || panic!("forced callers also respect readiness"),
+                &mut images
+            ),
+            BodyAtlas::Pending
+        );
+        assert_eq!(reads.load(Ordering::SeqCst), 1);
+        ready.store(true, Ordering::SeqCst);
+        assert_eq!(c.request_with(key(1), make_work), BodyAtlas::Pending);
+        land_until(&mut c, &mut images, key(1));
+        let BodyAtlas::Ready(Some(handle)) =
+            c.request_with(key(1), || panic!("reuse uploaded atlas"))
+        else {
+            panic!("prepared body uploads and becomes ready");
+        };
+        assert_eq!(
+            images.get(&handle).unwrap().data.as_deref(),
+            Some([10, 20, 30, 255].as_slice())
+        );
+        assert_eq!(reads.load(Ordering::SeqCst), 2);
+        assert!(c.unprepared.is_empty());
+    }
+
+    #[test]
+    fn missing_or_corrupt_textures_stay_terminal_without_readiness_probes() {
+        AsyncComputeTaskPool::get_or_init(bevy::tasks::TaskPool::new);
+        let mut c = SkinComposites::default();
+        let mut images = Assets::<Image>::default();
+        let errors = [
+            anyhow::Error::from(std::io::Error::new(std::io::ErrorKind::NotFound, "absent")),
+            blp_bytes_to_mip_chain(b"corrupt BLP").unwrap_err(),
+        ];
+        for (i, error) in errors.into_iter().enumerate() {
+            let key = key(i as u8 + 1);
+            let work: Work = Box::new(move || {
+                finish_work(Err(error).context("base skin"), || {
+                    panic!("permanent failures do not probe readiness")
+                })
+            });
+            assert_eq!(c.request_with(key, || Some(work)), BodyAtlas::Pending);
+            land_until(&mut c, &mut images, key);
+            for _ in 0..100 {
+                assert_eq!(
+                    c.request_with(key, || panic!("permanent failures never retry")),
+                    BodyAtlas::Ready(None)
+                );
+            }
+        }
+        assert!(c.unprepared.is_empty());
+    }
+
+    #[test]
+    fn a_forced_unprepared_atlas_can_recover_and_teardown_drops_preparation_waits() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let mut c = SkinComposites::default();
+        let mut images = Assets::<Image>::default();
+        let ready = Arc::new(AtomicBool::new(false));
+        let probe = ready.clone();
+        let work: Work = Box::new(move || {
+            finish_work(
+                Err(std::io::Error::new(std::io::ErrorKind::WouldBlock, "not prepared").into()),
+                || TextureReadiness {
+                    path: "forced-body.blp".into(),
+                    ready: Box::new(move || probe.load(Ordering::SeqCst)),
+                },
+            )
+        });
+        assert_eq!(
+            c.force_with(key(1), || Some(work), &mut images),
+            BodyAtlas::Pending
+        );
+        assert!(c.done.is_empty());
+        ready.store(true, Ordering::SeqCst);
+        assert!(matches!(
+            c.force_with(
+                key(1),
+                || Some(Box::new(|| CompositeResult::Complete(Some(atlas())))),
+                &mut images
+            ),
+            BodyAtlas::Ready(Some(_))
+        ));
+        assert!(c.unprepared.is_empty());
+
+        c.unprepared.insert(
+            key(2),
+            TextureReadiness {
+                path: "waiting-body.blp".into(),
+                ready: Box::new(|| false),
+            },
+        );
+        c.clear();
+        assert!(c.unprepared.is_empty());
+        assert!(c.done.is_empty());
     }
 
     /// The map-change teardown drops running composites with the cache: a body still waiting

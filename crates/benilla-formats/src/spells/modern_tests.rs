@@ -2,6 +2,39 @@
 use super::*;
 
 #[test]
+fn illustrative_summon_visuals_keep_their_provenance_and_require_a_local_spell() {
+    let mut catalog = SpellCatalog::from_displays(HashMap::new());
+    let fixture = |provenance: &str, visual: u32| {
+        format!(
+            r#"{{"schema":1,"spells":{{"440802":{{"visuals":[],"summonCue":{{"displayID":114765,"visualSpellID":{visual},"presentation":"{provenance}"}}}},"440804":{{"visuals":[]}}}}}}"#
+        )
+    };
+    catalog
+        .merge_modern_json(fixture("illustrative", 440804).as_bytes())
+        .unwrap();
+    assert_eq!(
+        catalog.summon_cue(440802),
+        Some(SummonCueVisual {
+            display_id: 114765,
+            visual_spell_id: 440804
+        })
+    );
+    assert!(catalog
+        .merge_modern_json(fixture("recorded", 440804).as_bytes())
+        .is_err());
+    assert!(catalog
+        .merge_modern_json(fixture("illustrative", 999).as_bytes())
+        .is_err());
+    assert!(catalog
+        .merge_modern_json(fixture("illustrative", 0).as_bytes())
+        .is_err());
+    catalog
+        .merge_modern_json(br#"{"schema":1,"spells":{"440802":{"visuals":[]}}}"#)
+        .unwrap();
+    assert_eq!(catalog.summon_cue(440802), None);
+}
+
+#[test]
 fn modern_spell_names_reach_original_display_records_with_visual_metadata() {
     let mut catalog = SpellCatalog::from_displays(HashMap::new());
     catalog

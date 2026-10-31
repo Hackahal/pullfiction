@@ -443,6 +443,136 @@ fn the_cast_edges_reap_unforced_and_a_channels_end_forced() {
     assert_eq!(reaps(&mut app), [(SPELL, true)], "the channel's end");
 }
 
+/// Modern DB2 channel events can target `Target` while the channel descriptor
+/// remains on the caster. Exercise the imported graph through the actual poll,
+/// including a stable held frame and the descriptor's falling edge.
+#[test]
+fn modern_target_channel_graph_arms_holds_and_effects_until_descriptor_clears() {
+    use benilla_protocol::field::FIELD_UNIT_CHANNEL_SPELL;
+
+    let graph = serde_json::to_vec(&serde_json::json!({
+        "schema": 1,
+        "effects": {"272": {"type": 0, "fileDataID": 166526}},
+        "kits": {"729": {
+            "animations": [{"InitialAnimID": -1, "LoopAnimID": 124}],
+            "effects": [
+                {"id": 367687, "effect": 272, "attachment": 21},
+                {"id": 367688, "effect": 272, "attachment": 22}
+            ]
+        }},
+        "visuals": {"262": {
+            "events": [{"start": "Channel Start", "target": "Target", "kit": 729}],
+            "missiles": []
+        }},
+        "spells": {"5143": {"visuals": [{"id": 262, "priority": 1,
+            "difficulty": 0, "conditions": [0, 0, 0, 0]}]}}
+    }))
+    .unwrap();
+    let mut visuals = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    visuals.merge_modern_json(&graph).unwrap();
+    let mut spells = SpellCatalog::from_displays(HashMap::new());
+    spells.merge_modern_json(&graph).unwrap();
+    let mut app = app();
+    app.insert_resource(SpellVisuals(visuals));
+    app.insert_resource(crate::ui_action::Spells {
+        catalog: spells,
+        ..crate::ui_action::Spells::empty_for_tests()
+    });
+    let caster = app
+        .world_mut()
+        .spawn(crate::net::ObjectStore(
+            benilla_protocol::ObjectFields::from_pairs(&[(FIELD_UNIT_CHANNEL_SPELL, 5143)])
+                .into_created(benilla_protocol::messages::ObjectType::Unit),
+        ))
+        .id();
+    app.update();
+    let held = app.world().entity(caster).get::<CastHold>().unwrap();
+    assert_eq!((held.spell_id, held.anim_id), (5143, 124));
+    let begins: Vec<_> = app
+        .world_mut()
+        .resource_mut::<Messages<SpellKitFx>>()
+        .drain()
+        .filter_map(|fx| match fx {
+            SpellKitFx::Begin {
+                entity,
+                spell_id,
+                persistent,
+                class,
+                stage,
+                effects,
+            } => Some((entity, spell_id, persistent, class, stage, effects)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(begins.len(), 1);
+    let (owner, spell, persistent, class, stage, effects) = &begins[0];
+    assert_eq!((*owner, *spell, *persistent), (caster, 5143, true));
+    assert_eq!(
+        (*class, *stage),
+        (super::FxClass::Hold, super::FxStage::State)
+    );
+    assert_eq!(effects.iter().map(|e| e.tag).collect::<Vec<_>>(), [21, 22]);
+    assert!(effects.iter().all(|e| e.path == "__classic/166526.m2"));
+
+    app.update();
+    assert!(app.world().entity(caster).contains::<CastHold>());
+    assert_eq!(
+        app.world_mut()
+            .resource_mut::<Messages<SpellKitFx>>()
+            .drain()
+            .count(),
+        0
+    );
+    app.world_mut()
+        .get_mut::<crate::net::ObjectStore>(caster)
+        .unwrap()
+        .0
+        .merge(benilla_protocol::ObjectFields::from_pairs(&[
+            (20, 7),
+            (21, 0),
+        ]));
+    app.update();
+    let retargeted: Vec<_> = app
+        .world_mut()
+        .resource_mut::<Messages<SpellKitFx>>()
+        .drain()
+        .collect();
+    assert_eq!(
+        retargeted
+            .iter()
+            .filter(|fx| matches!(fx, SpellKitFx::Reap {
+        entity, spell_id: 5143, class: super::FxClass::Hold, force: true
+    } if *entity == caster))
+            .count(),
+        1
+    );
+    assert_eq!(
+        retargeted
+            .iter()
+            .filter(|fx| matches!(fx, SpellKitFx::Begin {
+        entity, spell_id: 5143, ..
+    } if *entity == caster))
+            .count(),
+        1
+    );
+    app.world_mut()
+        .get_mut::<crate::net::ObjectStore>(caster)
+        .unwrap()
+        .0
+        .merge(benilla_protocol::ObjectFields::from_pairs(&[(
+            FIELD_UNIT_CHANNEL_SPELL,
+            0,
+        )]));
+    app.update();
+    assert!(!app.world().entity(caster).contains::<CastHold>());
+    assert!(app
+        .world_mut()
+        .resource_mut::<Messages<SpellKitFx>>()
+        .drain()
+        .any(|fx| matches!(fx, SpellKitFx::Reap { entity, spell_id: 5143,
+            class: super::FxClass::Hold, force: true } if entity == caster)));
+}
+
 /// The go's own kit stop is skipped for a spell with `AttributesEx & 0x4` while its caster
 /// channels (`UNIT_CHANNEL_SPELL`, the field block's `+0x228`; `0x6e7fca`-`0x6e7fde`), and the
 /// repeat spell's still runs (`0x6e7fed`); with the field clear the go stops its own.

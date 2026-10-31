@@ -101,7 +101,105 @@ fn main() {
             [128, 128, 128, 255],
         ),
     ];
-    for (number, (name, blend, alpha, track_alpha, expected)) in tests.iter().enumerate() {
+    struct Case {
+        name: &'static str,
+        blend: EffectBlend,
+        alpha: u8,
+        track_alpha: f32,
+        expected: [u8; 4],
+        mode: f32,
+        cutoff: f32,
+        uv_layers: [f32; 4],
+        stage1: [[u8; 4]; 2],
+        stage2: [[u8; 4]; 2],
+    }
+    let mut cases: Vec<Case> = tests
+        .into_iter()
+        .map(|(name, blend, alpha, track_alpha, expected)| Case {
+            name,
+            blend,
+            alpha,
+            track_alpha,
+            expected,
+            mode: 0.,
+            cutoff: 0.,
+            uv_layers: [0.25; 4],
+            stage1: [[255; 4]; 2],
+            stage2: [[255; 4]; 2],
+        })
+        .collect();
+    // Fixed analytical byte expectations for independent 2/3-color and Mod2/Mod4 alpha paths.
+    // These exercise the complete current production fragment, not a second shader copy.
+    for (mode, expected) in [
+        (1., [104, 102, 101, 255]),
+        (3., [100, 102, 103, 255]),
+        (5., [80, 76, 74, 255]),
+        (7., [72, 76, 79, 255]),
+    ] {
+        cases.push(Case {
+            name: "modern-alpha",
+            blend: EffectBlend::ModernParticle(ParticleBlend::Alpha),
+            alpha: 255,
+            track_alpha: 1.,
+            expected,
+            mode,
+            cutoff: 0.,
+            uv_layers: [0.25; 4],
+            stage1: [[128, 128, 128, 128]; 2],
+            stage2: [[64, 128, 192, 64]; 2],
+        });
+    }
+    for (u, expected) in [(0.25, [112, 96, 96, 255]), (0.75, [96, 108, 96, 255])] {
+        cases.push(Case {
+            name: "modern-alpha",
+            blend: EffectBlend::ModernParticle(ParticleBlend::Alpha),
+            alpha: 255,
+            track_alpha: 1.,
+            expected,
+            mode: 1.,
+            cutoff: 0.,
+            uv_layers: [u, 0.25, 0.25, 0.25],
+            stage1: [[255, 0, 0, 128], [0, 255, 0, 128]],
+            stage2: [[255, 255, 255, 64]; 2],
+        });
+    }
+    for (u, expected) in [(0.25, [112, 96, 96, 255]), (0.75, [96, 96, 106, 255])] {
+        cases.push(Case {
+            name: "modern-alpha",
+            blend: EffectBlend::ModernParticle(ParticleBlend::Alpha),
+            alpha: 255,
+            track_alpha: 1.,
+            expected,
+            mode: 3.,
+            cutoff: 0.,
+            uv_layers: [0.25, 0.25, u, 0.25],
+            stage1: [[128, 128, 128, 128]; 2],
+            stage2: [[255, 0, 0, 64], [0, 0, 255, 64]],
+        });
+    }
+    for (cutoff, expected) in [(0.2, [104, 102, 101, 255]), (0.3, [128, 128, 128, 255])] {
+        cases.push(Case {
+            name: "modern-alpha",
+            blend: EffectBlend::ModernParticle(ParticleBlend::Alpha),
+            alpha: 255,
+            track_alpha: 1.,
+            expected,
+            mode: 1.,
+            cutoff,
+            uv_layers: [0.25; 4],
+            stage1: [[128, 128, 128, 128]; 2],
+            stage2: [[64, 128, 192, 64]; 2],
+        });
+    }
+    for (number, case) in cases.iter().enumerate() {
+        let Case {
+            name,
+            blend,
+            alpha,
+            track_alpha,
+            expected,
+            ..
+        } = case;
         let code = std::fs::read_to_string(dir.join(format!("modern-alpha-{name}.wgsl"))).unwrap();
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(name),
@@ -163,6 +261,40 @@ fn main() {
             },
             extent,
         );
+        let mut stage_views = Vec::new();
+        for pixels in [&case.stage1, &case.stage2] {
+            let stage_extent = wgpu::Extent3d {
+                width: 2,
+                height: 1,
+                depth_or_array_layers: 1,
+            };
+            let stage = device.create_texture(&wgpu::TextureDescriptor {
+                label: None,
+                size: stage_extent,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &stage,
+                    mip_level: 0,
+                    origin: Default::default(),
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &pixels.iter().flatten().copied().collect::<Vec<u8>>(),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(8),
+                    rows_per_image: Some(1),
+                },
+                stage_extent,
+            );
+            stage_views.push(stage.create_view(&Default::default()));
+        }
         let target = device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: extent,
@@ -196,12 +328,19 @@ fn main() {
         });
         let color = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
-            size: 16,
+            size: 48,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let mut color_bytes = Vec::new();
         for value in [0.5f32, 0.25, 0.125, *track_alpha] {
+            color_bytes.extend(value.to_le_bytes());
+        }
+        for value in case
+            .uv_layers
+            .into_iter()
+            .chain([case.cutoff, case.mode, 0., 0.])
+        {
             color_bytes.extend(value.to_le_bytes());
         }
         queue.write_buffer(&color, 0, &color_bytes);
@@ -232,6 +371,14 @@ fn main() {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: params.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&stage_views[0]),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(&stage_views[1]),
                 },
             ],
         });
@@ -309,7 +456,7 @@ fn main() {
                 "case {number} {name}: {pixel:?} vs {expected:?}"
             );
         }
-        println!("PASS {number} {name} tex_alpha={alpha} track_alpha={track_alpha}: {pixel:?}");
+        println!("PASS {number} {name} mode={} cutoff={} uv={:?} tex_alpha={alpha} track_alpha={track_alpha}: {pixel:?}",case.mode,case.cutoff,case.uv_layers);
     }
-    println!("All14 exact-production-fragment texture-sampling/blend tests passed");
+    println!("All24 exact-production-fragment texture-sampling/blend tests passed");
 }

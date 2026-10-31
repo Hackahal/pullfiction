@@ -31,6 +31,8 @@ export interface RendererActor {
   npcId?: number;
   race?: number;
   sex?: number;
+  /** Native skin, face, hair style, hair colour and facial hair dials. */
+  look?: [number, number, number, number, number];
   equipment?: { slot: number; itemId?: number; displayId?: number }[];
   animation?: number;
 }
@@ -267,6 +269,13 @@ export function validateRendererCase(value: unknown): string[] {
         a.scale <= 0
       )
         errors.push(`invalid actor ${a.id}`);
+      if (
+        a.look !== undefined &&
+        (!Array.isArray(a.look) ||
+          a.look.length !== 5 ||
+          a.look.some((v) => !Number.isSafeInteger(v) || v < 0 || v > 255))
+      )
+        errors.push(`invalid appearance dials ${a.id}`);
     }
   if (!Array.isArray(c.effects)) errors.push("effects must be an array");
   else {

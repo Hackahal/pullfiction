@@ -358,7 +358,7 @@ pub(super) fn attach_entity_visuals(
         let body_tex = match look.as_ref() {
             Some(l) => {
                 let key = skin_key(l, equip, worn.emblem, worn.tabard_preview);
-                if shown_rebuild {
+                let atlas = if shown_rebuild {
                     char_skin::forced_body_atlas(
                         l,
                         key,
@@ -369,17 +369,18 @@ pub(super) fn attach_entity_visuals(
                         &mut images,
                     )
                 } else {
-                    match body_atlas(
+                    body_atlas(
                         l,
                         key,
                         displays.as_deref(),
                         sections.as_deref(),
                         &mut skin_composites,
                         &asset_server,
-                    ) {
-                        BodyAtlas::Ready(tex) => tex,
-                        BodyAtlas::Pending => continue,
-                    }
+                    )
+                };
+                match atlas {
+                    BodyAtlas::Ready(tex) => tex,
+                    BodyAtlas::Pending => continue,
                 }
             }
             None => None,
@@ -1019,6 +1020,108 @@ mod tests {
             *app.world_mut() = world;
         }
     }
+
+    #[test]
+    fn an_emitter_only_creature_attaches_real_pools_and_a_clock_without_a_mesh() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<Image>()
+            .init_asset::<Mesh>()
+            .init_asset::<benilla_assets::materials::WowModelMaterial>()
+            .init_resource::<benilla_world::model_render::ModelMaterials>()
+            .init_resource::<super::super::corpse::BonesModels>()
+            .init_resource::<SkinComposites>()
+            .init_resource::<merge::MergedFormsCache>()
+            .init_resource::<benilla_world::doodad_anim::UvAnimMaterials>()
+            .init_resource::<benilla_world::doodad_anim::TintAnimMaterials>()
+            .init_resource::<benilla_world::mat_anim_table::MatAnimTable>()
+            .init_resource::<benilla_world::rig_palette::RigPalettes>()
+            .init_resource::<benilla_world::collision::ColliderEpoch>()
+            .insert_resource(CubeAssets {
+                mesh: Handle::default(),
+                player_mesh: Handle::default(),
+                player_mat: Handle::default(),
+                npc_mat: Handle::default(),
+            })
+            .add_systems(Update, attach_entity_visuals);
+        let texture = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default());
+        let display = DisplayModel {
+            handle: ModelHandle::M2(Handle::default()),
+            parts: Some(Vec::new()),
+            emitters: vec![benilla_assets::ModelEmitter {
+                def: benilla_world::testing::plain_particle_def(),
+                texture: Some(texture.clone()),
+                extra_textures: None,
+                bone_pivot: [0.; 3],
+                billboard: None,
+                recursion: None,
+                geometry: None,
+                owner_reach: 0.,
+                water_bound: (Vec3::ZERO, 0.),
+                idle_seq: 0,
+            }],
+            animations: Some(ModelAnimations {
+                graph: Handle::default(),
+                clips: Vec::new(),
+                hand_close: [None, None],
+                playable_animation_lookup: Vec::new(),
+                animation_lookup: Vec::new(),
+                global_bones: Vec::new(),
+                first_seq: None,
+                pose: Default::default(),
+            }),
+            ..super::super::display::empty_shell()
+        };
+        app.world_mut().insert_resource(Creatures {
+            catalog: Default::default(),
+            models: std::collections::HashMap::from([(7, display)]),
+        });
+        let unit = app
+            .world_mut()
+            .spawn((
+                NetEntity {
+                    kind: EntityKind::Unit,
+                    display_id: Some(7),
+                    scale: 0.5,
+                },
+                Transform::from_xyz(10., 20., 30.),
+                Visibility::default(),
+            ))
+            .id();
+        app.update();
+
+        assert!(app.world().get::<VisualAttached>(unit).is_some());
+        assert!(app.world().get::<AnimationPlayer>(unit).is_some());
+        assert!(app.world().get::<AnimDriver>(unit).is_some());
+        assert_eq!(
+            app.world().get::<Transform>(unit).unwrap().scale,
+            Vec3::splat(0.5)
+        );
+        assert_eq!(
+            app.world_mut().query::<&Mesh3d>().iter(app.world()).count(),
+            0
+        );
+        let mut emitters = app.world_mut().query::<&particles::ParticleEmitter>();
+        let pools: Vec<_> = emitters.iter(app.world()).collect();
+        assert_eq!(
+            pools.len(),
+            1,
+            "the authored emitter is assembled without mesh batches"
+        );
+        assert_eq!(pools[0].anchor(), Some(unit));
+        assert_eq!(pools[0].emit_host(), Some(unit));
+        assert_eq!(pools[0].texture(), &texture);
+        assert_eq!(pools[0].anchor_world(), Vec3::new(10., 20., 30.));
+        assert_eq!(
+            pools[0].live(),
+            0,
+            "particles are born only when simulation advances"
+        );
+    }
+
     /// A unit torn down before its visual built gets none: `0x464920` frees it at once, so the
     /// build would run commands on an entity `apply_despawn_fade` has despawned by the time they
     /// apply.

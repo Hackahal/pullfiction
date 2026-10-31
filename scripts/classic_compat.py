@@ -217,6 +217,14 @@ class Adapter:
 
     def particles(self):
         count, start = read(self.b, '<II', 0x128)
+        exp2 = self.parts.get(b'EXP2', b'')
+        exp_count, exp_at = read(exp2, '<II', 0) if exp2 else (0, 0)
+        if exp2 and exp_count != count:
+            fail('Modern EXP2 count does not match particle emitters.')
+        txac = self.parts.get(b'TXAC', b'')
+        # TXAC stores emitter entries first, followed by material entries.
+        if txac and len(txac) != (count + read(self.b, '<I', 0x70)[0]) * 2:
+            fail('Modern TXAC count does not match particle emitters and materials.')
         geometry_ids = self.parts.get(b'GPID')
         if geometry_ids is not None and len(geometry_ids) != count * 4:
             fail('Modern GPID count does not match particle emitters.')
@@ -229,6 +237,8 @@ class Adapter:
             # Current renderer uses the original unlit bit; modern data names the lit state.
             old_flags = flags & 0xFFFF
             old_flags = old_flags & ~1 if flags & 1 else old_flags | 1
+            if flags & 0x10000000:
+                old_flags |= 1  # The authored multi-texture material is unlit.
             put = lambda offset, fmt, *v: struct.pack_into(fmt, p, offset, *v)
             put(4, '<I', old_flags)
             for offset in (24, 32):
@@ -245,7 +255,21 @@ class Adapter:
             if shape not in (1, 2, 3) or color:
                 unsupported('Modern particle emitter type/color replacement requires extended support.')
             if flags & 0x10000000:
-                unsupported('Modern multi-texture particles require the extended shader.')
+                packed = read(raw, '<H', 22)[0]
+                texture_indices = [(packed >> (j * 5)) & 31 for j in range(3)]
+                if any(i >= read(self.b, '<I', 0x50)[0] for i in texture_indices):
+                    fail('Modern multi-texture particle index is out of range.')
+                textures = table(self.b, 0x50, 16)
+                if any(read(textures[i], '<I', 0)[0] != 0 for i in texture_indices):
+                    unsupported('Modern particle stages require an unresolved runtime texture binding.')
+                if read(p, '<I', 24)[0]:
+                    unsupported('Modern multi-texture geometry particles require separate validation.')
+                if txac and read(txac, '<H', index * 2)[0]:
+                    unsupported('Modern animated particle texture coordinates require separate validation.')
+                # The legacy record keeps its primary index; PFP5 retains all three stages.
+                put(22, '<H', texture_indices[0])
+            else:
+                texture_indices = [read(raw, '<H', 22)[0]] * 3
             put(40, '<HH', blend, shape)
             p[44] = 2 if flags & 0x60000 == 0x60000 else 1 if flags & 0x40000 else 0
             p[46:52] = raw[46:52]
@@ -297,7 +321,31 @@ class Adapter:
             points, at = read(raw,'<II',448)
             put(468,'<II',points,self.append(span(self.b,at,points*12)))
             p[476:504]=self.channel(base+456,'<B',(1,))
-            variations.append(struct.pack('<2f',*read(raw,'<f',172),*read(raw,'<f',196)) + b''.join(cell_curves) + b''.join(life_curves) + struct.pack('<7f',*read(raw,'<2f',308),*read(raw,'<4f',376),float(bool(flags & 0x80000))))
+            cutoff, z_source, color_mul, alpha_mul = [], 0.0, 1.0, 1.0
+            if exp2:
+                ea = exp_at + index * 28
+                z_source, color_mul, alpha_mul = read(exp2, '<3f', ea)
+                nt, to, nv, vo = read(exp2, '<4I', ea + 12)
+                if nt != nv or nt > 64:
+                    fail('Invalid modern particle alpha-cutoff curve.')
+                cutoff = [(read(exp2, '<H', to+j*2)[0]/32767,
+                           read(exp2, '<h', vo+j*2)[0]/32767) for j in range(nt)]
+                if any(not all(math.isfinite(v) for v in key) or not 0 <= key[0] <= 1
+                       or j and cutoff[j-1][0] > key[0] for j, key in enumerate(cutoff)):
+                    fail('Invalid modern particle alpha-cutoff keys.')
+            if not all(math.isfinite(v) for v in (z_source, color_mul, alpha_mul)):
+                fail('Invalid modern particle material multipliers.')
+            # The scroll words are sign-magnitude 6.9, not signed two's complement.
+            # WhiteoutFlakes m2_model_adapter.cpp, BSD-3-Clause; see third_party/whiteoutflakes.
+            def scroll(value):
+                return (-1 if value & 0x8000 else 1) * (value & 0x7fff) / 512
+            material = struct.pack('<4I12f2If2I', flags, *texture_indices,
+                raw[44]/32, raw[45]/32,
+                *(scroll(v) for v in read(raw, '<4H', 476)),
+                *(scroll(v) for v in read(raw, '<4H', 484)), color_mul, alpha_mul,
+                len(cutoff), self.append(b''.join(struct.pack('<2f', *key) for key in cutoff)),
+                z_source, read(txac, '<H', index*2)[0] if txac else 0, bool(exp2))
+            variations.append(struct.pack('<2f',*read(raw,'<f',172),*read(raw,'<f',196)) + b''.join(cell_curves) + b''.join(life_curves) + struct.pack('<7f',*read(raw,'<2f',308),*read(raw,'<4f',376),float(bool(flags & 0x80000))) + material)
             records.append(p)
         self.set_array(0x13C,records)
         return variations
@@ -475,7 +523,7 @@ class Adapter:
         variations = self.particles()
         if variations:
             offset = self.append(b''.join(variations))
-            self.output.extend(struct.pack('<4sII', b'PFP4', offset, len(variations)))
+            self.output.extend(struct.pack('<4sII', b'PFP5', offset, len(variations)))
         return bytes(self.output)
 
 
