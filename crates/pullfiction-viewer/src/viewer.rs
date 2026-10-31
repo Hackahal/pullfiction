@@ -24,6 +24,16 @@ type ReplayActor = benilla_app::planner_replay::ReplayUnit;
 const MAX_REPLAY_FRAME_BYTES: usize = 4_000_000;
 const MAX_REPLAY_FRAME_ACTORS: usize = 4096;
 
+/// Explicit local-only snapshot, at most 256 actor rows. Latest queued request wins.
+#[wasm_bindgen]
+pub fn request_movement_diagnostics(token: u32) {
+    COMMANDS.with(|queue| {
+        let mut queue = queue.borrow_mut();
+        queue.retain(|c| !matches!(c, Command::MovementDiagnostics(_)));
+        queue.push(Command::MovementDiagnostics(token));
+    });
+}
+
 /// A separate full-body character-pane copy; the caller sends the baseline appearance snapshot.
 #[wasm_bindgen]
 pub fn request_actor_inspection(json: &str) -> Result<(), JsValue> {
@@ -238,6 +248,7 @@ enum Command {
     Effects(Vec<benilla_app::planner_replay::ReplayEvent>, bool),
     Clock(f64, f64, bool),
     Portraits(Vec<benilla_app::planner_replay::ReplayPortrait>),
+    MovementDiagnostics(u32),
     ActorInspection(Option<benilla_app::ActorInspectionRequest>),
 }
 
@@ -467,6 +478,9 @@ fn commands(
             }
             Command::Replay(actors) => replay.pending = Some(actors),
             Command::Portraits(requests) => replay.portrait_requests.extend(requests),
+            Command::MovementDiagnostics(token) => {
+                replay.movement_diagnostics_request = Some(token)
+            }
             Command::ActorInspection(request) => inspection.pending = Some(request),
             Command::Clock(time, rate, playing) => {
                 replay.time = time;
@@ -699,6 +713,12 @@ fn actor_labels(
     mut last: Local<f32>,
     mut replay: ResMut<benilla_app::planner_replay::ReplayControl>,
 ) {
+    if let Some((token, actors)) = replay.movement_diagnostics_response.take() {
+        report(
+            "movementDiagnostics",
+            &serde_json::json!({"token":token,"actors":actors}).to_string(),
+        );
+    }
     if let Some(key) = replay.focus_actor.take() {
         report("focus-actor", &key);
     }

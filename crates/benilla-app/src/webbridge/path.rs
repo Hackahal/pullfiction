@@ -137,120 +137,179 @@ fn flat_dist(a: Vec3, b: Vec3) -> f32 {
     Vec3::new(a.x - b.x, 0.0, a.z - b.z).length()
 }
 
-/// Search from `from` to `to` (Bevy space, feet). `None` when the start has no floor.
+pub(crate) struct Search {
+    start: Vec3,
+    goal: Vec3,
+    nodes: HashMap<Key, Node>,
+    open: BinaryHeap<Open>,
+    best: (f32, Key),
+    closed: std::collections::HashSet<Key>,
+    expanded: usize,
+    reached: Option<Key>,
+}
+impl Search {
+    pub(crate) fn new(probe: &impl Probe, from: Vec3, to: Vec3) -> Option<Self> {
+        let start_y = probe.floor(from.x, from.z, from.y)?;
+        let start = Vec3::new(from.x, start_y, from.z);
+        let goal = to;
+        let mut nodes: HashMap<Key, Node> = HashMap::new();
+        let mut open = BinaryHeap::new();
+        let start_key = key_of(start);
+        nodes.insert(
+            start_key,
+            Node {
+                pos: start,
+                g: 0.0,
+                parent: None,
+            },
+        );
+        open.push(Open {
+            f: flat_dist(start, goal),
+            key: start_key,
+        });
+        let best = (flat_dist(start, goal), start_key);
+        let closed = std::collections::HashSet::new();
+        let expanded = 0;
+        let reached = None;
+
+        Some(Self {
+            start,
+            goal,
+            nodes,
+            open,
+            best,
+            closed,
+            expanded,
+            reached,
+        })
+    }
+    /// Returns true only when the frontier, goal, or total expansion budget is exhausted.
+    pub(crate) fn advance(&mut self, probe: &impl Probe, budget: usize, total: usize) -> bool {
+        let stop = self.expanded.saturating_add(budget).min(total);
+        if self.expanded >= stop {
+            return self.expanded >= total || self.open.is_empty();
+        }
+        while let Some(Open { key, .. }) = self.open.pop() {
+            if !self.closed.insert(key) {
+                continue;
+            }
+            let node = self.nodes[&key];
+            let h = flat_dist(node.pos, self.goal);
+            if h < self.best.0 {
+                self.best = (h, key);
+            }
+            if h <= GOAL_RADIUS && (node.pos.y - self.goal.y).abs() <= GOAL_HEIGHT {
+                self.reached = Some(key);
+                return true;
+            }
+            self.expanded += 1;
+            if self.expanded >= total {
+                return true;
+            }
+            for (dx, dz) in [
+                (1, 0),
+                (-1, 0),
+                (0, 1),
+                (0, -1),
+                (1, 1),
+                (1, -1),
+                (-1, 1),
+                (-1, -1),
+            ] {
+                let x = (key.x + dx) as f32 * CELL;
+                let z = (key.z + dz) as f32 * CELL;
+                let Some(y) = probe.floor(x, z, node.pos.y) else {
+                    continue;
+                };
+                let rise = y - node.pos.y;
+                if rise > MAX_RISE || rise < -MAX_DROP {
+                    continue;
+                }
+                let pos = Vec3::new(x, y, z);
+                let nkey = key_of(pos);
+                if self.closed.contains(&nkey) {
+                    continue;
+                }
+                let g = node.g + node.pos.distance(pos);
+                if self.nodes.get(&nkey).is_some_and(|n| n.g <= g) {
+                    continue;
+                }
+                if !probe.clear(node.pos, pos) {
+                    continue;
+                }
+                self.nodes.insert(
+                    nkey,
+                    Node {
+                        pos,
+                        g,
+                        parent: Some(key),
+                    },
+                );
+                self.open.push(Open {
+                    f: g + flat_dist(pos, self.goal),
+                    key: nkey,
+                });
+            }
+            if self.expanded >= stop {
+                break;
+            }
+        }
+        self.expanded >= total || self.open.is_empty()
+    }
+    pub(crate) fn expanded(&self) -> usize {
+        self.expanded
+    }
+    pub(crate) fn finish(self, probe: &impl Probe) -> Path {
+        self.finish_impl(probe, true)
+    }
+    /// Replay keeps adjacent grid legs, avoiding quadratic string-pulling in a render frame.
+    pub(crate) fn finish_raw(self, probe: &impl Probe) -> Path {
+        self.finish_impl(probe, false)
+    }
+    fn finish_impl(self, probe: &impl Probe, pull: bool) -> Path {
+        let Self {
+            start,
+            goal,
+            nodes,
+            best,
+            reached,
+            expanded,
+            ..
+        } = self;
+        let end = reached.unwrap_or(best.1);
+        let mut points = Vec::new();
+        let mut k = Some(end);
+        while let Some(key) = k {
+            let n = nodes[&key];
+            points.push(n.pos);
+            k = n.parent;
+        }
+        points.reverse();
+        points[0] = start;
+        if reached.is_some() {
+            // The last cell centre stands within a yard of the goal; finish on the goal itself when
+            // that last step is walkable.
+            let last = *points.last().expect("the start");
+            if let Some(y) = probe.floor(goal.x, goal.z, last.y) {
+                let g = Vec3::new(goal.x, y, goal.z);
+                if probe.clear(last, g) {
+                    points.push(g);
+                }
+            }
+        }
+        Path {
+            points: if pull { smooth(probe, &points) } else { points },
+            partial: reached.is_none(),
+            expanded,
+        }
+    }
+}
+
+/// Synchronous bridge callers retain their nearest-partial result at the supplied budget.
 pub(crate) fn find(probe: &impl Probe, from: Vec3, to: Vec3, budget: usize) -> Option<Path> {
-    let start_y = probe.floor(from.x, from.z, from.y)?;
-    let start = Vec3::new(from.x, start_y, from.z);
-    let goal = to;
-    let mut nodes: HashMap<Key, Node> = HashMap::new();
-    let mut open = BinaryHeap::new();
-    let start_key = key_of(start);
-    nodes.insert(
-        start_key,
-        Node {
-            pos: start,
-            g: 0.0,
-            parent: None,
-        },
-    );
-    open.push(Open {
-        f: flat_dist(start, goal),
-        key: start_key,
-    });
-    let mut best = (flat_dist(start, goal), start_key);
-    let mut closed = std::collections::HashSet::new();
-    let mut expanded = 0;
-    let mut reached = None;
-
-    while let Some(Open { key, .. }) = open.pop() {
-        if !closed.insert(key) {
-            continue;
-        }
-        let node = nodes[&key];
-        let h = flat_dist(node.pos, goal);
-        if h < best.0 {
-            best = (h, key);
-        }
-        if h <= GOAL_RADIUS && (node.pos.y - goal.y).abs() <= GOAL_HEIGHT {
-            reached = Some(key);
-            break;
-        }
-        expanded += 1;
-        if expanded >= budget {
-            break;
-        }
-        for (dx, dz) in [
-            (1, 0),
-            (-1, 0),
-            (0, 1),
-            (0, -1),
-            (1, 1),
-            (1, -1),
-            (-1, 1),
-            (-1, -1),
-        ] {
-            let x = (key.x + dx) as f32 * CELL;
-            let z = (key.z + dz) as f32 * CELL;
-            let Some(y) = probe.floor(x, z, node.pos.y) else {
-                continue;
-            };
-            let rise = y - node.pos.y;
-            if rise > MAX_RISE || rise < -MAX_DROP {
-                continue;
-            }
-            let pos = Vec3::new(x, y, z);
-            let nkey = key_of(pos);
-            if closed.contains(&nkey) {
-                continue;
-            }
-            let g = node.g + node.pos.distance(pos);
-            if nodes.get(&nkey).is_some_and(|n| n.g <= g) {
-                continue;
-            }
-            if !probe.clear(node.pos, pos) {
-                continue;
-            }
-            nodes.insert(
-                nkey,
-                Node {
-                    pos,
-                    g,
-                    parent: Some(key),
-                },
-            );
-            open.push(Open {
-                f: g + flat_dist(pos, goal),
-                key: nkey,
-            });
-        }
-    }
-
-    let end = reached.unwrap_or(best.1);
-    let mut points = Vec::new();
-    let mut k = Some(end);
-    while let Some(key) = k {
-        let n = nodes[&key];
-        points.push(n.pos);
-        k = n.parent;
-    }
-    points.reverse();
-    points[0] = start;
-    if reached.is_some() {
-        // The last cell centre stands within a yard of the goal; finish on the goal itself when
-        // that last step is walkable.
-        let last = *points.last().expect("the start");
-        if let Some(y) = probe.floor(goal.x, goal.z, last.y) {
-            let g = Vec3::new(goal.x, y, goal.z);
-            if probe.clear(last, g) {
-                points.push(g);
-            }
-        }
-    }
-    Some(Path {
-        points: smooth(probe, &points),
-        partial: reached.is_none(),
-        expanded,
-    })
+    let mut search = Search::new(probe, from, to)?;
+    search.advance(probe, budget.max(1), budget.max(1));
+    Some(search.finish(probe))
 }
 
 /// Can the body walk the straight line `a`→`b`: clear of obstacles, and with a floor under every

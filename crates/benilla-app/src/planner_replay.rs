@@ -158,6 +158,9 @@ pub struct ReplaySpellDiagnostic {
 }
 #[derive(Default, Resource)]
 pub struct ReplayControl {
+    pub movement_diagnostics_request: Option<u32>,
+    pub movement_diagnostics_response:
+        Option<(u32, Vec<crate::planner_movement::MovementDiagnostic>)>,
     pub portrait_requests: Vec<ReplayPortrait>,
     pub pending: Option<Vec<ReplayUnit>>,
     pub focus: Option<[f32; 3]>,
@@ -427,6 +430,9 @@ pub(crate) fn apply(
             }
         });
         for unit in batch {
+            if !unit.player || unit.dead || unit.position.is_none() || unit.movement.is_none() {
+                routes.remove(&unit.key);
+            }
             // Actor keys are local to a report. Reusing another report's entity
             // would retain its GUID kind, template, name and floor memo.
             let changed_identity = units
@@ -881,6 +887,18 @@ pub(crate) fn apply(
             // The cast transition above needs the deferred ReplayBody to be queryable first.
             floor_context.7.retry_after_spawn();
         }
+    }
+    if let Some(token) = control.movement_diagnostics_request.take() {
+        let mut rows = routes.diagnostics();
+        // Report actual rendered transforms, including the presentation floor lift.
+        for row in &mut rows {
+            if let Some((entity, _)) = units.get(&row.key) {
+                if let Ok((xf, _, _, _, _)) = query.get(*entity) {
+                    row.rendered_position = benilla_assets::coords::bevy_to_wow(xf.translation);
+                }
+            }
+        }
+        control.movement_diagnostics_response = Some((token, rows));
     }
     control.entities = units.values().map(|u| u.0).collect();
     let cutoff = control.time - 5000.0;

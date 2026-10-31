@@ -43,10 +43,11 @@ test("stacked floor seeds remain authoritative; ceilings and invalid inputs cann
   assert.equal(geometry.height(NaN, 10, 186, true), undefined);
 });
 
-test("unseeded interior stages cast down from the client room level instead of entrance altitude", () => {
+test("validated floor anchors select stages independently of entrance or room-average altitude", () => {
   const geometry = new ReplayFloorGeometry(
     [floor(10, true), floor(30, true), floor(60, true), floor(0)],
-    [{ id: "room", name: "interior", height: 45 }],
+    [{ id: "room", name: "interior", height: 5 }],
+    [{ entry: 1, point: [1, 1, 30] }],
   );
   for (const x of [10, 20, 10])
     assert.equal(geometry.height(x, 10, 12, true), 30);
@@ -82,11 +83,257 @@ test("approximate room pins use a nearby walkable edge only outside exact struct
   assert.equal(geometry.nearbyStructureHeight(9, 1, 125, 3), 185);
   assert.equal(geometry.nearbyStructureHeight(6, 1, 125, 3), undefined);
   assert.equal(geometry.nearbyStructureHeight(11, 1, 125, 3), undefined);
-  assert.equal(geometry.height(11, 1, 125, true), 185);
+  assert.equal(geometry.referenceFloors.height(11, 1, 125, true), 185);
   assert.equal(geometry.nearbyStructureHeight(NaN, 1, 125, 3), undefined);
   assert.equal(geometry.nearbyStructureHeight(9, 1, 125, 0), undefined);
   assert.equal(
     new ReplayFloorGeometry([floor(330)]).nearbyStructureHeight(9, 1, 125, 3),
     undefined,
   );
+});
+
+test("surface calibration follows a ramp without switching to overlapping lower floors or roofs", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      floor(0, true),
+      floor(40, true),
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 10],
+          [20, 0, 30],
+          [0, 20, 10],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [{ id: "room", name: "not a usable ray origin", height: -100 }],
+    [{ entry: 1, point: [1, 1, 11] }],
+  );
+  for (const x of [1, 7, 12, 7])
+    assert.equal(geometry.height(x, 1, 0, true), 10 + x);
+  assert.equal(geometry.height(7, 1, 0, false), 0);
+});
+test("a real drop keeps nearby calibrated altitude context instead of picking an underfloor", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      {
+        ...floor(0, true),
+        vertices: [
+          [0, 0, 0],
+          [60, 0, 0],
+          [0, 60, 0],
+        ],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 20],
+          [10, 0, 20],
+          [0, 10, 20],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [15, 0, 10],
+          [30, 0, 10],
+          [15, 15, 10],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [],
+    [{ entry: 1, point: [1, 1, 20] }],
+  );
+  assert.equal(geometry.height(17, 1, 0, true), 10);
+});
+test("calibration rejects mismatched client geometry and invalid reference coordinates", () => {
+  const geometry = new ReplayFloorGeometry(
+    [floor(10, true), floor(30, true)],
+    [],
+    [
+      { entry: 1, point: [1, 1, 50] },
+      { entry: 2, point: [NaN, 1, 30] },
+      { entry: 0, point: [1, 1, 30] },
+    ],
+  );
+  assert.equal(geometry.height(10, 10, 12, true), 10);
+  assert.deepEqual(geometry.contextCatalog(533, {}), {});
+});
+test("overlapping calibrated storeys remain seek-safe with changing encounter context", () => {
+  const geometry = new ReplayFloorGeometry(
+    [floor(10, true), floor(30, true)],
+    [],
+    [
+      { entry: 1, point: [1, 1, 10] },
+      { entry: 2, point: [1, 1, 30] },
+    ],
+  );
+  for (const h of [10, 30, 10, 30])
+    assert.equal(geometry.height(8, 8, h, true), h);
+});
+test("floor-only catalogs preserve overrides without modifying models or injecting spawn identity", () => {
+  const geometry = new ReplayFloorGeometry(
+    [floor(10, true), floor(30, true)],
+    [],
+    [{ entry: 1, point: [1, 1, 30] }],
+  );
+  const models = { 1: { displayID: 99 }, 2: { floorSeeds: [[533, 1, 1, 10]] } };
+  const before = JSON.stringify(models),
+    result = geometry.contextCatalog(533, models);
+  assert.deepEqual(result[1], { floorSeeds: [[533, 1, 1, 30]] });
+  assert.deepEqual(result[2], { floorSeeds: [[533, 1, 1, 10]] });
+  assert.equal(JSON.stringify(models), before);
+  assert.equal(geometry.contextCatalog(533, models), result);
+});
+test("projection caches stay bounded while queries remain deterministic after eviction", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 30],
+          [200, 0, 30],
+          [0, 200, 30],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [],
+    [{ entry: 1, point: [1, 1, 30] }],
+  );
+  const first = geometry.height(1, 1, 0, true);
+  for (let x = 0; x < 65; x++)
+    for (let y = 0; y < 65; y++) geometry.height(x + 0.1, y + 0.1, 0, true);
+  assert.ok(
+    (geometry as unknown as { projected: Map<string, unknown> }).projected
+      .size <= 4096,
+  );
+  assert.equal(geometry.height(1, 1, 0, true), first);
+});
+
+test("an upper-level drop cannot borrow a continuous route on a lower calibrated storey", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 0],
+          [40, 0, 0],
+          [0, 40, 0],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 20],
+          [10, 0, 20],
+          [0, 10, 20],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [15, 0, 10],
+          [40, 0, 10],
+          [15, 25, 10],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [],
+    [
+      { entry: 1, point: [1, 1, 20] },
+      { entry: 2, point: [1, 1, 0] },
+    ],
+  );
+  for (const hint of [20, 0, 20, 0])
+    assert.equal(geometry.height(17, 1, hint, true), hint === 20 ? 10 : 0);
+});
+test("empty remote rooms use the nearest map calibration instead of entrance altitude", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      {
+        area: "entry",
+        interior: true,
+        vertices: [
+          [0, 0, 10],
+          [20, 0, 10],
+          [0, 20, 10],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "remote",
+        interior: true,
+        vertices: [
+          [200, 0, 8],
+          [220, 0, 8],
+          [200, 20, 8],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "remote",
+        interior: true,
+        vertices: [
+          [200, 0, 40],
+          [220, 0, 40],
+          [200, 20, 40],
+        ],
+        indices: [0, 1, 2],
+      },
+    ],
+    [],
+    [{ entry: 1, point: [1, 1, 10] }],
+  );
+  assert.equal(geometry.height(205, 1, 40, true), 8);
+});
+
+test("cached queries never move an actor off a platform before its actual coordinates leave the edge", () => {
+  const geometry = new ReplayFloorGeometry(
+    [
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 0],
+          [40, 0, 0],
+          [0, 40, 0],
+        ],
+        indices: [0, 1, 2],
+      },
+      {
+        area: "room",
+        interior: true,
+        vertices: [
+          [0, 0, 20],
+          [10.2, 0, 20],
+          [0, 10, 20],
+          [10.2, 10, 20],
+        ],
+        indices: [0, 1, 2, 1, 3, 2],
+      },
+    ],
+    [],
+    [{ entry: 1, point: [1, 1, 20] }],
+  );
+  for (const [x, want] of [
+    [9.9, 20],
+    [10.1, 20],
+    [10.25, 0],
+    [10.1, 20],
+  ])
+    assert.equal(geometry.height(x, 1, 20, true), want);
 });
