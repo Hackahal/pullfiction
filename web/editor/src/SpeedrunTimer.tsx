@@ -221,7 +221,7 @@ export function SpeedrunTimer({
                   }
                 >
                   <option value={0}>Without skips</option>
-                  <option value={1}>With skips</option>
+                  <option value={1}>With skips · API unavailable</option>
                 </select>
               </label>
             </>

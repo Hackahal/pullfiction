@@ -35,6 +35,22 @@ type Query = (
 const validID = (n: unknown): n is number =>
   Number.isSafeInteger(n) && Number(n) > 0;
 
+// WCL keeps full-raid encounters in separate API-only zones. These IDs were
+// verified against the official leaderboards and authenticated catalogue.
+const completeRaidZones: Record<string, Record<number, number>> = {
+  vanilla: { 409: 2500, 469: 2500, 531: 2500, 533: 2500 },
+  sod: {
+    48: 2501,
+    90: 2502,
+    109: 2503,
+    409: 2504,
+    469: 2505,
+    531: 2508,
+    533: 2509,
+    2856: 2510,
+  },
+};
+
 export async function fetchSpeedCategory(
   query: Query,
   version: GameVersion,
@@ -43,9 +59,14 @@ export async function fetchSpeedCategory(
 ): Promise<WclSpeedCategory> {
   const raid = raidByMap(map, version);
   if (!raid) throw new Error("Unsupported speedrun raid.");
+  const completeZone = completeRaidZones[version]?.[map];
+  if (!completeZone)
+    throw new Error(
+      "WCL does not expose a Complete Raids API category for this raid.",
+    );
   const data = await query(
-    "query{worldData{zones{id name partitions{id name default} difficulties{id name sizes} encounters{id name}}}}",
-    {},
+    "query($completeZone:Int!){worldData{zones{id name partitions{id name default} difficulties{id name sizes}} completeRaids:zone(id:$completeZone){encounters{id name}}}}",
+    { completeZone },
     version,
     signal,
   );
@@ -61,8 +82,8 @@ export async function fetchSpeedCategory(
   );
   if (!zone || !validID(zone.id))
     throw new Error("WCL has no speedrun category for this raid/version.");
-  const encounter = zone.encounters?.find((e: any) =>
-    /^complete raids?$/i.test(e.name),
+  const encounter = data.worldData?.completeRaids?.encounters?.find(
+    (e: any) => raidForZone({ name: e.name }, version)?.map === map,
   );
   if (!validID(encounter?.id))
     throw new Error(
@@ -117,6 +138,12 @@ export async function fetchSpeedWorldRecord(
   selection: WclSpeedSelection,
   signal?: AbortSignal,
 ): Promise<SpeedrunWorldRecord | null> {
+  // WCL's advanced filter ignores the website's allowskips parameter. Returning
+  // the default leaderboard here would silently compare against another category.
+  if (version === "vanilla" && selection.skips)
+    throw new Error(
+      "WCL's API cannot verify the With skips leaderboard. Choose Without skips or open Warcraft Logs.",
+    );
   const difficulty = category.difficulties.find(
     (d) => d.id === selection.difficulty,
   );
@@ -129,14 +156,12 @@ export async function fetchSpeedWorldRecord(
   )
     throw new Error("Choose a valid WCL speedrun category.");
   const data = await query(
-    "query($encounter:Int!,$partition:Int!,$difficulty:Int!,$size:Int,$filter:String!){worldData{encounter(id:$encounter){fightRankings(metric:speed,page:1,partition:$partition,difficulty:$difficulty,size:$size,filter:$filter)}}}",
+    "query($encounter:Int!,$partition:Int!,$difficulty:Int!,$size:Int){worldData{encounter(id:$encounter){fightRankings(metric:speed,page:1,partition:$partition,difficulty:$difficulty,size:$size)}}}",
     {
       encounter: category.encounterID,
       partition: selection.partition,
       difficulty: selection.difficulty,
       size: selection.size,
-      filter:
-        version === "vanilla" ? `allowskips=${selection.skips ? 1 : 0}` : "",
     },
     version,
     signal,

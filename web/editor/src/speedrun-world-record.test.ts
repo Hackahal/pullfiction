@@ -84,17 +84,26 @@ test("WR category resolves WCL IDs from shared catalogue without mixing Era, SoD
         { id: 3, name: "SoM P1 & P2", default: false },
       ],
       difficulties: [{ id: 3, name: "Normal", sizes: [40] }],
-      encounters: [{ id: 50673, name: "Complete Raids" }],
+      encounters: [{ id: 12118, name: "Lucifron" }],
     },
     {
       id: 2012,
       name: "Molten Core",
       partitions: [{ id: 1, name: "Discovery P4", default: true }],
       difficulties: [{ id: 5, name: "Heat 3", sizes: [20] }],
-      encounters: [{ id: 10000, name: "Complete Raids" }],
+      encounters: [{ id: 100669, name: "Lucifron" }],
     },
   ];
-  const query = async () => ({ worldData: { zones } });
+  const completeRaids = { encounters: [{ id: 50673, name: "Molten Core" }] };
+  const query = async (_q: string, vars: any) => ({
+    worldData: {
+      zones,
+      completeRaids:
+        vars.completeZone === 2504
+          ? { encounters: [{ id: 2961, name: "Molten Core" }] }
+          : completeRaids,
+    },
+  });
   const era = await fetchSpeedCategory(query, "vanilla", 409);
   const sod = await fetchSpeedCategory(query, "sod", 409);
   assert.equal(era.zoneID, 2000);
@@ -102,9 +111,11 @@ test("WR category resolves WCL IDs from shared catalogue without mixing Era, SoD
   assert.equal(defaultSpeedSelection(era).partition, 1);
   assert.equal(sod.zoneID, 2012);
   assert.equal(defaultSpeedSelection(sod).difficulty, 5);
-  zones[1].encounters = [];
+  assert.equal(era.encounterID, 50673);
+  assert.equal(sod.encounterID, 2961);
+  completeRaids.encounters = [];
   await assert.rejects(
-    fetchSpeedCategory(query, "sod", 409),
+    fetchSpeedCategory(query, "vanilla", 409),
     /Complete Raids leaderboard/,
   );
 });
@@ -129,7 +140,7 @@ test("WR query uses selected category, no region filter, and only winning run me
   );
   assert.equal(calls[0].variables.partition, 1);
   assert.equal(calls[0].variables.size, 10);
-  assert.equal(calls[0].variables.filter, "");
+  assert.equal(calls[0].variables.filter, undefined);
   assert.doesNotMatch(calls[0].query, /serverRegion/);
   assert.doesNotMatch(calls[1].query, /events\(/);
   assert.match(wr!.url, /sod.warcraftlogs.com/);
@@ -270,4 +281,81 @@ test("Estimated clocks and mismatched MC heat never produce WR deltas", async ()
   assert.equal(result.categoryMatches, false);
   assert.equal(result.delta, null);
   assert.ok(result.rows.every((r) => r.delta === null));
+});
+
+test("unsupported complete-raid categories fail before a leaderboard query", async () => {
+  for (const [version, map] of [
+    ["vanilla", 249],
+    ["sod", 509],
+  ] as const) {
+    await assert.rejects(
+      fetchSpeedCategory(
+        async () => {
+          assert.fail(
+            "Unsupported categories must not query an unrelated raid",
+          );
+        },
+        version,
+        map,
+      ),
+      /Complete Raids API category/,
+    );
+  }
+});
+
+test("Era trash-skip selection cannot silently return the no-skips record", async () => {
+  await assert.rejects(
+    fetchSpeedWorldRecord(
+      async () => {
+        assert.fail("WCL ignores allowskips in its advanced filter");
+      },
+      "vanilla",
+      48,
+      category,
+      { ...selection, skips: true },
+    ),
+    /cannot verify the With skips/,
+  );
+});
+
+test("live WCL epoch timestamps without exact run bounds retain only the total", async () => {
+  const liveWinner = {
+    duration: 2044745,
+    startTime: 1738016171329,
+    report: {
+      code: "2rpgvWn9ahB7zYC6",
+      fightID: 10000,
+      startTime: 1738013431529,
+    },
+    guild: { name: "Fake Fresh" },
+  };
+  const wr = await fetchSpeedWorldRecord(
+    async (q) =>
+      q.includes("fightRankings")
+        ? {
+            worldData: {
+              encounter: { fightRankings: { rankings: [liveWinner] } },
+            },
+          }
+        : {
+            fights: [
+              {
+                id: 23,
+                encounterID: 100717,
+                kill: true,
+                startTime: 4547734,
+                endTime: 4784545,
+                gameZone: { id: 531, name: "Temple of Ahn'Qiraj" },
+              },
+            ],
+          },
+    "sod",
+    531,
+    category,
+    selection,
+  );
+  assert.equal(wr?.duration, 2044745);
+  assert.equal(wr?.guild, "Fake Fresh");
+  assert.deepEqual(wr?.splits, []);
+  assert.match(wr?.splitNote ?? "", /exact start\/end/);
 });
