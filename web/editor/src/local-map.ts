@@ -161,11 +161,23 @@ export function localFloorHeight(
   return best;
 }
 
-// Each visible map owns its URLs. Releasing a map also invalidates work still
-// waiting in the reader or codec, so a late response cannot repopulate the map.
+type RetainedMap = {
+  lease: LocalMapLease;
+  users: number;
+  complete: boolean;
+  reusable: boolean;
+  bytes: number;
+  touched: number;
+};
+
+// Completed maps own decoded URLs across view mounts. Leases protect visible maps;
+// only idle entries can be evicted, and incomplete work is cancelled on last release.
 export class LocalMapAssets {
   private sessions = new Set<() => void>();
   private disposed = false;
+  private entries = new Map<string, RetainedMap>();
+  private clock = 0;
+  private retainedBytes = new WeakMap<LocalMapResult, number>();
   constructor(
     private provider: MapProvider,
     private ports: MapImagePorts = {
@@ -173,8 +185,88 @@ export class LocalMapAssets {
       create: (blob) => URL.createObjectURL(blob),
       revoke: (url) => URL.revokeObjectURL(url),
     },
+    private maxIdleMaps = 2,
+    private maxIdleBytes = 128 * 1024 * 1024,
   ) {}
+  /** Reuse completed map imagery within this client generation without retaining raw archives. */
   load(mapId: number, directory: string, signal?: AbortSignal): LocalMapLease {
+    if (this.disposed || signal?.aborted)
+      return {
+        ready: Promise.reject(
+          new DOMException("Map access cancelled", "AbortError"),
+        ),
+        release() {},
+      };
+    const key = JSON.stringify([mapId, directory.toLowerCase()]);
+    let entry = this.entries.get(key);
+    if (!entry) {
+      const lease = this.prepare(mapId, directory);
+      entry = {
+        lease,
+        users: 0,
+        complete: false,
+        reusable: false,
+        bytes: 0,
+        touched: ++this.clock,
+      };
+      const current = entry;
+      this.entries.set(key, current);
+      current.lease = {
+        release: lease.release,
+        ready: lease.ready
+          .then((result) => {
+            current.complete = true;
+            current.reusable = result.missingTiles === 0;
+            current.bytes = this.retainedBytes.get(result) ?? 0;
+            this.trim();
+            return result;
+          })
+          .catch((error) => {
+            if (this.entries.get(key) === current) this.entries.delete(key);
+            lease.release();
+            throw error;
+          }),
+      };
+    }
+    const current = entry;
+    current.users++;
+    current.touched = ++this.clock;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      signal?.removeEventListener("abort", release);
+      current.users--;
+      current.touched = ++this.clock;
+      if (!current.users && (!current.complete || !current.reusable)) {
+        if (this.entries.get(key) === current) this.entries.delete(key);
+        current.lease.release();
+      }
+      this.trim();
+    };
+    signal?.addEventListener("abort", release, { once: true });
+    return {
+      ready: current.lease.ready.then((result) => {
+        if (released || this.disposed)
+          throw new DOMException("Map access cancelled", "AbortError");
+        return result;
+      }),
+      release,
+    };
+  }
+  private trim() {
+    const idle = [...this.entries.entries()]
+      .filter(([, entry]) => entry.users === 0)
+      .sort((a, b) => a[1].touched - b[1].touched);
+    let bytes = idle.reduce((sum, [, entry]) => sum + entry.bytes, 0);
+    while (idle.length > this.maxIdleMaps || bytes > this.maxIdleBytes) {
+      const [key, entry] = idle.shift()!;
+      this.entries.delete(key);
+      bytes -= entry.bytes;
+      entry.lease.release();
+    }
+  }
+  private prepare(mapId: number, directory: string): LocalMapLease {
     const abort = new AbortController();
     const urls = new Set<string>();
     let released = false;
@@ -182,14 +274,12 @@ export class LocalMapAssets {
       if (released) return;
       released = true;
       abort.abort();
-      signal?.removeEventListener("abort", release);
       for (const url of urls) this.ports.revoke(url);
       urls.clear();
       this.sessions.delete(release);
     };
     this.sessions.add(release);
-    signal?.addEventListener("abort", release, { once: true });
-    if (this.disposed || signal?.aborted) release();
+    if (this.disposed) release();
     const ready = (async () => {
       try {
         abort.signal.throwIfAborted();
@@ -198,7 +288,8 @@ export class LocalMapAssets {
         validMap(map, mapId);
         const resources = [...new Set(map.tiles.map((tile) => tile.resource))];
         const images = new Map<string, string>();
-        let next = 0;
+        let next = 0,
+          imageBytes = 0;
         await Promise.all(
           Array.from({ length: Math.min(4, resources.length) }, async () => {
             while (next < resources.length) {
@@ -211,6 +302,17 @@ export class LocalMapAssets {
                 abort.signal.throwIfAborted();
                 const blob = await this.ports.decode(bytes);
                 abort.signal.throwIfAborted();
+                const header =
+                  bytes.byteLength >= 20
+                    ? new DataView(
+                        bytes.buffer,
+                        bytes.byteOffset,
+                        bytes.byteLength,
+                      )
+                    : null;
+                imageBytes += header
+                  ? header.getUint32(12, true) * header.getUint32(16, true) * 4
+                  : blob.size * 4;
                 const url = this.ports.create(blob);
                 urls.add(url);
                 images.set(resource, url);
@@ -235,7 +337,7 @@ export class LocalMapAssets {
           throw new Error(
             "The selected client has no usable raid minimap or floor geometry",
           );
-        return {
+        const result: LocalMapResult = {
           manifest: {
             map: map.map,
             bounds: map.bounds,
@@ -245,6 +347,16 @@ export class LocalMapAssets {
           },
           missingTiles: map.tiles.length - tiles.length,
         };
+        this.retainedBytes.set(
+          result,
+          imageBytes +
+            map.floors.reduce(
+              (sum, floor) =>
+                sum + floor.vertices.length * 64 + floor.indices.length * 8,
+              0,
+            ),
+        );
+        return result;
       } catch (error) {
         release();
         throw error;
@@ -254,6 +366,7 @@ export class LocalMapAssets {
   }
   dispose() {
     this.disposed = true;
+    this.entries.clear();
     for (const release of [...this.sessions]) release();
   }
 }
@@ -266,6 +379,13 @@ export function installLocalMaps(next: MapProvider) {
   maps?.dispose();
   provider = next;
   maps = new LocalMapAssets(next);
+  for (const listener of listeners) listener();
+}
+/** Invalidate decoded maps when the user explicitly clears prepared client assets. */
+export function resetLocalMaps() {
+  if (!provider) return;
+  maps?.dispose();
+  maps = new LocalMapAssets(provider);
   for (const listener of listeners) listener();
 }
 export function removeLocalMaps(previous: MapProvider) {

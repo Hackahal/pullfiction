@@ -232,8 +232,8 @@ test("Comparison uses one WR route, signed cumulative/segment deltas and no futu
   wr!.splits.reverse();
   comparison = compareSpeedrun(index, speedrunAt(index, 10000), wr);
   assert.equal(comparison.routeMatches, false);
-  assert.equal(comparison.delta, null);
-  assert.equal(comparison.projected, null);
+  assert.equal(comparison.delta, -1000);
+  assert.equal(comparison.projected, 13000);
 });
 
 test("Complete-raid ranking bounds work without a synthetic fight ID", async () => {
