@@ -1,0 +1,255 @@
+.speedrun-panel {
+  height: 100%;
+  overflow: auto;
+  padding: 12px;
+  background: #101512;
+  color: #d3ddd6;
+  font-size: 12px;
+}
+.speedrun-heading,
+.speedrun-subheading,
+.speedrun-penalty {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.speedrun-heading {
+  color: #9eada3;
+}
+.speedrun-clock {
+  color: #65f58b;
+  font:
+    500 clamp(28px, 4vw, 52px)/1.3 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  letter-spacing: -1px;
+  margin-top: 8px;
+}
+.speedrun-status {
+  color: #9eada3;
+  text-align: right;
+  padding-bottom: 12px;
+}
+.speedrun-notice {
+  color: #edc181;
+  line-height: 1.5;
+}
+.speedrun-splits {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.speedrun-splits caption {
+  text-align: left;
+  color: #a5b9ac;
+  padding: 10px 0;
+}
+.speedrun-splits th {
+  color: #94a399;
+  text-align: left;
+  font-weight: normal;
+  font-size: 11px;
+}
+.speedrun-splits td,
+.speedrun-splits th {
+  padding: 5px 4px;
+  border-bottom: 1px solid #25352b;
+}
+.speedrun-splits td:last-child,
+.speedrun-splits th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.speedrun-splits td:last-child,
+.speedrun-requirements li > span:last-child {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.speedrun-splits button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.speedrun-splits button:hover {
+  text-decoration: underline;
+}
+.speedrun-panel .is-complete {
+  color: #65f58b;
+}
+.speedrun-splits .is-current {
+  background: #223b2b;
+}
+.speedrun-subheading {
+  margin-top: 18px;
+  margin-bottom: 8px;
+}
+.speedrun-requirements {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.speedrun-requirements li {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid #203027;
+}
+.speedrun-requirements li > span:last-child {
+  white-space: nowrap;
+}
+.speedrun-penalty {
+  margin-top: 12px;
+  color: #edc181;
+}
+.speedrun-rules {
+  margin-top: 16px;
+  color: #a5b9ac;
+  line-height: 1.5;
+}
+.speedrun-rules a {
+  color: #8acda0;
+}
+.speedrun-heat {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.speedrun-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 11px;
+  color: #9eada3;
+}
+.speedrun-reference a {
+  color: #b6c8bc;
+}
+.speedrun-reference button {
+  font-size: 10px;
+  padding: 2px 5px;
+}
+.speedrun-category-label {
+  color: #94a399;
+  font-size: 10px;
+  margin: 0 0 8px;
+}
+.speedrun-settings {
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.speedrun-settings label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 5px 0;
+}
+.speedrun-settings select {
+  max-width: 70%;
+  min-width: 0;
+}
+.speedrun-splits caption {
+  font-size: 10px;
+  padding: 6px 0;
+}
+.speedrun-splits td {
+  padding: 5px 4px;
+}
+.speedrun-splits td:first-child {
+  max-width: 150px;
+}
+.speedrun-splits td:nth-child(2),
+.speedrun-splits td:nth-child(3) {
+  font:
+    600 11px ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  white-space: nowrap;
+  text-align: right;
+}
+.speedrun-splits .is-current {
+  background: #394632;
+  outline: 1px solid #65734e;
+  outline-offset: -1px;
+}
+.speedrun-panel .is-ahead {
+  color: #65e58a;
+}
+.speedrun-panel .is-behind {
+  color: #f18479;
+}
+.speedrun-clock {
+  margin-top: 6px;
+}
+.speedrun-metrics {
+  margin: 0;
+  font-size: 11px;
+  border-top: 1px solid #354138;
+  padding-top: 6px;
+}
+.speedrun-metrics > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+}
+.speedrun-metrics dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.speedrun-comparison-note {
+  font-size: 10px;
+  color: #96a49b;
+  line-height: 1.5;
+}
+.speedrun-comparison-note a {
+  color: #b6c8bc;
+}
+.speedrun-trash {
+  margin-top: 14px;
+  font-size: 11px;
+}
+.speedrun-trash summary span {
+  float: right;
+}
+/* Docked timers can be much narrower than the viewport. Keep all columns visible. */
+.speedrun-panel {
+  container-type: inline-size;
+}
+.speedrun-splits {
+  table-layout: fixed;
+}
+.speedrun-splits th:first-child {
+  width: 44%;
+}
+.speedrun-splits th:nth-child(2),
+.speedrun-splits th:nth-child(3) {
+  width: 28%;
+}
+.speedrun-splits button {
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.speedrun-splits td:nth-child(2),
+.speedrun-splits td:nth-child(3) {
+  font-size: clamp(9px, 3cqw, 11px);
+}
+.speedrun-clock {
+  font-size: clamp(26px, 13cqw, 52px);
+}

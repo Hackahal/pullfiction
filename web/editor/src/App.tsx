@@ -17,6 +17,7 @@ import { GameVersionContext } from "./Wowhead";
 import { GAME_VERSIONS } from "../../planner/game-versions.mjs";
 import { selectionMode } from "./selection-model";
 import { MapView } from "./MapView";
+import { SpeedrunPanel } from "./SpeedrunTimer";
 import { RunTimeline } from "./RunTimeline";
 import { Toolbox } from "./Toolbox";
 import { readPanels, VISIBILITY_STORAGE, type PaneId } from "./dock-model";
@@ -599,6 +600,17 @@ export function App({ controller }: { controller: EditorController }) {
                       pageDetails={pageDetails && state.planning}
                       onPageDetails={showPageDetails}
                     />
+                  ),
+                },
+                {
+                  id: "speedrun",
+                  title: "Speedrun timer",
+                  visible:
+                    openPanels.includes("speedrun") &&
+                    state.workspaceMode === "analyse",
+                  close: () => closePanel("speedrun"),
+                  content: (
+                    <SpeedrunPanel state={state} controller={controller} />
                   ),
                 },
                 {

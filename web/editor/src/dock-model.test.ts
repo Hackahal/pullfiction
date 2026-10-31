@@ -334,3 +334,48 @@ test("Workspace left-edge drops stack panes in one full-height column without du
   g = dockGeometry(root, visible, 1200, 800);
   assert.ok(g.panes.run!.x > 0);
 });
+
+test("Speedrun timer defaults to a tall right panel and migrates without moving existing panes", () => {
+  const root = defaultDock();
+  const geometry = dockGeometry(
+    root,
+    new Set<PaneId>(["scene", "run", "speedrun"]),
+    1000,
+    700,
+  ).panes;
+  assert.equal(geometry.speedrun!.height, 700);
+  assert.ok(geometry.speedrun!.x > geometry.scene!.x);
+  const old = {
+    axis: "column",
+    ratio: 0.74,
+    a: {
+      axis: "row",
+      ratio: 0.65,
+      a: { pane: "scene" },
+      b: {
+        axis: "row",
+        ratio: 0.6,
+        a: { pane: "analysis" },
+        b: { pane: "inspector" },
+      },
+    },
+    b: {
+      axis: "row",
+      ratio: 0.5,
+      a: { pane: "damage" },
+      b: { pane: "timeline" },
+    },
+  } as const;
+  const visible = new Set<PaneId>([
+    "scene",
+    "analysis",
+    "inspector",
+    "damage",
+    "timeline",
+  ]);
+  assert.deepEqual(
+    dockGeometry(parseDock(JSON.stringify(old)), visible, 1000, 700).panes,
+    dockGeometry(old, visible, 1000, 700).panes,
+  );
+  assert.deepEqual(readPanels('["speedrun","speedrun"]'), ["speedrun"]);
+});

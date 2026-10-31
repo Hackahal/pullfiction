@@ -193,6 +193,8 @@ export interface Chapter {
   enemyNPCs?: { id: number }[];
 }
 export interface Fight {
+  difficulty?: number;
+  size?: number;
   id: number | string;
   name: string;
   startTime: number;
