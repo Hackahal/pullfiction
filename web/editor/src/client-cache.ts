@@ -1,3 +1,9 @@
+import {
+  assetDependencies,
+  catalogAssets,
+  PREFETCH_CATALOGS,
+  type AssetTask,
+} from "./client-prefetch";
 import type { ClientReader, CatalogKind } from "./browser-assets";
 import type { LocalMap } from "./local-map";
 
@@ -12,6 +18,12 @@ export interface PreparedClient extends ClientReader {
   readonly hasSource: boolean;
   attach(source: ClientReader): void;
   activate(): Promise<boolean>;
+  prefetch(options: {
+    raids: readonly { map: number; directory: string }[];
+    signal: AbortSignal;
+    ready(): boolean;
+    progress(value: string): void;
+  }): Promise<void>;
 }
 export interface ClientAssetCache {
   restore(needsSource: () => void): Promise<PreparedClient | null>;
@@ -157,6 +169,32 @@ export class IndexedClientAssetCache implements ClientAssetCache {
       get: (key) => this.get("assets", [manifest.identity, key]),
       put: (key, value) => this.put(manifest.identity, key, value, generation),
       activate: (usable) => this.activate(manifest, generation, usable),
+      prefetched: async (inventory) => {
+        const saved = await this.get("meta", [
+          "prefetch-v1",
+          manifest.identity,
+          inventory,
+        ]);
+        return generation === this.generation && saved === true;
+      },
+      completePrefetch: (inventory) =>
+        this.completePrefetch(manifest.identity, inventory, generation),
+    });
+  }
+  /** Commit completion separately from the manifest that enables partial-cache startup. */
+  private async completePrefetch(
+    identity: string,
+    inventory: string,
+    generation: number,
+  ) {
+    const db = await this.open();
+    if (generation !== this.generation) return false;
+    return new Promise<boolean>((resolve, reject) => {
+      const tx = db.transaction("meta", "readwrite");
+      tx.objectStore("meta").put(true, ["prefetch-v1", identity, inventory]);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not save prefetch completion"));
     });
   }
   private async put(
@@ -232,6 +270,7 @@ export class IndexedClientAssetCache implements ClientAssetCache {
 
 class CachedClientReader implements PreparedClient {
   private closed = false;
+  private foreground = 0;
   private failedWrites = false;
   private written = new Set<string>();
   private reportedErrors = new Set<string>();
@@ -249,6 +288,8 @@ class CachedClientReader implements PreparedClient {
       get(key: string): Promise<Entry | undefined>;
       put(key: string, value: Entry): Promise<boolean>;
       activate(usable: boolean): Promise<boolean>;
+      prefetched(inventory: string): Promise<boolean>;
+      completePrefetch(inventory: string): Promise<boolean>;
     },
   ) {}
   get needsSource() {
@@ -299,9 +340,11 @@ class CachedClientReader implements PreparedClient {
     const key = operationKey(method, args);
     let pending = this.inFlight.get(key);
     if (!pending) {
-      pending = this.request(key, method, args).finally(() =>
-        this.inFlight.delete(key),
-      );
+      ++this.foreground;
+      pending = this.request(key, method, args).finally(() => {
+        --this.foreground;
+        this.inFlight.delete(key);
+      });
       this.inFlight.set(key, pending);
     }
     return pending;
@@ -313,6 +356,23 @@ class CachedClientReader implements PreparedClient {
   ): Promise<any> {
     if (this.closed)
       throw new DOMException("Client access was cancelled", "AbortError");
+    let cached: Entry | undefined;
+    try {
+      cached = await this.store.get(key);
+    } catch {}
+    if (this.closed)
+      throw new DOMException("Client access was cancelled", "AbortError");
+    if (cached?.kind === "missing") {
+      const error = new Error("Asset is absent from this client build");
+      error.name = "NotFoundError";
+      throw error;
+    }
+    if (cached?.kind === "value") return cached.value;
+    if (cached?.kind === "unsupported") {
+      const error = new Error(cached.message);
+      error.name = "ClientUnsupportedError";
+      throw error;
+    }
     if (this.source) {
       try {
         const fn = (this.source as any)[method];
@@ -352,24 +412,6 @@ class CachedClientReader implements PreparedClient {
         throw error;
       }
     }
-    let cached: Entry | undefined;
-    try {
-      cached = await this.store.get(key);
-    } catch {}
-    if (this.closed)
-      throw new DOMException("Client access was cancelled", "AbortError");
-    if (cached?.kind === "missing") {
-      const error = new Error("Asset is absent from this client build");
-      error.name = "NotFoundError";
-      throw error;
-    }
-    if (cached?.kind === "value") return cached.value;
-    if (cached?.kind === "unsupported") {
-      const error = new Error(cached.message);
-      error.name = "ClientUnsupportedError";
-      throw error;
-    }
-    if (this.source) return this.request(key, method, args);
     let notify = false;
     if (!this.waiting) {
       let resolve!: () => void, reject!: (error: Error) => void;
@@ -391,6 +433,103 @@ class CachedClientReader implements PreparedClient {
     }
     await waiting;
     return this.request(key, method, args);
+  }
+  /** Cache supported content after scene readiness, yielding to foreground reads between assets.
+   * A separate versioned marker avoids rescanning a fully prepared build on later visits.
+   */
+  async prefetch(options: Parameters<PreparedClient["prefetch"]>[0]) {
+    if (!this.source || this.closed) return;
+    options.signal.throwIfAborted();
+    // Bump prefetch-v1 when asset discovery changes. Raid roots also identify the inventory.
+    const inventory = JSON.stringify(
+      options.raids
+        .map((raid) => [raid.map, raid.directory.toLowerCase()])
+        .sort(),
+    );
+    const complete = await this.store.prefetched(inventory);
+    options.signal.throwIfAborted();
+    if (this.closed) return;
+    if (complete) {
+      options.progress("All supported raid and catalog assets cached");
+      return;
+    }
+    const queue = new Map<string, AssetTask>();
+    const dependencies = new Map<string, AssetTask>();
+    const seen = new Set<string>();
+    const enqueue = (tasks: AssetTask[], immediate = false) => {
+      for (const task of tasks) {
+        const key = operationKey(task.method, task.args);
+        if (seen.has(key) || dependencies.has(key)) continue;
+        if (immediate) queue.delete(key);
+        (immediate ? dependencies : queue).set(key, task);
+      }
+    };
+    enqueue(
+      PREFETCH_CATALOGS.map((kind) => ({ method: "catalog", args: [kind] })),
+    );
+    for (const raid of options.raids) {
+      enqueue([
+        { method: "map", args: [raid.map, raid.directory] },
+        {
+          method: "world",
+          args: [`world/maps/${raid.directory}/${raid.directory}.wdt`],
+        },
+      ]);
+    }
+    let completed = 0,
+      failed = 0;
+    while (queue.size || dependencies.size) {
+      options.signal.throwIfAborted();
+      if (this.closed || !this.source) return;
+      // Give scene changes and foreground reads first use of the single archive worker.
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      if (!options.ready() || this.foreground) continue;
+      options.signal.throwIfAborted();
+      const next = dependencies.size ? dependencies : queue;
+      const [key, task] = next.entries().next().value!;
+      next.delete(key);
+      seen.add(key);
+      try {
+        const pending = this.request(key, task.method, task.args).finally(() =>
+          this.inFlight.delete(key),
+        );
+        this.inFlight.set(key, pending);
+        const value = await pending;
+        options.signal.throwIfAborted();
+        if (task.method === "catalog") {
+          if (value.partial) failed++;
+          enqueue(catalogAssets(task.args[0], value));
+        } else enqueue(assetDependencies(task, value), true);
+      } catch (error) {
+        options.signal.throwIfAborted();
+        if (this.closed) return;
+        failed++;
+      }
+      completed++;
+      if (this.failedWrites) {
+        options.progress(
+          "Background caching stopped: browser storage is full or unavailable",
+        );
+        return;
+      }
+      options.progress(
+        `Caching game assets: ${completed} prepared, ${queue.size + dependencies.size} queued${failed ? `, ${failed} unavailable` : ""}`,
+      );
+    }
+    options.signal.throwIfAborted();
+    if (this.closed) return;
+    if (!failed && !(await this.store.completePrefetch(inventory))) {
+      options.progress(
+        "Background caching finished, but completion could not be saved",
+      );
+      return;
+    }
+    options.signal.throwIfAborted();
+    options.progress(
+      failed
+        ? `Background caching finished with ${failed} unavailable assets`
+        : "All supported raid and catalog assets cached",
+    );
   }
   async activate() {
     if (this.closed) return false;

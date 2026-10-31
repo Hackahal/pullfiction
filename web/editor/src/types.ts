@@ -399,6 +399,7 @@ export interface Snapshot {
   clientReconnect: boolean;
   clientFolderError: string | null;
   clientCacheStatus: "none" | "recording" | "ready" | "unavailable";
+  clientPrefetchProgress?: string;
   clientNeedsFiles: boolean;
   clientPromptHidden: boolean;
   clientAttaching: boolean;
