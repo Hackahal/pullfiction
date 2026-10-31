@@ -1252,3 +1252,28 @@ test("Renderer workbench reconnects its source before any uncached request", asy
     second.fixture.calls.includes("read:interface/icons/uncached-probe.blp"),
   );
 });
+
+test("Client prefetch starts only after scene readiness and aborts when the cache is cleared", async (t) => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  t.after(() => cache.close());
+  const { c } = cachedController(t, cache);
+  await c.openClient([]);
+  const client = (c as any).preparedClient;
+  let options: Parameters<typeof client.prefetch>[0] | undefined;
+  let starts = 0;
+  client.prefetch = async (value: any) => {
+    options = value;
+    starts++;
+  };
+  assert.equal(starts, 0);
+  c.receive("scene", "ready");
+  assert.equal(starts, 1);
+  assert.ok((options as any).raids.length >= 8);
+  assert.equal((options as any).ready(), true);
+  (c as any).patch({ sceneReady: false });
+  assert.equal((options as any).ready(), false);
+  c.receive("scene", "ready");
+  assert.equal(starts, 1);
+  await c.clearClientCache();
+  assert.equal((options as any).signal.aborted, true);
+});

@@ -242,3 +242,138 @@ test("Known converter capability limits retain their error classification withou
   restored.close();
   await cache.close();
 });
+
+test("Attached sources reuse persisted assets without reading the installation twice", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+  await live.model("model.m2");
+  await live.model("MODEL.m2");
+  assert.deepEqual(f.calls, ["model:model.m2"]);
+  live.close();
+  await cache.close();
+});
+
+test("Background preparation waits for readiness, follows dependencies, and restores without a folder", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  f.reader.catalog = async (kind) => {
+    f.calls.push(`catalog:${kind}`);
+    return kind === "creatures"
+      ? { models: { 41: { fileDataID: 8 }, 42: { fileDataID: 9 } } }
+      : {};
+  };
+  f.reader.model = async (name) => {
+    f.calls.push(`model:${name}`);
+    return { bytes: new TextEncoder().encode("\0__classic/10.blp\0").buffer };
+  };
+  f.reader.world = async (name) => {
+    f.calls.push(`world:${name}`);
+    return { bytes: new TextEncoder().encode("\0__classic/9.m2\0").buffer };
+  };
+  const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+  const abort = new AbortController();
+  let ready = false,
+    status = "";
+  const work = live.prefetch({
+    raids: [{ map: 409, directory: "mc" }],
+    signal: abort.signal,
+    ready: () => ready,
+    progress: (value) => {
+      status = value;
+    },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(f.calls.length, 0);
+  await live.read("foreground.blp");
+  ready = true;
+  await work;
+  assert.equal(f.calls[0], "read:foreground.blp");
+  assert.ok(f.calls.includes("world:world/maps/mc/mc.wdt"));
+  assert.ok(f.calls.includes("model:id:9"));
+  assert.ok(f.calls.includes("read:id:10"));
+  assert.ok(f.calls.indexOf("model:id:9") < f.calls.indexOf("model:id:8"));
+  assert.match(status, /All supported/);
+  await live.activate();
+  live.close();
+  const restored = (await cache.restore(() =>
+    assert.fail("prefetched asset must be saved"),
+  ))!;
+  await restored.model("id:9");
+  await restored.read("id:10");
+  await restored.map(409, "mc");
+  await restored.world("world/maps/mc/mc.wdt");
+  restored.close();
+  await cache.close();
+});
+
+test("Background preparation stops on cancellation and storage exhaustion", async () => {
+  const cache = new IndexedClientAssetCache(
+    new IDBFactory(),
+    "converter-a",
+    "small-prefetch",
+    1,
+  );
+  const live = await cache.wrap(fixture().reader, () =>
+    assert.fail("live source"),
+  );
+  let status = "";
+  await live.prefetch({
+    raids: [],
+    signal: new AbortController().signal,
+    ready: () => true,
+    progress: (value) => {
+      status = value;
+    },
+  });
+  assert.match(status, /storage is full or unavailable/);
+  const abort = new AbortController();
+  const pending = live.prefetch({
+    raids: [],
+    signal: abort.signal,
+    ready: () => false,
+    progress: () => {},
+  });
+  abort.abort();
+  await assert.rejects(pending, { name: "AbortError" });
+  live.close();
+  await cache.close();
+});
+
+test("Foreground work blocks background queue advancement and shares an in-flight background asset", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  let release!: () => void;
+  let started!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  f.reader.catalog = async (kind) => {
+    f.calls.push(`catalog:${kind}`);
+    if (kind === "world") {
+      started();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    }
+    return {};
+  };
+  const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+  const abort = new AbortController();
+  const work = live.prefetch({
+    raids: [],
+    signal: abort.signal,
+    ready: () => true,
+    progress: () => {},
+  });
+  await waiting;
+  const foreground = live.catalog("world");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(f.calls, ["catalog:world"]);
+  release();
+  await foreground;
+  await work;
+  assert.equal(f.calls.filter((call) => call === "catalog:world").length, 1);
+  live.close();
+  await cache.close();
+});

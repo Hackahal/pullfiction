@@ -294,6 +294,7 @@ export class EditorController {
   private clientAccessEpoch = 0;
   private clientCache: ClientAssetCache | null;
   private preparedClient: PreparedClient | null = null;
+  private prefetchAbort: AbortController | null = null;
   private clientAttachAbort: AbortController | null = null;
   private importAbort: AbortController | null = null;
   private wclSession: WclSession | null = null;
@@ -377,6 +378,7 @@ export class EditorController {
       clientReconnect: false,
       clientFolderError: null,
       clientCacheStatus: "none",
+      clientPrefetchProgress: "",
       clientNeedsFiles: false,
       clientPromptHidden: false,
       clientAttaching: false,
@@ -4778,6 +4780,7 @@ export class EditorController {
         status: raidByMap(this.state.plan.mapId)?.name ?? "Raid",
       });
       if (first && this.state.cameraMode !== "orbit") this.focusCurrent();
+      this.startClientPrefetch();
     } else if (kind === "status") {
       this.patch({ status: value });
     } else if (kind === "visualDiagnostics")
@@ -4942,7 +4945,40 @@ export class EditorController {
     if (this.state.busy) this.cancelImport();
     this.patch({ clientPromptHidden: true });
   }
+  private startClientPrefetch() {
+    const client = this.preparedClient;
+    if (
+      !client?.hasSource ||
+      !this.state.sceneReady ||
+      this.prefetchAbort ||
+      this.runtime.rendererLab
+    )
+      return;
+    const abort = new AbortController();
+    this.prefetchAbort = abort;
+    void client
+      .prefetch({
+        raids: RAIDS.map((raid) => ({
+          map: raid.map,
+          directory: raid.directory,
+        })),
+        signal: abort.signal,
+        ready: () =>
+          this.state.sceneReady && !this.state.busy && !this.state.buffering,
+        progress: (clientPrefetchProgress) => {
+          if (!abort.signal.aborted) this.patch({ clientPrefetchProgress });
+        },
+      })
+      .catch((error) => {
+        if (!abort.signal.aborted)
+          this.patch({
+            clientPrefetchProgress: `Background caching stopped: ${message(error)}`,
+          });
+      });
+  }
   async clearClientCache() {
+    this.prefetchAbort?.abort();
+    this.patch({ clientPrefetchProgress: "" });
     try {
       await this.clientCache?.forget();
       this.patch({ clientCacheStatus: "none" });
@@ -4996,6 +5032,7 @@ export class EditorController {
       if (this.preparedClient !== prepared)
         throw new DOMException("Client access was cancelled", "AbortError");
       prepared.attach(source);
+      this.startClientPrefetch();
       source = null;
       this.patch({
         clientNeedsFiles: false,
@@ -5339,6 +5376,7 @@ export class EditorController {
     this.raf = requestAnimationFrame(tick);
   }
   stop() {
+    this.prefetchAbort?.abort();
     ++this.clientAccessEpoch;
     this.clientAttachAbort?.abort();
     this.closeActorInspection();
