@@ -381,7 +381,9 @@ pub(crate) fn apply(
         let mut spawned = false;
         let keep: HashSet<_> = batch.iter().map(|u| u.key.as_str()).collect();
         ground_cache.retain(|key, _| keep.contains(key.as_str()));
-        routes.begin(collider_epoch.get());
+        // A paused retry can reflect newly ready floor assets/placements without
+        // a collider epoch change. Its route misses must be retried as well.
+        routes.begin(readiness_revision);
         routes.retain(&keep);
         let route_probe = crate::webbridge::path::WorldProbe::new(world);
         units.retain(|key, (entity, guid)| {

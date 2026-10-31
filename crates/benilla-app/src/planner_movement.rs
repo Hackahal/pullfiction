@@ -42,7 +42,7 @@ struct Memo {
 }
 #[derive(Default)]
 pub(crate) struct Routes {
-    epoch: u64,
+    revision: u64,
     remaining: usize,
     deferred: bool,
     actors: HashMap<String, Memo>,
@@ -51,10 +51,10 @@ impl Routes {
     pub(crate) fn clear(&mut self) {
         self.actors.clear();
     }
-    pub(crate) fn begin(&mut self, epoch: u64) {
-        if self.epoch != epoch {
+    pub(crate) fn begin(&mut self, revision: u64) {
+        if self.revision != revision {
             self.clear();
-            self.epoch = epoch;
+            self.revision = revision;
         }
         self.remaining = 4;
         self.deferred = false;
@@ -422,5 +422,26 @@ mod tests {
         assert!(frame[0].2.is_none());
         assert_eq!(frame[1].2.as_ref().unwrap().from, segment().from);
         assert!(frame[2].2.is_none());
+    }
+    #[test]
+    fn floor_misses_recover_when_readiness_changes_without_a_collider_epoch() {
+        let mut probe = Wall {
+            probes: Cell::new(0),
+            loaded: false,
+        };
+        let mut readiness = readiness::NativeReadiness::<u32>::default();
+        let mut routes = Routes::default();
+        let first = readiness.observe(7, [], None, true, false);
+        routes.begin(first);
+        assert!(routes.pose("p", &segment(), &probe).is_none());
+        probe.loaded = true;
+        let unchanged = readiness.observe(7, [], None, true, false);
+        assert_eq!(first, unchanged);
+        routes.begin(unchanged);
+        assert!(routes.pose("p", &segment(), &probe).is_none());
+        let loaded = readiness.observe(7, [], None, true, true);
+        assert_ne!(first, loaded);
+        routes.begin(loaded);
+        assert!(routes.pose("p", &segment(), &probe).is_some());
     }
 }
