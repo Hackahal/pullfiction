@@ -53,7 +53,7 @@ Normal pushes to `main` run CI and do not deploy. Use either release entry point
 1. In GitHub, open **Releases → Draft a new release**, choose a version tag and target commit, and publish it. The **Release** workflow builds and deploys that commit.
 2. For a direct deployment or an older version, open **Actions → Release → Run workflow** and enter the commit or tag in **ref**. The default is `main`.
 
-The workflow builds on a clean GitHub-hosted runner, checks the packaging rules, uploads only the audited production directory, and verifies hosted bytes and response headers. Build and deployment run in separate jobs. The Cloudflare credential is available only to the deployment step. Each run retains the static package and a separate audit inventory for 30 days.
+The workflow builds on a clean GitHub-hosted runner, checks the packaging rules, uploads only the audited production directory, and verifies hosted bytes and response headers. Delivery checks retry briefly while a new deployment becomes visible; every attempt still requires the exact expected bytes and headers. Build and deployment run in separate jobs. The Cloudflare credential is available only to the deployment step. Each run retains the static package and a separate audit inventory for 30 days.
 
 The repository requires these Actions settings:
 

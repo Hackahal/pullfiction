@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import importlib.util
 from pathlib import Path
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -48,8 +49,16 @@ def verify(origin: str, release: Path) -> int:
         name = item["path"]
         path = "" if name == "index.html" else urllib.parse.quote(name, safe="/")
         body, headers = fetch(f"{origin}/{path}")
-        if hashlib.sha256(body).hexdigest() != item["sha256"]:
-            raise ValueError(f"Deployed bytes differ from the release: {name}")
+        actual_hash = hashlib.sha256(body).hexdigest()
+        if actual_hash != item["sha256"]:
+            detail = (f"expected {item['sha256']}, received {actual_hash}; "
+                      f"{len(body)} bytes, type={headers.get_content_type()}, "
+                      f"encoding={headers.get('Content-Encoding')}, "
+                      f"cache={headers.get('CF-Cache-Status')}, "
+                      f"mitigation={headers.get('cf-mitigated')}")
+            if name == "index.html":
+                detail += f"; public entry preview={body[:240].decode(errors='replace')!r}"
+            raise ValueError(f"Deployed bytes differ from the release: {name}: {detail}")
         if headers.get("X-Content-Type-Options") != "nosniff":
             raise ValueError(f"Missing nosniff response header: {name}")
         mime = headers.get_content_type()
@@ -83,11 +92,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("origin")
     parser.add_argument("release", type=Path)
+    parser.add_argument("--attempts", type=int, default=1)
+    parser.add_argument("--delay", type=float, default=5)
     args = parser.parse_args()
+    if not 1 <= args.attempts <= 30 or not 0 <= args.delay <= 30:
+        parser.error("Use 1–30 attempts and a delay of 0–30 seconds")
     try:
-        count = verify(args.origin, args.release.resolve())
+        # Local package failures must fail immediately, before network retries.
+        audit_release(args.release.resolve())
     except (OSError, ValueError) as error:
         parser.exit(1, f"Deployment verification failed: {error}\n")
+    for attempt in range(1, args.attempts + 1):
+        try:
+            count = verify(args.origin, args.release.resolve())
+            break
+        except (OSError, ValueError) as error:
+            if attempt == args.attempts:
+                parser.exit(1, f"Deployment verification failed: {error}\n")
+            print(f"Delivery check {attempt}/{args.attempts}: {error}; retrying in {args.delay:g}s", flush=True)
+            time.sleep(args.delay)
     print(f"Verified {count} production files, response types, viewer compression and development-path exclusions.")
 
 

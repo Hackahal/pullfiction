@@ -2,8 +2,11 @@
 """Artifact-level tests. Fixtures contain application text and synthetic WASM."""
 import importlib.util
 import json
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 from email.message import Message
@@ -142,6 +145,27 @@ class StaticPackageTests(unittest.TestCase):
         with patch.object(deployment, "fetch", double_decoded):
             with self.assertRaisesRegex(ValueError, "explicitly compressed"):
                 deployment.verify("https://pullfiction.example", self.output)
+
+    def test_delivery_retry_waits_for_exact_expected_entry_bytes(self):
+        self.pack()
+        requests = [0]
+
+        def becoming_ready(url, **options):
+            body, headers = self.hosted_file(url, **options)
+            if url == "https://pullfiction.example/":
+                requests[0] += 1
+                if requests[0] == 1:
+                    return b"Previous entry", headers
+            return body, headers
+
+        arguments = ["verify-deployment.py", "https://pullfiction.example", str(self.output),
+                     "--attempts", "2", "--delay", "0"]
+        output = io.StringIO()
+        with patch.object(deployment, "fetch", becoming_ready), patch.object(sys, "argv", arguments), redirect_stdout(output):
+            deployment.main()
+        self.assertEqual(requests[0], 2)
+        self.assertIn("expected ", output.getvalue())
+        self.assertIn("Verified ", output.getvalue())
 
     def test_metadata_rejects_art_spawns_and_unreviewed_source_changes(self):
         self.pack()
