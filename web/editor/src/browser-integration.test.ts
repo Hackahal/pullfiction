@@ -435,14 +435,17 @@ test("Browser nameplates bind projected units, class colors, health and independ
   c.select("1:1");
   assert.match(markup(), /aria-label="Select Mage" aria-pressed="true"/);
   c.setOption("friendlyNameplates", false);
-  assert.doesNotMatch(markup(), /Select Mage/);
+  assert.match(markup(), /Select Mage/);
+  assert.match(markup(), /browser-nameplate-name-only/);
+  assert.doesNotMatch(markup(), /Mage health/);
   assert.match(markup(), /Select Enemy/);
   c.setOption("friendlyNameplates", true);
   c.setOption("enemyNameplates", false);
   assert.match(markup(), /Select Mage/);
   assert.doesNotMatch(markup(), /Select Enemy/);
   c.setOption("nameplates", false);
-  assert.equal(markup(), "");
+  assert.match(markup(), /Select Mage/);
+  assert.doesNotMatch(markup(), /Select Enemy|role="meter"/);
   c.receive("plates", "not JSON");
   assert.deepEqual(c.getSnapshot().browserPlates, []);
   assert.deepEqual(

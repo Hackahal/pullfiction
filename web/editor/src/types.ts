@@ -43,6 +43,7 @@ export interface PlannedActor {
   key: string;
   name: string;
   class: string;
+  icon?: string | null;
   type: string;
   position: Point;
   recorded?: Point;
@@ -280,6 +281,7 @@ export interface NativeFrame {
   estimated: boolean;
   wisp?: boolean;
   friendly: boolean;
+  nameplate?: boolean;
   raid: boolean;
   health: number | null;
   max_health: number | null;
@@ -363,6 +365,8 @@ export interface Options {
   nameplates: boolean;
   friendlyNameplates: boolean;
   enemyNameplates: boolean;
+  trashNameplates: boolean;
+  bossNameplates: boolean;
   raidFrames: boolean;
   auras: boolean;
   spells: boolean;

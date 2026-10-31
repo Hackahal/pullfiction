@@ -4328,3 +4328,9 @@ a.inspect-rune-entry:focus-visible {
   font-size: 11px;
   line-height: 1.5;
 }
+
+.browser-nameplate.browser-nameplate-name-only {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}

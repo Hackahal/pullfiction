@@ -1,3 +1,4 @@
+import { actorNameplateEnabled } from "./nameplate-model";
 import {
   createClientFolderAccess,
   type ClientFolderAccess,
@@ -443,6 +444,8 @@ export class EditorController {
         nameplates: true,
         friendlyNameplates: true,
         enemyNameplates: true,
+        trashNameplates: true,
+        bossNameplates: true,
         raidFrames: true,
         auras: true,
         spells: true,
@@ -1991,6 +1994,7 @@ export class EditorController {
             key: snapshot.actors[i].key,
             name: snapshot.actors[i].name,
             class: snapshot.actors[i].class,
+            icon: snapshot.actors[i].icon,
             type: snapshot.actors[i].type,
             id: 0,
             instance: 1,
@@ -2099,6 +2103,7 @@ export class EditorController {
               key: a.key,
               name: a.name,
               class: a.class ?? "",
+              icon: a.icon ?? null,
               type: a.type,
               position: [
                 p.pos[0],
@@ -5479,6 +5484,13 @@ export class EditorController {
       this.patch({ time: this.clockTime });
       return;
     }
+    if (this.engine?.set_replay_nameplate_filters)
+      this.engine.set_replay_nameplate_filters(
+        options.nameplates && options.friendlyNameplates,
+        options.nameplates && options.enemyNameplates,
+      );
+    else this.engine?.set_replay_nameplates?.(options.nameplates);
+    this.engine?.set_replay_raid_frames?.(options.raidFrames);
     if (!replay) {
       this.sendPositions();
       this.patch({ time: this.clockTime });
@@ -5518,6 +5530,7 @@ export class EditorController {
         dead: false,
         estimated: false,
         friendly: actor.type === "Pet",
+        nameplate: actorNameplateEnabled(actor, options),
         race: appearance.race ?? actor.race,
         sex: appearance.sex ?? actor.sex,
         look: appearance.look ?? [0, 0, 0, 0, 0],
@@ -5559,13 +5572,6 @@ export class EditorController {
         auras: state.auras.slice(0, 48).map((a) => a.spell),
       };
     });
-    if (this.engine?.set_replay_nameplate_filters)
-      this.engine.set_replay_nameplate_filters(
-        options.nameplates && options.friendlyNameplates,
-        options.nameplates && options.enemyNameplates,
-      );
-    else this.engine?.set_replay_nameplates(options.nameplates);
-    this.engine?.set_replay_raid_frames(options.raidFrames);
     this.sendPositions();
     this.sendActions();
     this.patch({ time: this.clockTime });
@@ -5649,6 +5655,7 @@ export class EditorController {
             dead: false,
             estimated: false,
             friendly: a.type !== "NPC",
+            nameplate: actorNameplateEnabled(a, this.state.options),
             race: a.race ?? 1,
             sex: a.sex ?? 0,
             look: [0, 0, 0, 0, 0],
