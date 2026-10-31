@@ -63,7 +63,10 @@ pub struct ReplayUnit {
     pub floor_hint: Option<f32>,
     pub facing: f32,
     pub speed: f32,
-    #[serde(default)]
+    #[serde(
+        default,
+        deserialize_with = "crate::planner_movement::deserialize_optional"
+    )]
     pub movement: Option<crate::planner_movement::Segment>,
     pub dead: bool,
     #[serde(default)]

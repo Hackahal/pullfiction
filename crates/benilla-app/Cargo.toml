@@ -130,6 +130,8 @@ objc2-foundation = { version = "0.2", features = ["NSArray", "NSData", "NSGeomet
 # + the 0.2.122 CLI emits broken glue — verified, so this must track the CLI
 # `scripts/web-build.sh` invokes to the digit.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+# Decode optional replay movement independently of the recorded actor fields.
+serde_json = "1"
 wasm-bindgen = "=0.2.122"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

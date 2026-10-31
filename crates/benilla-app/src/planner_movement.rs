@@ -34,6 +34,15 @@ impl Segment {
     }
 }
 
+/// A malformed optional reconstruction must not discard valid recorded actors.
+pub fn deserialize_optional<'de, D>(deserializer: D) -> Result<Option<Segment>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = <serde_json::Value as serde::Deserialize>::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
 struct Memo {
     from: Vec3,
     to: Vec3,
@@ -443,5 +452,39 @@ mod tests {
         assert_ne!(first, loaded);
         routes.begin(loaded);
         assert!(routes.pose("p", &segment(), &probe).is_some());
+    }
+    #[test]
+    fn malformed_optional_movement_keeps_the_deserialized_frame() {
+        #[derive(serde::Deserialize)]
+        struct Actor {
+            key: String,
+            position: [f32; 3],
+            #[serde(default, deserialize_with = "super::deserialize_optional")]
+            movement: Option<Segment>,
+        }
+        for bad in [
+            "null",
+            "false",
+            "[]",
+            "42",
+            r#"{"from":null}"#,
+            r#"{"from":[0,0,0],"to":[1,0,0],"fraction":"bad","rate":1,"duration":1,"recorded_facing":false}"#,
+        ] {
+            let json = format!(
+                r#"[{{"key":"bad","position":[1,2,3],"movement":{bad}}},{{"key":"other","position":[4,5,6]}}]"#
+            );
+            let actors: Vec<Actor> = serde_json::from_str(&json).unwrap();
+            assert_eq!(actors.len(), 2);
+            assert_eq!(actors[0].key, "bad");
+            assert_eq!(actors[0].position, [1., 2., 3.]);
+            assert!(actors[0].movement.is_none());
+            assert_eq!(actors[1].position, [4., 5., 6.]);
+        }
+        let valid: Actor = serde_json::from_str(r#"{"key":"p","position":[1,2,3],"movement":{"from":[0,0,0],"to":[1,0,0],"fraction":0.5,"rate":1,"duration":1,"recorded_facing":false}}"#).unwrap();
+        assert!(valid.movement.unwrap().valid());
+        assert!(
+            serde_json::from_str::<Actor>(r#"{"key":"p","position":"bad","movement":null}"#)
+                .is_err()
+        );
     }
 }
