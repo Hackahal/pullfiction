@@ -330,7 +330,12 @@ export interface Engine {
     mode: number,
     epoch: number,
   ): void;
-  hover_annotation?(x: number, y: number, placing: boolean): void;
+  hover_annotation?(
+    x: number,
+    y: number,
+    placing: boolean,
+    request?: number,
+  ): void;
   preview_annotation?(x: number, y: number, token: number): void;
   preview_map_annotation?(x: number, y: number, z: number, token: number): void;
   pick_for_annotation?(x: number, y: number, token: number): void;

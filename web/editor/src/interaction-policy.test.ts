@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  drawsOnRelease,
-  pointReleaseActor,
-  sceneGesture,
-} from "./interaction-policy";
+import { drawsOnRelease, sceneGesture } from "./interaction-policy";
 import type { Tool } from "./types";
 test("Right-drag camera and middle-drag pan keep priority over every tool, handle and modifier", () => {
   for (const tool of [
@@ -77,29 +73,4 @@ test("Marker clicks place without movement while drag-only tools still require m
     assert.equal(drawsOnRelease(tool, false), false);
     assert.equal(drawsOnRelease(tool, true), true);
   }
-});
-
-test("Dragging a point marking off an actor discards the pointer-down attachment", () => {
-  assert.equal(
-    pointReleaseActor("hovered-actor", null, false),
-    "hovered-actor",
-  );
-  assert.equal(pointReleaseActor("hovered-actor", null, true), null);
-  assert.equal(pointReleaseActor(null, null, false), null);
-  assert.equal(pointReleaseActor(null, null, true), null);
-});
-
-test("Explicitly selected actors remain the point marking origin after movement", () => {
-  assert.equal(
-    pointReleaseActor("selected-actor", "selected-actor", false),
-    "selected-actor",
-  );
-  assert.equal(
-    pointReleaseActor("selected-actor", "selected-actor", true),
-    "selected-actor",
-  );
-  assert.equal(
-    pointReleaseActor("hovered-actor", "selected-actor", true),
-    "selected-actor",
-  );
 });

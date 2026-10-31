@@ -182,6 +182,13 @@ export class EditorController {
   private dimensionBefore: Plan | null = null;
   private pendingSceneSelect: { x: number; y: number; toggle: boolean } | null =
     null;
+  private markerRequest = 0;
+  private pendingMarkerClicks: {
+    x: number;
+    y: number;
+    epoch: number;
+    request: number;
+  }[] = [];
   private markDrag: {
     id: string;
     handle: number | null;
@@ -2539,6 +2546,27 @@ export class EditorController {
       this.seek(page.start);
     this.selectActor(key, toggle);
   }
+  // Resolve the release hit instead of using the throttled scene-hover snapshot.
+  placeSceneMarkerAt(x: number, y: number) {
+    if (this.state.tool !== "marker" || ![x, y].every(Number.isFinite)) return;
+    const selected = this.selectedActorForDrawing();
+    if (selected && this.startActorDrawing(selected)) return;
+    if (!this.engine?.hover_annotation) {
+      this.pick(x, y);
+      return;
+    }
+    this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
+      (click) => click.epoch === this.pickEpoch,
+    );
+    this.markerRequest = (this.markerRequest + 1) >>> 0;
+    this.pendingMarkerClicks.push({
+      x,
+      y,
+      epoch: this.pickEpoch,
+      request: this.markerRequest,
+    });
+    this.engine.hover_annotation(x, y, true, this.markerRequest);
+  }
   selectSceneAt(x: number, y: number, toggle = false) {
     this.pendingSceneSelect = { x, y, toggle };
     this.engine?.hover_annotation?.(x, y, false);
@@ -3043,6 +3071,7 @@ export class EditorController {
     this.draftMark = null;
     this.markDrag = null;
     this.pickEpoch++;
+    this.pendingMarkerClicks = [];
     this.pendingPicks = 0;
     this.mapPickQueue = [];
     this.finishRequested = false;
@@ -4680,6 +4709,32 @@ export class EditorController {
       )
         this.viewBasis = { right: basis.right, up: basis.up };
       this.patch({ sceneHover: JSON.parse(value) });
+      const markerIndex = this.pendingMarkerClicks.findIndex(
+        (click) =>
+          basis.request === click.request &&
+          Array.isArray(basis.pixel) &&
+          Math.hypot(basis.pixel[0] - click.x, basis.pixel[1] - click.y) < 0.1,
+      );
+      if (markerIndex >= 0) {
+        const [click] = this.pendingMarkerClicks.splice(markerIndex, 1);
+        if (
+          click.epoch !== this.pickEpoch ||
+          this.state.tool !== "marker" ||
+          basis.nativeUI
+        )
+          return;
+        if (!basis.actor || !this.startActorDrawing(basis.actor)) {
+          if (
+            Array.isArray(basis.point) &&
+            basis.point.length === 3 &&
+            basis.point.every(Number.isFinite)
+          )
+            this.placePoint(basis.point as Point);
+          else
+            this.notify("No loaded ground here. Move the 3D view here first.");
+        }
+        return;
+      }
       if (basis.nativeUI) {
         const pending = this.pendingSceneSelect;
         if (

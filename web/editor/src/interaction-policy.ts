@@ -20,16 +20,6 @@ export function drawsOnRelease(tool: Tool, moved: boolean) {
   return tool === "marker" || moved;
 }
 
-// A moved point marking must not attach to an actor only hit at pointer-down.
-// Explicit actor selection remains the drawing origin even when dragging.
-export function pointReleaseActor(
-  capturedActor: string | null,
-  selectedActor: string | null,
-  moved: boolean,
-) {
-  return moved ? selectedActor : capturedActor;
-}
-
 // Share the drag threshold between selection, drawing and transforms.
 export const DRAG_THRESHOLD = 4;
 export function startsDrag(start: readonly number[], end: readonly number[]) {

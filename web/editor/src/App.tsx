@@ -5,7 +5,6 @@ import { Inspection } from "./Inspection";
 import {
   sceneGesture,
   drawsOnRelease,
-  pointReleaseActor,
   startsDrag,
   usesNativeMouseLook,
 } from "./interaction-policy";
@@ -1617,14 +1616,16 @@ function Viewport({
                 drawsOnRelease(state.tool, moved)
               ) {
                 const drop = ["marker", "label"].includes(state.tool);
-                const actor = drop
-                  ? pointReleaseActor(
-                      press.actor,
-                      controller.selectedActorForDrawing(),
-                      moved,
-                    )
-                  : press.actor;
-                if (!actor || !controller.startActorDrawing(actor))
+                if (state.tool === "marker") {
+                  controller.placeSceneMarkerAt(
+                    e.clientX - r.left,
+                    e.clientY - r.top,
+                  );
+                  if (e.currentTarget.hasPointerCapture(e.pointerId))
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                  return;
+                }
+                if (!press.actor || !controller.startActorDrawing(press.actor))
                   controller.pick(
                     ...((drop
                       ? [e.clientX - r.left, e.clientY - r.top]
