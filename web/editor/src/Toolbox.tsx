@@ -5,6 +5,7 @@ import type { Snapshot } from "./types";
 import { PANEL_MIME, type PaneId } from "./dock-model";
 import { EditorIcon as Icon } from "./EditorIcon";
 export const panelCatalogue: { id: PaneId; label: string; icon: string }[] = [
+  { id: "speedrun", label: "Speedrun timer", icon: "timeline" },
   { id: "run", label: "Run timeline", icon: "timeline" },
   { id: "damage", label: "Damage graph", icon: "chart" },
   { id: "healing", label: "Healing graph", icon: "heal" },

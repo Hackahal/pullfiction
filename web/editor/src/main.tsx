@@ -4,6 +4,7 @@ import { EditorController } from "./controller";
 import { ensureWowheadWidget } from "./wowhead-widget";
 import "./styles.css";
 import "./analysis-ui.css";
+import "./speedrun-timer.css";
 import "./library.css";
 import "@runtime-art.css";
 let storage: Storage | undefined;

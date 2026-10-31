@@ -4,7 +4,7 @@ import { reportRaids, raidByMap, raidForZone } from "./raids.mjs";
 export const REPORT_QUERY = `query($code:String!) { reportData { report(code:$code) {
  code title startTime endTime visibility revision segments
  masterData { actors { id name type subType gameID petOwner } }
- fights { id name encounterID startTime endTime kill completeRaid friendlyPlayers enemyNPCs { id instanceCount } gameZone { id name } }
+ fights { id name encounterID startTime endTime kill completeRaid difficulty size friendlyPlayers enemyNPCs { id instanceCount } gameZone { id name } }
 } } }`;
 
 export async function collectEvents(loadPage, start, end, options = {}) {
@@ -58,8 +58,21 @@ export function fullRunFight(report, map) {
         !f.completeRaid,
     )
     .sort((a, b) => a.startTime - b.startTime);
+  const bossChapters = chapters.filter((f) => f.encounterID && f.kill);
+  const common = (field) => {
+    const values = new Set(bossChapters.map((f) => f[field]));
+    return values.size === 1 && Number.isSafeInteger(bossChapters[0]?.[field])
+      ? bossChapters[0][field]
+      : undefined;
+  };
+  const mixedKnown = (field) => new Set(
+    bossChapters.map((f) => f[field]).filter(Number.isSafeInteger),
+  ).size > 1;
   return {
     id: "run",
+    categoryMixed: mixedKnown("difficulty") || mixedKnown("size"),
+    difficulty: common("difficulty"),
+    size: common("size"),
     name: `Full ${raid.name} run`,
     completeRaid: true,
     gameZone: { id: raid.map, name: raid.name },

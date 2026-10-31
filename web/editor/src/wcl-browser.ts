@@ -1,3 +1,9 @@
+import {
+  fetchSpeedCategory,
+  fetchSpeedWorldRecord,
+  type WclSpeedCategory,
+  type WclSpeedSelection,
+} from "./speedrun-world-record";
 import { gameVersion } from "../../planner/game-versions.mjs";
 import { requireRaid, raidForZone } from "../../planner/raids.mjs";
 import {
@@ -145,6 +151,25 @@ export function browserQuery(
 export class BrowserLogs {
   private realmCache = new Map<string, LogRealm[]>();
   constructor(private query: Query) {}
+  speedCategory(version: "vanilla" | "sod", map: number, signal?: AbortSignal) {
+    return fetchSpeedCategory(this.query, version, map, signal);
+  }
+  speedWorldRecord(
+    version: "vanilla" | "sod",
+    map: number,
+    category: WclSpeedCategory,
+    selection: WclSpeedSelection,
+    signal?: AbortSignal,
+  ) {
+    return fetchSpeedWorldRecord(
+      this.query,
+      version,
+      map,
+      category,
+      selection,
+      signal,
+    );
+  }
   async realms(
     region: string,
     version = "vanilla",
