@@ -143,7 +143,12 @@ export interface SpawnPlacement {
   key: string;
   position: [number, number, number | null];
   floorHint?: number;
-  referenceKind?: "sod-reference" | "classic-baseline" | "classic-reference";
+  referenceKind?:
+    | "sod-reference"
+    | "classic-baseline"
+    | "classic-reference"
+    | "guide-reference"
+    | "portal-registered-reference";
   facing: number;
   distance: number | null;
   confidence: "near" | "approximate" | "unobserved";

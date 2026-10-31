@@ -253,6 +253,8 @@ export class EditorController {
   >();
   private loadedFloors = new Map<number, ReplayFloorGeometry>();
   private actorFloorHeights = new ReplayHeightCache();
+  private fromFloorHeights = new ReplayHeightCache();
+  private toFloorHeights = new ReplayHeightCache();
   private floorHintCache: {
     replay: Replay;
     time: number;
@@ -260,6 +262,7 @@ export class EditorController {
     models: object;
     smooth: boolean;
     hints: Map<string, number>;
+    seeds: Map<string, number>;
   } | null = null;
   private lastFrame = -Infinity;
   private renderedInputs: {
@@ -4505,7 +4508,7 @@ export class EditorController {
       pending = bridge
         .map(map, raid.directory)
         .then((data) => {
-          const geometry = new ReplayFloorGeometry(data.floors);
+          const geometry = new ReplayFloorGeometry(data.floors, data.areas);
           if (this.browserBridge === bridge)
             this.loadedFloors.set(map, geometry);
           return geometry;
@@ -4532,7 +4535,8 @@ export class EditorController {
       cached.models === this.models
     )
       return cached.hints;
-    const hints = replayFloorHints(replay, this.clockTime, this.models);
+    const seeds = new Map<string, number>();
+    const hints = replayFloorHints(replay, this.clockTime, this.models, seeds);
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
       for (const actor of replay.actors) {
@@ -4561,6 +4565,7 @@ export class EditorController {
       models: this.models,
       smooth: this.state.options.smoothGaps,
       hints,
+      seeds,
     };
     return hints;
   }
@@ -5897,8 +5902,31 @@ export class EditorController {
           options.actors && actor ? this.actorPose(actor, lookupPose) : null;
         const movement = pose?.movement;
         const hint = floorHints.get(unit.key);
-        const fromHeight = movement?.from[2] ?? hint;
-        const toHeight = movement?.to[2] ?? hint;
+        const geometry = this.loadedFloors.get(replay.map);
+        const seed = this.floorHintCache?.seeds.get(unit.key);
+        const endpointHeight = (
+          point: number[] | undefined,
+          cache: ReplayHeightCache,
+        ) =>
+          point?.[2] ??
+          (actor && geometry && point
+            ? (cache.height(
+                actor,
+                geometry,
+                point[0],
+                point[1],
+                seed ?? raidByMap(replay.map)?.spawn[2] ?? 0,
+                seed === undefined,
+              ) ?? hint)
+            : hint);
+        const fromHeight = endpointHeight(
+          movement?.from as number[] | undefined,
+          this.fromFloorHeights,
+        );
+        const toHeight = endpointHeight(
+          movement?.to as number[] | undefined,
+          this.toFloorHeights,
+        );
         return {
           ...unit,
           position:

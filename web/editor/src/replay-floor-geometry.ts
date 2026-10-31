@@ -1,4 +1,4 @@
-import type { MapFloor } from "./map-model";
+import type { MapFloor, MapManifest } from "./map-model";
 
 type Point = [number, number, number];
 type Triangle = {
@@ -8,6 +8,7 @@ type Triangle = {
   nz: number;
   interior: boolean;
   structure: boolean;
+  room?: number;
 };
 const CELL = 32;
 
@@ -18,7 +19,12 @@ export class ReplayFloorGeometry {
   private triangles: Triangle[] = [];
   private columns = new Map<string, number[]>();
   private broad: number[] = [];
-  constructor(floors: MapFloor[]) {
+  constructor(floors: MapFloor[], areas: MapManifest["areas"] = []) {
+    const rooms = new Map(
+      areas
+        .filter((a) => Number.isFinite(a.height))
+        .map((a) => [a.id, a.height]),
+    );
     for (const floor of floors) {
       for (let i = 0; i < floor.indices.length; i += 3) {
         const [a, b, c] = floor.indices
@@ -44,6 +50,7 @@ export class ReplayFloorGeometry {
             nz: n[2],
             interior: floor.interior === true,
             structure: floor.area !== "terrain",
+            room: rooms.get(floor.area),
           }) - 1;
         const minX = Math.floor(Math.min(a[0], b[0], c[0]) / CELL),
           maxX = Math.floor(Math.max(a[0], b[0], c[0]) / CELL);
@@ -73,14 +80,42 @@ export class ReplayFloorGeometry {
     let best: number | undefined,
       inside: number | undefined,
       structure: number | undefined;
+    let roomFloor: { z: number; level: number; depth: number } | undefined;
     const ids =
       this.columns.get(`${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`) ?? [];
     for (const id of [...ids, ...this.broad]) {
-      const { a, ab, ac, nz, interior, structure: built } = this.triangles[id];
+      const {
+        a,
+        ab,
+        ac,
+        nz,
+        interior,
+        structure: built,
+        room,
+      } = this.triangles[id];
       const u = ((x - a[0]) * ac[1] - (y - a[1]) * ac[0]) / nz;
       const v = (ab[0] * (y - a[1]) - ab[1] * (x - a[0])) / nz;
       if (u < -1e-5 || v < -1e-5 || u + v > 1.00001) continue;
       const z = a[2] + u * ab[2] + v * ac[2];
+      // With no observed/seeded Z, the entrance altitude can select a basement
+      // underneath a stage. Cast down from the containing client's room level.
+      // A roof above that level is not a floor inside the room. Explicit floor
+      // hints bypass this inference, including lower storeys in stacked rooms.
+      if (
+        preferInterior &&
+        interior &&
+        room !== undefined &&
+        z <= room + 0.01
+      ) {
+        const level = Math.abs(room - hint),
+          depth = room - z;
+        if (
+          !roomFloor ||
+          level < roomFloor.level ||
+          (level === roomFloor.level && depth < roomFloor.depth)
+        )
+          roomFloor = { z, level, depth };
+      }
       if (best === undefined || Math.abs(z - hint) < Math.abs(best - hint))
         best = z;
       if (
@@ -97,6 +132,8 @@ export class ReplayFloorGeometry {
     }
     // Open cloisters and decks are authored exterior groups, but still carry
     // the walkable floor above or below the terrain. Never treat them as terrain.
-    return preferInterior ? (inside ?? structure ?? best) : best;
+    return preferInterior
+      ? (roomFloor?.z ?? inside ?? structure ?? best)
+      : best;
   }
 }

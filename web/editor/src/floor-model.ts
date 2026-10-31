@@ -54,11 +54,14 @@ function nearest<T>(
  * Each NPC instance matches its first recorded XY to a same-entry spawn on this map.
  * Current-chapter enemies give friendly actors seek-safe room context, including
  * overlapping BWL floors. No assumption that missing log Z means world altitude zero.
+ * ownHints optionally separates an actor's own seed from nearby-actor estimates.
+ * Those estimates describe the current room, not both ends of a movement interval.
  */
 export function replayFloorHints(
   replay: Replay,
   time: number,
   catalog: Record<string, unknown>,
+  ownHints?: Map<string, number>,
 ): Map<string, number> {
   const seeds = seedIndex(catalog).get(replay.map);
   const result = new Map<string, number>();
@@ -73,7 +76,10 @@ export function replayFloorHints(
   for (const actor of replay.actors) {
     if (actor.type !== "NPC") continue;
     const spawnHeight = actor.spawn?.position[2] ?? actor.spawn?.floorHint;
-    if (spawnHeight != null) result.set(actor.key, spawnHeight);
+    if (spawnHeight != null) {
+      result.set(actor.key, spawnHeight);
+      ownHints?.set(actor.key, spawnHeight);
+    }
     if (actor.spawn?.synthetic || !actor.samples.length) continue;
     let cached = actorSeeds.get(actor);
     if (cached?.catalog !== catalog) {
@@ -100,6 +106,7 @@ export function replayFloorHints(
         : cached.seed;
     if (!seed) continue;
     result.set(actor.key, seed[3]);
+    ownHints?.set(actor.key, seed[3]);
     if (members && !members.has(actor.id)) continue;
     if (
       chapter &&

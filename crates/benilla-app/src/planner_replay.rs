@@ -489,13 +489,13 @@ pub(crate) fn apply(
 
             let mut facing = unit.facing;
             let mut speed = unit.speed;
-            if unit.player && !unit.dead && !unit.wisp && unit.position.is_some() {
+            if unit.player && !unit.dead && unit.position.is_some() {
                 if let Some(segment) = &unit.movement {
                     if let Some((point, heading, velocity)) =
                         routes.pose(&unit.key, segment, &route_probe)
                     {
                         pos = Some(point + Vec3::Y * 0.05);
-                        if !segment.recorded_facing {
+                        if velocity > 0.03 {
                             facing = heading;
                         }
                         speed = if control.playing { velocity } else { 0. };
@@ -504,8 +504,18 @@ pub(crate) fn apply(
             }
             let transform = Transform::from_translation(pos.unwrap_or(Vec3::ZERO))
                 .with_rotation(Quat::from_rotation_y(facing));
+            // Animation cadence is a gait choice, independent of the translation
+            // required to preserve observed anchors in an impossible/sparse span.
+            let gait_speed = if unit.player {
+                crate::planner_movement::gait_speed(
+                    speed,
+                    unit.movement.as_ref().and_then(|s| s.run_speed),
+                )
+            } else {
+                speed
+            };
             let motion = MovementState {
-                speed: speed.min(30.),
+                speed: gait_speed.min(30.),
                 flags: if speed > 0.1 { 1 } else { 0 },
                 ..default()
             };
