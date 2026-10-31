@@ -53,7 +53,11 @@ def shader_coordinates(shader, texture_count):
         return ()
     if shader == 0x8009 and texture_count == 3:
         return (0, env, 0)
-    if texture_count > 2:
+    # A packed shader with >=2 bindings always selects a two-sampler pixel shader. Some
+    # authored batches retain an unused third binding (e.g. 0x4016); static shader IDs can
+    # genuinely select three samples and must keep their separate capability guard.
+    sampled_count = 2 if not shader & 0x8000 and texture_count >= 2 else texture_count
+    if sampled_count > 2:
         raise UnsupportedFeatureError('Modern materials with more than two texture stages require the extended renderer.')
     if shader & 0x8000:
         layouts = [
@@ -66,8 +70,10 @@ def shader_coordinates(shader, texture_count):
         index = shader & 0x7fff
         if index >= len(layouts) or len(layouts[index]) < texture_count:
             unsupported('Unknown modern material vertex shader.')
+        if len(layouts[index]) > 2:
+            unsupported('Modern materials with more than two texture stages require the extended renderer.')
         return layouts[index][:texture_count]
-    if texture_count == 1:
+    if sampled_count == 1:
         return (env if shader & 0x80 else 1 if shader & 0x4000 else 0,)
     if shader & 0x80:
         return (env, env if shader & 8 else 0)
@@ -273,16 +279,31 @@ class Adapter:
             put(40, '<HH', blend, shape)
             p[44] = 2 if flags & 0x60000 == 0x60000 else 1 if flags & 0x40000 else 0
             p[46:52] = raw[46:52]
+            gravity_metadata = bytes(88)
             for source, target in [(52,52),(72,80),(92,108),(112,136),(132,164),(152,192),(176,220),(200,248),(220,276),(240,304)]:
                 packed_gravity = source == 132 and flags & 0x800000
                 header = self.channel(base+source, '<I' if packed_gravity else '<f', (1 if source==152 else 0,))
                 if source == 132 and flags & 0x800000:
                     header = bytearray(header)
                     _, _, _, _, keys, _, _, values = read(header, '<Hh6I', 0)
+                    vectors = []
                     for j in range(keys):
                         x,y,z=read(self.output, '<bbh', values+j*4)
-                        if x or y: unsupported('Nonvertical packed gravity requires vector force integration.')
+                        # Decode before interpolation. BSD-3-Clause WhiteoutFlakes
+                        # M2DecodeCompressedGravity; signed magnitude selects the Z hemisphere.
+                        dx, dy, magnitude = x / 128, y / 128, z * 0.042385526
+                        dz = math.sqrt(max(0, (1 - dx*dx) - dy*dy))
+                        vectors.append((dx*abs(magnitude), dy*abs(magnitude),
+                                        math.copysign(dz*abs(magnitude), magnitude)))
                         struct.pack_into('<f', self.output, values+j*4, -z*0.04238648)
+                    if any(x or y for x,y,_ in vectors):
+                        tracks = []
+                        for axis in range(3):
+                            track = bytearray(header)
+                            struct.pack_into('<I', track, 24, self.append(b''.join(
+                                struct.pack('<f', v[axis]) for v in vectors)))
+                            tracks.append(track)
+                        gravity_metadata = struct.pack('<I', 1) + b''.join(tracks)
                 p[target:target+28] = header
             def ramp(offset, fmt):
                 nt,to,nv,vo = read(raw, '<4I', offset)
@@ -345,7 +366,7 @@ class Adapter:
                 *(scroll(v) for v in read(raw, '<4H', 484)), color_mul, alpha_mul,
                 len(cutoff), self.append(b''.join(struct.pack('<2f', *key) for key in cutoff)),
                 z_source, read(txac, '<H', index*2)[0] if txac else 0, bool(exp2))
-            variations.append(struct.pack('<2f',*read(raw,'<f',172),*read(raw,'<f',196)) + b''.join(cell_curves) + b''.join(life_curves) + struct.pack('<7f',*read(raw,'<2f',308),*read(raw,'<4f',376),float(bool(flags & 0x80000))) + material)
+            variations.append(struct.pack('<2f',*read(raw,'<f',172),*read(raw,'<f',196)) + b''.join(cell_curves) + b''.join(life_curves) + struct.pack('<7f',*read(raw,'<2f',308),*read(raw,'<4f',376),float(bool(flags & 0x80000))) + material + gravity_metadata)
             records.append(p)
         self.set_array(0x13C,records)
         return variations
@@ -461,8 +482,12 @@ class Adapter:
             for field, stride in [(4, 2), (12, 2), (20, 4), (28, 48), (36, 24)]:
                 records = table(skin, field, stride)
                 if field == 28:
-                    if any(read(r, '<H', 2)[0] for r in records):
-                        unsupported('Large modern skin sections require wider triangle indices.')
+                    # `level` supplies upper range-start bits; triangle elements stay u16.
+                    triangle_count = read(skin, '<I', 12)[0]
+                    for record in records:
+                        start = read(record, '<H', 8)[0] | (read(record, '<H', 2)[0] << 16)
+                        if start + read(record, '<H', 10)[0] > triangle_count:
+                            fail('Modern skin section exceeds triangle array.')
                     records = [r[:32] for r in records]
                 if field == 36:
                     converted = []
@@ -470,7 +495,22 @@ class Adapter:
                         record = bytearray(batch)
                         shader, count = read(batch, '<H', 2)[0], read(batch, '<H', 14)[0]
                         coordinates = shader_coordinates(shader, count)
-                        if count == 3:
+                        if count > 2 and not shader & 0x8000:
+                            # Only two sampled bindings are required. The unused third record
+                            # may be absent; an unresolved sampled second texture is still a gap.
+                            combo = read(batch, '<H', 16)[0]
+                            lookup, textures = table(self.b, 0x80, 2), table(self.b, 0x50, 16)
+                            if combo + 1 >= len(lookup):
+                                fail('Modern packed second-stage lookup is truncated.')
+                            slot = read(lookup[combo + 1], '<H', 0)[0]
+                            if slot >= len(textures):
+                                fail('Modern packed second-stage texture index is out of range.')
+                            ids = self.parts.get(b'TXID', b'')
+                            fdid = read(ids, '<I', slot * 4)[0] if ids else 0
+                            n, at = read(textures[slot], '<II', 8)
+                            if not fdid and not span(self.b, at, n).rstrip(b'\0'):
+                                unsupported('Modern packed material has an unresolved second-stage runtime texture.')
+                        if count == 3 and shader & 0x8000:
                             combo, transforms = read(batch, '<H', 16)[0], read(batch, '<H', 22)[0]
                             lookup = table(self.b, 0x80, 2)
                             texture_records = table(self.b, 0x50, 16)
@@ -523,7 +563,7 @@ class Adapter:
         variations = self.particles()
         if variations:
             offset = self.append(b''.join(variations))
-            self.output.extend(struct.pack('<4sII', b'PFP5', offset, len(variations)))
+            self.output.extend(struct.pack('<4sII', b'PFP6', offset, len(variations)))
         return bytes(self.output)
 
 

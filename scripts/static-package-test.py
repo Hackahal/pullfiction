@@ -28,6 +28,7 @@ class StaticPackageTests(unittest.TestCase):
         builder = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(builder)
         manifest = builder.converter_files(package.REPO)
+        self.assertTrue({"third_party/noclip/LICENSE", "third_party/noclip/SOURCE.md"}.issubset(manifest))
         self.assertEqual(set(manifest), package.converter_files(package.REPO))
         runtime = (package.REPO / "web/archive/converter.mjs").as_uri()
         code = f"import {{validateConverterManifest}} from {json.dumps(runtime)}; validateConverterManifest(JSON.parse(process.argv[1]));"

@@ -59,6 +59,7 @@ def converter_files(repo: Path) -> set[str]:
                   if p.suffix in (".dbd", ".dbde") or p.name in ("SOURCE.md", "LICENSE.md"))
     result.update(("third_party/wowexport/LICENSE", "third_party/wowexport/SOURCE.md"))
     result.update(("third_party/whiteoutflakes/LICENSE", "third_party/whiteoutflakes/SOURCE.md"))
+    result.update(("third_party/noclip/LICENSE", "third_party/noclip/SOURCE.md"))
     return result
 
 

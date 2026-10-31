@@ -373,7 +373,17 @@ pub struct ThirdTextureStage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TextureUvAnimations {
+    pub single: Option<std::sync::Arc<super::UvAnim>>,
+    pub seqs: Option<std::sync::Arc<super::SeqLoops<[f32; 2]>>>,
+    pub rot: Option<std::sync::Arc<super::SeqLoops<[f32; 4]>>>,
+    pub scale: Option<std::sync::Arc<super::SeqLoops<[f32; 2]>>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TextureStage {
+    /// This sample's independent authored texture transform and sequence clocks.
+    pub uv: Option<std::sync::Arc<TextureUvAnimations>>,
     /// An adapter-validated third sample, currently static UV0 for shader 0x8009.
     pub third_texture: Option<ThirdTextureStage>,
     /// The texture through the batch's lookup at `texture_combo_index + k` (`0x70b768`); `None`
@@ -389,7 +399,8 @@ pub struct TextureStage {
     pub env_map: bool,
     /// The combine preset (`benilla_m2::M2Model::stage_combine`): 0 and 1 modulate the colour
     /// with alpha passed or modulated, 3 adds, 4 modulates ×2, 2 and 5 interpolate.
-    /// Adapter-only 6 adds the alpha-weighted reflection; 7 combines three samples before lighting.
+    /// Adapter-only 6 adds reflection, 7 combines three samples, and 8..17 select packed modern
+    /// two-sampler combiners before lighting (see `modern_two_stage_rgba` in wow_model.wgsl).
     pub combine: u8,
 }
 

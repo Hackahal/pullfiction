@@ -98,6 +98,31 @@ struct OwnedMaterials {
 }
 
 impl OwnedMaterials {
+    fn for_animated_uv(
+        &self,
+        loops: &benilla_world::doodad_anim::UvLoops,
+        mut register: impl FnMut(bevy::asset::AssetId<WowModelMaterial>),
+    ) {
+        if loops.animates() {
+            for material in self.uv_materials() {
+                register(material.id());
+            }
+        }
+    }
+
+    fn uv_materials(&self) -> impl Iterator<Item = &Handle<WowModelMaterial>> {
+        [
+            Some(&self.steady),
+            self.interior.as_ref(),
+            self.fade_blend.as_ref(),
+            self.bake.as_ref(),
+            self.bake_blend.as_ref(),
+            self.zfill.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+    }
+
     fn borrow(&self) -> PartMaterials<'_> {
         PartMaterials {
             steady: &self.steady,
@@ -120,7 +145,7 @@ fn own_per_sequence_materials(
     own: &mut OwnMats<'_>,
 ) -> Option<OwnedMaterials> {
     let loops = part.uv_loops();
-    let (uv_seq, tint_seq) = (loops.seqs.is_some(), part.rgb_seq.is_some());
+    let (uv_seq, tint_seq) = (loops.per_sequence(), part.rgb_seq.is_some());
     if dress.kind != ModelKind::GameObject || !(uv_seq || tint_seq) {
         return None;
     }
@@ -131,6 +156,8 @@ fn own_per_sequence_materials(
         let mut mat = own.store.get(h.id()).cloned()?;
         // A clone leaves the shared table: a carried slot would add the shared delta to its rows.
         mat.extension.anim_slots = Vec4::ZERO;
+        mat.extension.stage1_uv.z = 0.0;
+        mat.extension.stage1_uv.w = 0.0;
         Some(own.store.add(mat))
     };
     let owned = OwnedMaterials {
@@ -139,31 +166,22 @@ fn own_per_sequence_materials(
         fade_blend: src.fade_blend.and_then(&mut clone),
         bake: src.bake.and_then(&mut clone),
         bake_blend: src.bake_blend.and_then(&mut clone),
-        // Neither cloned nor registered, as on the doodad lane: it draws only while feathering.
-        zfill: src.zfill.cloned(),
+        zfill: src.zfill.and_then(&mut clone),
     };
-    // Every variant the part can swap to takes a row, or it stops mid-scroll indoors or fading.
-    for id in [
-        Some(&owned.steady),
-        owned.interior.as_ref(),
-        owned.fade_blend.as_ref(),
-        owned.bake.as_ref(),
-        owned.bake_blend.as_ref(),
-    ]
-    .into_iter()
-    .flatten()
-    .map(Handle::id)
-    {
-        if uv_seq {
-            benilla_world::doodad_anim::register_entity_uv(
-                own.uv,
-                own.table,
-                own.store,
-                id,
-                &loops,
-                Some(dress.unit),
-            );
-        }
+    // Cloning for sequence-specific tint also detaches shared UV rows. Restore every animated
+    // UV channel, even when none differs by sequence.
+    owned.for_animated_uv(&loops, |id| {
+        benilla_world::doodad_anim::register_entity_uv(
+            own.uv,
+            own.table,
+            own.store,
+            id,
+            &loops,
+            Some(dress.unit),
+        );
+    });
+    // Every variant the part can swap to takes a tint row too.
+    for id in owned.uv_materials().map(Handle::id) {
         if let Some(seqs) = &part.rgb_seq {
             benilla_world::doodad_anim::register_tint(
                 own.tint,
@@ -530,6 +548,85 @@ mod tests {
             bevy::asset::uuid::Uuid::from_u128(n + 1),
             std::marker::PhantomData,
         )
+    }
+
+    #[test]
+    fn owned_depth_material_is_in_the_same_uv_lane_as_its_visible_variants() {
+        let owned = OwnedMaterials {
+            steady: mat(1),
+            interior: Some(mat(2)),
+            fade_blend: Some(mat(3)),
+            bake: Some(mat(4)),
+            bake_blend: Some(mat(5)),
+            zfill: Some(mat(6)),
+        };
+        let ids: Vec<_> = owned.uv_materials().map(Handle::id).collect();
+        assert_eq!(ids.len(), 6);
+        assert!(ids.contains(&owned.zfill.as_ref().unwrap().id()));
+        assert!(
+            ids.contains(&owned.steady.id())
+                && ids.contains(&owned.fade_blend.as_ref().unwrap().id())
+        );
+    }
+
+    #[test]
+    fn rgb_only_sequence_ownership_restores_shared_stage1_uv_animation() {
+        use benilla_formats::{KeyAnim, SeqLoops, TextureStage, TextureUvAnimations};
+        let mut part = part(None, false);
+        part.rgb_seq = Some(std::sync::Arc::new(
+            SeqLoops::new(vec![
+                None,
+                Some(KeyAnim {
+                    period: 1.0,
+                    step: false,
+                    wrap: false,
+                    gseq: false,
+                    keys: vec![(0.0, [1.0; 3]), (1.0, [0.5; 3])],
+                }),
+            ])
+            .unwrap(),
+        ));
+        std::sync::Arc::make_mut(&mut part.geometry).stage1 = Some(TextureStage {
+            uv: Some(std::sync::Arc::new(TextureUvAnimations {
+                seqs: None,
+                rot: None,
+                scale: None,
+                single: Some(std::sync::Arc::new(KeyAnim {
+                    period: 2.0,
+                    step: false,
+                    wrap: true,
+                    gseq: true,
+                    keys: vec![(0.0, [0.0; 2]), (2.0, [1.0, 0.0])],
+                })),
+            })),
+            third_texture: None,
+            texture: Some("uv1.blp".into()),
+            wrap_x: true,
+            wrap_y: true,
+            env_map: false,
+            combine: 8,
+        });
+        let loops = part.uv_loops();
+        assert!(part.rgb_seq.is_some() && !loops.per_sequence() && loops.animates());
+        let owned = OwnedMaterials {
+            steady: mat(1),
+            interior: Some(mat(2)),
+            fade_blend: Some(mat(3)),
+            bake: Some(mat(4)),
+            bake_blend: Some(mat(5)),
+            zfill: Some(mat(6)),
+        };
+        let mut registered = Vec::new();
+        owned.for_animated_uv(&loops, |id| registered.push(id));
+        assert_eq!(
+            registered,
+            owned.uv_materials().map(Handle::id).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            registered.len(),
+            6,
+            "all cloned color/depth variants restore the shared UV1 loop"
+        );
     }
 
     /// Six distinguishable handles.

@@ -13,5 +13,10 @@ texture priorities, and replaceable texture slots also use `src/js/wow/Equipment
 Pull Fiction implements its own local DB2 adapter and Rust/WASM atlas compositor
 around the existing asset decoders.
 
+Modern packed M2 combiners additionally reference `src/js/3D/ShaderMapper.js`,
+`src/shaders/m2.fragment.shader` and `src/shaders/m2.vertex.shader` at that revision.
+The native renderer keeps the selected shader's sample arity, independent texture transforms,
+and pre-light diffuse versus post-light additive terms.
+
 Attribution and license are retained in `LICENSE`. No extracted client assets
 or reference application assets are included.

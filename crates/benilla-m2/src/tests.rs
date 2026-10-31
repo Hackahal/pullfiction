@@ -473,6 +473,49 @@ fn embedded_skin_out_of_range_index_errs() {
 }
 
 #[test]
+fn adapted_skin_extends_range_start_without_widening_index_elements() {
+    let mut b = header();
+    b.resize(0x14c, 0);
+    b[0x144..0x14c].copy_from_slice(b"PFM1\x01\x00\x00\x00");
+    let vp = b.len();
+    set_arr(&mut b, OFS_VIEWS, 1, vp as u32);
+    b.extend([0u8; 44]);
+    let lookup = b.len() as u32;
+    b.extend([0u16, 1, 2].into_iter().flat_map(u16::to_le_bytes));
+    let triangles = b.len() as u32;
+    let triangle_count = 65_541;
+    b.resize(b.len() + triangle_count * 2, 0);
+    let tail = triangles as usize + 65_538 * 2;
+    b[tail..tail + 6].copy_from_slice(&[0, 0, 1, 0, 2, 0]);
+    let section = b.len();
+    b.extend([0u8; 32]);
+    b[section + 2..section + 4].copy_from_slice(&1u16.to_le_bytes());
+    b[section + 8..section + 10].copy_from_slice(&2u16.to_le_bytes());
+    b[section + 10..section + 12].copy_from_slice(&3u16.to_le_bytes());
+    set_arr(&mut b, vp, 3, lookup);
+    set_arr(&mut b, vp + 8, triangle_count as u32, triangles);
+    set_arr(&mut b, vp + 24, 1, section as u32);
+    let fmt = parse(&b).unwrap();
+    let skin = fmt.model().parse_embedded_skin(&b, 0).unwrap();
+    assert_eq!(skin.submeshes()[0].triangle_start, 65_538);
+    assert_eq!(skin.triangles().len(), triangle_count);
+    assert_eq!(skin.indices(), &[0u16, 1, 2]);
+    assert_eq!(&skin.triangles()[65_538..], &[0u16, 1, 2]);
+
+    // An extended range outside the triangle array fails instead of becoming an empty batch.
+    b[section + 8..section + 10].copy_from_slice(&3u16.to_le_bytes());
+    assert!(matches!(
+        fmt.model().parse_embedded_skin(&b, 0),
+        Err(Error::Truncated)
+    ));
+
+    // Original embedded MD20 keeps its prior interpretation of the field at +2.
+    b[0x144..0x14c].fill(0);
+    let skin = fmt.model().parse_embedded_skin(&b, 0).unwrap();
+    assert_eq!(skin.submeshes()[0].triangle_start, 3);
+}
+
+#[test]
 fn hostile_submesh_count_errs_cleanly_not_oom() {
     // The vertex case, in `parse_embedded_skin`'s M2View arrays.
     let mut b = model_with_one_skin();

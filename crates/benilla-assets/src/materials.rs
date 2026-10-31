@@ -120,6 +120,9 @@ pub struct WowModelExt {
     /// (`benilla_formats::RenderSubmesh::combine`), 0 for a batch that has none; `w` selects generated reflection coordinates.
     #[uniform(100)]
     pub stage1: Vec4,
+    /// Stage1's UV seed xy, translation-table row z and affine-table row w.
+    #[uniform(100)]
+    pub stage1_uv: Vec4,
     /// Stage 1's texture, sampled at the generated environment coordinate when `stage1.x` is set;
     /// `None` binds the fallback image, unread.
     #[texture(101, visibility(fragment))]

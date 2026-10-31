@@ -194,6 +194,8 @@ impl Default for ParamsNow {
 pub struct EmitParams {
     /// Per channel in [`ParamsNow`] field order, per slot; `None` holds the channel default.
     channels: [Vec<Option<ScalarAnim>>; 9],
+    /// Modern packed gravity, decoded to WoW-axis acceleration before interpolation.
+    vector_gravity: Option<[Vec<Option<ScalarAnim>>; 3]>,
 }
 
 impl EmitParams {
@@ -206,7 +208,49 @@ impl EmitParams {
                     .map(|&s| bake_track(t, gseq, Some(s), |v| v, |_| false, |_| false))
                     .collect()
             }),
+            vector_gravity: None,
         }
+    }
+
+    pub(crate) fn with_vector_gravity(
+        mut self,
+        tracks: Option<&[M2ScalarTrack; 3]>,
+        slots: &[SeqSlot],
+        gseq: &[u32],
+    ) -> Self {
+        self.vector_gravity = tracks.map(|tracks| {
+            std::array::from_fn(|axis| {
+                slots
+                    .iter()
+                    .map(|&slot| {
+                        bake_track(&tracks[axis], gseq, Some(slot), |v| v, |_| false, |_| false)
+                    })
+                    .collect()
+            })
+        });
+        self
+    }
+
+    /// Live acceleration on the same sequence/global clocks as the scalar parameter tracks.
+    /// `None` preserves the original scalar-gravity integrator exactly.
+    pub fn vector_gravity(
+        &self,
+        seq: Option<usize>,
+        elapsed: f32,
+        shared_now: f64,
+    ) -> Option<[f32; 3]> {
+        self.vector_gravity.as_ref().map(|axes| {
+            std::array::from_fn(|axis| {
+                let channel = &axes[axis];
+                let slot = seq.filter(|&i| i < channel.len()).unwrap_or(0);
+                channel
+                    .get(slot)
+                    .and_then(Option::as_ref)
+                    .map_or(0., |anim| {
+                        anim.sample_or(anim.clock(elapsed, shared_now), 0.)
+                    })
+            })
+        })
     }
 
     /// Every channel `elapsed` seconds into slot `seq`, resolved as [`EmitTiming`] resolves it.
@@ -272,6 +316,7 @@ impl EmitParams {
                 ch(now.area_width),
                 ch(now.z_source),
             ],
+            vector_gravity: None,
         }
     }
 

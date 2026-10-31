@@ -268,6 +268,7 @@ impl AssetLoader for M2ModelLoader {
             let stage1 = sub.stage1.as_ref().and_then(|s| {
                 let t = s.texture.as_deref()?;
                 Some(Stage1 {
+                    uv: s.uv.clone(),
                     third_texture: s.third_texture.as_ref().and_then(|third| {
                         third.texture.as_deref().map(|t| {
                             ctx.load::<Image>(crate::texture_url_on(
@@ -336,19 +337,20 @@ impl AssetLoader for M2ModelLoader {
         let skeleton_raw = parse_m2_skeleton(&bytes).unwrap_or_default();
 
         let particle_defs = parse_m2_particle_emitters(&bytes);
-        // A PFP5 material promises every authored stage. An invalid promise must reach the
+        // PFP5/PFP6 metadata promises every authored stage. An invalid promise must reach the
         // asset failure channel rather than turning a spell into a model without emitters.
-        let particle_defs =
-            if bytes.len() >= 12 && &bytes[bytes.len() - 12..bytes.len() - 8] == b"PFP5" {
-                particle_defs.map_err(|error| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("modern particle material: {error:#}"),
-                    )
-                })?
-            } else {
-                particle_defs.unwrap_or_default()
-            };
+        let particle_defs = if bytes.len() >= 12
+            && matches!(&bytes[bytes.len() - 12..bytes.len() - 8], b"PFP5" | b"PFP6")
+        {
+            particle_defs.map_err(|error| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("modern particle material: {error:#}"),
+                )
+            })?
+        } else {
+            particle_defs.unwrap_or_default()
+        };
         let mut emitters: Vec<ModelEmitter> = particle_defs
             .into_iter()
             .map(|def| {

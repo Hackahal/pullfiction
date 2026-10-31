@@ -1720,6 +1720,10 @@ pub(super) fn sync_glue_booth(
                                 blend: (
                 Option<&Handle<WowModelMaterial>>,
                 Option<&Handle<WowModelMaterial>>,
+            ),
+                                depth: (
+                Option<&Handle<WowModelMaterial>>,
+                Option<&Handle<WowModelMaterial>>,
             )| {
                 let steady = benilla_world::doodad_anim::clocked_twin(
                     uv,
@@ -1730,18 +1734,20 @@ pub(super) fn sync_glue_booth(
                     twin.id(),
                     booth.root,
                 );
-                let feathered = match blend {
-                    (Some(source), Some(twin)) => benilla_world::doodad_anim::clocked_twin(
-                        uv,
-                        tint,
-                        table,
-                        &mut materials,
-                        source.id(),
-                        twin.id(),
-                        booth.root,
-                    ),
-                    _ => false,
-                };
+                let mut feathered = false;
+                for pair in [blend, depth] {
+                    if let (Some(source), Some(twin)) = pair {
+                        feathered |= benilla_world::doodad_anim::clocked_twin(
+                            uv,
+                            tint,
+                            table,
+                            &mut materials,
+                            source.id(),
+                            twin.id(),
+                            booth.root,
+                        );
+                    }
+                }
                 steady || feathered
             };
             for (p, bp) in bake.parts.iter().zip(booth_parts.iter_mut()) {
@@ -1749,6 +1755,7 @@ pub(super) fn sync_glue_booth(
                     &p.material,
                     &bp.material,
                     (p.twins.blend.as_ref(), bp.twins.blend.as_ref()),
+                    (p.twins.zfill.as_ref(), bp.twins.zfill.as_ref()),
                 );
             }
             for (r, br) in bake.riders.iter().zip(booth_riders.iter_mut()) {
@@ -1756,6 +1763,7 @@ pub(super) fn sync_glue_booth(
                     &r.material,
                     &br.material,
                     (r.twins.blend.as_ref(), br.twins.blend.as_ref()),
+                    (r.twins.zfill.as_ref(), br.twins.zfill.as_ref()),
                 );
             }
             for (b, bb) in bake.billboards.iter().zip(booth_billboards.iter_mut()) {
@@ -1763,6 +1771,7 @@ pub(super) fn sync_glue_booth(
                     &b.material,
                     &bb.material,
                     (b.twins.blend.as_ref(), bb.twins.blend.as_ref()),
+                    (b.twins.zfill.as_ref(), bb.twins.zfill.as_ref()),
                 );
             }
         }

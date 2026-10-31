@@ -17,7 +17,7 @@ use super::tex_anim;
 use super::{le_u16, le_u32, model_path, remap_submesh};
 use super::{
     AlphaAnim, Billboard, BillboardKind, BoneScaleAnim, CharSkinSlot, FogPolicy, ModelBlend,
-    RenderSubmesh, TextureStage, ThirdTextureStage,
+    RenderSubmesh, TextureStage, TextureUvAnimations, ThirdTextureStage,
 };
 
 fn parent_dir(path: &str) -> &str {
@@ -29,7 +29,33 @@ fn parent_dir(path: &str) -> &str {
 
 /// Adapter-authored MD20 retains modern shader IDs. OpaqueAddAlpha adds its reflection weighted
 /// by texture alpha, rather than modulating the base skin (noclip `wow/skin.rs`, shader 0x8001).
+fn adapted_modern(bytes: &[u8]) -> bool {
+    bytes.get(..8) == Some(b"MD20\x00\x01\x00\x00")
+        && bytes.get(0x144..0x14c) == Some(b"PFM1\x01\x00\x00\x00")
+}
+
 fn classic_stage1_combine(bytes: &[u8], shader: u16, count: u16, legacy: u8) -> u8 {
+    if adapted_modern(bytes) && shader & 0x8000 == 0 && count >= 2 {
+        // MIT: noclip.website rust/src/wow/skin.rs and wow.export ShaderMapper.js; pinned
+        // attribution in third_party/noclip/SOURCE.md. Packed IDs read exactly two samples.
+        return if shader & 0x70 != 0 {
+            match shader & 7 {
+                4 => 8,
+                6 => 9,
+                3 => 11,
+                7 => 12,
+                _ => 10,
+            }
+        } else {
+            match shader & 7 {
+                0 => 13,
+                3 | 7 => 14,
+                4 => 15,
+                6 => 16,
+                _ => 17,
+            }
+        };
+    }
     if bytes.get(..8) == Some(b"MD20\x00\x01\x00\x00")
         && bytes.get(0x144..0x14c) == Some(b"PFM1\x01\x00\x00\x00")
         && (matches!(shader, 0x8001 | 0x8005) || (shader == 0x8009 && count == 3))
@@ -388,7 +414,13 @@ pub fn parse_m2_render_submeshes(
 
     let sections = skin.submeshes();
     let mut out = Vec::new();
-    for batch in skin.batches() {
+    let mut batches: Vec<_> = skin.batches().iter().collect();
+    if adapted_modern(bytes) {
+        // Modern SKIN packs flags:u8, priorityPlane:i8 in the legacy flags:u16 field. Stable
+        // priority order feeds the existing submesh-rank sort bias without changing its band.
+        batches.sort_by_key(|batch| (batch.flags >> 8) as i8);
+    }
+    for batch in batches {
         let Some(section) = sections.get(batch.skin_section_index as usize) else {
             continue;
         };
@@ -463,6 +495,33 @@ pub fn parse_m2_render_submeshes(
             // reach: the spawn sites fill stage 0's alone, and no stock stage 1 is a slot.
             let texture = rec.and_then(|t| resolve_texture(t, dir, skins).0);
             TextureStage {
+                uv: if adapted_modern(bytes) {
+                    batch
+                        .texture_transform_combo_index
+                        .checked_add(1)
+                        .and_then(|combo| {
+                            let single = tex_anim::bake_uv_anim(model, combo, seq0_slot)
+                                .map(std::sync::Arc::new);
+                            let seqs = tex_anim::bake_uv_seqs(model, combo, &seq_slots)
+                                .filter(|set| set.uniform().is_none())
+                                .map(std::sync::Arc::new);
+                            let rot = tex_anim::bake_uv_rot_seqs(model, combo, &seq_slots)
+                                .map(std::sync::Arc::new);
+                            let scale = tex_anim::bake_uv_scale_seqs(model, combo, &seq_slots)
+                                .map(std::sync::Arc::new);
+                            (single.is_some() || seqs.is_some() || rot.is_some() || scale.is_some())
+                                .then(|| {
+                                    std::sync::Arc::new(TextureUvAnimations {
+                                        single,
+                                        seqs,
+                                        rot,
+                                        scale,
+                                    })
+                                })
+                        })
+                } else {
+                    None
+                },
                 third_texture: third_texture.clone(),
                 texture,
                 wrap_x,
@@ -970,6 +1029,7 @@ mod tests {
         assert_eq!(
             s.stage1,
             Some(TextureStage {
+                uv: None,
                 third_texture: None,
                 texture: Some("B.BLP".into()),
                 wrap_x: false,
@@ -982,6 +1042,131 @@ mod tests {
         let one = parse_m2_render_submeshes(&two_texture_model(1), "", &[]).expect("parses");
         assert_eq!(one[0].stage1, None);
         assert_eq!(one[0].texture.as_deref(), Some("A.BLP"));
+    }
+
+    #[test]
+    fn adapted_packed_two_sampler_shader_ignores_unused_binding_and_sorts_signed_priority() {
+        let mut bytes = two_texture_model(3);
+        bytes[4..8].copy_from_slice(&0x100u32.to_le_bytes());
+        let view = le_u32(&bytes, 0x50) as usize;
+        let old = le_u32(&bytes, view + 36) as usize;
+        let first = bytes[old..old + 24].to_vec();
+        let new = bytes.len();
+        bytes.extend(&first);
+        bytes.extend(&first);
+        bytes[view + 32..view + 36].copy_from_slice(&2u32.to_le_bytes());
+        bytes[view + 36..view + 40].copy_from_slice(&(new as u32).to_le_bytes());
+        for (at, flags, shader, combo) in [
+            (new, 0x0080u16, 0x4016u16, 0u16),
+            (new + 24, 0xfa80, 0x4014, 1),
+        ] {
+            bytes[at..at + 2].copy_from_slice(&flags.to_le_bytes());
+            bytes[at + 2..at + 4].copy_from_slice(&shader.to_le_bytes());
+            bytes[at + 16..at + 18].copy_from_slice(&combo.to_le_bytes());
+        }
+        let unmarked = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+        assert_eq!(unmarked[0].texture.as_deref(), Some("A.BLP"));
+        bytes[0x144..0x14c].copy_from_slice(b"PFM1\x01\x00\x00\x00");
+        let sorted = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+        assert_eq!(sorted.len(), 2);
+        assert_eq!(
+            sorted[0].texture.as_deref(),
+            Some("B.BLP"),
+            "priority -6 precedes 0"
+        );
+        assert_eq!(sorted[0].stage1.as_ref().unwrap().combine, 8);
+        assert_eq!(sorted[1].stage1.as_ref().unwrap().combine, 9);
+        assert!(sorted
+            .iter()
+            .all(|s| s.stage1.as_ref().unwrap().third_texture.is_none()));
+        // Packed selection depends on operation bits, not one complete shader ID.
+        assert_eq!(classic_stage1_combine(&bytes, 0x0014, 2, 0), 8);
+        assert_eq!(classic_stage1_combine(&bytes, 0x0096, 3, 0), 9);
+    }
+
+    #[test]
+    fn adapted_second_stage_bakes_its_own_constant_and_animated_uv_channels() {
+        fn array(b: &mut [u8], field: usize, n: u32, at: usize) {
+            b[field..field + 4].copy_from_slice(&n.to_le_bytes());
+            b[field + 4..field + 8].copy_from_slice(&(at as u32).to_le_bytes());
+        }
+        fn track(b: &mut Vec<u8>, values: &[[f32; 3]]) -> Vec<u8> {
+            let times = b.len();
+            for i in 0..values.len() {
+                b.extend(((i * 1000) as u32).to_le_bytes());
+            }
+            let keys = b.len();
+            for v in values {
+                for c in v {
+                    b.extend(c.to_le_bytes());
+                }
+            }
+            let mut record = vec![0; 28];
+            record[..2].copy_from_slice(&1u16.to_le_bytes());
+            array(&mut record, 12, values.len() as u32, times);
+            array(&mut record, 20, values.len() as u32, keys);
+            record
+        }
+        let mut bytes = two_texture_model(2);
+        bytes[4..8].copy_from_slice(&0x100u32.to_le_bytes());
+        bytes[0x144..0x14c].copy_from_slice(b"PFM1\x01\x00\x00\x00");
+        let gseq = bytes.len();
+        bytes.extend(2000u32.to_le_bytes());
+        array(&mut bytes, 0x14, 1, gseq);
+        let sequence = bytes.len();
+        bytes.extend([0; 0x44]);
+        bytes[sequence + 8..sequence + 12].copy_from_slice(&2000u32.to_le_bytes());
+        array(&mut bytes, 0x1c, 1, sequence);
+        let move0 = track(&mut bytes, &[[0.0, 0.9, 0.0], [0.0, 0.03, 0.0]]);
+        let move1 = track(&mut bytes, &[[0.0, 0.1, 0.0]]);
+        let scale1 = track(&mut bytes, &[[1.2, 0.7, 1.0]]);
+        let transforms = bytes.len();
+        for (translation, scaling) in [(move0, vec![0; 28]), (move1, scale1)] {
+            bytes.extend(translation);
+            bytes.extend([0; 28]);
+            bytes.extend(scaling);
+        }
+        array(&mut bytes, 0x74, 2, transforms);
+        let lookup = bytes.len();
+        bytes.extend([0u16, 1].into_iter().flat_map(u16::to_le_bytes));
+        array(&mut bytes, 0xac, 2, lookup);
+        let subs = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+        let base = subs[0].uv_anim.as_ref().unwrap();
+        assert!((base.sample(0.5)[1] - 0.465).abs() < 1e-5);
+        let second = subs[0].stage1.as_ref().unwrap().uv.as_ref().unwrap();
+        assert!((second.single.as_ref().unwrap().sample(0.5)[1] - 0.1).abs() < 1e-5);
+        let scale = second
+            .scale
+            .as_ref()
+            .unwrap()
+            .seq(None)
+            .unwrap()
+            .sample_or(0.5, [1.0; 2]);
+        assert_eq!(scale, [1.2, 0.7]);
+        // Swapping lookup entries swaps animation ownership; stage1 never borrows stage0's track.
+        bytes[lookup..lookup + 4].copy_from_slice(
+            &[1u16, 0]
+                .into_iter()
+                .flat_map(u16::to_le_bytes)
+                .collect::<Vec<_>>(),
+        );
+        let swapped = parse_m2_render_submeshes(&bytes, "", &[]).unwrap();
+        assert!(
+            (swapped[0]
+                .stage1
+                .as_ref()
+                .unwrap()
+                .uv
+                .as_ref()
+                .unwrap()
+                .single
+                .as_ref()
+                .unwrap()
+                .sample(0.5)[1]
+                - 0.465)
+                .abs()
+                < 1e-5
+        );
     }
 
     #[test]
@@ -1067,7 +1252,17 @@ mod tests {
         assert!(reflection.env_map);
         assert_eq!(reflection.combine, 6, "alpha-weighted reflection add");
         bytes[batch + 2..batch + 4].copy_from_slice(&0u16.to_le_bytes());
-        assert_eq!(parse(&bytes)[0].stage1.as_ref().unwrap().combine, 0);
+        let packed = parse(&bytes);
+        let opaque_pair = packed[0].stage1.as_ref().unwrap();
+        assert_eq!(packed[0].texture.as_deref(), Some("A.BLP"));
+        assert_eq!(opaque_pair.texture.as_deref(), Some("B.BLP"));
+        assert_eq!(opaque_pair.combine, 13,
+            "packed shader0 selects Opaque_Opaque: multiply both RGB samples, preserve diffuse alpha");
+        assert_ne!(
+            opaque_pair.combine, reflection.combine,
+            "the ordinary packed pair must not select Lucifron's alpha-weighted reflection add"
+        );
+        assert!(opaque_pair.third_texture.is_none());
         bytes[batch + 14..batch + 16].copy_from_slice(&1u16.to_le_bytes());
         let core_hound_base = parse(&bytes);
         assert_eq!(core_hound_base[0].texture.as_deref(), Some("A.BLP"));

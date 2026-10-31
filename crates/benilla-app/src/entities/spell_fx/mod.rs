@@ -121,6 +121,13 @@ fn fx_part_material(
     }
     // Off the shared mat-anim table, or its delta would add to the clone's own rows.
     mat.extension.anim_slots = Vec4::ZERO;
+    mat.extension.stage1_uv.z = 0.0;
+    mat.extension.stage1_uv.w = 0.0;
+    if let Some(second) = &loops.stage1 {
+        let seed = second.open_offset();
+        mat.extension.stage1_uv.x = seed[0];
+        mat.extension.stage1_uv.y = seed[1];
+    }
     if loops.any() {
         // Seed at t = 0: the delta table measures from `sun_scale.zw` at registration.
         let t0 = loops.open_offset();

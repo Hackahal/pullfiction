@@ -12,6 +12,7 @@ def converter_files(root: Path) -> list[str]:
     files += [str(p.relative_to(root)) for p in sorted((root/'third_party/wowdbdefs').iterdir()) if p.suffix in ('.dbd','.dbde') or p.name in ('SOURCE.md','LICENSE.md')]
     files += ['third_party/wowexport/LICENSE', 'third_party/wowexport/SOURCE.md']
     files += ['third_party/whiteoutflakes/LICENSE', 'third_party/whiteoutflakes/SOURCE.md']
+    files += ['third_party/noclip/LICENSE', 'third_party/noclip/SOURCE.md']
     return files
 
 

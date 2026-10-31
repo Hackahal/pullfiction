@@ -3,7 +3,7 @@ export function validateConverterManifest(manifest) {
     !Array.isArray(manifest) ||
     manifest.some(
       (path) =>
-        !/^(?:scripts\/classic_(?:compat|db2|items|spells|spell_presentations|characters|character_catalog|creatures|terrain|world|world_catalog|table_strings|lighting|sections|talents)\.py|third_party\/(?:wowdbdefs|wowexport|whiteoutflakes)\/[A-Za-z0-9_.-]+)$/.test(
+        !/^(?:scripts\/classic_(?:compat|db2|items|spells|spell_presentations|characters|character_catalog|creatures|terrain|world|world_catalog|table_strings|lighting|sections|talents)\.py|third_party\/(?:wowdbdefs|wowexport|whiteoutflakes|noclip)\/[A-Za-z0-9_.-]+)$/.test(
           path,
         ),
     )

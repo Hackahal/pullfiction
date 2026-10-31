@@ -34,6 +34,21 @@ pub struct BatchVariants {
     pub zfill: Option<Handle<WowModelMaterial>>,
 }
 
+impl BatchVariants {
+    /// Every pass reading this batch's cutout coordinates, including its depth-prime twin.
+    fn uv_materials(&self) -> impl Iterator<Item = &Handle<WowModelMaterial>> {
+        [
+            &self.steady,
+            &self.interior,
+            &self.interior_bake,
+            &self.interior_bake_blend,
+            &self.fade_blend,
+        ]
+        .into_iter()
+        .chain(self.zfill.as_ref())
+    }
+}
+
 /// Where [`M2BatchMaterials::entity_variants`] registers a batch's texture transform: the
 /// animated-material registry, the delta table and, when it has one, the owning instance.
 pub struct EntityUvLane<'a> {
@@ -203,7 +218,7 @@ impl M2BatchMaterials<'_> {
 
     /// The variant set of any entity part, all lit with one indoor pair: the reference gives every
     /// entity M2 the same entity-node fill (`0x672a20`). Registers each variant's UV loop on `uv`
-    /// in the same step; the depth-prime twin, drawn only mid-feather, is not registered.
+    /// in the same step, including the depth-prime twin used mid-feather.
     pub fn entity_variants(
         &mut self,
         sub: &ModelSubmesh,
@@ -277,16 +292,18 @@ impl M2BatchMaterials<'_> {
                 &light,
             )
         };
+        let variants = BatchVariants {
+            steady,
+            interior,
+            interior_bake,
+            interior_bake_blend,
+            fade_blend,
+            zfill: self.zfill_for(sub, texture, &light),
+        };
         // `register_entity_uv` is idempotent per material, so collapsed variants cost nothing.
         let loops = crate::doodad_anim::UvLoops::of(sub);
         if loops.animates() {
-            for id in [
-                &steady,
-                &interior,
-                &interior_bake,
-                &interior_bake_blend,
-                &fade_blend,
-            ] {
+            for id in variants.uv_materials() {
                 crate::doodad_anim::register_entity_uv(
                     uv.reg,
                     uv.table,
@@ -297,14 +314,7 @@ impl M2BatchMaterials<'_> {
                 );
             }
         }
-        Some(BatchVariants {
-            steady,
-            interior,
-            interior_bake,
-            interior_bake_blend,
-            fade_blend,
-            zfill: self.zfill_for(sub, texture, &light),
-        })
+        Some(variants)
     }
 
     /// The variant set for a character composite (a runtime body/hair atlas) with the caller's
@@ -362,6 +372,7 @@ impl M2BatchMaterials<'_> {
                 Some(texture),
                 false, // a composite sheet reads its UVs
                 None,
+                None, // no texture transform on a character composite
                 two_sided,
                 blend == ModelBlend::AlphaTest,
                 &light,
@@ -396,6 +407,7 @@ impl M2BatchMaterials<'_> {
                 texture,
                 sub.env_map,
                 sub.stage1.as_ref(),
+                sub.uv_anim.as_ref(),
                 sub.two_sided,
                 b == ModelBlend::AlphaTest,
                 light,
@@ -517,6 +529,29 @@ fn third_stage_sampler_url(base_url: &str, wrap: (bool, bool)) -> Option<String>
 #[cfg(test)]
 mod third_stage_tests {
     use super::third_stage_sampler_url;
+
+    #[test]
+    fn depth_prime_participates_in_the_same_uv_registration_as_color_variants() {
+        use bevy::prelude::*;
+        let h = |n| {
+            Handle::Uuid(
+                bevy::asset::uuid::Uuid::from_u128(n),
+                std::marker::PhantomData,
+            )
+        };
+        let variants = super::BatchVariants {
+            steady: h(1),
+            interior: h(2),
+            interior_bake: h(3),
+            interior_bake_blend: h(4),
+            fade_blend: h(5),
+            zfill: Some(h(6)),
+        };
+        let ids: Vec<_> = variants.uv_materials().map(Handle::id).collect();
+        assert_eq!(ids.len(), 6);
+        assert!(ids.contains(&variants.zfill.as_ref().unwrap().id()));
+        assert!(ids.contains(&variants.steady.id()) && ids.contains(&variants.fade_blend.id()));
+    }
 
     #[test]
     fn repeated_skin_keeps_its_bytes_and_gets_an_independent_sampler_url() {

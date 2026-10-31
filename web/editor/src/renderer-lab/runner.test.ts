@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   cameraEye,
+  RendererRunner,
   validateBatch,
   labError,
   smokeCases,
@@ -120,4 +121,70 @@ test("renderer workbench boot does not initialize project or WCL services", asyn
   const normal = new EditorController();
   assert.throws(() => normal.rendererLabResources(), /not enabled/);
   normal.stop();
+});
+
+test("case preparation failures are recorded and later cases still run", async () => {
+  const graph = {
+    source: {},
+    spells: { 1: { visuals: [{ id: 1 }] } },
+    visuals: { 1: { events: [{ kit: 1 }] } },
+    kits: { 1: { effects: [{ effect: 1 }] } },
+    effects: { 1: { type: 0, fileDataID: 1 } },
+  };
+  let preparations = 0;
+  const engine = {
+    renderer_lab_configure() {},
+    renderer_lab_advance() {},
+    set_replay_nameplates() {},
+    set_replay_raid_frames() {},
+    set_annotations() {},
+  };
+  const files = {
+    readSync: () => new TextEncoder().encode(JSON.stringify(graph)),
+    prepare: async () => {
+      preparations++;
+      throw Object.assign(new Error("Unsupported model feature"), {
+        name: "ClientUnsupportedError",
+      });
+    },
+  };
+  const controller = {
+    rendererLabResources: () => ({
+      engine,
+      files,
+      bridge: {
+        catalog: async (kind: string) => (kind === "spells" ? graph : {}),
+      },
+    }),
+  } as unknown as EditorController;
+  const first = smokeCases()[0];
+  first.id = "preparation-failure";
+  first.effects = [
+    { id: "cast", spellId: 1, stage: "cast", startMs: 0, durationMs: 1000 },
+  ];
+  const next = smokeCases()[0];
+  next.id = "later-case";
+  next.seed = 2;
+  const samples: any[] = [];
+  const previous = (globalThis as any).window;
+  (globalThis as any).window = {};
+  const runner = new RendererRunner(controller);
+  try {
+    await runner.run([first, next], new AbortController().signal, (s) =>
+      samples.push(s),
+    );
+    assert.equal(preparations, 1);
+    assert.deepEqual(
+      samples.map((s) => [s.caseId, s.status]),
+      [
+        ["preparation-failure", "unsupported"],
+        ["later-case", "unverified"],
+      ],
+    );
+    assert.match(samples[0].error, /Unsupported model feature/);
+    assert.match(samples[1].error, /unimplemented seed/);
+  } finally {
+    runner.dispose();
+    (globalThis as any).window = previous;
+  }
 });
