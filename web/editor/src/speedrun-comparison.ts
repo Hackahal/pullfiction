@@ -39,7 +39,6 @@ export function compareSpeedrun(
     latest?.elapsed !== null &&
     latest?.elapsed !== undefined &&
     latestTarget &&
-    routeMatches &&
     run.coverage &&
     run.fullRun &&
     !index.estimated &&
@@ -47,7 +46,7 @@ export function compareSpeedrun(
       ? latest.elapsed - latestTarget.end
       : null;
   const previousSegment =
-    delta !== null && latest && latestTarget
+    delta !== null && latest && latestTarget && (!previous || previousTarget)
       ? latest.elapsed! -
         (previous?.elapsed ?? 0) -
         (latestTarget.end - (previousTarget?.end ?? 0))
@@ -72,7 +71,6 @@ export function compareSpeedrun(
           s.completed &&
           s.elapsed !== null &&
           target &&
-          routeMatches &&
           run.coverage &&
           run.fullRun &&
           !index.estimated &&

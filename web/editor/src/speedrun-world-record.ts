@@ -1,6 +1,7 @@
 import { gameVersion } from "../../planner/game-versions.mjs";
 import { raidByMap, raidForZone } from "../../planner/raids.mjs";
 import type { Chapter, GameVersion } from "./types";
+import { speedrunRules } from "./speedrun-rules";
 
 export type WclSpeedCategory = {
   zoneID: number;
@@ -130,6 +131,74 @@ export function defaultSpeedSelection(
   };
 }
 
+// The v2 API omits synthetic complete-raid fights. Recover a run only when
+// the leaderboard's actual start agrees with a recorded pull and there is one
+// documented terminal boss after it. Duration may include penalties, so it is
+// never used to invent an end timestamp.
+function recordedRunBounds(
+  report: any,
+  winner: any,
+  reportCode: string,
+  version: GameVersion,
+  map: number,
+  selection: WclSpeedSelection,
+) {
+  const rules = speedrunRules(version, map);
+  if (
+    rules?.coverage !== "published" ||
+    report.code !== reportCode ||
+    !Number.isFinite(report.startTime) ||
+    report.startTime < 0 ||
+    winner.report?.startTime !== report.startTime ||
+    !Number.isFinite(winner.startTime)
+  )
+    return null;
+  const startTime = winner.startTime - report.startTime;
+  const sameRaid = (f: any) => raidForZone(f.gameZone, version)?.map === map;
+  if (
+    startTime < 0 ||
+    !report.fights.some(
+      (f: any) =>
+        sameRaid(f) && f.startTime === startTime && f.endTime > startTime,
+    )
+  )
+    return null;
+  const finish =
+    version === "sod" && map === 409
+      ? [selection.difficulty === 5 ? "The Molten Core" : "Ragnaros"]
+      : rules.finish;
+  const key = (name: string) => name.toLowerCase().replaceAll("’", "'").trim();
+  const endings = report.fights.filter(
+    (f: any) =>
+      sameRaid(f) &&
+      !f.completeRaid &&
+      f.kill === true &&
+      f.encounterID > 0 &&
+      typeof f.name === "string" &&
+      finish.some((name) => key(name) === key(f.name)) &&
+      f.startTime >= startTime &&
+      f.endTime > f.startTime &&
+      (f.difficulty == null || f.difficulty === selection.difficulty) &&
+      (f.size == null || selection.size === null || f.size === selection.size),
+  );
+  if (endings.length !== 1) return null;
+  const endTime = endings[0].endTime;
+  const categoryConflict = report.fights.some(
+    (f: any) =>
+      sameRaid(f) &&
+      !f.completeRaid &&
+      f.kill === true &&
+      f.encounterID > 0 &&
+      f.startTime >= startTime &&
+      f.endTime <= endTime &&
+      ((f.difficulty != null && f.difficulty !== selection.difficulty) ||
+        (f.size != null &&
+          selection.size !== null &&
+          f.size !== selection.size)),
+  );
+  return categoryConflict ? null : { startTime, endTime };
+}
+
 export async function fetchSpeedWorldRecord(
   query: Query,
   version: GameVersion,
@@ -213,7 +282,7 @@ export async function fetchSpeedWorldRecord(
   };
   try {
     const report = await query(
-      "query($code:String!){reportData{report(code:$code){code startTime fights{id name encounterID startTime endTime kill completeRaid gameZone{id name}}}}}",
+      "query($code:String!){reportData{report(code:$code){code startTime fights{id name encounterID startTime endTime kill completeRaid difficulty size gameZone{id name}}}}}",
       { code: reportCode },
       version,
       signal,
@@ -229,12 +298,13 @@ export async function fetchSpeedWorldRecord(
             endTime: rankingBounds.endTime - report.startTime,
           }
         : null
-      : report.fights.find(
+      : (report.fights.find(
           (f: any) =>
             f.id === fightID &&
             f.completeRaid &&
             raidForZone(f.gameZone, version)?.map === map,
-        );
+        ) ??
+        recordedRunBounds(report, winner, reportCode, version, map, selection));
     const reportEnd = Math.max(
       0,
       ...report.fights.map((f: any) =>
