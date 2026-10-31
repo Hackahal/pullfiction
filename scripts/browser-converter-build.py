@@ -8,10 +8,10 @@ import sys
 
 root = Path(__file__).resolve().parent.parent
 output = Path(sys.argv[1]).resolve()
-runtime = root / '.agent/tools/browser-converter/node_modules/pyodide'
+runtime = root / 'tools/release/node_modules/pyodide'
 package = json.loads((runtime / 'package.json').read_text())
 if package['version'] != '314.0.7':
-    raise SystemExit('Install the pinned browser converter runtime: pyodide@314.0.7')
+    raise SystemExit('Install the pinned release tools: npm ci --prefix tools/release')
 files = [f'scripts/classic_{name}.py' for name in ('compat', 'db2', 'items', 'spells', 'characters', 'character_catalog', 'creatures', 'terrain', 'world', 'world_catalog', 'table_strings', 'lighting', 'sections', 'talents')]
 files += [str(p.relative_to(root)) for p in sorted((root/'third_party/wowdbdefs').iterdir()) if p.suffix in ('.dbd','.dbde') or p.name in ('SOURCE.md','LICENSE.md')]
 files += ['third_party/wowexport/LICENSE', 'third_party/wowexport/SOURCE.md']

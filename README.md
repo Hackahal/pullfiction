@@ -32,7 +32,7 @@ python3 scripts/static-package.py audit .agent/work/browser-static/release-new
 node scripts/static-viewer-smoke.mjs .agent/work/browser-static/release-new
 ```
 
-Preview a prepared release with `python3 scripts/static-preview.py .agent/work/browser-static/release-new`. Follow [the editor guide](docs/EDITOR.md) for development and [static hosting](docs/STATIC-HOSTING.md) for toolchain versions and Cloudflare Static Assets preparation. Building does not deploy.
+Preview a prepared release with `python3 scripts/static-preview.py .agent/work/browser-static/release-new`. Follow [the editor guide](docs/EDITOR.md) for development and [build and release](docs/STATIC-HOSTING.md) for Cloudflare deployment, versioned releases, and rollback. Building does not deploy; production releases are explicit.
 
 ## Warcraft Logs
 

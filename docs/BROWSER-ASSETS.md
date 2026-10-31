@@ -4,7 +4,7 @@ Pull Fiction's browser asset modules read an official Classic 1.15.9 installatio
 without a native helper or game-data server. The static editor connects these
 modules to the Rust/Bevy replay renderer. The clean release is prepared with
 `scripts/browser-static-build.sh`; see [STATIC-HOSTING.md](STATIC-HOSTING.md).
-No deployment has been performed. Browser checks cover the restored native UI,
+Browser checks cover the restored native UI,
 an MC replay, the complete 37:56 SoD AQ40 replay, and local 3D and tactical-map loading. They do not
 establish exhaustive item, effect or encounter fidelity.
 
@@ -212,11 +212,10 @@ reader, codec, interpreter and standard-library files each fit below that limit.
 
 Developer tools are required to build these modules. End users do not install
 them. Use the existing pinned CascLib checkout from `scripts/classic-setup.sh`.
-Install and activate Emscripten 6.0.13 in `.agent/tools/emsdk`, then prepare the
-browser converter runtime:
+Prepare the pinned Emscripten, CascLib, and browser converter tools:
 
 ```sh
-npm install --prefix .agent/tools/browser-converter --ignore-scripts --no-audit --no-fund pyodide@314.0.7
+bash scripts/browser-assets-setup.sh
 bash scripts/browser-assets-build.sh
 bash scripts/browser-codec-build.sh
 node --test web/archive/*.test.mjs

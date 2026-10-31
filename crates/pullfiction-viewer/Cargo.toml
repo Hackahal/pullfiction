@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 [features]
 default = ["browser-static"]
 browser-static = []
+renderer-lab = []
 
 [dependencies]
 benilla-app = { path = "../benilla-app", default-features = false, features = ["webgpu"] }

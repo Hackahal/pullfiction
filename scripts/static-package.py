@@ -121,6 +121,8 @@ def editor_files(editor: Path) -> list[str]:
         if key in visited:
             continue
         visited.add(key)
+        if "renderer-lab" in key.lower():
+            raise PackageError("The renderer lab is a development entry, not a production asset")
         entry = manifest.get(key)
         if not isinstance(entry, dict):
             raise PackageError(f"Invalid Vite chunk: {key}")
@@ -225,6 +227,8 @@ def audit(output: Path, repo: Path = REPO) -> dict:
                 scan_data = compressed.read(MAX_VIEWER_BYTES + 1)
             if len(scan_data) > MAX_VIEWER_BYTES or not scan_data.startswith(b"\0asm\x01\0\0\0"):
                 raise PackageError("Invalid or unexpectedly large compressed viewer WebAssembly")
+            if b"renderer_lab_configure" in scan_data:
+                raise PackageError("Development renderer-lab exports cannot ship in production")
         for pattern in SECRET_PATTERNS:
             if re.search(pattern, scan_data, re.IGNORECASE):
                 raise PackageError(f"Secret or local endpoint/path signature in: {relative}")

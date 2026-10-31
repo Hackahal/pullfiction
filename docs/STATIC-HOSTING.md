@@ -1,6 +1,8 @@
-# Prepare the static browser release
+# Build and release the static application
 
-`scripts/browser-static-build.sh` prepares Pull Fiction for Cloudflare Workers Static Assets. It builds application code and browser conversion tools in a fresh temporary directory. The command does not deploy or change a Cloudflare account.
+Pull Fiction runs at `https://pullfiction.com` on Cloudflare Workers Static Assets. The deployment contains application code and the browser conversion runtime. Game files stay on each user's device.
+
+`scripts/browser-static-build.sh` prepares a release in a fresh temporary directory. Building does not deploy or change a Cloudflare account.
 
 The `browser-static` feature runs the original planner renderer, native raid frames,
 nameplates, camera, and editor. Browser-local preparation replaces the game-data
@@ -10,7 +12,15 @@ The browser reads the user's selected modern Classic client directory. The relea
 
 ## Build a release
 
-Use the toolchains already prepared for the browser archive reader. The build requires the Rust `wasm32-unknown-unknown` target, `wasm-bindgen` CLI `0.2.122`, Node dependencies from `web/editor/package-lock.json`, and Emscripten `6.0.13`. It also requires the pinned CascLib and Pyodide inputs described in [BROWSER-ASSETS.md](BROWSER-ASSETS.md).
+Use Node 22 or newer, Python 3.12 or newer, and Rust 1.98.1. Prepare the pinned developer tools once:
+
+```bash
+bash scripts/web-setup.sh
+bash scripts/browser-assets-setup.sh
+npm ci --prefix web/editor
+```
+
+The setup pins Emscripten `6.0.13`, CascLib, CMake `4.4.4`, Pyodide `314.0.7`, and Wrangler `4.156.0`. It preserves existing tool checkouts and refuses modified or mismatched sources. Downloads and installed tools remain outside the published package.
 
 Run from the repository root:
 
@@ -32,7 +42,45 @@ The command runs these builds:
 4. `scripts/browser-assets-build.sh` and `scripts/browser-codec-build.sh` into a fresh archive runtime directory.
 5. `scripts/static-package.py pack`, which copies an explicit application allowlist and audits the result.
 
-Supply `VITE_WCL_CLIENT_ID` and `VITE_WCL_REDIRECT_URI` only when a public Warcraft Logs browser client is available. These values are public configuration. Never pass a client secret through a `VITE_` variable. Preparing a local release does not establish that the provider has enabled public-client authorization for the eventual origin.
+For production, set the public `VITE_WCL_CLIENT_ID` and `VITE_WCL_REDIRECT_URI=https://pullfiction.com/`. Never pass a client secret through a `VITE_` variable. Register that exact callback with Warcraft Logs while retaining the localhost callback for development.
+
+Production builds exclude the renderer-lab screen and WASM diagnostics. Vite development can use `?renderer-lab=1`; its diagnostic WASM must be built with `--features browser-static,renderer-lab`. A separate Vite build can use `--mode renderer-lab`. The production packager rejects lab entries and diagnostic WASM exports.
+
+## Publish a release
+
+Normal pushes to `main` run CI and do not deploy. Use either release entry point:
+
+1. In GitHub, open **Releases → Draft a new release**, choose a version tag and target commit, and publish it. The **Release** workflow builds and deploys that commit.
+2. For a direct deployment or an older version, open **Actions → Release → Run workflow** and enter the commit or tag in **ref**. The default is `main`.
+
+The workflow builds on a clean GitHub-hosted runner, checks the packaging rules, uploads only the audited production directory, and verifies hosted bytes and response headers. Build and deployment run in separate jobs. The Cloudflare credential is available only to the deployment step. Each run retains the static package and a separate audit inventory for 30 days.
+
+The repository requires these Actions settings:
+
+| Setting | Type | Purpose |
+| --- | --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Secret | Scoped permission to deploy the production Worker and its domain connection |
+| `CLOUDFLARE_ACCOUNT_ID` | Variable | Cloudflare account hosting `pullfiction` |
+| `VITE_WCL_CLIENT_ID` | Variable | Public Warcraft Logs PKCE client ID |
+
+Production uses the `pullfiction` Worker and the custom domain `pullfiction.com`. There is no Worker application server, database, game-data endpoint, or paid-service requirement.
+
+## Deploy a local build
+
+With the deployment credential in the process environment, run:
+
+```bash
+bash scripts/deploy-static.sh .agent/work/browser-static/release
+python3 scripts/verify-deployment.py https://pullfiction.com .agent/work/browser-static/release
+```
+
+The deploy command audits the directory and initializes its packaged WASM before upload. It never uploads the checkout, audit report, tests, game files, or local tool directories. Keep credentials out of shell history, source files, and command output.
+
+## Roll back
+
+In Cloudflare, open **Workers & Pages → pullfiction → Deployments**, select a previous version, and choose **Rollback**. Cloudflare retains the 100 most recently published versions. This restores the deployed static assets without changing browser-local projects or client caches.
+
+To rebuild an older source version, run the GitHub **Release** workflow with its commit or tag. Releases before the deployment tooling was introduced may not contain the required build scripts; use a retained Cloudflare version for those.
 
 ## Preview the prepared release locally
 
@@ -79,13 +127,13 @@ The production build also runs `static-viewer-smoke.mjs` before publishing the l
 
 ## Use the Cloudflare configuration
 
-`wrangler.static.jsonc` points only at `.agent/work/browser-static/release`. It declares Workers Static Assets and a single-page application fallback. It contains no Worker script, bindings, secrets, route, domain, or account identifier. Change `assets.directory` locally if you selected another release path.
+`wrangler.static.jsonc` points only at `.agent/work/browser-static/release`. It declares Workers Static Assets, a single-page application fallback, and the production custom domain. It has no Worker script, game-data binding, or credential. `workers.dev` and version-preview URLs are disabled. The local deploy command can select a different audited output directory.
 
 Cloudflare serves custom headers from the release's `_headers` file. Hashed Vite bundles receive an immutable cache policy. The page, archive runtime, and viewer files revalidate on use. Missing application routes fall back to `index.html`; missing runtime files must still be treated as load failures by their consumers.
 
 Cloudflare documents a [25 MiB limit per static asset](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/) and supports [an assets directory without a Worker script](https://developers.cloudflare.com/workers/static-assets/). The packager requires every uploaded file to be strictly smaller than 25 MiB and limits the release to 20,000 files. The prepared configuration and local audit do not verify a hosted origin.
 
-Deployment requires a separate explicit authorization. No packaging command invokes Wrangler deployment or any account operation.
+No packaging command invokes Wrangler deployment or any account operation. Deployment happens only through the explicit release workflow or `scripts/deploy-static.sh`.
 
 ## Keep the compressed viewer loader contract
 

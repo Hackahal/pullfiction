@@ -383,6 +383,7 @@ pub fn start() {
     annotations::install(&mut app);
     benilla_app::planner_sandbox::install(&mut app);
     benilla_app::planner_replay::install(&mut app);
+    #[cfg(feature = "renderer-lab")]
     crate::renderer_diagnostics::install(&mut app);
     app.add_systems(
         Update,

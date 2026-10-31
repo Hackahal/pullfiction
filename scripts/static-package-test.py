@@ -6,10 +6,16 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
+from email.message import Message
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
 
 spec = importlib.util.spec_from_file_location("static_package", Path(__file__).with_name("static-package.py"))
 package = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(package)
+deploy_spec = importlib.util.spec_from_file_location("verify_deployment", Path(__file__).with_name("verify-deployment.py"))
+deployment = importlib.util.module_from_spec(deploy_spec)
+deploy_spec.loader.exec_module(deployment)
 
 
 class StaticPackageTests(unittest.TestCase):
@@ -30,6 +36,9 @@ class StaticPackageTests(unittest.TestCase):
         patcher = patch.dict(package.METADATA_FILES, {"metadata/npc-models.json": metadata_path.relative_to(package.REPO).as_posix()})
         patcher.start()
         self.addCleanup(patcher.stop)
+        auditor = patch.object(deployment, "audit_release", side_effect=package.audit)
+        auditor.start()
+        self.addCleanup(auditor.stop)
         self.editor, self.renderer, self.archive, self.output = (self.root / name for name in ("editor", "renderer", "archive", "release"))
         for root in (self.editor, self.renderer, self.archive):
             root.mkdir()
@@ -78,6 +87,61 @@ class StaticPackageTests(unittest.TestCase):
         self.assertNotIn("snippets/stale-fixture/inline0.js", output_names)
         self.assertEqual(package.audit(self.output), result)
         self.assertTrue((self.output / "metadata/npc-models.json").is_file())
+
+    def test_development_entry_is_rejected_even_when_reachable_from_the_app(self):
+        self.write(self.editor, ".vite/manifest.json", json.dumps({
+            "index.html": {"file": "assets/index-fixture.js", "isEntry": True,
+                           "dynamicImports": ["src/renderer-lab/RendererLab.tsx"]},
+            "src/renderer-lab/RendererLab.tsx": {"file": "assets/RendererLab-fixture.js"},
+        }))
+        self.write(self.editor, "assets/RendererLab-fixture.js", "development harness")
+        with self.assertRaisesRegex(package.PackageError, "development entry"):
+            self.pack()
+
+    def test_development_wasm_exports_are_rejected(self):
+        self.write(self.renderer, "pullfiction_viewer_bg.wasm",
+                   b"\0asm\x01\0\0\0renderer_lab_configure")
+        with self.assertRaisesRegex(package.PackageError, "Development renderer-lab exports"):
+            self.pack()
+
+    def hosted_file(self, url, *, encoding="identity"):
+        name = urlsplit(url).path.lstrip("/") or "index.html"
+        path = self.output / name
+        if not path.is_file():
+            raise HTTPError(url, 404, "Not found", {}, None)
+        headers = Message()
+        headers["X-Content-Type-Options"] = "nosniff"
+        headers["Content-Type"] = ("application/gzip" if name.endswith(".wasm.gz") else
+            "application/wasm" if name.endswith(".wasm") else
+            "text/javascript" if name.endswith((".js", ".mjs")) else "text/plain")
+        return path.read_bytes(), headers
+
+    def test_hosted_release_requires_exact_asset_bytes(self):
+        self.pack()
+        with patch.object(deployment, "fetch", self.hosted_file):
+            self.assertEqual(deployment.verify("https://pullfiction.example", self.output),
+                             package.audit(self.output)["file_count"] - 1)
+
+        def changed(url, **options):
+            body, headers = self.hosted_file(url, **options)
+            return (b"changed" if url.endswith("/") else body), headers
+
+        with patch.object(deployment, "fetch", changed):
+            with self.assertRaisesRegex(ValueError, "bytes differ"):
+                deployment.verify("https://pullfiction.example", self.output)
+
+    def test_hosted_release_rejects_implicit_gzip_decoding(self):
+        self.pack()
+
+        def double_decoded(url, **options):
+            body, headers = self.hosted_file(url, **options)
+            if url.endswith(".wasm.gz") and options.get("encoding") == "gzip, br":
+                headers["Content-Encoding"] = "gzip"
+            return body, headers
+
+        with patch.object(deployment, "fetch", double_decoded):
+            with self.assertRaisesRegex(ValueError, "explicitly compressed"):
+                deployment.verify("https://pullfiction.example", self.output)
 
     def test_metadata_rejects_art_spawns_and_unreviewed_source_changes(self):
         self.pack()

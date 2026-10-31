@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit or tag to release (main for the latest application)'
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pullfiction-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Record release source
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            web/editor/package-lock.json
+            tools/release/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pullfiction-static-release
+          cache-directories: tools/wasi-sdk
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .agent/tools/emsdk
+            .agent/tools/casclib/python
+            .agent/tools/casclib/source
+          key: browser-build-tools-${{ runner.os }}-emsdk-6.0.13-cmake-4.4.4-casc-6b889ec
+      - name: Prepare pinned build tools
+        run: |
+          bash scripts/web-setup.sh
+          bash scripts/browser-assets-setup.sh
+          npm ci --prefix web/editor
+      - name: Verify production packaging
+        run: |
+          python3 scripts/static-package-test.py
+          node --test scripts/static-viewer-loader.test.mjs
+      - name: Build the static application
+        env:
+          VITE_WCL_CLIENT_ID: ${{ vars.VITE_WCL_CLIENT_ID }}
+          VITE_WCL_REDIRECT_URI: https://pullfiction.com/
+          CARGO_BUILD_JOBS: '2'
+        run: |
+          test -n "$VITE_WCL_CLIENT_ID" || { echo 'Set the public VITE_WCL_CLIENT_ID repository variable.' >&2; exit 1; }
+          bash scripts/browser-static-build.sh .agent/work/browser-static/release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-site
+          path: .agent/work/browser-static/release
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-audit
+          path: .agent/work/browser-static/release.audit.json
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://pullfiction.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/release/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-site
+          path: .agent/work/browser-static/release
+      - name: Install pinned deployment CLI
+        run: npm ci --prefix tools/release --ignore-scripts --no-audit --no-fund
+      - name: Deploy audited static assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Set the CLOUDFLARE_API_TOKEN Actions secret.' >&2; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Set the CLOUDFLARE_ACCOUNT_ID repository variable.' >&2; exit 1; }
+          bash scripts/deploy-static.sh .agent/work/browser-static/release
+      - name: Check production delivery
+        run: python3 scripts/verify-deployment.py https://pullfiction.com .agent/work/browser-static/release
+      - name: Record deployment
+        env:
+          RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          echo "Released $RELEASE_COMMIT to https://pullfiction.com" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Rollback: Cloudflare → Workers & Pages → pullfiction → Deployments → select a previous version.' >> "$GITHUB_STEP_SUMMARY"

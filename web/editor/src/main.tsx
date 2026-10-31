@@ -11,6 +11,7 @@ try {
   storage = window.localStorage;
 } catch {}
 const rendererLab =
+  (import.meta.env.DEV || import.meta.env.MODE === "renderer-lab") &&
   new URL(location.href).searchParams.get("renderer-lab") === "1";
 if (!rendererLab) void ensureWowheadWidget();
 const controller = rendererLab

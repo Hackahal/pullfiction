@@ -1,0 +1,10 @@
+{
+  "name": "pullfiction-release-tools",
+  "private": true,
+  "version": "0.1.0",
+  "engines": { "node": ">=22.12.0" },
+  "devDependencies": {
+    "pyodide": "314.0.7",
+    "wrangler": "4.156.0"
+  }
+}
