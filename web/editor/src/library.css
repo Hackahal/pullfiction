@@ -10,13 +10,16 @@
   font-size: 13px;
 }
 .library-header {
-  height: 70px;
+  height: auto;
   min-height: 70px;
+  flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0 32px;
+  padding: 10px 32px;
   border-bottom: 1px solid #ffffff12;
   gap: 44px;
+  row-gap: 8px;
   background: #171a1c;
 }
 .library-brand {
@@ -30,7 +33,7 @@
   color: var(--gold);
 }
 .library-header nav {
-  height: 100%;
+  min-height: 44px;
   display: flex;
   gap: 8px;
 }
@@ -644,10 +647,14 @@
     overflow: auto;
   }
   .library-header .community-links {
-    display: none;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    order: 1;
+    gap: 16px;
   }
   .library-header {
     gap: 10px;
+    padding: 10px 16px;
     position: sticky;
     top: 0;
     z-index: 2;
@@ -657,6 +664,9 @@
   }
   .library-header nav button {
     padding: 0 10px;
+  }
+  .library-header nav {
+    flex-wrap: wrap;
   }
   .library-return {
     font-size: 0;
