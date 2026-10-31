@@ -4,6 +4,7 @@ import { EditsPanel } from "./EditsPanel";
 import { Inspection } from "./Inspection";
 import {
   sceneGesture,
+  drawsOnRelease,
   startsDrag,
   usesNativeMouseLook,
 } from "./interaction-policy";
@@ -1236,13 +1237,15 @@ function Viewport({
           ? "Right-drag to orbit · Drag empty space to select"
           : "WASD to move · Right-drag to look · Drag empty space to select"
         : state.tool === "marker" && hovered?.actor
-          ? "Drag to attach marker to actor"
+          ? "Click to attach marker to actor"
           : !hovered?.point
             ? "Aim at loaded terrain"
             : state.tool === "drawing"
               ? "Drag to draw · Esc to cancel"
               : state.tool === "marker" || state.tool === "label"
-                ? "Drag to place · Click selects"
+                ? state.tool === "marker"
+                  ? "Click to place · Shift-click to select"
+                  : "Drag to place · Click selects"
                 : ["circle", "cone", "arrow"].includes(state.tool)
                   ? "Drag to size and aim · Type yards · Release to place"
                   : "Click waypoints · Finish or Enter to end";
@@ -1606,9 +1609,12 @@ function Viewport({
                 return;
               }
               if (
-                (press.moved ||
-                  startsDrag([press.x, press.y], [e.clientX, e.clientY])) &&
-                press.gesture === "draw"
+                press.gesture === "draw" &&
+                drawsOnRelease(
+                  state.tool,
+                  press.moved ||
+                    startsDrag([press.x, press.y], [e.clientX, e.clientY]),
+                )
               ) {
                 const drop = ["marker", "label"].includes(state.tool);
                 if (!press.actor || !controller.startActorDrawing(press.actor))
