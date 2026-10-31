@@ -1788,7 +1788,9 @@ function Viewport({
                   );
                 })()
               : map
-                ? "Right-drag to pan · Scroll to zoom · Click to select"
+                ? state.tool === "marker"
+                  ? "Right-drag to pan · Scroll to zoom · Click to place · Shift-click to select"
+                  : "Right-drag to pan · Scroll to zoom · Click to select"
                 : hint}
           </div>
         )}
