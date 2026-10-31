@@ -562,8 +562,20 @@ mod tests {
                 900. / 768.,
             ))
             .unwrap();
-        assert!(!script
-            .eval::<bool>("return PullFictionPlates['42']:IsShown() ~= nil")
+        assert!(script
+            .eval::<bool>("return PullFictionPlates['42']:IsShown() ~= nil and PullFictionPlates['42'].name:GetText() == 'Mage'")
             .unwrap());
+        assert!(script.eval::<bool>("local f=PullFictionPlates['42']; return not f.fill:IsShown() and not f.edge:IsShown() and not f.background:IsShown() and not f.hp:IsShown() and not f.castback:IsShown() and not f.icons[1]:IsShown()").unwrap());
+        frame.friendly_nameplates = true;
+        script
+            .run(&state::plate_chunk(
+                &frame,
+                &mut layout,
+                [1200., 900.],
+                0.05,
+                900. / 768.,
+            ))
+            .unwrap();
+        assert!(script.eval::<bool>("local f=PullFictionPlates['42']; return f.fill:IsShown() ~= nil and f.edge:IsShown() ~= nil and f.background:IsShown() ~= nil and f.hp:IsShown() ~= nil and f.castback:IsShown() ~= nil and f.icons[1]:IsShown() ~= nil").unwrap());
     }
 }

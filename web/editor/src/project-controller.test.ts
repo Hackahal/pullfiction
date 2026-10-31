@@ -4,7 +4,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { EditorController } from "./controller";
 import { IndexedProjectStore } from "./project-store";
 import { emptyPlan, STORAGE_KEY } from "./domain";
-import type { RawReplay } from "./types";
+import type { Engine, RawReplay } from "./types";
 const raw = {
   gameVersion: "vanilla",
   report: { code: "DyN7vF94QR8aj1Lc", title: "MC run" },
@@ -308,4 +308,44 @@ test("a paused seek is checkpointed without changing the plan or rewriting its s
   assert.deepEqual(saved.plan, initial.plan);
   assert.equal(saved.source?.cacheKey, initial.source?.cacheKey);
   f.controller.stop();
+});
+
+test("Trashing the active project rejects marker hits queued before the reset", async () => {
+  const { controller: c, store } = setup();
+  await c.initializeLibrary();
+  await c.createProject(409, "vanilla", "Pending marker");
+  const id = c.getSnapshot().projectId!;
+  const requests: number[] = [];
+  c.attachEngine({
+    set_annotations: () => {},
+    set_replay_frame: () => {},
+    replay_events: () => {},
+    set_typing: () => {},
+    load_raid: () => {},
+    hover_annotation: (
+      _x: number,
+      _y: number,
+      _placing: boolean,
+      request?: number,
+    ) => {
+      if (request !== undefined) requests.push(request);
+    },
+  } as unknown as Engine);
+  c.setTool("marker");
+  c.placeSceneMarkerAt(30, 40);
+  assert.equal(requests.length, 1);
+  await c.trashProject(id);
+  assert.equal(c.getSnapshot().projectId, null);
+  const planAfterReset = JSON.stringify(c.getSnapshot().plan);
+  c.receive(
+    "plan-hover",
+    JSON.stringify({ request: requests[0], pixel: [30, 40], point: [9, 8, 7] }),
+  );
+  assert.equal(JSON.stringify(c.getSnapshot().plan), planAfterReset);
+  assert.ok((await store.get(id))?.deletedAt);
+  assert.equal(
+    (await store.list()).filter((project) => !project.deletedAt).length,
+    0,
+  );
+  c.stop();
 });

@@ -222,7 +222,7 @@ enum Command {
     PlanMapPick([f32; 3], u32, bool),
     AnnotationPick(Vec2),
     BoxSelect(Vec2, Vec2, u32, u32),
-    AnnotationHover(Vec2, bool),
+    AnnotationHover(Vec2, bool, Option<u32>),
     EditorMode(bool),
     Navigate(bool, f32, f32),
     Zoom(f32),
@@ -294,9 +294,9 @@ pub fn select_annotations_rect(x1: f32, y1: f32, x2: f32, y2: f32, mode: u32, ep
     }
 }
 #[wasm_bindgen]
-pub fn hover_annotation(x: f32, y: f32, placing: bool) {
+pub fn hover_annotation(x: f32, y: f32, placing: bool, request: Option<u32>) {
     if x.is_finite() && y.is_finite() {
-        enqueue(Command::AnnotationHover(Vec2::new(x, y), placing));
+        enqueue(Command::AnnotationHover(Vec2::new(x, y), placing, request));
     }
 }
 #[wasm_bindgen]
@@ -518,7 +518,7 @@ fn commands(
                     .collect();
                 report("marks",&serde_json::json!({"ids":points.box_hits(camera,global,a,b),"actors":actor_keys,"mode":mode,"epoch":epoch}).to_string());
             }
-            Command::AnnotationHover(pixel, placing) => {
+            Command::AnnotationHover(pixel, placing, request) => {
                 points.update_actor_anchors(&actors);
                 let native_ui = ui_owns_point(pixel);
                 let valid = pixel.x >= 0. && pixel.y >= 0. && !native_ui;
@@ -598,7 +598,7 @@ fn commands(
                             .ok()
                     })
                     .map(|p| p.to_array());
-                report("plan-hover",&serde_json::json!({"nativeUI":native_ui,"anchorPixel":anchor_pixel,"pixel":pixel.to_array(),"right":right.to_array(),"up":up.to_array(),"actor":actor,"hits":if valid {points.hits(camera,global,pixel)}else{vec![]},"id":id,"handle":handle.map(|h|h.1),"point":point,"locked":locked}).to_string());
+                report("plan-hover",&serde_json::json!({"request":request,"nativeUI":native_ui,"anchorPixel":anchor_pixel,"pixel":pixel.to_array(),"right":right.to_array(),"up":up.to_array(),"actor":actor,"hits":if valid {points.hits(camera,global,pixel)}else{vec![]},"id":id,"handle":handle.map(|h|h.1),"point":point,"locked":locked}).to_string());
             }
             Command::AnnotationPick(pixel) => {
                 if let Some(id) = points.hit(camera, global, pixel) {

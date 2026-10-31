@@ -35,6 +35,7 @@ export function Toolbox({
     shortLabel = label,
   ) => (
     <button
+      key={label}
       className={active ? "active" : ""}
       aria-pressed={active}
       aria-label={label}
@@ -177,7 +178,9 @@ export function Toolbox({
           <p className="toolbox-gesture">
             {["route", "polygon"].includes(state.tool)
               ? "Click waypoints · Finish to end"
-              : "Click to select · Drag to draw"}
+              : state.tool === "marker"
+                ? "Click to place · Shift-click to select"
+                : "Click to select · Drag to draw"}
           </p>
           <DrawingDefaults state={state} controller={controller} />
           {button(
@@ -224,7 +227,7 @@ export function Toolbox({
         {button("home", "Entrance", () => controller.home())}
         {button(
           "person",
-          "Friendly nameplates",
+          "Friendly nameplates (Shift+V)",
           () =>
             controller.setOption(
               "friendlyNameplates",
@@ -234,13 +237,23 @@ export function Toolbox({
         )}
         {button(
           "raid",
-          "Enemy nameplates",
+          "Enemy nameplates (V)",
           () =>
             controller.setOption(
               "enemyNameplates",
               !state.options.enemyNameplates,
             ),
           state.options.enemyNameplates,
+        )}
+        {(["trashNameplates", "bossNameplates"] as const).map((option) =>
+          button(
+            "raid",
+            option === "trashNameplates"
+              ? "Trash nameplates"
+              : "Boss nameplates",
+            () => controller.setOption(option, !state.options[option]),
+            state.options[option],
+          ),
         )}
         {button(
           "raid",

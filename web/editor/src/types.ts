@@ -43,6 +43,7 @@ export interface PlannedActor {
   key: string;
   name: string;
   class: string;
+  icon?: string | null;
   type: string;
   position: Point;
   recorded?: Point;
@@ -280,6 +281,7 @@ export interface NativeFrame {
   estimated: boolean;
   wisp?: boolean;
   friendly: boolean;
+  nameplate?: boolean;
   raid: boolean;
   health: number | null;
   max_health: number | null;
@@ -330,7 +332,12 @@ export interface Engine {
     mode: number,
     epoch: number,
   ): void;
-  hover_annotation?(x: number, y: number, placing: boolean): void;
+  hover_annotation?(
+    x: number,
+    y: number,
+    placing: boolean,
+    request?: number,
+  ): void;
   preview_annotation?(x: number, y: number, token: number): void;
   preview_map_annotation?(x: number, y: number, z: number, token: number): void;
   pick_for_annotation?(x: number, y: number, token: number): void;
@@ -358,6 +365,8 @@ export interface Options {
   nameplates: boolean;
   friendlyNameplates: boolean;
   enemyNameplates: boolean;
+  trashNameplates: boolean;
+  bossNameplates: boolean;
   raidFrames: boolean;
   auras: boolean;
   spells: boolean;
