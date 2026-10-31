@@ -187,6 +187,7 @@ export class EditorController {
     x: number;
     y: number;
     epoch: number;
+    projectEpoch: number;
     request: number;
   }[] = [];
   private markDrag: {
@@ -2556,13 +2557,16 @@ export class EditorController {
       return;
     }
     this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
-      (click) => click.epoch === this.pickEpoch,
+      (click) =>
+        click.epoch === this.pickEpoch &&
+        click.projectEpoch === this.projectEpoch,
     );
     this.markerRequest = (this.markerRequest + 1) >>> 0;
     this.pendingMarkerClicks.push({
       x,
       y,
       epoch: this.pickEpoch,
+      projectEpoch: this.projectEpoch,
       request: this.markerRequest,
     });
     this.engine.hover_annotation(x, y, true, this.markerRequest);
@@ -4719,6 +4723,7 @@ export class EditorController {
         const [click] = this.pendingMarkerClicks.splice(markerIndex, 1);
         if (
           click.epoch !== this.pickEpoch ||
+          click.projectEpoch !== this.projectEpoch ||
           this.state.tool !== "marker" ||
           basis.nativeUI
         )
