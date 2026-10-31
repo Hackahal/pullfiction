@@ -177,7 +177,9 @@ export function Toolbox({
           <p className="toolbox-gesture">
             {["route", "polygon"].includes(state.tool)
               ? "Click waypoints · Finish to end"
-              : "Click to select · Drag to draw"}
+              : state.tool === "marker"
+                ? "Click to place · Shift-click to select"
+                : "Click to select · Drag to draw"}
           </p>
           <DrawingDefaults state={state} controller={controller} />
           {button(

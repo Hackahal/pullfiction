@@ -15,7 +15,12 @@ export function sceneGesture(
   if (!["explore", "move"].includes(tool)) return "draw";
   return "select";
 }
-// A press is always a selection until it crosses the shared drag threshold.
+// Markers place on click. Sized shapes, strokes and transforms wait for a drag.
+export function drawsOnRelease(tool: Tool, moved: boolean) {
+  return tool === "marker" || moved;
+}
+
+// Share the drag threshold between selection, drawing and transforms.
 export const DRAG_THRESHOLD = 4;
 export function startsDrag(start: readonly number[], end: readonly number[]) {
   return Math.hypot(end[0] - start[0], end[1] - start[1]) >= DRAG_THRESHOLD;

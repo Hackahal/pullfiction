@@ -6,7 +6,7 @@ import { MapViewImages, mapActorIconKey } from "./map-view-images";
 import { BrowserClient } from "./BrowserClient";
 import { mapLoadProblem } from "./client-error";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
-import { sceneGesture, startsDrag } from "./interaction-policy";
+import { drawsOnRelease, sceneGesture, startsDrag } from "./interaction-policy";
 import {
   hitMapLabel,
   mapLabelLayout,
@@ -1231,9 +1231,15 @@ export function MapView({
                 place(p);
               return;
             }
-            if ((d.moved || startsDrag([d.x, d.y], p)) && d.intent === "draw") {
+            const moved = d.moved || startsDrag([d.x, d.y], p);
+            if (d.intent === "draw" && drawsOnRelease(state.tool, moved)) {
               const drop = ["marker", "label"].includes(state.tool);
-              if (!d.actor || !controller.startActorDrawing(d.actor))
+              const actor =
+                state.tool === "marker"
+                  ? (controller.selectedActorForDrawing() ??
+                    actorAt(p)?.actor.key)
+                  : d.actor;
+              if (!actor || !controller.startActorDrawing(actor))
                 place(drop ? p : [d.x, d.y]);
               if (!drop) place(p);
               controller.finishDrawing();
