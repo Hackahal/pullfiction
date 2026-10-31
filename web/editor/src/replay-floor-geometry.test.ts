@@ -84,6 +84,7 @@ test("approximate room pins use a nearby walkable edge only outside exact struct
   assert.equal(geometry.nearbyStructureHeight(6, 1, 125, 3), undefined);
   assert.equal(geometry.nearbyStructureHeight(11, 1, 125, 3), undefined);
   assert.equal(geometry.referenceFloors.height(11, 1, 125, true), 185);
+  assert.equal(geometry.height(11, 1, 125, true), 173);
   assert.equal(geometry.nearbyStructureHeight(NaN, 1, 125, 3), undefined);
   assert.equal(geometry.nearbyStructureHeight(9, 1, 125, 0), undefined);
   assert.equal(
