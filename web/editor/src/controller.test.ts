@@ -3050,13 +3050,22 @@ test("native movement requires a known height for each endpoint and keeps ground
     const player = f.frame.find((a) => a.key === actor.key) as unknown as {
       position: number[];
       ground: boolean;
-      movement: { from: number[]; to: number[] } | null;
+      movement: {
+        from: number[];
+        to: number[];
+        from_inferred: boolean;
+        to_inferred: boolean;
+        floor_candidates: unknown[];
+      } | null;
     };
     assert.ok(player.position);
     if (enabled) {
       assert.ok(player.movement);
       assert.equal(player.movement.from[2], from ?? hint);
       assert.equal(player.movement.to[2], to ?? hint);
+      assert.equal(player.movement.from_inferred, from === null);
+      assert.equal(player.movement.to_inferred, to === null);
+      assert.deepEqual(player.movement.floor_candidates, []);
     } else {
       assert.equal(player.movement, null);
       assert.equal(player.ground, true);

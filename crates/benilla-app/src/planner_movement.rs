@@ -3,6 +3,11 @@ use crate::webbridge::path::{self, Probe};
 use bevy::math::Vec3;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+pub struct FloorPair {
+    pub from: f32,
+    pub to: f32,
+}
 #[derive(Clone, serde::Deserialize)]
 pub struct Segment {
     pub from: [f32; 3],
@@ -20,6 +25,13 @@ pub struct Segment {
     /// Sparse position estimates, including wisps, need not obey a run-speed cap.
     #[serde(default)]
     pub unrestricted: bool,
+    #[serde(default)]
+    pub from_inferred: bool,
+    #[serde(default)]
+    pub to_inferred: bool,
+    /// Ordered, geometry-validated alternative endpoint heights. XY is immutable.
+    #[serde(default)]
+    pub floor_candidates: Vec<FloorPair>,
 }
 impl Segment {
     /// Optional reconstruction is discarded independently of the recorded replay pose.
@@ -32,6 +44,20 @@ impl Segment {
             .iter()
             .chain(self.to.iter())
             .all(|v| v.is_finite() && v.abs() <= 20000.)
+            && self.floor_candidates.len() <= 2
+            && (self.floor_candidates.is_empty()
+                || Vec3::new(self.from[0] - self.to[0], 0., self.from[1] - self.to[1]).length()
+                    <= 40.)
+            && self.floor_candidates.iter().all(|pair| {
+                pair.from.is_finite()
+                    && pair.to.is_finite()
+                    && pair.from.abs() <= 20000.
+                    && pair.to.abs() <= 20000.
+                    && (pair.from - self.from[2]).abs() <= 32.
+                    && (pair.to - self.to[2]).abs() <= 32.
+                    && (self.from_inferred || pair.from == self.from[2])
+                    && (self.to_inferred || pair.to == self.to[2])
+            })
             && self.fraction.is_finite()
             && (0.0..=1.0).contains(&self.fraction)
             && self.rate.is_finite()
@@ -76,6 +102,7 @@ pub enum RouteReason {
     LengthLimit,
     SpeedLimit,
     Ready,
+    EstimatedDrop,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +124,11 @@ pub struct MovementDiagnostic {
     pub route_point_count: usize,
     pub expanded: usize,
     pub cache_hit: bool,
+    pub selected_from: Option<[f32; 3]>,
+    pub selected_to: Option<[f32; 3]>,
+    /// Zero is the primary inferred pair, alternatives are one-based.
+    pub alternative_index: Option<usize>,
+    pub primary_failure: Option<RouteReason>,
 }
 enum RouteState {
     Pending(path::Search),
@@ -113,6 +145,14 @@ struct Memo {
     reason: RouteReason,
     rendered: Vec3,
     cache_hit: bool,
+    from_inferred: bool,
+    to_inferred: bool,
+    candidates: Vec<FloorPair>,
+    next_attempt: usize,
+    primary_failure: Option<RouteReason>,
+    selected: Option<(Vec3, Vec3, usize)>,
+    estimated_drop: bool,
+    drop_rate: f32,
 }
 const FRAME_EXPANSIONS: usize = 2048;
 #[derive(Default)]
@@ -159,11 +199,18 @@ impl Routes {
                     key: key.clone(),
                     status: match m.state {
                         RouteState::Pending(_) => RouteStatus::Pending,
-                        RouteState::Ready(_) if m.reason == RouteReason::Ready => {
+                        RouteState::Ready(_)
+                            if matches!(
+                                m.reason,
+                                RouteReason::Ready | RouteReason::EstimatedDrop
+                            ) =>
+                        {
                             RouteStatus::Ready
                         }
                         RouteState::Ready(_) => RouteStatus::Held,
-                        RouteState::Failed(RouteReason::FrameBudget) => RouteStatus::Deferred,
+                        RouteState::Failed(_) if m.reason == RouteReason::FrameBudget => {
+                            RouteStatus::Deferred
+                        }
                         RouteState::Failed(_) => RouteStatus::Held,
                     },
                     reason: m.reason,
@@ -178,6 +225,10 @@ impl Routes {
                     },
                     expanded: m.expanded,
                     cache_hit: m.cache_hit,
+                    selected_from: m.selected.map(|p| benilla_assets::coords::bevy_to_wow(p.0)),
+                    selected_to: m.selected.map(|p| benilla_assets::coords::bevy_to_wow(p.1)),
+                    alternative_index: m.selected.map(|p| p.2),
+                    primary_failure: m.primary_failure,
                 }
             })
             .collect()
@@ -198,6 +249,9 @@ impl Routes {
                 && m.to == to
                 && m.duration == segment.duration
                 && m.unrestricted == segment.unrestricted
+                && m.from_inferred == segment.from_inferred
+                && m.to_inferred == segment.to_inferred
+                && m.candidates == segment.floor_candidates
                 && !matches!(m.state, RouteState::Failed(RouteReason::FrameBudget))
         });
         if !cache_hit {
@@ -228,11 +282,31 @@ impl Routes {
                     reason: RouteReason::Searching,
                     rendered: from,
                     cache_hit: false,
+                    from_inferred: segment.from_inferred,
+                    to_inferred: segment.to_inferred,
+                    candidates: segment.floor_candidates.clone(),
+                    next_attempt: usize::from(!segment.unrestricted),
+                    primary_failure: None,
+                    selected: None,
+                    estimated_drop: false,
+                    drop_rate: segment.rate,
                 },
             );
         }
         let memo = self.actors.get_mut(key)?;
         memo.cache_hit = cache_hit;
+        // Fraction/rate can change during playback while the geometric segment
+        // is identical. Do not discard an in-progress A* for a cadence change.
+        if memo.drop_rate != segment.rate
+            && segment.unrestricted
+            && (memo.from_inferred || memo.to_inferred)
+            && memo.primary_failure.is_some()
+            && memo.next_attempt > memo.candidates.len()
+            && matches!(memo.state, RouteState::Failed(_))
+        {
+            memo.next_attempt = 0;
+        }
+        memo.drop_rate = segment.rate;
         if let RouteState::Pending(search) = &mut memo.state {
             if self.expansions == 0 || self.search_jobs == 0 {
                 memo.reason = RouteReason::FrameBudget;
@@ -279,6 +353,47 @@ impl Routes {
                 }
             }
         }
+        let mut candidate_deferred = false;
+        // Alternatives never start another A*. A failed primary search retains
+        // its expansion count; only direct walking/drop probes consume more jobs.
+        if let RouteState::Failed(reason) = memo.state {
+            if reason != RouteReason::FrameBudget {
+                memo.primary_failure.get_or_insert(reason);
+                while memo.next_attempt <= memo.candidates.len()
+                    && (memo.from_inferred || memo.to_inferred)
+                {
+                    if self.search_jobs == 0 {
+                        self.deferred = true;
+                        candidate_deferred = true;
+                        memo.reason = RouteReason::FrameBudget;
+                        break;
+                    }
+                    self.search_jobs -= 1;
+                    let index = memo.next_attempt;
+                    memo.next_attempt += 1;
+                    let (a, b) = if index == 0 {
+                        (from, to)
+                    } else {
+                        let pair = &memo.candidates[index - 1];
+                        (from.with_y(pair.from), to.with_y(pair.to))
+                    };
+                    let walked = (index > 0)
+                        .then(|| direct_alternative(probe, a, b, segment))
+                        .flatten();
+                    let (points, drop) = if let Some(points) = walked {
+                        (Some(points), false)
+                    } else {
+                        (estimated_drop(probe, a, b, segment), true)
+                    };
+                    if let Some(points) = points {
+                        memo.state = RouteState::Ready(points);
+                        memo.selected = Some((a, b, index));
+                        memo.estimated_drop = drop;
+                        break;
+                    }
+                }
+            }
+        }
         // Normal direct routes can defer when the four search jobs are already consumed.
         if matches!(memo.state, RouteState::Failed(RouteReason::FrameBudget)) {
             self.deferred = true;
@@ -286,17 +401,25 @@ impl Routes {
         let fallback = (if segment.fraction == 1. { to } else { from }, 0., 0.);
         let pose = match &memo.state {
             RouteState::Ready(points) => {
-                memo.reason = RouteReason::Ready;
-                if segment.fraction == 0. || segment.fraction == 1. {
+                memo.reason = if memo.estimated_drop {
+                    RouteReason::EstimatedDrop
+                } else {
+                    RouteReason::Ready
+                };
+                // Sampling retains exact endpoint coordinates and the corresponding
+                // route tangent/speed, including the timing policy's intentional holds.
+                let sampled = sample_segment(points, segment).unwrap_or(fallback);
+                if memo.estimated_drop && sampled.2 > 20. {
+                    memo.reason = memo.primary_failure.unwrap_or(RouteReason::SpeedLimit);
                     fallback
                 } else {
-                    // The cached polyline already passed collision validation. Projecting
-                    // this sample again can move it onto a different stair/corner curve.
-                    sample_segment(points, segment).unwrap_or(fallback)
+                    sampled
                 }
             }
             RouteState::Failed(reason) => {
-                memo.reason = *reason;
+                if !candidate_deferred {
+                    memo.reason = *reason;
+                }
                 fallback
             }
             RouteState::Pending(_) => fallback,
@@ -305,6 +428,99 @@ impl Routes {
         Some(pose)
     }
 }
+/// Alternative pairs are probes of an already supplied floor hypothesis, never searches.
+fn direct_alternative(
+    probe: &impl Probe,
+    from: Vec3,
+    to: Vec3,
+    segment: &Segment,
+) -> Option<Vec<Vec3>> {
+    if from.distance(to) > if segment.unrestricted { 400. } else { 40. } {
+        return None;
+    }
+    let start = from.with_y(probe.floor(from.x, from.z, from.y)?);
+    let goal = to.with_y(probe.floor(to.x, to.z, to.y)?);
+    if (start.y - from.y).abs() > 2.
+        || (goal.y - to.y).abs() > 2.
+        || !path::straight(probe, start, goal)
+    {
+        return None;
+    }
+    match finish_route(
+        probe,
+        vec![start, goal],
+        from,
+        to,
+        segment.duration,
+        segment.unrestricted,
+    ) {
+        RouteState::Ready(points) => Some(points),
+        _ => None,
+    }
+}
+/// A local presentation estimate: walk to support's end, sweep a short air leg,
+/// then sweep vertically onto a verified lower floor. Walking limits stay intact.
+fn estimated_drop(
+    probe: &impl Probe,
+    from: Vec3,
+    to: Vec3,
+    segment: &Segment,
+) -> Option<Vec<Vec3>> {
+    if !segment.unrestricted || !(segment.from_inferred || segment.to_inferred) {
+        return None;
+    }
+    let flat = (to - from).with_y(0.).length();
+    if flat > 40. || from.y <= to.y || from.y - to.y > 32. {
+        return None;
+    }
+    let source_y = probe.floor(from.x, from.z, from.y)?;
+    let landing_y = probe.floor(to.x, to.z, to.y)?;
+    if (source_y - from.y).abs() > 0.1 || (landing_y - to.y).abs() > 0.1 {
+        return None;
+    }
+    let mut points = vec![from];
+    let steps = (flat / 0.5).ceil().max(1.) as usize;
+    let mut ledge = false;
+    for step in 1..=steps {
+        let p = from.lerp(to, step as f32 / steps as f32);
+        let previous = *points.last()?;
+        let floor = probe.floor(p.x, p.z, previous.y);
+        if let Some(y) = floor
+            .filter(|y| *y - previous.y <= path::MAX_RISE && *y - previous.y >= -path::MAX_DROP)
+        {
+            let supported = p.with_y(y);
+            if !probe.clear(previous, supported) {
+                return None;
+            }
+            points.push(supported);
+        } else {
+            ledge = true;
+            break;
+        }
+    }
+    if !ledge {
+        return None;
+    }
+    let edge = *points.last()?;
+    let drop = edge.y - to.y;
+    if drop <= 0. || drop > 32. || (to - edge).with_y(0.).length() > 3. {
+        return None;
+    }
+    let air = to.with_y(edge.y);
+    if !probe.clear(edge, air) || !probe.clear(air, to) {
+        return None;
+    }
+    if air != edge {
+        points.push(air);
+    }
+    points.push(to);
+    let length: f32 = points.windows(2).map(|p| p[0].distance(p[1])).sum();
+    if length / segment.duration > 20. || length * segment.rate > 20. {
+        return None;
+    }
+    Some(points)
+}
+
 fn start_route(
     probe: &impl Probe,
     from: Vec3,
@@ -563,6 +779,9 @@ mod tests {
             travel_budget: None,
             run_speed: None,
             unrestricted: false,
+            from_inferred: false,
+            to_inferred: false,
+            floor_candidates: vec![],
         }
     }
     #[test]
@@ -767,6 +986,14 @@ mod tests {
                 reason: RouteReason::Ready,
                 rendered: from,
                 cache_hit: false,
+                from_inferred: false,
+                to_inferred: false,
+                candidates: vec![],
+                next_attempt: 0,
+                primary_failure: None,
+                selected: None,
+                estimated_drop: false,
+                drop_rate: s.rate,
             },
         );
         let (point, _, speed) = routes
@@ -888,6 +1115,86 @@ mod tests {
             serde_json::from_str::<Actor>(r#"{"key":"p","position":"bad","movement":null}"#)
                 .is_err()
         );
+    }
+    #[test]
+    fn disconnected_gluth_storeys_cannot_become_a_direct_original_leg_fallback() {
+        struct Stacked;
+        impl Probe for Stacked {
+            fn floor(&self, _: f32, _: f32, y: f32) -> Option<f32> {
+                Some(if y > 310. { 317.7975 } else { 297.9374 })
+            }
+            fn clear(&self, _: Vec3, _: Vec3) -> bool {
+                true
+            }
+        }
+        let mut s = segment();
+        s.from = [3249.52, -3195.56, 317.7975];
+        s.to = [3252.01, -3191.10, 297.9374];
+        s.duration = 0.679;
+        s.rate = 1. / s.duration;
+        s.unrestricted = true;
+        let mut routes = Routes::default();
+        for _ in 0..8 {
+            routes.begin(1);
+            let pose = routes.pose("stacked", &s, &Stacked).unwrap();
+            assert_eq!(pose.0, benilla_assets::coords::wow_to_bevy(s.from));
+            assert_eq!(pose.2, 0.);
+        }
+        let row = routes.diagnostics().pop().unwrap();
+        assert_eq!(row.status, RouteStatus::Held);
+        assert_eq!(row.reason, RouteReason::Partial);
+        assert_eq!(row.expanded, path::MAX_EXPANSIONS);
+    }
+    #[test]
+    fn ready_routes_keep_endpoint_tangents_and_sample_speed_without_moving_anchors() {
+        let probe = Wall {
+            probes: Cell::new(0),
+            loaded: true,
+        };
+        for unrestricted in [false, true] {
+            let mut routes = Routes::default();
+            routes.begin(1);
+            let mut s = segment();
+            s.unrestricted = unrestricted;
+            for fraction in [0., 1.] {
+                s.fraction = fraction;
+                let pose = routes.pose("endpoint", &s, &probe).unwrap();
+                let RouteState::Ready(points) = &routes.actors["endpoint"].state else {
+                    panic!("ready route")
+                };
+                assert_eq!(pose, sample_segment(points, &s).unwrap());
+                assert!(
+                    pose.2 > 0.03,
+                    "endpoint velocity must permit replay tangent adoption"
+                );
+                assert_eq!(
+                    pose.0,
+                    benilla_assets::coords::wow_to_bevy(if fraction == 0. { s.from } else { s.to })
+                );
+                let pair = if fraction == 0. {
+                    &points[..2]
+                } else {
+                    &points[points.len() - 2..]
+                };
+                let delta = pair[1] - pair[0];
+                assert_eq!(pose.1, (-delta.x).atan2(-delta.z));
+            }
+            // A deliberate normal-run timing hold must retain zero speed, while
+            // still preserving the endpoint and route tangent from sampling.
+            if !unrestricted {
+                s.travel_budget = Some(30.);
+                s.run_speed = Some(7.);
+                for fraction in [0., 1.] {
+                    s.fraction = fraction;
+                    let pose = routes.pose("endpoint", &s, &probe).unwrap();
+                    let RouteState::Ready(points) = &routes.actors["endpoint"].state else {
+                        panic!()
+                    };
+                    assert_eq!(pose, sample_segment(points, &s).unwrap());
+                    assert_eq!(pose.2, 0.);
+                }
+            }
+        }
     }
     #[test]
     fn normal_run_has_constant_speed_with_holds_and_exact_anchors() {
@@ -1083,7 +1390,18 @@ mod tests {
         routes.begin(1);
         let mut s = segment();
         assert_eq!(routes.pose("p", &s, &GoalBlocked).unwrap().0, Vec3::ZERO);
-        assert_eq!(routes.diagnostics()[0].reason, RouteReason::IncompleteGoal);
+        assert_eq!(routes.diagnostics()[0].reason, RouteReason::Partial);
+        assert!(matches!(
+            finish_route(
+                &GoalBlocked,
+                vec![Vec3::ZERO, Vec3::new(5., 0., 0.)],
+                Vec3::ZERO,
+                Vec3::new(6., 0., 0.),
+                2.,
+                false
+            ),
+            RouteState::Failed(RouteReason::IncompleteGoal)
+        ));
         s.to[2] = 20.;
         assert_eq!(routes.pose("p", &s, &GoalBlocked).unwrap().2, 0.);
         assert_eq!(routes.diagnostics()[0].reason, RouteReason::EndpointFloor);
@@ -1091,6 +1409,309 @@ mod tests {
         assert_eq!(json[0]["status"], "held");
         assert_eq!(json[0]["reason"], "endpointFloor");
         assert_eq!(json[0]["routePointCount"], 0);
+    }
+
+    struct CandidateFloors;
+    impl Probe for CandidateFloors {
+        fn floor(&self, x: f32, z: f32, y: f32) -> Option<f32> {
+            if !(-1. ..=7.).contains(&x) || !(-1. ..=1.).contains(&z) {
+                return None;
+            }
+            if y <= -5. {
+                (x < 2.).then_some(-10.)
+            } else {
+                Some(0.)
+            }
+        }
+        fn clear(&self, _: Vec3, _: Vec3) -> bool {
+            true
+        }
+    }
+    #[test]
+    fn inferred_alternatives_defer_in_order_without_extra_search_expansions() {
+        let mut s = segment();
+        s.from[2] = -10.;
+        s.from_inferred = true;
+        s.floor_candidates = vec![
+            FloorPair { from: -5., to: 0. },
+            FloorPair { from: 0., to: 0. },
+        ];
+        assert!(s.valid());
+        let mut routes = Routes::default();
+        routes.begin(1);
+        routes.search_jobs = 1;
+        let held = routes.pose("candidate", &s, &CandidateFloors).unwrap();
+        assert_eq!(held.0, benilla_assets::coords::wow_to_bevy(s.from));
+        assert_eq!(held.2, 0.);
+        let first = routes.diagnostics().pop().unwrap();
+        assert_eq!(first.status, RouteStatus::Deferred);
+        assert_eq!(first.primary_failure, Some(RouteReason::Partial));
+        assert!(first.expanded > 0);
+        assert_eq!(routes.actors["candidate"].next_attempt, 1);
+        routes.begin(1);
+        routes.search_jobs = 1;
+        let expansions = routes.expansions;
+        assert_eq!(
+            routes.pose("candidate", &s, &CandidateFloors).unwrap().2,
+            0.
+        );
+        assert_eq!(routes.expansions, expansions);
+        assert_eq!(routes.search_jobs, 0);
+        assert_eq!(routes.actors["candidate"].next_attempt, 2);
+        assert!(routes.deferred());
+        routes.begin(1);
+        routes.search_jobs = 1;
+        routes.pose("candidate", &s, &CandidateFloors).unwrap();
+        let selected = routes.diagnostics().pop().unwrap();
+        assert_eq!(selected.status, RouteStatus::Ready);
+        assert_eq!(selected.expanded, first.expanded);
+        assert_eq!(selected.alternative_index, Some(2));
+        assert_eq!(selected.from, s.from);
+        assert_eq!(selected.selected_from, Some([0., 0., 0.]));
+        assert_eq!(selected.selected_to, Some(s.to));
+        assert_eq!(routes.search_jobs, 0);
+        for fraction in [0., 1.] {
+            s.fraction = fraction;
+            assert_eq!(
+                routes.pose("candidate", &s, &CandidateFloors).unwrap().0,
+                benilla_assets::coords::wow_to_bevy(if fraction == 0. {
+                    [0., 0., 0.]
+                } else {
+                    s.to
+                })
+            );
+        }
+    }
+    #[test]
+    fn primary_wins_and_candidate_provenance_and_order_invalidate_cache() {
+        let mut s = segment();
+        let mut routes = Routes::default();
+        routes.begin(1);
+        routes.pose("p", &s, &CandidateFloors).unwrap();
+        s.from_inferred = true;
+        routes.pose("p", &s, &CandidateFloors).unwrap();
+        assert!(!routes.diagnostics()[0].cache_hit);
+        s.floor_candidates = vec![
+            FloorPair { from: -1., to: 0. },
+            FloorPair { from: 0., to: 0. },
+        ];
+        routes.pose("p", &s, &CandidateFloors).unwrap();
+        assert!(!routes.diagnostics()[0].cache_hit);
+        assert_eq!(routes.diagnostics()[0].alternative_index, None);
+        assert_eq!(
+            routes.search_jobs, 4,
+            "successful primary must not test alternatives"
+        );
+        routes.pose("p", &s, &CandidateFloors).unwrap();
+        assert!(routes.diagnostics()[0].cache_hit);
+        s.floor_candidates.reverse();
+        routes.pose("p", &s, &CandidateFloors).unwrap();
+        assert!(!routes.diagnostics()[0].cache_hit);
+        routes.begin(2);
+        assert!(routes.diagnostics().is_empty());
+        let mut sparse = segment();
+        sparse.unrestricted = true;
+        sparse.duration = 30.;
+        sparse.to = [0., -10., 0.];
+        sparse.from_inferred = true;
+        let mut searching = Routes::default();
+        searching.begin(1);
+        searching.pose("wisp", &sparse, &LongWall).unwrap();
+        let first = searching.actors["wisp"].expanded;
+        assert_eq!(first, FRAME_EXPANSIONS);
+        sparse.rate = 0.25;
+        searching.begin(1);
+        searching.pose("wisp", &sparse, &LongWall).unwrap();
+        assert!(searching.actors["wisp"].cache_hit);
+        assert!(
+            searching.actors["wisp"].expanded > first,
+            "rate changes must not restart A*"
+        );
+    }
+    #[test]
+    fn floor_candidate_transport_is_bounded_and_fixed_heights_cannot_change() {
+        let mut s = segment();
+        s.floor_candidates = vec![FloorPair { from: 1., to: 0. }];
+        assert!(!s.valid());
+        s.from_inferred = true;
+        assert!(s.valid());
+        s.floor_candidates[0].to = 1.;
+        assert!(!s.valid());
+        s.to_inferred = true;
+        assert!(s.valid());
+        s.floor_candidates.push(FloorPair { from: 0., to: 0. });
+        assert!(s.valid());
+        s.floor_candidates.push(FloorPair { from: 0., to: 0. });
+        assert!(!s.valid());
+        s.floor_candidates.truncate(1);
+        s.floor_candidates[0].from = 33.;
+        assert!(!s.valid());
+        s.floor_candidates[0].from = f32::NAN;
+        assert!(!s.valid());
+        s.floor_candidates[0].from = 0.;
+        s.to[1] = -41.;
+        assert!(!s.valid());
+        let parsed:Segment=serde_json::from_str(r#"{"from":[0,0,0],"to":[0,-6,0],"fraction":0.5,"rate":0.5,"duration":2,"recorded_facing":false,"from_inferred":true,"floor_candidates":[{"from":1,"to":0}]}"#).unwrap();
+        assert!(parsed.valid());
+        assert!(!parsed.to_inferred);
+        assert_eq!(parsed.floor_candidates.len(), 1);
+    }
+    struct DropLedge {
+        height: f32,
+        landing: f32,
+        block: u8,
+    }
+    impl Probe for DropLedge {
+        fn floor(&self, x: f32, z: f32, y: f32) -> Option<f32> {
+            if !(-1. ..=42.).contains(&x) || !(-1. ..=1.).contains(&z) || self.block == 3 && x >= 4.
+            {
+                return None;
+            }
+            let floor = if x < 2. { self.height } else { self.landing };
+            (floor <= y + 1.6 && floor >= y - 4.).then_some(floor)
+        }
+        fn clear(&self, a: Vec3, b: Vec3) -> bool {
+            !(self.block == 1 && b.x >= 4. && a.y == self.height && b.y == self.height
+                || self.block == 2 && a.x == b.x && a.y > b.y)
+        }
+    }
+    fn drop_segment() -> Segment {
+        let mut s = segment();
+        s.from[2] = 10.;
+        s.to = [0., -4., 0.];
+        s.from_inferred = true;
+        s.to_inferred = true;
+        s.unrestricted = true;
+        s
+    }
+    #[test]
+    fn estimated_drop_follows_support_and_sweeps_air_and_vertical_landing() {
+        let mut s = drop_segment();
+        let probe = DropLedge {
+            height: 10.,
+            landing: 0.,
+            block: 0,
+        };
+        let mut routes = Routes::default();
+        routes.begin(1);
+        let pose = routes.pose("drop", &s, &probe).unwrap();
+        assert!(pose.2 > 0.);
+        let row = routes.diagnostics().pop().unwrap();
+        assert_eq!(row.status, RouteStatus::Ready);
+        assert_eq!(row.reason, RouteReason::EstimatedDrop);
+        assert_eq!(row.alternative_index, Some(0));
+        assert_eq!(row.primary_failure, Some(RouteReason::Partial));
+        let RouteState::Ready(points) = &routes.actors["drop"].state else {
+            panic!()
+        };
+        assert_eq!(points[0], benilla_assets::coords::wow_to_bevy(s.from));
+        assert_eq!(
+            *points.last().unwrap(),
+            benilla_assets::coords::wow_to_bevy(s.to)
+        );
+        assert!(points.len() > 3);
+        for pair in points.windows(2) {
+            assert!(probe.clear(pair[0], pair[1]));
+        }
+        let air = points[points.len() - 2];
+        assert_eq!(air, Vec3::new(4., 10., 0.));
+        assert!(points.windows(2).map(|p| p[0].distance(p[1])).sum::<f32>() / s.duration <= 20.);
+        s.rate = 10.;
+        routes.begin(1);
+        let fast = routes.pose("drop", &s, &probe).unwrap();
+        assert_eq!(fast.0, benilla_assets::coords::wow_to_bevy(s.from));
+        assert_eq!(fast.2, 0.);
+        assert!(
+            routes.diagnostics()[0].cache_hit,
+            "cadence changes must retain validated geometry"
+        );
+        assert_eq!(routes.diagnostics()[0].status, RouteStatus::Held);
+        let expanded = routes.diagnostics()[0].expanded;
+        s.rate = 0.5;
+        routes.begin(1);
+        assert!(routes.pose("drop", &s, &probe).unwrap().2 > 0.);
+        assert_eq!(routes.diagnostics()[0].expanded, expanded);
+        // A speed rejection can be reconsidered without repeating the failed A*.
+        let mut rejected = Routes::default();
+        s.rate = 10.;
+        rejected.begin(1);
+        assert_eq!(rejected.pose("drop", &s, &probe).unwrap().2, 0.);
+        let primary_expanded = rejected.diagnostics()[0].expanded;
+        s.rate = 0.5;
+        rejected.begin(1);
+        assert!(rejected.pose("drop", &s, &probe).unwrap().2 > 0.);
+        assert_eq!(rejected.diagnostics()[0].expanded, primary_expanded);
+    }
+    #[test]
+    fn blocked_oversized_fast_upward_and_observed_drops_remain_safe_holds() {
+        for block in [1, 2, 3] {
+            let s = drop_segment();
+            let probe = DropLedge {
+                height: 10.,
+                landing: 0.,
+                block,
+            };
+            let mut routes = Routes::default();
+            routes.begin(1);
+            let pose = routes.pose("drop", &s, &probe).unwrap();
+            assert_eq!(pose.0, benilla_assets::coords::wow_to_bevy(s.from));
+            assert_eq!(pose.2, 0.);
+            assert_eq!(routes.diagnostics()[0].status, RouteStatus::Held);
+        }
+        for case in 0..6 {
+            let mut s = drop_segment();
+            let mut probe = DropLedge {
+                height: 10.,
+                landing: 0.,
+                block: 0,
+            };
+            match case {
+                0 => {
+                    s.from[2] = 33.;
+                    probe.height = 33.;
+                }
+                1 => {
+                    s.duration = 0.5;
+                    s.rate = 2.;
+                }
+                2 => {
+                    s.to[1] = -6.;
+                }
+                3 => {
+                    s.to[1] = -41.;
+                }
+                4 => {
+                    s.from_inferred = false;
+                    s.to_inferred = false;
+                }
+                _ => {
+                    s.to[2] = 20.;
+                    probe.landing = 20.;
+                }
+            }
+            assert!(
+                estimated_drop(
+                    &probe,
+                    benilla_assets::coords::wow_to_bevy(s.from),
+                    benilla_assets::coords::wow_to_bevy(s.to),
+                    &s
+                )
+                .is_none(),
+                "case {case}"
+            );
+            let mut routes = Routes::default();
+            routes.begin(1);
+            let held = routes.pose("rejected-drop", &s, &probe).unwrap();
+            assert_eq!(
+                held.0,
+                benilla_assets::coords::wow_to_bevy(s.from),
+                "case {case}"
+            );
+            assert_eq!(held.2, 0., "case {case}");
+            let row = routes.diagnostics().pop().unwrap();
+            assert_eq!(row.status, RouteStatus::Held, "case {case}");
+            assert_eq!(Some(row.reason), row.primary_failure);
+        }
     }
     #[test]
     fn optional_timing_rejects_partial_nonfinite_and_out_of_bounds_values() {
