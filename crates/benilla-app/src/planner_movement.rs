@@ -14,6 +14,11 @@ pub struct Segment {
     pub recorded_facing: bool,
 }
 impl Segment {
+    /// Optional reconstruction is discarded independently of the recorded replay pose.
+    pub fn validated(self) -> Option<Self> {
+        self.valid().then_some(self)
+    }
+
     pub fn valid(&self) -> bool {
         self.from
             .iter()
@@ -399,5 +404,23 @@ mod tests {
         let p = routes.pose("hill", &segment(), &Hill).unwrap().0;
         assert!((p.x - 3.).abs() < 0.001);
         assert!((p.y - 3.).abs() < 0.001);
+    }
+    #[test]
+    fn invalid_optional_segments_preserve_recorded_actor_fallbacks() {
+        let mut invalid = segment();
+        invalid.fraction = 1.1;
+        let mut frame = vec![
+            ("bad", Vec3::new(1., 2., 3.), Some(invalid)),
+            ("good", Vec3::new(4., 5., 6.), Some(segment())),
+            ("unplanned", Vec3::new(7., 8., 9.), None),
+        ];
+        for actor in &mut frame {
+            actor.2 = actor.2.take().and_then(Segment::validated);
+        }
+        assert_eq!(frame.len(), 3);
+        assert_eq!((frame[0].0, frame[0].1), ("bad", Vec3::new(1., 2., 3.)));
+        assert!(frame[0].2.is_none());
+        assert_eq!(frame[1].2.as_ref().unwrap().from, segment().from);
+        assert!(frame[2].2.is_none());
     }
 }
