@@ -5683,6 +5683,10 @@ export class EditorController {
         const actor = actors.get(unit.key);
         const pose =
           options.actors && actor ? this.actorPose(actor, lookupPose) : null;
+        const movement = pose?.movement;
+        const hint = floorHints.get(unit.key);
+        const fromHeight = movement?.from[2] ?? hint;
+        const toHeight = movement?.to[2] ?? hint;
         return {
           ...unit,
           position:
@@ -5699,19 +5703,16 @@ export class EditorController {
             floorHints.get(unit.key) ??
             null,
           movement:
-            this.state.workspaceMode === "analyse" && pose?.movement
+            this.state.workspaceMode === "analyse" &&
+            movement &&
+            typeof fromHeight === "number" &&
+            Number.isFinite(fromHeight) &&
+            typeof toHeight === "number" &&
+            Number.isFinite(toHeight)
               ? {
-                  ...pose.movement,
-                  from: [
-                    pose.movement.from[0],
-                    pose.movement.from[1],
-                    pose.movement.from[2] ?? floorHints.get(unit.key) ?? 0,
-                  ],
-                  to: [
-                    pose.movement.to[0],
-                    pose.movement.to[1],
-                    pose.movement.to[2] ?? floorHints.get(unit.key) ?? 0,
-                  ],
+                  ...movement,
+                  from: [movement.from[0], movement.from[1], fromHeight],
+                  to: [movement.to[0], movement.to[1], toHeight],
                 }
               : null,
           facing: pose?.facing ?? 0,

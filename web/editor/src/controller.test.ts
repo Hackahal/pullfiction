@@ -2919,6 +2919,10 @@ test("short playback segments reach native routing, including paused seeks, but 
       },
     ],
   } as unknown as RawReplay);
+  for (const sample of f.c
+    .getSnapshot()
+    .replay!.actors.find((a) => a.key === "1:1")!.samples)
+    sample[3] = 37;
   f.c.seek(500);
   const player = f.frame.find((a) => a.key === "1:1") as unknown as {
     speed: number;
@@ -2941,4 +2945,50 @@ test("short playback segments reach native routing, including paused seeks, but 
     f.frame.every((a) => !(a as unknown as { movement?: unknown }).movement),
   );
   f.c.stop();
+});
+
+test("native movement requires a known height for each endpoint and keeps grounded fallback", () => {
+  const cases: [number | null, number | null, number | undefined, boolean][] = [
+    [null, null, undefined, false],
+    [10, null, undefined, false],
+    [null, 11, undefined, false],
+    [10, 11, undefined, true],
+    [0, 0, undefined, true],
+    [null, null, 0, true],
+    [10, null, 12, true],
+    [null, 11, 12, true],
+  ];
+  for (const [from, to, hint, enabled] of cases) {
+    const f = fixture();
+    const actor = f.c
+      .getSnapshot()
+      .replay!.actors.find((a) => a.key === "1:1")!;
+    actor.samples = [
+      [0, 2, -1, from],
+      [1000, 8, -1, to],
+    ];
+    // Control the floor service independently of the position observations.
+    const floors = f.c as unknown as {
+      replayFloors: () => Map<string, number>;
+    };
+    floors.replayFloors = () =>
+      hint === undefined ? new Map() : new Map([[actor.key, hint]]);
+    f.c.seek(500);
+    const player = f.frame.find((a) => a.key === actor.key) as unknown as {
+      position: number[];
+      ground: boolean;
+      movement: { from: number[]; to: number[] } | null;
+    };
+    assert.ok(player.position);
+    if (enabled) {
+      assert.ok(player.movement);
+      assert.equal(player.movement.from[2], from ?? hint);
+      assert.equal(player.movement.to[2], to ?? hint);
+    } else {
+      assert.equal(player.movement, null);
+      assert.equal(player.ground, true);
+      assert.deepEqual(player.position, [5, -1, 0]);
+    }
+    f.c.stop();
+  }
 });
