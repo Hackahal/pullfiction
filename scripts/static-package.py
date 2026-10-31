@@ -29,6 +29,9 @@ ARCHIVE_FILES = {
 }
 CONVERTER_SCRIPTS = {f"scripts/classic_{name}.py" for name in ("compat", "db2", "items", "spells", "characters", "character_catalog", "creatures", "terrain", "world", "world_catalog", "table_strings", "lighting", "sections", "talents")}
 METADATA_FILES = {
+    "metadata/RaidSpawns-SOURCE.md": "third_party/raid-spawns/SOURCE.md",
+    "metadata/RaidSpawns-LICENSE.md": "third_party/raid-spawns/LICENSE.md",
+    "metadata/RaidSpawns-COPYRIGHT.md": "third_party/raid-spawns/COPYRIGHT.md",
     "metadata/npc-models.json": "third_party/wowhead-npcs/npc-models.json",
     "metadata/Wowhead-SOURCE.md": "third_party/wowhead-npcs/SOURCE.md",
     "metadata/Wowhead-NOTICE.md": "third_party/wowhead-npcs/NOTICE.md",

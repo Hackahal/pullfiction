@@ -851,7 +851,11 @@ export function App({ controller }: { controller: EditorController }) {
             marks · {Math.round(routeLength(state.plan.route))} yd
           </span>
           <div className="menu-spacer" />
-          <span>{state.status}</span>
+          <span>
+            {state.busy || state.error
+              ? state.status
+              : (controller.referenceSpawnNotice() ?? state.status)}
+          </span>
           <CommunityLinks />
         </footer>
         {state.notice && (

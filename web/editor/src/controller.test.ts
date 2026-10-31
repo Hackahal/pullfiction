@@ -590,6 +590,7 @@ test("Free camera movement belongs to the focused 3D canvas and pauses for typin
   const typing: boolean[] = [];
   c.attachEngine({
     set_annotations() {},
+    set_replay_frame() {},
     set_typing(on: boolean) {
       typing.push(on);
     },
@@ -1261,6 +1262,7 @@ test("A raid chosen before the native client is ready loads on attachment withou
   assert.equal(c.getSnapshot().ready, false);
   c.attachEngine({
     load_raid: (map: number) => maps.push(map),
+    set_replay_frame: () => {},
     set_annotations: () => {},
   } as unknown as Engine);
   assert.deepEqual(maps, [533]);
@@ -1542,7 +1544,10 @@ test("Standalone planning can add player placeholders and restore native model i
   c.setWorkspaceMode("plan");
   c.addPlanActor("Healer", "Priest");
   assert.equal(c.snapshot()!.actors[0].name, "Healer");
-  assert.equal(c.sceneActors()[0].class, "Priest");
+  assert.equal(
+    c.sceneActors().find((a) => a.key === c.snapshot()!.actors[0].key)?.class,
+    "Priest",
+  );
   assert.equal(c.getSnapshot().selectedActors.length, 1);
   c.setSnap({ position: true, yards: 5, mode: "relative" });
   const a = c.snapshot()!.actors[0];
@@ -1669,10 +1674,10 @@ test("Orbit requires a selected player, retargets on player selection and releas
     targets: string[] = [];
   f.c.attachEngine({
     set_annotations() {},
+    set_replay_frame() {},
     set_typing(on: boolean) {
       typing.push(on);
     },
-    set_replay_frame() {},
     set_replay_nameplates() {},
     set_replay_raid_frames() {},
     replay_events() {},
@@ -1891,6 +1896,7 @@ test("Raid dimensions cross the native bridge and persist independently from the
   });
   c.attachEngine({
     set_raid_frame_size: (w: number, h: number) => sizes.push([w, h]),
+    set_replay_frame: () => {},
     set_annotations: () => {},
     load_raid: () => {},
   } as unknown as Engine);
@@ -2991,4 +2997,131 @@ test("native movement requires a known height for each endpoint and keeps ground
     }
     f.c.stop();
   }
+});
+
+test("log mode places Vanilla and SoD NPCs at their first log position without reference actors", () => {
+  for (const gameVersion of ["vanilla", "sod"] as const) {
+    const f = fixture();
+    f.c.installReplay({ ...structuredClone(raw), gameVersion });
+    f.c.seek(0);
+    const npcs = f.c.sceneActors().filter((a) => a.type === "NPC");
+    assert.equal(npcs.length, 1);
+    assert.equal(npcs[0].spawn, undefined);
+    assert.deepEqual(
+      f.frame.find((a) => a.key === npcs[0].key)?.position,
+      [3, -2, 0],
+    );
+    f.c.seek(10000);
+    assert.equal(
+      f.frame.some((a) => a.key === npcs[0].key),
+      false,
+    );
+    f.c.seek(0);
+    assert.deepEqual(f.c.actorPose(npcs[0])?.pos, [3, -2, null]);
+    f.c.stop();
+  }
+});
+
+test("no-log reference spawns reach native frames, obey visibility and do not leak across maps or rulesets", () => {
+  const c = new EditorController();
+  let frame: NativeFrame[] = [];
+  c.attachEngine({
+    set_replay_frame: (json: string) => {
+      frame = JSON.parse(json);
+    },
+    load_raid: () => {},
+    replay_events: () => {},
+    set_annotations: () => {},
+  } as unknown as Engine);
+  assert.equal(c.sceneActors().length, 233);
+  assert.equal(frame.length, 233);
+  const first = c.sceneActors()[0];
+  assert.deepEqual(frame[0].position, first.spawn?.position);
+  assert.equal(frame[0].friendly, false);
+  c.setOption("actors", false);
+  assert.equal(frame.length, 0);
+  c.setOption("actors", true);
+  assert.equal(frame.length, 233);
+  c.selectRaid(469);
+  c.render();
+  assert.equal(frame.length, 311);
+  assert.ok(frame.every((a) => a.key.startsWith("spawn:vanilla:469:")));
+  c.setGameVersion("sod");
+  c.render();
+  assert.deepEqual(frame, []);
+  assert.match(c.referenceSpawnNotice()!, /not yet available/);
+  c.stop();
+});
+
+test("default NPC can be edited in a no-log plan without duplicating its reference slot", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  const actor = c.sceneActors()[0],
+    pos = c.actorPose(actor)!.pos as [number, number, number];
+  assert.equal(c.beginActorDrag(actor.key, pos), true);
+  c.finishDrawing();
+  assert.equal(c.snapshot()?.actors[0].key, actor.key);
+  assert.equal(c.sceneActors().length, 233);
+  c.setSnapBypass(true);
+  c.selectActor(actor.key);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(
+    c.actorPose(c.sceneActors().find((a) => a.key === actor.key)!)?.pos,
+    [pos[0] + 10, pos[1], pos[2]],
+  );
+  c.stop();
+});
+
+test("untouched reference NPC selection supports group nudges, coordinates, rotation and attached ranges", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const actors = c.sceneActors().slice(0, 2),
+    keys = actors.map((a) => a.key),
+    positions = actors.map((a) => c.actorPose(a)!.pos);
+  c.selectActors(keys);
+  c.nudgeActors(10, 0);
+  assert.deepEqual(c.getSnapshot().selectedActors, keys);
+  for (let i = 0; i < 2; i++)
+    assert.deepEqual(c.snapshot()!.actors[i].position, [
+      positions[i][0] + 10,
+      positions[i][1],
+      positions[i][2],
+    ]);
+  c.positionActors(0, positions[0][0] + 20);
+  assert.equal(c.snapshot()!.actors[0].position[0], positions[0][0] + 20);
+  c.transformSelection(90);
+  assert.equal(
+    c.snapshot()!.actors[0].facing,
+    actors[0].spawn!.facing + Math.PI / 2,
+  );
+  const untouched = c.sceneActors().find((a) => !keys.includes(a.key))!;
+  c.attachRange(untouched.key, 30);
+  assert.equal(
+    c.getSnapshot().plan.steps[0].annotations.at(-1)?.actor,
+    untouched.key,
+  );
+  c.stop();
+});
+
+test("group drag moves both edited and untouched reference NPCs together", () => {
+  const c = new EditorController();
+  c.setWorkspaceMode("plan");
+  c.setSnapBypass(true);
+  const [a, b] = c.sceneActors();
+  c.selectActors([a.key]);
+  c.nudgeActors(1, 0);
+  c.selectActors([a.key, b.key]);
+  const p = c.actorPose(a)!.pos as [number, number, number],
+    q = c.actorPose(b)!.pos;
+  assert.equal(c.beginActorDrag(a.key, p), true);
+  c.receive("point", JSON.stringify([p[0] + 10, p[1] + 20, p[2]]));
+  c.finishDrawing();
+  assert.deepEqual(c.getSnapshot().selectedActors, [a.key, b.key]);
+  assert.deepEqual(
+    c.snapshot()!.actors.find((v) => v.key === b.key)!.position,
+    [q[0] + 10, q[1] + 20, q[2]],
+  );
+  assert.equal(c.sceneActors().length, 233);
+  c.stop();
 });

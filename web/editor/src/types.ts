@@ -151,7 +151,6 @@ export interface SpawnPlacement {
 export interface Actor {
   bufferedRanges?: [number, number][];
   spawn?: SpawnPlacement;
-  spawnObservedOnly?: boolean;
   key: string;
   id: number;
   instance: number;

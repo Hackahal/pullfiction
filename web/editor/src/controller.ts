@@ -37,7 +37,11 @@ import {
   type Transform,
 } from "./editor-controls";
 import { gameVersion, reportSource } from "../../planner/game-versions.mjs";
-import { populateRaidSpawns } from "./spawn-model";
+import {
+  referenceRaidActors,
+  referenceNpcModels,
+  referenceSpawnNotice,
+} from "./spawn-model";
 import { resolveAssetRoot } from "./asset-source";
 import { parseBrowserPlates } from "./browser-plates";
 import { BROWSER_ASSETS } from "./browser-mode";
@@ -2000,49 +2004,83 @@ export class EditorController {
     return this.state.plan.steps.find((s) => s.id === this.state.activeStep)
       ?.snapshot;
   }
+  private defaultActorsCache?: {
+    map: number;
+    version: GameVersion;
+    models: object;
+    actors: Actor[];
+  };
+  private defaultRaidActors(): Actor[] {
+    if (this.state.replay || this.displaySnapshot()?.report) return [];
+    const { mapId: map, gameVersion: version } = this.state.plan;
+    const models = this.state.browserAssets
+      ? this.browserModels[version]
+      : this.models;
+    const cached = this.defaultActorsCache;
+    if (
+      cached?.map === map &&
+      cached.version === version &&
+      cached.models === models
+    )
+      return cached.actors;
+    const actors = referenceRaidActors(map, version, models);
+    this.defaultActorsCache = { map, version, models, actors };
+    return actors;
+  }
+  referenceSpawnNotice() {
+    return this.state.replay || this.displaySnapshot()?.report
+      ? null
+      : referenceSpawnNotice(this.state.plan.mapId, this.state.gameVersion);
+  }
   sceneActors(): Actor[] {
     const snapshot =
       this.state.workspaceMode === "plan" ? this.displaySnapshot() : undefined;
-    if (!snapshot) return this.state.replay?.actors ?? [];
+    if (!snapshot) return this.state.replay?.actors ?? this.defaultRaidActors();
     const source = new Map(
       this.state.replay?.report.code === snapshot.report
         ? this.state.replay.actors.map((a) => [a.key, a])
-        : [],
+        : this.defaultRaidActors().map((a) => [a.key, a]),
     );
-    return snapshot.actors
-      .map((p) => source.get(p.key))
-      .map(
-        (a, i) =>
-          a ??
-          ({
-            key: snapshot.actors[i].key,
-            name: snapshot.actors[i].name,
-            class: snapshot.actors[i].class,
-            icon: snapshot.actors[i].icon,
-            type: snapshot.actors[i].type,
-            id: 0,
-            instance: 1,
-            gameID: snapshot.actors[i].gameID ?? 0,
-            displayID: snapshot.actors[i].displayID ?? null,
-            scale: snapshot.actors[i].scale ?? 1,
-            race: snapshot.actors[i].race,
-            sex: snapshot.actors[i].sex,
-            samples: [],
-            deaths: [],
-            firstSeen: 0,
-            lastSeen: Infinity,
-            runLifetime: true,
-            facings: [],
-            headings: [],
-            gear: [],
-            health: [],
-            power: [],
-            resourceChanges: [],
-            casts: [],
-            auras: [],
-            initialAuras: [],
-          } as Actor),
-      );
+    const defaults = this.defaultRaidActors().filter(
+      (a) => !snapshot.actors.some((p) => p.key === a.key),
+    );
+    return [
+      ...defaults,
+      ...snapshot.actors
+        .map((p) => source.get(p.key))
+        .map(
+          (a, i) =>
+            a ??
+            ({
+              key: snapshot.actors[i].key,
+              name: snapshot.actors[i].name,
+              class: snapshot.actors[i].class,
+              icon: snapshot.actors[i].icon,
+              type: snapshot.actors[i].type,
+              id: 0,
+              instance: 1,
+              gameID: snapshot.actors[i].gameID ?? 0,
+              displayID: snapshot.actors[i].displayID ?? null,
+              scale: snapshot.actors[i].scale ?? 1,
+              race: snapshot.actors[i].race,
+              sex: snapshot.actors[i].sex,
+              samples: [],
+              deaths: [],
+              firstSeen: 0,
+              lastSeen: Infinity,
+              runLifetime: true,
+              facings: [],
+              headings: [],
+              gear: [],
+              health: [],
+              power: [],
+              resourceChanges: [],
+              casts: [],
+              auras: [],
+              initialAuras: [],
+            } as Actor),
+        ),
+    ];
   }
   actorPose(actor: Actor, lookupPose: typeof poseAt = poseAt) {
     const pose = lookupPose(
@@ -2234,18 +2272,56 @@ export class EditorController {
     this.select(key);
     this.sendAnnotations();
   }
+  private materializeReferenceActors(keys: string[]) {
+    if (this.state.replay || this.state.compareRecorded) return;
+    const snapshot = this.snapshot() ?? { report: "", time: 0, actors: [] };
+    const additions = this.defaultRaidActors().flatMap((actor) => {
+      if (
+        !keys.includes(actor.key) ||
+        snapshot.actors.some((a) => a.key === actor.key)
+      )
+        return [];
+      const pose = this.actorPose(actor);
+      return pose
+        ? [
+            {
+              key: actor.key,
+              name: actor.name,
+              class: actor.class,
+              type: actor.type,
+              gameID: actor.gameID,
+              displayID: actor.displayID,
+              scale: actor.scale,
+              position: [...pose.pos] as Point,
+              recorded: [...pose.pos] as Point,
+              facing: pose.facing,
+              recordedFacing: pose.facing,
+            },
+          ]
+        : [];
+    });
+    if (!additions.length) return;
+    const selectedActors = this.state.selectedActors;
+    if (this.state.workspaceMode !== "plan") this.setWorkspaceMode("plan");
+    this.updateStep({
+      snapshot: { ...snapshot, actors: [...snapshot.actors, ...additions] },
+    });
+    if (this.state.selectedActors !== selectedActors)
+      this.patch({ selectedActors });
+  }
   beginActorDrag(key: string, anchor: Point, toggle = false, axis?: 0 | 1) {
     if (this.state.compareRecorded) return false;
+    this.materializeReferenceActors([...this.state.selectedActors, key]);
     if (
       this.state.workspaceMode !== "plan" ||
       !this.snapshot()?.actors.some((a) => a.key === key)
     ) {
       const actor = this.sceneActors().find((a) => a.key === key),
         pose = actor ? this.actorPose(actor) : null;
-      if (!pose || pose.dead || !this.state.replay) return false;
-      this.planFromMoment();
+      if (!pose || pose.dead || !actor) return false;
+      if (this.state.replay) this.planFromMoment();
       if (!this.snapshot()?.actors.some((a) => a.key === key)) return false;
-      this.selectActor(key);
+      if (!this.state.selectedActors.includes(key)) this.selectActor(key);
     }
     if (!this.state.selectedActors.includes(key)) this.selectActor(key, toggle);
     this.actorDrag = {
@@ -2375,6 +2451,7 @@ export class EditorController {
   }
   positionActors(axis: 0 | 1, value: number) {
     if (!Number.isFinite(value) || Math.abs(value) > 20000) return;
+    this.materializeReferenceActors(this.state.selectedActors);
     const actor = this.snapshot()?.actors.find((a) =>
       this.state.selectedActors.includes(a.key),
     );
@@ -2388,6 +2465,7 @@ export class EditorController {
     this.setSnapBypass(bypass);
   }
   nudgeActors(dx: number, dy: number) {
+    this.materializeReferenceActors(this.state.selectedActors);
     const actor = this.snapshot()?.actors.find((a) =>
       this.state.selectedActors.includes(a.key),
     );
@@ -2403,7 +2481,7 @@ export class EditorController {
     this.patch({ transform });
   }
   attachRange(key: string, radius = 40) {
-    const actor = this.state.replay?.actors.find((a) => a.key === key),
+    const actor = this.sceneActors().find((a) => a.key === key),
       planned = this.snapshot()?.actors.find((a) => a.key === key);
     const pose = actor ? this.actorPose(actor) : null;
     const position =
@@ -2482,6 +2560,7 @@ export class EditorController {
       scale > 20
     )
       return;
+    this.materializeReferenceActors(this.state.selectedActors);
     const marks = this.displayMarks().filter(
       (a) => this.state.selectedMarks.includes(a.id) && !a.locked,
     );
@@ -3545,6 +3624,14 @@ export class EditorController {
           .catch((error) =>
             this.notify(`Floor context unavailable: ${message(error)}`),
           );
+      if (this.localFiles)
+        void this.preparePlanAssets(this.state.plan, this.clientAbort?.signal)
+          .then(() => {
+            if (this.state.plan.mapId === map) this.render();
+          })
+          .catch((error) =>
+            this.notify(`Raid models unavailable: ${message(error)}`),
+          );
       this.engine.load_raid(map);
       this.engine.set_replay_frame("[]");
       this.engine.replay_events("[]", true);
@@ -3920,6 +4007,10 @@ export class EditorController {
       throw new Error("The selected client returned incomplete catalogs.");
     this.browserCreatures = creatures;
     this.browserModels = resolveNpcModels(npcIndex, creatures);
+    this.browserModels.vanilla = {
+      ...referenceNpcModels(creatures),
+      ...this.browserModels.vanilla,
+    };
     this.models = this.browserModels[this.state.gameVersion];
     this.items = items.items;
     this.modernItems = items.items;
@@ -4292,9 +4383,7 @@ export class EditorController {
       ? replayNpcModels(models, raw.models, this.browserCreatures)
       : { ...models, ...raw.models };
     const replay = enrichCombat(
-      raw.gameVersion === "sod" || raw.report?.gameVersion === "sod"
-        ? normalizeReplay(input, renderModels)
-        : populateRaidSpawns(normalizeReplay(input, renderModels), models),
+      normalizeReplay(input, renderModels),
       raw.gameVersion === "sod" || raw.report?.gameVersion === "sod"
         ? { ...this.items, ...this.modernItems }
         : this.items,
@@ -4425,16 +4514,21 @@ export class EditorController {
     await prepareOriginalUnits(
       this.localFiles,
       this.browserBridge,
-      plan.steps
-        .flatMap((step) => step.snapshot?.actors ?? [])
-        .map((actor) => ({
-          player: actor.type === "Player",
-          race: actor.race,
-          sex: actor.sex,
-          display: actor.displayID,
-          look: [0, 0, 0, 0, 0],
-          gear: [],
-        })),
+      [
+        ...referenceRaidActors(
+          plan.mapId,
+          plan.gameVersion,
+          this.browserModels[plan.gameVersion],
+        ),
+        ...plan.steps.flatMap((step) => step.snapshot?.actors ?? []),
+      ].map((actor) => ({
+        player: actor.type === "Player",
+        race: actor.race,
+        sex: actor.sex,
+        display: actor.displayID,
+        look: [0, 0, 0, 0, 0],
+        gear: [],
+      })),
       [],
       signal,
     );
@@ -5688,10 +5782,13 @@ export class EditorController {
   private sendPositions() {
     if (!this.engine) return;
     if (!this.state.replay) {
-      const actors =
-        this.state.workspaceMode === "plan"
-          ? (this.displaySnapshot()?.actors ?? [])
-          : [];
+      const actors = this.state.options.actors
+        ? this.sceneActors().flatMap((actor) => {
+            const pose = this.actorPose(actor);
+            if (!pose || pose.dead) return [];
+            return [{ ...actor, position: pose.pos, facing: pose.facing }];
+          })
+        : [];
       if (!actors.length && !this.standaloneFrame) return;
       this.standaloneFrame = actors.length > 0;
       this.engine.set_replay_frame(
@@ -5705,13 +5802,10 @@ export class EditorController {
             entry: a.gameID ?? 0,
             display: a.displayID ?? null,
             scale: a.scale ?? 1,
-            position: this.state.compareRecorded
-              ? (a.recorded ?? a.position)
-              : a.position,
+            position: a.position,
             ground: true,
-            facing: this.state.compareRecorded
-              ? (a.recordedFacing ?? a.facing)
-              : a.facing,
+            floor_hint: a.position[2],
+            facing: a.facing,
             speed: 0,
             dead: false,
             estimated: false,

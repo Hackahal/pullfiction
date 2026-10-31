@@ -26,7 +26,7 @@ export function normalizeReplay(raw, models = {}) {
   function track(id, instance = 1) {
     const actor = catalog.get(id); if (!actor || id <= 0) return null;
     const key = `${id}:${instance || 1}`;
-    if (!tracks.has(key)) tracks.set(key, { key, id, instance: instance || 1, name: actor.name, type: actor.type, class: actor.subType, ...(ruleset==='sod'&&actor.type==='NPC'?{spawnObservedOnly:true}:{}), gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
+    if (!tracks.has(key)) tracks.set(key, { key, id, instance: instance || 1, name: actor.name, type: actor.type, class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
     return tracks.get(key);
   }
   for (const id of fight.friendlyPlayers ?? []) track(id);
@@ -110,12 +110,11 @@ function coveredByActivity(actor,time) {
 export function poseAt(actor, time, smoothGaps = false) {
   if(actor.runLifetime && (time<actor.firstSeen || time>actor.lastSeen+3000))return null;
   const s = actor.samples ?? [];
-  if (actor.spawnObservedOnly && !actor.spawn && time < actor.firstSeen) return null;
   if (actor.spawn && time < actor.spawn.visibleFrom) return null;
   if (actor.spawn && (!s.length || time < s[0][0])) {
     let dead=false;
     for (const [t,value] of actor.deaths ?? []) {if(t>time)break;dead=value;}
-    return {pos:[actor.spawn.position[0],actor.spawn.position[1],null],speed:0,
+    return {pos:[...actor.spawn.position],speed:0,
       facing:actor.spawn.facing,dead,stale:true,estimated:true,wisp:false,discontinuity:false,sampleAge:null,
       positionSource:actor.spawn.synthetic?'unobserved static spawn':'matched spawn estimate'};
   }
@@ -123,7 +122,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   const beforeFirst=time<s[0][0];
   let lo=0, hi=s.length;
   while (lo<hi) { const mid=(lo+hi)>>>1; if(s[mid][0]<=time) lo=mid+1; else hi=mid; }
-  // Legacy replays without spawn assignment retain their first-position fallback.
+  // Logged NPCs start at their first observed position, independently of ruleset.
   // Hold through missing data; only a recorded death removes an observed NPC.
   const a=s[Math.max(0,lo-1)], b=beforeFirst?null:s[lo];
   const gap=b?b[0]-a[0]:Infinity;
