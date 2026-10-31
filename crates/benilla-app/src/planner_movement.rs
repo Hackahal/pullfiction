@@ -61,23 +61,73 @@ where
     Ok(serde_json::from_value(value).ok())
 }
 
+/// Local diagnostic values are serialized only when explicitly requested by the viewer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RouteReason {
+    Searching,
+    FrameBudget,
+    MissingFloor,
+    EndpointFloor,
+    DistanceLimit,
+    Partial,
+    IncompleteGoal,
+    Reconstruction,
+    LengthLimit,
+    SpeedLimit,
+    Ready,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum RouteStatus {
+    Pending,
+    Ready,
+    Deferred,
+    Held,
+}
+#[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MovementDiagnostic {
+    pub key: String,
+    pub status: RouteStatus,
+    pub reason: RouteReason,
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+    pub rendered_position: [f32; 3],
+    pub route_point_count: usize,
+    pub expanded: usize,
+    pub cache_hit: bool,
+}
+enum RouteState {
+    Pending(path::Search),
+    Ready(Vec<Vec3>),
+    Failed(RouteReason),
+}
 struct Memo {
     from: Vec3,
     to: Vec3,
     duration: f32,
     unrestricted: bool,
-    points: Option<Vec<Vec3>>,
+    state: RouteState,
+    expanded: usize,
+    reason: RouteReason,
+    rendered: Vec3,
+    cache_hit: bool,
 }
+const FRAME_EXPANSIONS: usize = 2048;
 #[derive(Default)]
 pub(crate) struct Routes {
     revision: u64,
     remaining: usize,
+    expansions: usize,
+    search_jobs: usize,
     deferred: bool,
     actors: HashMap<String, Memo>,
 }
 impl Routes {
     pub(crate) fn clear(&mut self) {
         self.actors.clear();
+        self.deferred = false;
     }
     pub(crate) fn begin(&mut self, revision: u64) {
         if self.revision != revision {
@@ -85,13 +135,52 @@ impl Routes {
             self.revision = revision;
         }
         self.remaining = 4;
+        self.expansions = FRAME_EXPANSIONS;
+        self.search_jobs = 4;
         self.deferred = false;
     }
     pub(crate) fn deferred(&self) -> bool {
         self.deferred
     }
+    pub(crate) fn remove(&mut self, key: &str) {
+        self.actors.remove(key);
+    }
     pub(crate) fn retain(&mut self, keep: &std::collections::HashSet<&str>) {
         self.actors.retain(|k, _| keep.contains(k.as_str()));
+    }
+    pub(crate) fn diagnostics(&self) -> Vec<MovementDiagnostic> {
+        let mut keys: Vec<_> = self.actors.keys().collect();
+        keys.sort();
+        keys.into_iter()
+            .take(256)
+            .map(|key| {
+                let m = &self.actors[key];
+                MovementDiagnostic {
+                    key: key.clone(),
+                    status: match m.state {
+                        RouteState::Pending(_) => RouteStatus::Pending,
+                        RouteState::Ready(_) if m.reason == RouteReason::Ready => {
+                            RouteStatus::Ready
+                        }
+                        RouteState::Ready(_) => RouteStatus::Held,
+                        RouteState::Failed(RouteReason::FrameBudget) => RouteStatus::Deferred,
+                        RouteState::Failed(_) => RouteStatus::Held,
+                    },
+                    reason: m.reason,
+                    from: benilla_assets::coords::bevy_to_wow(m.from),
+                    to: benilla_assets::coords::bevy_to_wow(m.to),
+                    rendered_position: benilla_assets::coords::bevy_to_wow(
+                        m.rendered + Vec3::Y * 0.05,
+                    ),
+                    route_point_count: match &m.state {
+                        RouteState::Ready(p) => p.len(),
+                        _ => 0,
+                    },
+                    expanded: m.expanded,
+                    cache_hit: m.cache_hit,
+                }
+            })
+            .collect()
     }
     pub(crate) fn pose(
         &mut self,
@@ -104,25 +193,28 @@ impl Routes {
         }
         let from = benilla_assets::coords::wow_to_bevy(segment.from);
         let to = benilla_assets::coords::wow_to_bevy(segment.to);
-        if !self.actors.get(key).is_some_and(|m| {
+        let cache_hit = self.actors.get(key).is_some_and(|m| {
             m.from == from
                 && m.to == to
                 && m.duration == segment.duration
                 && m.unrestricted == segment.unrestricted
-        }) {
-            let points = match route_budget(
-                probe,
-                from,
-                to,
-                segment.duration,
-                segment.unrestricted,
-                &mut self.remaining,
-            ) {
-                Ok(points) => points,
-                Err(()) => {
-                    self.deferred = true;
-                    return None;
+                && !matches!(m.state, RouteState::Failed(RouteReason::FrameBudget))
+        });
+        if !cache_hit {
+            let state = if self.remaining == 0 && segment.unrestricted {
+                RouteState::Failed(RouteReason::FrameBudget)
+            } else {
+                if segment.unrestricted {
+                    self.remaining -= 1;
                 }
+                start_route(
+                    probe,
+                    from,
+                    to,
+                    segment.duration,
+                    segment.unrestricted,
+                    &mut self.remaining,
+                )
             };
             self.actors.insert(
                 key.to_owned(),
@@ -131,105 +223,252 @@ impl Routes {
                     to,
                     duration: segment.duration,
                     unrestricted: segment.unrestricted,
-                    points,
+                    state,
+                    expanded: 0,
+                    reason: RouteReason::Searching,
+                    rendered: from,
+                    cache_hit: false,
                 },
             );
         }
-        let points = self.actors.get(key)?.points.as_ref()?;
-        let (mut point, heading, velocity) = sample_segment(points, segment)?;
-        // String-pulling removes horizontal waypoints, not the stairs/terrain beneath a leg.
-        point.y = probe.floor(point.x, point.z, point.y)?;
-        Some((point, heading, velocity))
+        let memo = self.actors.get_mut(key)?;
+        memo.cache_hit = cache_hit;
+        if let RouteState::Pending(search) = &mut memo.state {
+            if self.expansions == 0 || self.search_jobs == 0 {
+                memo.reason = RouteReason::FrameBudget;
+                self.deferred = true;
+            } else {
+                self.search_jobs -= 1;
+                let before = search.expanded();
+                let total = if segment.unrestricted {
+                    path::MAX_EXPANSIONS
+                } else {
+                    2048
+                };
+                let done = search.advance(probe, self.expansions, total);
+                let used = search.expanded() - before;
+                self.expansions -= used;
+                memo.expanded = search.expanded();
+                if done {
+                    let RouteState::Pending(search) = std::mem::replace(
+                        &mut memo.state,
+                        RouteState::Failed(RouteReason::Partial),
+                    ) else {
+                        unreachable!()
+                    };
+                    let found = if segment.unrestricted {
+                        search.finish_raw(probe)
+                    } else {
+                        search.finish(probe)
+                    };
+                    memo.state = if found.partial {
+                        RouteState::Failed(RouteReason::Partial)
+                    } else {
+                        finish_route(
+                            probe,
+                            found.points,
+                            from,
+                            to,
+                            segment.duration,
+                            segment.unrestricted,
+                        )
+                    };
+                } else {
+                    memo.reason = RouteReason::Searching;
+                    self.deferred = true;
+                }
+            }
+        }
+        // Normal direct routes can defer when the four search jobs are already consumed.
+        if matches!(memo.state, RouteState::Failed(RouteReason::FrameBudget)) {
+            self.deferred = true;
+        }
+        let fallback = (if segment.fraction == 1. { to } else { from }, 0., 0.);
+        let pose = match &memo.state {
+            RouteState::Ready(points) => {
+                memo.reason = RouteReason::Ready;
+                if segment.fraction == 0. || segment.fraction == 1. {
+                    fallback
+                } else {
+                    // The cached polyline already passed collision validation. Projecting
+                    // this sample again can move it onto a different stair/corner curve.
+                    sample_segment(points, segment).unwrap_or(fallback)
+                }
+            }
+            RouteState::Failed(reason) => {
+                memo.reason = *reason;
+                fallback
+            }
+            RouteState::Pending(_) => fallback,
+        };
+        memo.rendered = pose.0;
+        Some(pose)
     }
 }
-
-#[cfg(test)]
-fn route(probe: &impl Probe, from: Vec3, to: Vec3, duration: f32) -> Option<Vec<Vec3>> {
-    route_budget(probe, from, to, duration, false, &mut 4).unwrap()
-}
-
-fn route_budget(
+fn start_route(
     probe: &impl Probe,
     from: Vec3,
     to: Vec3,
     duration: f32,
     unrestricted: bool,
     budget: &mut usize,
-) -> Result<Option<Vec<Vec3>>, ()> {
-    let mut deferred = false;
+) -> RouteState {
     let result = (|| {
         if from.distance(to) > if unrestricted { 400. } else { 40. } {
-            return None;
+            return Err(RouteReason::DistanceLimit);
         }
-        // Long direct legs also consume a job: their floor probes can be costly.
-        if unrestricted {
+        let start = Vec3::new(
+            from.x,
+            probe
+                .floor(from.x, from.z, from.y)
+                .ok_or(RouteReason::MissingFloor)?,
+            from.z,
+        );
+        let goal = Vec3::new(
+            to.x,
+            probe
+                .floor(to.x, to.z, to.y)
+                .ok_or(RouteReason::MissingFloor)?,
+            to.z,
+        );
+        if (start.y - from.y).abs() > 2. || (goal.y - to.y).abs() > 2. {
+            return Err(RouteReason::EndpointFloor);
+        }
+        if path::straight(probe, start, goal) {
+            return Ok(finish_route(
+                probe,
+                vec![start, goal],
+                from,
+                to,
+                duration,
+                unrestricted,
+            ));
+        }
+        if !unrestricted {
             if *budget == 0 {
-                deferred = true;
-                return None;
+                return Err(RouteReason::FrameBudget);
             }
             *budget -= 1;
         }
-        let start = Vec3::new(from.x, probe.floor(from.x, from.z, from.y)?, from.z);
-        let goal = Vec3::new(to.x, probe.floor(to.x, to.z, to.y)?, to.z);
-        // A floor on another storey is not a substitute for an observed/hinted endpoint.
-        if (start.y - from.y).abs() > 2. || (goal.y - to.y).abs() > 2. {
-            return None;
+        Ok(RouteState::Pending(
+            path::Search::new(probe, start, goal).ok_or(RouteReason::MissingFloor)?,
+        ))
+    })();
+    result.unwrap_or_else(RouteState::Failed)
+}
+fn finish_route(
+    probe: &impl Probe,
+    points: Vec<Vec3>,
+    from: Vec3,
+    to: Vec3,
+    duration: f32,
+    unrestricted: bool,
+) -> RouteState {
+    let result = (|| {
+        let goal = Vec3::new(
+            to.x,
+            probe
+                .floor(to.x, to.z, to.y)
+                .ok_or(RouteReason::MissingFloor)?,
+            to.z,
+        );
+        if points
+            .last()
+            .ok_or(RouteReason::IncompleteGoal)?
+            .distance(goal)
+            > 0.01
+        {
+            return Err(RouteReason::IncompleteGoal);
         }
-        let points = if path::straight(probe, start, goal) {
-            vec![start, goal]
-        } else {
-            if !unrestricted {
-                if *budget == 0 {
-                    deferred = true;
+        if unrestricted && points.windows(2).map(|p| p[0].distance(p[1])).sum::<f32>() > 800. {
+            return Err(RouteReason::LengthLimit);
+        }
+        let mut grounded = vec![points[0]];
+        for pair in points.windows(2) {
+            // Refine a whole trusted leg transactionally. A downward floor ray can
+            // select a stair face that bends an otherwise capsule-clear 3D edge.
+            let refined = (|| {
+                let mut leg = vec![pair[0]];
+                let steps = ((pair[1] - pair[0]).with_y(0.).length() / 0.5)
+                    .ceil()
+                    .max(1.) as usize;
+                for step in 1..=steps {
+                    let p = pair[0].lerp(pair[1], step as f32 / steps as f32);
+                    let previous = *leg.last()?;
+                    let y = probe.floor(p.x, p.z, previous.y)?;
+                    let point = Vec3::new(p.x, y, p.z);
+                    if (y - previous.y).abs() > 2. || !probe.clear(previous, point) {
+                        return None;
+                    }
+                    leg.push(point);
+                }
+                if leg.last()?.distance(pair[1]) > 0.01 {
                     return None;
                 }
-                *budget -= 1;
+                // Keep the exact trusted endpoint so adjacent refined/original
+                // legs share the same joint, with no unchecked connector.
+                *leg.last_mut()? = pair[1];
+                if !probe.clear(leg[leg.len() - 2], pair[1]) {
+                    return None;
+                }
+                Some(leg)
+            })();
+            if *grounded.last().unwrap() != pair[0] {
+                return Err(RouteReason::Reconstruction);
             }
-            let found = path::find(probe, start, goal, 2048)?;
+            if let Some(leg) = refined {
+                grounded.extend_from_slice(&leg[1..]);
+            } else if probe.clear(pair[0], pair[1]) {
+                grounded.push(pair[1]);
+            } else {
+                return Err(RouteReason::Reconstruction);
+            }
+        }
+        if grounded.last().unwrap().distance(goal) > 0.01 {
+            return Err(RouteReason::IncompleteGoal);
+        }
+        let length: f32 = grounded.windows(2).map(|p| p[0].distance(p[1])).sum();
+        if length <= 0.03 {
+            return Err(RouteReason::LengthLimit);
+        }
+        if !unrestricted && length / duration > 20. {
+            return Err(RouteReason::SpeedLimit);
+        }
+        // Observed endpoint heights remain authoritative after the collision floor checks.
+        grounded[0] = from;
+        *grounded.last_mut().unwrap() = to;
+        if !probe.clear(grounded[0], grounded[1])
+            || !probe.clear(grounded[grounded.len() - 2], *grounded.last().unwrap())
+        {
+            return Err(RouteReason::Reconstruction);
+        }
+        if unrestricted && length > 800. {
+            return Err(RouteReason::LengthLimit);
+        }
+        Ok(grounded)
+    })();
+    match result {
+        Ok(points) => RouteState::Ready(points),
+        Err(reason) => RouteState::Failed(reason),
+    }
+}
+#[cfg(test)]
+fn route(probe: &impl Probe, from: Vec3, to: Vec3, duration: f32) -> Option<Vec<Vec3>> {
+    let state = start_route(probe, from, to, duration, false, &mut 4);
+    let state = match state {
+        RouteState::Pending(mut search) => {
+            search.advance(probe, 2048, 2048);
+            let found = search.finish(probe);
             if found.partial {
                 return None;
             }
-            found.points
-        };
-        // The shared search's arrival radius can report success short of the exact goal.
-        if points.last()?.distance(goal) > 0.01 {
-            return None;
+            finish_route(probe, found.points, from, to, duration, false)
         }
-        if unrestricted && points.windows(2).map(|p| p[0].distance(p[1])).sum::<f32>() > 800. {
-            return None;
-        }
-        // Horizontal string-pulling may discard a hill's summit or a stair landing.
-        // Rebuild close floor samples from each known previous height, rather than
-        // probing from the endpoint chord (which could be below the real floor).
-        let mut grounded = vec![points[0]];
-        for pair in points.windows(2) {
-            let steps = ((pair[1] - pair[0]).with_y(0.).length() / 0.5)
-                .ceil()
-                .max(1.) as usize;
-            for step in 1..=steps {
-                let p = pair[0].lerp(pair[1], step as f32 / steps as f32);
-                let reference = grounded.last()?.y;
-                let y = probe.floor(p.x, p.z, reference)?;
-                if (y - reference).abs() > 2. {
-                    return None;
-                }
-                grounded.push(Vec3::new(p.x, y, p.z));
-            }
-        }
-        if grounded.last()?.distance(goal) > 0.01 {
-            return None;
-        }
-        let points = grounded;
-        let length: f32 = points.windows(2).map(|p| p[0].distance(p[1])).sum();
-        if length <= 0.03 || !unrestricted && length / duration > 20. {
-            return None;
-        }
-        Some(points)
-    })();
-    if deferred {
-        Err(())
-    } else {
-        Ok(result)
+        s => s,
+    };
+    match state {
+        RouteState::Ready(p) => Some(p),
+        _ => None,
     }
 }
 
@@ -270,7 +509,13 @@ fn sample(points: &[Vec3], fraction: f32, rate: f32) -> Option<(Vec3, f32, f32)>
             continue;
         }
         if remaining <= leg || i == points.len() - 2 {
-            let pos = pair[0].lerp(pair[1], (remaining / leg).clamp(0., 1.));
+            let pos = if fraction == 0. {
+                points[0]
+            } else if fraction == 1. {
+                *points.last()?
+            } else {
+                pair[0].lerp(pair[1], (remaining / leg).clamp(0., 1.))
+            };
             let facing = (-delta.x).atan2(-delta.z);
             return Some((pos, facing, length * rate));
         }
@@ -349,7 +594,7 @@ mod tests {
         routes.pose("p", &s, &probe);
         s.fraction = 0.5;
         assert_eq!(routes.pose("p", &s, &probe).unwrap(), first);
-        assert_eq!(probe.probes.get(), count + 2);
+        assert_eq!(probe.probes.get(), count);
         routes.begin(2);
         routes.pose("p", &s, &probe);
         assert!(probe.probes.get() > count);
@@ -362,16 +607,16 @@ mod tests {
         };
         let mut routes = Routes::default();
         routes.begin(1);
-        assert!(routes.pose("p", &segment(), &probe).is_none());
+        assert_eq!(routes.pose("p", &segment(), &probe).unwrap().0, Vec3::ZERO);
         probe.loaded = true;
-        assert!(routes.pose("p", &segment(), &probe).is_none());
+        assert_eq!(routes.pose("p", &segment(), &probe).unwrap().0, Vec3::ZERO);
         routes.begin(2);
         assert!(routes.pose("p", &segment(), &probe).is_some());
         for key in ["a", "b", "c"] {
             routes.pose(key, &segment(), &probe);
         }
         let count = probe.probes.get();
-        assert!(routes.pose("deferred", &segment(), &probe).is_none());
+        assert_eq!(routes.pose("deferred", &segment(), &probe).unwrap().2, 0.);
         assert!(probe.probes.get() - count < 12);
         assert!(routes.deferred());
         routes.begin(2);
@@ -438,7 +683,10 @@ mod tests {
                 false
             }
         }
-        assert!(routes.pose("blocked", &segment(), &Blocked).is_none());
+        assert_eq!(
+            routes.pose("blocked", &segment(), &Blocked).unwrap().0,
+            Vec3::ZERO
+        );
     }
     #[test]
     fn paused_retained_frame_finishes_deferred_routes() {
@@ -466,6 +714,89 @@ mod tests {
         frame.applied(1);
         assert!(!routes.deferred());
         assert!(frame.ready(1, false).is_none());
+    }
+    #[test]
+    fn corner_refinement_preserves_original_clear_3d_leg_and_sampling_curve() {
+        struct Corner {
+            blocked: bool,
+        }
+        impl Probe for Corner {
+            fn floor(&self, x: f32, _: f32, _: f32) -> Option<f32> {
+                Some(if x >= 0.999 {
+                    1.
+                } else if x <= 0.34 {
+                    x
+                } else {
+                    0.
+                })
+            }
+            fn clear(&self, a: Vec3, b: Vec3) -> bool {
+                // Original diagonal rises safely over a step corner. Floor
+                // projection instead pushes intermediate points into its riser.
+                !self.blocked && (a.y - a.x).abs() < 0.001 && (b.y - b.x).abs() < 0.001
+            }
+        }
+        let (from, to) = (Vec3::ZERO, Vec3::ONE);
+        let state = finish_route(
+            &Corner { blocked: false },
+            vec![from, to],
+            from,
+            to,
+            2.,
+            true,
+        );
+        let RouteState::Ready(points) = &state else {
+            panic!("clear original leg must survive rejected refinement")
+        };
+        assert_eq!(points, &vec![from, to]);
+        let mut routes = Routes::default();
+        routes.begin(1);
+        let mut s = segment();
+        s.from = benilla_assets::coords::bevy_to_wow(from);
+        s.to = benilla_assets::coords::bevy_to_wow(to);
+        s.unrestricted = true;
+        routes.actors.insert(
+            "corner".into(),
+            Memo {
+                from,
+                to,
+                duration: s.duration,
+                unrestricted: true,
+                state,
+                expanded: 1,
+                reason: RouteReason::Ready,
+                rendered: from,
+                cache_hit: false,
+            },
+        );
+        let (point, _, speed) = routes
+            .pose("corner", &s, &Corner { blocked: false })
+            .unwrap();
+        assert_eq!(point, Vec3::splat(0.5));
+        assert!(speed > 0.);
+        // An independently sampled floor would be y=0, on the blocked riser.
+        assert_eq!(
+            Corner { blocked: false }.floor(point.x, point.z, point.y),
+            Some(0.)
+        );
+        let blocked = finish_route(
+            &Corner { blocked: true },
+            vec![from, to],
+            from,
+            to,
+            2.,
+            true,
+        );
+        assert!(matches!(
+            blocked,
+            RouteState::Failed(RouteReason::Reconstruction)
+        ));
+        routes.actors.get_mut("corner").unwrap().state = blocked;
+        let held = routes
+            .pose("corner", &s, &Corner { blocked: true })
+            .unwrap();
+        assert_eq!(held.0, from);
+        assert_eq!(held.2, 0.);
     }
     #[test]
     fn smoothed_hill_keeps_height_with_production_floor_ray_limits() {
@@ -513,12 +844,12 @@ mod tests {
         let mut routes = Routes::default();
         let first = readiness.observe(7, [], None, true, false);
         routes.begin(first);
-        assert!(routes.pose("p", &segment(), &probe).is_none());
+        assert_eq!(routes.pose("p", &segment(), &probe).unwrap().0, Vec3::ZERO);
         probe.loaded = true;
         let unchanged = readiness.observe(7, [], None, true, false);
         assert_eq!(first, unchanged);
         routes.begin(unchanged);
-        assert!(routes.pose("p", &segment(), &probe).is_none());
+        assert_eq!(routes.pose("p", &segment(), &probe).unwrap().0, Vec3::ZERO);
         let loaded = readiness.observe(7, [], None, true, true);
         assert_ne!(first, loaded);
         routes.begin(loaded);
@@ -628,17 +959,138 @@ mod tests {
             assert!((p.x - 50.).abs() < 0.001);
             assert!(v > 30.);
         }
-        assert!(routes.pose("deferred", &s, &Open).is_none());
+        assert_eq!(routes.pose("deferred", &s, &Open).unwrap().2, 0.);
         assert!(routes.deferred());
         routes.begin(1);
         assert!(routes.pose("deferred", &s, &Open).is_some());
         s.unrestricted = false;
         s.duration = 2.;
-        assert!(routes.pose("0", &s, &Open).is_none());
+        assert_eq!(routes.pose("0", &s, &Open).unwrap().2, 0.);
         s.unrestricted = true;
         s.duration = 3.;
         s.to = [0., -401., 0.];
-        assert!(routes.pose("far", &s, &Open).is_none());
+        assert_eq!(routes.pose("far", &s, &Open).unwrap().2, 0.);
+    }
+    struct LongWall;
+    impl Probe for LongWall {
+        fn floor(&self, _: f32, _: f32, _: f32) -> Option<f32> {
+            Some(0.)
+        }
+        fn clear(&self, a: Vec3, b: Vec3) -> bool {
+            if (a.x - 5.) * (b.x - 5.) > 0. {
+                return true;
+            }
+            if (b.x - a.x).abs() < 0.00001 {
+                return a.z.min(b.z) > 45.5 || a.z.max(b.z) < -45.5;
+            }
+            let t = (5. - a.x) / (b.x - a.x);
+            (a.z + (b.z - a.z) * t).abs() > 45.5
+        }
+    }
+    #[test]
+    fn sparse_search_resumes_across_frames_with_safe_holds_and_exact_observations() {
+        let mut s = segment();
+        s.to = [0., -10., 0.];
+        s.duration = 30.;
+        s.unrestricted = true;
+        let mut routes = Routes::default();
+        let mut frames = 0;
+        loop {
+            routes.begin(1);
+            let before = routes.expansions;
+            let pose = routes.pose("wisp", &s, &LongWall).unwrap();
+            assert!(before - routes.expansions <= FRAME_EXPANSIONS);
+            frames += 1;
+            let row = routes.diagnostics().pop().unwrap();
+            assert!(row.expanded <= path::MAX_EXPANSIONS);
+            if row.status == RouteStatus::Ready {
+                break;
+            }
+            assert_eq!(row.status, RouteStatus::Pending, "{row:?}");
+            assert_eq!(pose.0, Vec3::ZERO);
+            assert_eq!(pose.2, 0.);
+            assert!(routes.deferred());
+            assert!(frames < 10);
+        }
+        assert!(
+            frames > 1,
+            "fixture must exceed the old 2048 expansion limit"
+        );
+        let memo = &routes.actors["wisp"];
+        assert!(memo.expanded > 2048);
+        let RouteState::Ready(points) = &memo.state else {
+            panic!()
+        };
+        for pair in points.windows(2) {
+            assert!(LongWall.clear(pair[0], pair[1]));
+        }
+        for (fraction, want) in [(0., Vec3::ZERO), (1., Vec3::new(10., 0., 0.))] {
+            s.fraction = fraction;
+            assert_eq!(routes.pose("wisp", &s, &LongWall).unwrap().0, want);
+        }
+        routes.begin(2);
+        s.fraction = 0.5;
+        assert_eq!(routes.pose("wisp", &s, &LongWall).unwrap().0, Vec3::ZERO);
+        assert!(routes.actors["wisp"].expanded <= 2048);
+        routes.clear();
+        assert!(routes.diagnostics().is_empty());
+        assert!(!routes.deferred());
+    }
+    #[test]
+    fn total_limit_partial_and_floor_failures_hold_until_authoritative_arrival() {
+        struct Pit;
+        impl Probe for Pit {
+            fn floor(&self, x: f32, _: f32, _: f32) -> Option<f32> {
+                (!(3. ..=7.).contains(&x)).then_some(0.)
+            }
+            fn clear(&self, _: Vec3, _: Vec3) -> bool {
+                true
+            }
+        }
+        let mut s = segment();
+        s.to = [0., -10., 0.];
+        s.duration = 30.;
+        s.unrestricted = true;
+        let mut routes = Routes::default();
+        for _ in 0..8 {
+            routes.begin(1);
+            let p = routes.pose("pit", &s, &Pit).unwrap();
+            assert_eq!(p.0, Vec3::ZERO);
+            assert_eq!(p.2, 0.);
+        }
+        let row = routes.diagnostics().pop().unwrap();
+        assert_eq!(row.status, RouteStatus::Held);
+        assert_eq!(row.reason, RouteReason::Partial);
+        assert_eq!(row.expanded, path::MAX_EXPANSIONS);
+        s.fraction = 1.;
+        assert_eq!(
+            routes.pose("pit", &s, &Pit).unwrap().0,
+            Vec3::new(10., 0., 0.)
+        );
+    }
+    #[test]
+    fn incomplete_goals_and_wrong_storeys_hold_with_typed_reasons() {
+        struct GoalBlocked;
+        impl Probe for GoalBlocked {
+            fn floor(&self, _: f32, _: f32, _: f32) -> Option<f32> {
+                Some(0.)
+            }
+            fn clear(&self, _: Vec3, b: Vec3) -> bool {
+                b.x < 5.9
+            }
+        }
+        let mut routes = Routes::default();
+        routes.begin(1);
+        let mut s = segment();
+        assert_eq!(routes.pose("p", &s, &GoalBlocked).unwrap().0, Vec3::ZERO);
+        assert_eq!(routes.diagnostics()[0].reason, RouteReason::IncompleteGoal);
+        s.to[2] = 20.;
+        assert_eq!(routes.pose("p", &s, &GoalBlocked).unwrap().2, 0.);
+        assert_eq!(routes.diagnostics()[0].reason, RouteReason::EndpointFloor);
+        let json = serde_json::to_value(routes.diagnostics()).unwrap();
+        assert_eq!(json[0]["status"], "held");
+        assert_eq!(json[0]["reason"], "endpointFloor");
+        assert_eq!(json[0]["routePointCount"], 0);
     }
     #[test]
     fn optional_timing_rejects_partial_nonfinite_and_out_of_bounds_values() {

@@ -321,6 +321,7 @@ export interface NativeFrame {
   auras: number[];
 }
 export interface Engine {
+  request_movement_diagnostics?(token: number): void;
   request_actor_inspection?(json: string): void;
   close_actor_inspection?(): void;
   default(): Promise<void>;

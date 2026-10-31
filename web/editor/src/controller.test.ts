@@ -3010,6 +3010,11 @@ test("short playback segments reach native routing, including paused seeks, but 
   );
   f.c.setWorkspaceMode("plan");
   assert.ok(
+    (f.frame.find((a) => a.key === "1:1") as unknown as typeof player).movement,
+  );
+  f.c.planFromMoment();
+  assert.ok(f.c.displaySnapshot());
+  assert.ok(
     f.frame.every((a) => !(a as unknown as { movement?: unknown }).movement),
   );
   f.c.stop();
@@ -3055,7 +3060,7 @@ test("native movement requires a known height for each endpoint and keeps ground
     } else {
       assert.equal(player.movement, null);
       assert.equal(player.ground, true);
-      assert.deepEqual(player.position, [5, -1, 0]);
+      assert.deepEqual(player.position.slice(0, 2), [2, -1]);
     }
     f.c.stop();
   }
@@ -3370,6 +3375,7 @@ test("native movement resolves both ramp endpoint heights independently of the c
       },
     ],
     [{ id: "room", name: "stage", height: 25 }],
+    [{ entry: 999, point: [0, 1, 10] }],
   );
   (
     f.c as unknown as { loadedFloors: Map<number, ReplayFloorGeometry> }
@@ -3417,8 +3423,9 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
             [1, 0, 0],
             [5, 0, 5],
             [1, 10, 0],
+            [5, 10, 5],
           ],
-          indices: [0, 1, 2],
+          indices: [0, 1, 2, 1, 3, 2],
         },
         {
           area: "room",
@@ -3432,6 +3439,7 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
         },
       ],
       [{ id: "room", name: "ramp and stage", height: 8 }],
+      [{ entry: npc.gameID, point: [1, 1, 0] }],
     ),
   );
   for (const explicit of [null, 0, 12]) {

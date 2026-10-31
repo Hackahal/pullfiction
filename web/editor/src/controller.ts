@@ -87,6 +87,7 @@ import {
 } from "./replay-buffer";
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
+import { replayFloorAnchors } from "./replay-floor-anchors";
 import { ReplayHeightCache } from "./replay-height-cache";
 import { withReplayPoses } from "./replay-pose-phase";
 import { raidCameraSubjects, raidCameraCenter } from "./camera-model";
@@ -278,6 +279,7 @@ export class EditorController {
     seeds: Map<string, number>;
   } | null = null;
   private lastFrame = -Infinity;
+  private movementDiagnostics: unknown = null;
   private renderedInputs: {
     state: Snapshot;
     time: number;
@@ -2154,7 +2156,7 @@ export class EditorController {
       const height = geometry
         ? this.actorFloorHeights.height(
             actor,
-            geometry,
+            geometry.referenceFloors,
             pose.pos[0],
             pose.pos[1],
             hint,
@@ -2204,6 +2206,7 @@ export class EditorController {
             ? (planned.recordedFacing ?? planned.facing)
             : planned.facing,
           speed: 0,
+          movement: null,
           dead: false,
           estimated: false,
           wisp: false,
@@ -4657,7 +4660,11 @@ export class EditorController {
       pending = bridge
         .map(map, raid.directory)
         .then((data) => {
-          const geometry = new ReplayFloorGeometry(data.floors, data.areas);
+          const geometry = new ReplayFloorGeometry(
+            data.floors,
+            data.areas,
+            replayFloorAnchors(map),
+          );
           if (this.browserBridge === bridge)
             this.loadedFloors.set(map, geometry);
           return geometry;
@@ -4685,7 +4692,12 @@ export class EditorController {
     )
       return cached.hints;
     const seeds = new Map<string, number>();
-    const hints = replayFloorHints(replay, this.clockTime, this.models, seeds);
+    const hints = replayFloorHints(
+      replay,
+      this.clockTime,
+      geometry?.contextCatalog(replay.map, this.models) ?? this.models,
+      seeds,
+    );
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
       for (const actor of replay.actors) {
@@ -4702,7 +4714,7 @@ export class EditorController {
           pose.pos[0],
           pose.pos[1],
           seed ?? fallback,
-          seed === undefined,
+          !seeds.has(actor.key),
         );
         if (height !== undefined) hints.set(actor.key, height);
       }
@@ -5180,7 +5192,13 @@ export class EditorController {
       this.patch({ status: value });
     } else if (kind === "visualDiagnostics")
       console.debug("Spell visual coverage", value);
-    else if (kind === "notice") this.notify(value);
+    else if (kind === "movementDiagnostics") {
+      try {
+        this.movementDiagnostics = JSON.parse(value);
+      } catch {
+        this.movementDiagnostics = null;
+      }
+    } else if (kind === "notice") this.notify(value);
     else if (kind === "actors") {
       const data = JSON.parse(value);
       const selected = data.selected ?? null;
@@ -6081,7 +6099,7 @@ export class EditorController {
                 geometry,
                 point[0],
                 point[1],
-                seed ?? raidByMap(replay.map)?.spawn[2] ?? 0,
+                seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
                 seed === undefined,
               ) ?? hint)
             : hint);
@@ -6093,38 +6111,47 @@ export class EditorController {
           movement?.to as number[] | undefined,
           this.toFloorHeights,
         );
+        const nativeMovement =
+          movement &&
+          typeof fromHeight === "number" &&
+          Number.isFinite(fromHeight) &&
+          typeof toHeight === "number" &&
+          Number.isFinite(toHeight)
+            ? {
+                ...movement,
+                from: [movement.from[0], movement.from[1], fromHeight],
+                to: [movement.to[0], movement.to[1], toHeight],
+              }
+            : null;
+        // Unknown route endpoints are not permission to draw a line through walls.
+        const holding = !!movement && !nativeMovement;
         return {
           ...unit,
           position:
             pose && !pose.dead
-              ? [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
+              ? holding
+                ? [
+                    movement!.from[0],
+                    movement!.from[1],
+                    fromHeight ?? movement!.from[2] ?? 0,
+                  ]
+                : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
               : null,
           ground:
             !!(this.state.workspaceMode === "plan" && this.displaySnapshot()) ||
             pose?.pos[2] == null,
           floor_hint:
+            (holding ? fromHeight : undefined) ??
             (this.state.workspaceMode === "plan" && this.displaySnapshot()
               ? pose?.pos[2]
               : undefined) ??
             floorHints.get(unit.key) ??
             null,
-          movement:
-            this.state.workspaceMode === "analyse" &&
-            movement &&
-            typeof fromHeight === "number" &&
-            Number.isFinite(fromHeight) &&
-            typeof toHeight === "number" &&
-            Number.isFinite(toHeight)
-              ? {
-                  ...movement,
-                  from: [movement.from[0], movement.from[1], fromHeight],
-                  to: [movement.to[0], movement.to[1], toHeight],
-                }
-              : null,
+          movement: nativeMovement,
           facing: pose?.facing ?? 0,
-          speed: this.state.playing ? (pose?.speed ?? 0) : 0,
+          speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
           dead: pose?.dead ?? false,
-          estimated: !!pose?.estimated,
+          estimated: !!pose?.estimated || holding,
           wisp: !!pose?.wisp,
           plate_auras: options.auras ? unit.plate_auras : [],
           auras: options.auras ? unit.auras : [],
