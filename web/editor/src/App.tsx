@@ -1,4 +1,5 @@
 import { CommunityLinks } from "./CommunityLinks";
+import { GitHubLink } from "./GitHubLink";
 import { nameplateShortcut } from "./nameplate-model";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
@@ -446,6 +447,7 @@ export function App({ controller }: { controller: EditorController }) {
           >
             Pull <span>Fiction</span>
           </button>
+          <GitHubLink />
           <select
             aria-label="Game version"
             value={state.gameVersion}

@@ -1,4 +1,5 @@
 import { CommunityLinks } from "./CommunityLinks";
+import { GitHubLink } from "./GitHubLink";
 import { useEffect, useRef, useState } from "react";
 import type { EditorController } from "./controller";
 import type { Snapshot, GameVersion, Fight } from "./types";
@@ -127,8 +128,11 @@ export function Library({
       }}
     >
       <header className="library-header">
-        <div className="library-brand">
-          Pull <span>Fiction</span>
+        <div className="library-identity">
+          <div className="library-brand">
+            Pull <span>Fiction</span>
+          </div>
+          <GitHubLink />
         </div>
         <nav aria-label="Library sections">
           <button
