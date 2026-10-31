@@ -4945,6 +4945,7 @@ export class EditorController {
     if (this.state.busy) this.cancelImport();
     this.patch({ clientPromptHidden: true });
   }
+  /** Start one background pass once the active scene and attached client source are ready. */
   private startClientPrefetch() {
     const client = this.preparedClient;
     if (

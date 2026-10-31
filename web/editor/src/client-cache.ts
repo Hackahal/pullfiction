@@ -169,6 +169,32 @@ export class IndexedClientAssetCache implements ClientAssetCache {
       get: (key) => this.get("assets", [manifest.identity, key]),
       put: (key, value) => this.put(manifest.identity, key, value, generation),
       activate: (usable) => this.activate(manifest, generation, usable),
+      prefetched: async (inventory) => {
+        const saved = await this.get("meta", [
+          "prefetch-v1",
+          manifest.identity,
+          inventory,
+        ]);
+        return generation === this.generation && saved === true;
+      },
+      completePrefetch: (inventory) =>
+        this.completePrefetch(manifest.identity, inventory, generation),
+    });
+  }
+  /** Commit completion separately from the manifest that enables partial-cache startup. */
+  private async completePrefetch(
+    identity: string,
+    inventory: string,
+    generation: number,
+  ) {
+    const db = await this.open();
+    if (generation !== this.generation) return false;
+    return new Promise<boolean>((resolve, reject) => {
+      const tx = db.transaction("meta", "readwrite");
+      tx.objectStore("meta").put(true, ["prefetch-v1", identity, inventory]);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not save prefetch completion"));
     });
   }
   private async put(
@@ -262,6 +288,8 @@ class CachedClientReader implements PreparedClient {
       get(key: string): Promise<Entry | undefined>;
       put(key: string, value: Entry): Promise<boolean>;
       activate(usable: boolean): Promise<boolean>;
+      prefetched(inventory: string): Promise<boolean>;
+      completePrefetch(inventory: string): Promise<boolean>;
     },
   ) {}
   get needsSource() {
@@ -406,8 +434,25 @@ class CachedClientReader implements PreparedClient {
     await waiting;
     return this.request(key, method, args);
   }
+  /** Cache supported content after scene readiness, yielding to foreground reads between assets.
+   * A separate versioned marker avoids rescanning a fully prepared build on later visits.
+   */
   async prefetch(options: Parameters<PreparedClient["prefetch"]>[0]) {
     if (!this.source || this.closed) return;
+    options.signal.throwIfAborted();
+    // Bump prefetch-v1 when asset discovery changes. Raid roots also identify the inventory.
+    const inventory = JSON.stringify(
+      options.raids
+        .map((raid) => [raid.map, raid.directory.toLowerCase()])
+        .sort(),
+    );
+    const complete = await this.store.prefetched(inventory);
+    options.signal.throwIfAborted();
+    if (this.closed) return;
+    if (complete) {
+      options.progress("All supported raid and catalog assets cached");
+      return;
+    }
     const queue = new Map<string, AssetTask>();
     const dependencies = new Map<string, AssetTask>();
     const seen = new Set<string>();
@@ -471,6 +516,15 @@ class CachedClientReader implements PreparedClient {
         `Caching game assets: ${completed} prepared, ${queue.size + dependencies.size} queued${failed ? `, ${failed} unavailable` : ""}`,
       );
     }
+    options.signal.throwIfAborted();
+    if (this.closed) return;
+    if (!failed && !(await this.store.completePrefetch(inventory))) {
+      options.progress(
+        "Background caching finished, but completion could not be saved",
+      );
+      return;
+    }
+    options.signal.throwIfAborted();
     options.progress(
       failed
         ? `Background caching finished with ${failed} unavailable assets`

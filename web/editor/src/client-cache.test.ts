@@ -340,7 +340,7 @@ test("Background preparation stops on cancellation and storage exhaustion", asyn
   await cache.close();
 });
 
-test("Foreground work blocks background queue advancement and shares an in-flight background asset", async () => {
+test("Foreground reads share an in-flight background asset", async () => {
   const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
   const f = fixture();
   let release!: () => void;
@@ -374,6 +374,126 @@ test("Foreground work blocks background queue advancement and shares an in-fligh
   await foreground;
   await work;
   assert.equal(f.calls.filter((call) => call === "catalog:world").length, 1);
+  live.close();
+  await cache.close();
+});
+
+test("An independent foreground request pauses further background work until it settles", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  let releaseWorld!: () => void, worldStarted!: () => void;
+  let releaseModel!: () => void, modelStarted!: () => void;
+  const worldWaiting = new Promise<void>((resolve) => {
+    worldStarted = resolve;
+  });
+  const modelWaiting = new Promise<void>((resolve) => {
+    modelStarted = resolve;
+  });
+  f.reader.catalog = async (kind) => {
+    f.calls.push(`catalog:${kind}`);
+    if (kind === "world") {
+      worldStarted();
+      await new Promise<void>((resolve) => {
+        releaseWorld = resolve;
+      });
+    }
+    return {};
+  };
+  f.reader.model = async () => {
+    modelStarted();
+    await new Promise<void>((resolve) => {
+      releaseModel = resolve;
+    });
+    return { bytes: new ArrayBuffer(0) };
+  };
+  const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+  const work = live.prefetch({
+    raids: [],
+    signal: new AbortController().signal,
+    ready: () => true,
+    progress: () => {},
+  });
+  await worldWaiting;
+  const foreground = live.model("other.m2");
+  await modelWaiting;
+  releaseWorld();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(f.calls, ["catalog:world"]);
+  releaseModel();
+  await Promise.all([foreground, work]);
+  assert.ok(f.calls.includes("catalog:creatures"));
+  live.close();
+  await cache.close();
+});
+
+test("Successful prefetch completion survives restore and is scoped to the build and raid inventory", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+  const options = {
+    raids: [],
+    signal: new AbortController().signal,
+    ready: () => true,
+    progress: () => {},
+  };
+  await live.prefetch(options);
+  await live.activate();
+  live.close();
+  const restored = (await cache.restore(() =>
+    assert.fail("source not needed"),
+  ))!;
+  restored.attach(f.reader);
+  const statuses: string[] = [];
+  await restored.prefetch({
+    ...options,
+    progress: (value) => statuses.push(value),
+  });
+  assert.deepEqual(statuses, ["All supported raid and catalog assets cached"]);
+  statuses.length = 0;
+  await restored.prefetch({
+    ...options,
+    raids: [{ map: 409, directory: "mc" }],
+    progress: (value) => statuses.push(value),
+  });
+  assert.ok(statuses.some((value) => value.startsWith("Caching game assets:")));
+  restored.close();
+  const other = await cache.wrap(fixture("b".repeat(32)).reader, () => {});
+  statuses.length = 0;
+  await other.prefetch({
+    ...options,
+    progress: (value) => statuses.push(value),
+  });
+  assert.ok(statuses.some((value) => value.startsWith("Caching game assets:")));
+  other.close();
+  await cache.forget();
+  const cleared = await cache.wrap(f.reader, () => {});
+  statuses.length = 0;
+  await cleared.prefetch({
+    ...options,
+    progress: (value) => statuses.push(value),
+  });
+  assert.ok(statuses.some((value) => value.startsWith("Caching game assets:")));
+  cleared.close();
+  await cache.close();
+});
+
+test("A partial prefetch does not mark its inventory complete", async () => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  const f = fixture();
+  f.reader.catalog = async () => ({ partial: true });
+  const live = await cache.wrap(f.reader, () => {});
+  const statuses: string[] = [];
+  const options = {
+    raids: [],
+    signal: new AbortController().signal,
+    ready: () => true,
+    progress: (value: string) => statuses.push(value),
+  };
+  await live.prefetch(options);
+  assert.match(statuses.at(-1)!, /7 unavailable/);
+  statuses.length = 0;
+  await live.prefetch(options);
+  assert.ok(statuses.some((value) => value.startsWith("Caching game assets:")));
   live.close();
   await cache.close();
 });
