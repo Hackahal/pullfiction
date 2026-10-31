@@ -3050,3 +3050,69 @@ test("native movement resolves both ramp endpoint heights independently of the c
   }
   f.c.stop();
 });
+
+test("nearby NPC floor hints do not pin both route endpoints to the current level", () => {
+  const f = fixture();
+  const replay = f.c.getSnapshot().replay!;
+  const player = replay.actors.find((a) => a.key === "1:1")!;
+  const npc = replay.actors.find((a) => a.key === "2:1")!;
+  npc.samples = [[0, 1, 1, null]];
+  const internals = f.c as unknown as {
+    models: Record<string, unknown>;
+    loadedFloors: Map<number, ReplayFloorGeometry>;
+  };
+  internals.models = { [npc.gameID]: { floorSeeds: [[replay.map, 1, 1, 0]] } };
+  internals.loadedFloors.set(
+    replay.map,
+    new ReplayFloorGeometry(
+      [
+        {
+          area: "room",
+          interior: true,
+          vertices: [
+            [0, 0, 0],
+            [20, 0, 0],
+            [0, 20, 0],
+          ],
+          indices: [0, 1, 2],
+        },
+        {
+          area: "room",
+          interior: true,
+          vertices: [
+            [1, 0, 0],
+            [5, 0, 5],
+            [1, 10, 0],
+          ],
+          indices: [0, 1, 2],
+        },
+        {
+          area: "room",
+          interior: true,
+          vertices: [
+            [5, 0, 5],
+            [15, 0, 5],
+            [5, 10, 5],
+          ],
+          indices: [0, 1, 2],
+        },
+      ],
+      [{ id: "room", name: "ramp and stage", height: 8 }],
+    ),
+  );
+  for (const explicit of [null, 0, 12]) {
+    player.samples = [
+      [0, 1, 1, null],
+      [1000, 7, 1, explicit],
+    ];
+    for (const t of [100, 900, 100]) {
+      f.c.seek(t);
+      const frame = f.frame.find((u) => u.key === player.key) as unknown as {
+        movement: { from: number[]; to: number[] };
+      };
+      assert.equal(frame.movement.from[2], 0);
+      assert.equal(frame.movement.to[2], explicit ?? 5);
+    }
+  }
+  f.c.stop();
+});

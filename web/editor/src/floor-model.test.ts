@@ -74,3 +74,24 @@ test("unknown entries use nearby level seeds, distant actors remain unresolved",
   assert.equal(hints.get(actor.key), 100);
   assert.equal(hints.get(far.key), undefined);
 });
+
+test("actor-owned seeds remain distinct from nearby floor estimates", () => {
+  const boss = npc(2, 100, 1, 1);
+  const friendly = { ...npc(1, 0, 2, 1), type: "Player" } as Actor;
+  const replay = {
+    map: 533,
+    actors: [boss, friendly],
+    chapters: [],
+  } as unknown as Replay;
+  const own = new Map<string, number>();
+  const hints = replayFloorHints(
+    replay,
+    500,
+    { 100: { floorSeeds: [[533, 1, 1, 0]] } },
+    own,
+  );
+  assert.equal(hints.get(boss.key), 0);
+  assert.equal(hints.get(friendly.key), 0);
+  assert.equal(own.get(boss.key), 0);
+  assert.equal(own.has(friendly.key), false);
+});

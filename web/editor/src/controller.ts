@@ -4391,8 +4391,8 @@ export class EditorController {
       cached.models === this.models
     )
       return cached.hints;
-    const hints = replayFloorHints(replay, this.clockTime, this.models);
-    const seeds = new Map(hints);
+    const seeds = new Map<string, number>();
+    const hints = replayFloorHints(replay, this.clockTime, this.models, seeds);
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
       for (const actor of replay.actors) {
