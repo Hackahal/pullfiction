@@ -1,42 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-interface TurnstileApi {
-  render(container: HTMLElement, options: Record<string, unknown>): string;
-  remove(id: string): void;
-}
+import { createTurnstileLoader, type TurnstileApi } from "./turnstile-loader";
 declare global {
   interface Window {
     turnstile?: TurnstileApi;
   }
 }
-let loading: Promise<TurnstileApi> | undefined;
-function load() {
-  if (window.turnstile) return Promise.resolve(window.turnstile);
-  return (loading ??= new Promise<TurnstileApi>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    const timer = setTimeout(() => {
-      loading = undefined;
-      reject(
-        new Error("Verification did not load. Close Share and try again."),
-      );
-    }, 15000);
-    script.onload = () => {
-      clearTimeout(timer);
-      window.turnstile
-        ? resolve(window.turnstile)
-        : reject(new Error("Verification is unavailable."));
-    };
-    script.onerror = () => {
-      clearTimeout(timer);
-      loading = undefined;
-      script.remove();
-      reject(new Error("Could not load sharing verification."));
-    };
-    document.head.append(script);
-  }));
-}
+const load = createTurnstileLoader(
+  () => document,
+  () => window.turnstile,
+);
 export function Turnstile({
   siteKey,
   attempt,
@@ -65,8 +37,11 @@ export function Turnstile({
           callback: (token: string) => {
             if (!disposed) onToken(token);
           },
-          "expired-callback": () => onToken(""),
+          "expired-callback": () => {
+            if (!disposed) onToken("");
+          },
           "error-callback": () => {
+            if (disposed) return;
             onToken("");
             setError("Verification failed. Close Share and try again.");
           },

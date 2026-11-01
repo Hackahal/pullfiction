@@ -88,10 +88,14 @@ See [Turnstile testing](https://developers.cloudflare.com/turnstile/troubleshoot
 	tools/release/node_modules/.bin/wrangler dev --config wrangler.sharing-local.jsonc --port 8787
 ```
 
-Supply a local Turnstile secret through an ignored `.dev.vars` file. The API
-validates the returned hostname and action even in local mode. Use a real widget
-restricted to your development hostname when testing the complete publish flow.
-Public testing responses might not provide the hostname required by these checks.
+For the complete publish flow, use a separate real widget restricted to your
+development hostname. In the ignored `.dev.vars` file, override **both**
+`SHARE_SITE_KEY` with that widget's public site key and `TURNSTILE_SECRET` with
+its matching secret. Restart Wrangler after changing the file. The default local
+configuration contains a dummy site key; a real secret rejects tokens from that
+dummy key. The API checks the returned hostname and action in local mode too,
+so dummy responses might not satisfy those checks. Do not weaken the checks to
+make a test key pass.
 
 For the editor, set `PULLFICTION_SHARING_ORIGIN=http://localhost:8787` when starting
 Vite. Open Vite at `http://localhost:5173`. The development proxy rewrites the
@@ -137,7 +141,9 @@ local project data. Do not add untrusted scripts to the application.
 
 ## Verify changes
 
-Run these checks from the repository root:
+Use Node.js 22.13 or later for these checks, then run them from the repository
+root. The Worker tests use `node:sqlite`, which became available without an
+experimental flag in [Node.js 22.13](https://nodejs.org/download/release/v22.13.0/docs/api/cli.html#--no-experimental-sqlite).
 
 ```bash
 	node --test cloudflare/*.test.mjs

@@ -155,3 +155,20 @@ test('deployment config enables sharing only with complete explicit configuratio
   assert.equal(enabled.ratelimits.length, 2);
   assert.equal(JSON.stringify(enabled).includes('TURNSTILE_SECRET'), false);
 });
+
+test('non-object JSON roots are rejected before verification or database access', async () => {
+  const f = setup();
+  let databaseCalls = 0;
+  const prepare = f.env.SHARES.prepare;
+  f.env.SHARES.prepare = (...args) => { databaseCalls++; return prepare(...args); };
+  for (const value of ['null', 'true', 'false', '0', '42', '\"text\"', '[]', '[{}]']) {
+    const response = await f.invoke('', 'POST', value);
+    assert.equal(response.status, 400, value);
+    assert.equal((await response.json()).error, 'Expected a JSON object.');
+  }
+  assert.equal(f.calls, 0);
+  assert.equal(databaseCalls, 0);
+  assert.equal((await f.publish()).status, 201);
+  assert.equal(f.calls, 1);
+  assert.equal(databaseCalls, 1);
+});

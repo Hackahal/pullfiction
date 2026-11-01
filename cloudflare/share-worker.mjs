@@ -33,8 +33,12 @@ async function body(request, limit) {
   const buffer = new Uint8Array(size);
   let offset = 0;
   for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength; }
-  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffer)); }
+  let value;
+  try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffer)); }
   catch { fail(400, 'Invalid JSON.'); }
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    fail(400, 'Expected a JSON object.');
+  return value;
 }
 function origin(env) {
   try {

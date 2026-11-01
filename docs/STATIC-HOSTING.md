@@ -11,7 +11,7 @@ The browser downloads prepared assets automatically. The game asset service is d
 
 ## Build a release
 
-Use Node 22 or newer, Python 3.12 or newer, and Rust 1.98.1. Prepare the pinned developer tools once:
+Use Node 22.13 or newer, Python 3.12 or newer, and Rust 1.98.1. Prepare the pinned developer tools once:
 
 ```bash
 bash scripts/web-setup.sh

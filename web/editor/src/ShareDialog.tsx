@@ -146,15 +146,16 @@ export function ShareDialog({
       if (created?.id === share.id) setCreated(null);
       if (copyId === share.id) setCopyId(null);
       setConfirmDelete(null);
+      let result = "Shared link deleted. Existing local copies are unaffected.";
       try {
         const local = storage();
-        if (local) saveOwnedShares(values, local);
+        if (!local) throw new Error("Local storage unavailable");
+        saveOwnedShares(values, local);
       } catch {
-        setNotice(
-          "Share deleted. Its local deletion record could not be cleared.",
-        );
+        result =
+          "Share deleted. Its local deletion record could not be cleared.";
       }
-      setNotice("Shared link deleted. Existing local copies are unaffected.");
+      setNotice(result);
       if ("incoming" in target && target.incoming === share.id)
         setSnapshot(null);
     } catch (error) {
@@ -176,6 +177,9 @@ export function ShareDialog({
     <dialog
       ref={ref}
       className="modal share-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label={incoming ? "Shared plan or run" : "Share plan or run"}
       onCancel={(event) => {
         event.preventDefault();
         if (!busy) close();
