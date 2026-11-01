@@ -22,7 +22,7 @@ export function summarizeRun(raw: RawReplay, map: number): RunSummary {
     531: 9,
     533: 15,
   };
-  const bossCount =
+  const configuredCount =
     version === "sod" && map === 409
       ? raw.fight.difficulty === 5
         ? 11
@@ -32,6 +32,10 @@ export function summarizeRun(raw: RawReplay, map: number): RunSummary {
       : ruleCount && ruleCount > 0
         ? ruleCount
         : (eraCounts[map] ?? null);
+  const bossCount =
+    configuredCount !== null && bossesKilled > configuredCount
+      ? null
+      : configuredCount;
   const start = raw.fight.startTime;
   const end = raw.fight.endTime;
   const elapsed =

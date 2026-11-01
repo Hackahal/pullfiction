@@ -35,11 +35,13 @@ export function Library({
   controller,
   initialTab,
   close,
+  share,
 }: {
   state: Snapshot;
   controller: EditorController;
   initialTab: LibraryTab;
   close: () => void;
+  share: (projectId: string) => void;
 }) {
   const [tab, setTab] = useState<LibraryTab>(initialTab),
     [filter, setFilter] = useState(""),
@@ -135,7 +137,9 @@ export function Library({
       background = Array.from(root.current?.parentElement?.children ?? [])
         .filter(
           (e): e is HTMLElement =>
-            e instanceof HTMLElement && e !== root.current,
+            e instanceof HTMLElement &&
+            e !== root.current &&
+            e.tagName !== "DIALOG",
         )
         .map((element) => ({ element, inert: element.inert }));
     background.forEach(({ element }) => (element.inert = true));
@@ -337,6 +341,13 @@ export function Library({
                   <div>
                     <button
                       disabled={disabled}
+                      aria-label={`Share ${p.plan.name}`}
+                      onClick={() => share(p.id)}
+                    >
+                      Share
+                    </button>
+                    <button
+                      disabled={disabled}
                       onClick={() => void controller.exportProject(p.id)}
                     >
                       Export
@@ -403,6 +414,13 @@ export function Library({
                 </button>
               ) : (
                 <>
+                  <button
+                    disabled={disabled}
+                    aria-label={`Share ${p.plan.name}`}
+                    onClick={() => share(p.id)}
+                  >
+                    Share
+                  </button>
                   <button
                     disabled={disabled}
                     aria-pressed={!!p.pinned}

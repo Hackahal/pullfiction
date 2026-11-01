@@ -9,16 +9,16 @@ export function RaidArt({
   map: number;
   version: GameVersion;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedZone, setFailedZone] = useState<number | null>(null);
   const raid = raidByMap(map, version),
     zone = raidZoneImages[map];
   return (
     <span className="raid-art">
-      {zone && !failed ? (
+      {zone && failedZone !== zone ? (
         <img
           src={`https://assets.rpglogs.com/img/warcraft/zones/zone-${zone}.png`}
           alt={raid?.name ?? "Raid"}
-          onError={() => setFailed(true)}
+          onError={() => setFailedZone(zone)}
           loading="lazy"
           referrerPolicy="no-referrer"
         />

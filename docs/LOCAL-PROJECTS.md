@@ -86,7 +86,8 @@ The trash action moves a project to **Trash**. Use **Restore** to recover it.
 There is no permanent-delete action in this version. Cached sources remain local
 so deleting one of several plans cannot remove a source used by another.
 
-Projects and cached logs belong to this browser and site origin. They do not sync
-to an account or another device. Clearing site data removes them, so export the
+Projects and cached logs belong to this browser and site origin. They do not automatically sync
+to an account or another device. To send a fixed snapshot of edits and its Warcraft Logs
+reference to someone else, use [Share](SHARING.md). Clearing site data removes them, so export the
 projects you want to keep outside the browser. Warcraft Logs tokens remain in
 memory and are not included in projects or backups.

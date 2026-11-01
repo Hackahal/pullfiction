@@ -38,11 +38,27 @@ export default defineConfig(() => {
     server: {
       hmr:
         process.env.PULLFICTION_RENDERER_LAB_NO_HMR === "1" ? false : undefined,
-      proxy: Object.fromEntries(
-        ["/archive", "/metadata", "/snippets", "/pullfiction_viewer"].map(
-          (path) => [path, runtime],
+      proxy: {
+        "/api/shares": {
+          target:
+            process.env.PULLFICTION_SHARING_ORIGIN ?? "http://localhost:8787",
+          changeOrigin: true,
+          configure(proxy) {
+            proxy.on("proxyReq", (request) => {
+              request.setHeader(
+                "Origin",
+                process.env.PULLFICTION_SHARING_ORIGIN ??
+                  "http://localhost:8787",
+              );
+            });
+          },
+        },
+        ...Object.fromEntries(
+          ["/archive", "/metadata", "/snippets", "/pullfiction_viewer"].map(
+            (path) => [path, runtime],
+          ),
         ),
-      ),
+      },
     },
   };
 });

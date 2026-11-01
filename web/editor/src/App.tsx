@@ -1,4 +1,6 @@
 import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
+import { ShareDialog, type ShareTarget } from "./ShareDialog";
+import { shareId } from "./share-client";
 import { CommunityLinks } from "./CommunityLinks";
 import { GitHubLink } from "./GitHubLink";
 import { nameplateShortcut } from "./nameplate-model";
@@ -104,6 +106,26 @@ export function App({ controller }: { controller: EditorController }) {
     [source, setSource] = useState(
       "https://vanilla.warcraftlogs.com/reports/DyN7vF94QR8aj1Lc",
     );
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(() => {
+    const id = typeof location === "undefined" ? null : shareId(location.hash);
+    return id === null ? null : { incoming: id };
+  });
+  useEffect(() => {
+    const changed = () => {
+      const id = shareId(location.hash);
+      if (id !== null) setShareTarget({ incoming: id });
+    };
+    window.addEventListener("hashchange", changed);
+    return () => window.removeEventListener("hashchange", changed);
+  }, []);
+  function closeShare() {
+    setShareTarget(null);
+    if (shareId(location.hash) !== null) {
+      const url = new URL(location.href);
+      url.hash = "";
+      history.replaceState(null, "", url);
+    }
+  }
   const openPanels = panelLayouts[state.workspaceMode];
   function showPageDetails(on: boolean) {
     if (on) {
@@ -483,6 +505,9 @@ export function App({ controller }: { controller: EditorController }) {
           />
           <button onClick={() => openLibrary("projects")}>Library</button>
           <button onClick={() => openLibrary("logs")}>Logs</button>
+          <button disabled={state.busy} onClick={() => setShareTarget({})}>
+            Share
+          </button>
           {state.projectId && state.sourceStatus === "missing" && (
             <button
               onClick={() => openLibrary("logs")}
@@ -915,6 +940,24 @@ export function App({ controller }: { controller: EditorController }) {
             controller={controller}
             initialTab={library}
             close={() => {
+              setLibrary(null);
+              void controller.boot();
+            }}
+            share={(projectId) => setShareTarget({ projectId })}
+          />
+        )}
+        {shareTarget && (
+          <ShareDialog
+            key={
+              "incoming" in shareTarget
+                ? `incoming-${shareTarget.incoming}`
+                : `project-${shareTarget.projectId ?? "current"}`
+            }
+            controller={controller}
+            target={shareTarget}
+            close={closeShare}
+            opened={() => {
+              closeShare();
               setLibrary(null);
               void controller.boot();
             }}

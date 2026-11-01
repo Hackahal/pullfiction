@@ -1,3 +1,8 @@
+import {
+  shareSnapshot,
+  readSharedSnapshot,
+  type SharedSnapshot,
+} from "./share-client";
 import type { ParseEncounter, ParseOptions } from "./playback-parses";
 import { IncrementalReplayNormalizer } from "./incremental-replay";
 import { EncounterAssetWarmer } from "./encounter-assets";
@@ -1384,13 +1389,13 @@ export class EditorController {
           mode: project.mode,
         };
         this.patch({ sourceStatus: "cached" });
-      } else if (project.source) {
-        // No replay clock is installed yet; retain the stored resume point.
+      } else {
         this.clockTime = project.time;
         this.patch({ time: project.time });
-        this.notify(
-          "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
-        );
+        if (project.source)
+          this.notify(
+            "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
+          );
       }
       this.setWorkspaceMode(project.mode);
       await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
@@ -1445,7 +1450,20 @@ export class EditorController {
       await this.projectStore!.put(next);
       if (this.activeProject?.id === id) {
         this.activeProject = next;
-        if (name !== undefined) this.planState(next.plan);
+        if (name !== undefined) {
+          this.saved = JSON.stringify(next.plan);
+          const renamed = (plan: Plan): Plan => ({
+            ...plan,
+            name: next.plan.name,
+          });
+          this.undoStack = this.undoStack.map(renamed);
+          this.redoStack = this.redoStack.map(renamed);
+          this.planState(renamed(this.state.plan));
+          if (!this.state.dirty) {
+            clearTimeout(this.autosaveTimer);
+            this.patch({ saveStatus: "saved", savedAt: next.updatedAt });
+          }
+        }
       }
       this.patch({
         projects: this.state.projects.map((p) => (p.id === id ? next : p)),
@@ -1532,6 +1550,52 @@ export class EditorController {
     } catch (error) {
       this.notify(`Could not import project: ${message(error)}`);
     }
+  }
+  async projectShareSnapshot(id?: string): Promise<SharedSnapshot> {
+    this.finishDrawing();
+    if (
+      this.pendingPicks ||
+      this.pendingMarkerClicks.some(
+        (click) =>
+          click.epoch === this.pickEpoch &&
+          click.projectEpoch === this.projectEpoch,
+      )
+    )
+      throw new Error("Wait for the drawing to finish before sharing");
+    // Current edits remain shareable even when local persistence has failed.
+    const project =
+      !id || this.activeProject?.id === id
+        ? {
+            ...newProject(this.state.plan, this.projectSource),
+            time: this.clockTime,
+            mode: this.state.workspaceMode,
+            kind: this.projectKind,
+          }
+        : await this.projectStore?.get(id);
+    if (!project || project.deletedAt !== null)
+      throw new Error("Local project not found");
+    return shareSnapshot(project);
+  }
+  async importSharedSnapshot(value: unknown) {
+    if (!this.projectStore)
+      throw new Error("Local project storage unavailable");
+    await this.initializeLibrary();
+    const snapshot = readSharedSnapshot(value);
+    const source = snapshot.source
+      ? {
+          ...snapshot.source,
+          cacheKey: `${snapshot.source.gameVersion}:${snapshot.source.code}:${snapshot.source.fight}:${snapshot.source.map}:${planId()}`,
+        }
+      : null;
+    const project = {
+      ...newProject(snapshot.plan, source),
+      time: snapshot.time,
+      mode: snapshot.mode,
+      kind: snapshot.kind,
+    };
+    await this.projectStore.put(project);
+    this.patch({ projects: [project, ...this.state.projects] });
+    return project.id;
   }
   async exportProject(id: string) {
     try {
@@ -3137,15 +3201,25 @@ export class EditorController {
         click.projectEpoch === this.projectEpoch,
     );
     this.markerRequest = (this.markerRequest + 1) >>> 0;
-    this.pendingMarkerClicks.push({
+    const click = {
       x,
       y,
       epoch: this.pickEpoch,
       projectEpoch: this.projectEpoch,
       request: this.markerRequest,
       selectedActor: selected,
-    });
-    this.engine.hover_annotation(x, y, true, this.markerRequest);
+    };
+    this.pendingMarkerClicks.push(click);
+    try {
+      this.engine.hover_annotation(x, y, true, click.request);
+    } catch (error) {
+      // A request that was never dispatched cannot produce a completion.
+      // Keep other requests and their existing epoch invalidation intact.
+      this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
+        (pending) => pending !== click,
+      );
+      throw error;
+    }
   }
   selectSceneAt(x: number, y: number, toggle = false) {
     this.pendingSceneSelect = { x, y, toggle };

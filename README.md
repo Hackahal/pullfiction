@@ -40,7 +40,7 @@ Preview a prepared release with `python3 scripts/static-preview.py .agent/work/b
 
 The browser integration uses a public OAuth PKCE client. Copy `web/editor/.env.example` to `web/editor/.env` and fill in your public client ID and registered callback. Never use a client secret in a `VITE_` setting. The local environment file is ignored by Git. Without OAuth configuration, local replay JSON import remains available.
 
-See [Warcraft Logs integration](docs/BROWSER-LOGS.md), [buffered replay loading](docs/BUFFERED-REPLAY.md) and [local saves and exports](docs/LOCAL-PROJECTS.md).
+See [Warcraft Logs integration](docs/BROWSER-LOGS.md), [buffered replay loading](docs/BUFFERED-REPLAY.md) and [local saves and exports](docs/LOCAL-PROJECTS.md), and [sharing through links](docs/SHARING.md).
 
 ## Project map
 

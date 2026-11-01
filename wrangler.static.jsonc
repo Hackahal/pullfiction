@@ -1,6 +1,7 @@
 {
   // Static application code only. Client files and credentials never enter assets.
   "name": "pullfiction",
+  "main": "cloudflare/share-worker.mjs",
   "compatibility_date": "2026-10-27",
   "workers_dev": false,
   "preview_urls": false,
@@ -8,6 +9,8 @@
     { "pattern": "pullfiction.com", "custom_domain": true, "zone_id": "881c1e9b25d31dc8c9c17fb2ff4cedb5" }
   ],
   "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/shares", "/api/shares/*"],
     "directory": ".agent/work/browser-static/release",
     "not_found_handling": "single-page-application"
   }

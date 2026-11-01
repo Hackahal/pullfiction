@@ -1153,6 +1153,7 @@ test("The original startup reopens from committed prepared assets without select
       state: second.c.getSnapshot(),
       controller: second.c,
       initialTab: "projects",
+      share: () => {},
       close: () => {},
     }),
   );

@@ -84,3 +84,24 @@ test("metadata roundtrips with schema 1 and malformed additions are rejected", (
   ])
     assert.throws(() => validateProject({ ...p, ...values }));
 });
+
+test("extra encounter kills retain the observed count and persist with an unknown denominator", () => {
+  const replay = raw(9);
+  const summary = summarizeRun(replay, 469);
+  assert.deepEqual(summary, {
+    bossesKilled: 9,
+    bossCount: null,
+    clearTime: null,
+    elapsed: 1900,
+  });
+  const project = newProject(emptyPlan(469), replaySource(replay, 469));
+  assert.deepEqual(
+    validateProject(JSON.parse(JSON.stringify(project))).source!.summary,
+    summary,
+  );
+  for (const kills of [6, 8]) {
+    const ordinary = newProject(emptyPlan(469), replaySource(raw(kills), 469));
+    assert.equal(validateProject(ordinary).source!.summary!.bossCount, 8);
+    assert.equal(ordinary.source!.summary!.bossesKilled, kills);
+  }
+});
