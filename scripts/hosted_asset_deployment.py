@@ -130,21 +130,17 @@ def deploy(root, release=None, *, recover=False):
             raise ValueError('Refusing to deploy game assets tracked by Git.')
         audit(release)
         retained = state/'deployed'
-        first = os.environ.get('HOSTED_ASSETS_FIRST_DEPLOY','')
-        if first not in ('','1'):
-            raise ValueError('HOSTED_ASSETS_FIRST_DEPLOY must be exactly 1 for a new, empty asset service.')
+        if 'HOSTED_ASSETS_FIRST_DEPLOY' in os.environ:
+            raise ValueError('HOSTED_ASSETS_FIRST_DEPLOY is unsupported. Restore the complete retained generation before deploying.')
         if retained.is_symlink() or (retained.exists() and not retained.is_dir()):
             raise ValueError('Invalid retention directory. Restore the retained generation before deploying.')
-        if first == '1' and retained.exists():
-            raise ValueError('First-deploy override cannot be used with an existing retained generation.')
-        if not retained.exists() and first != '1':
-            raise ValueError('Missing retained generation. Restore the retained generation before deploying. Use HOSTED_ASSETS_FIRST_DEPLOY=1 only for a new, empty asset service.')
-        if retained.exists():
-            audit(retained)
+        if not retained.exists():
+            raise ValueError('Missing retained generation. Restore the retained generation before deploying; local absence does not prove the remote service is empty.')
+        audit(retained)
         stage = Path(tempfile.mkdtemp(prefix='upload.',dir=state))
         try:
             (stage/'chunks').mkdir()
-            for source in ([retained] if retained.exists() else []) + [release]:
+            for source in (retained, release):
                 for chunk in (source/'chunks').iterdir():
                     shutil.copy2(chunk,stage/'chunks'/chunk.name)
             shutil.copy2(release/'manifest.json',stage/'manifest.json')

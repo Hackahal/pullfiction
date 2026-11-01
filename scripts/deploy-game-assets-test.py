@@ -60,23 +60,31 @@ class DeploymentTests(unittest.TestCase):
         result = self.run_script()
         self.assert_not_uploaded(result)
         self.assertIn('Restore the retained generation',result.stderr)
-        self.assertIn('HOSTED_ASSETS_FIRST_DEPLOY=1',result.stderr)
+        self.assertIn('local absence does not prove',result.stderr)
 
-    def test_first_generation_requires_exact_opt_in(self):
-        for value in ('0','true'):
-            self.assert_not_uploaded(self.run_script(first=value))
-        result = self.run_script(first='1')
+    def test_bootstrap_override_cannot_bypass_missing_or_existing_retention(self):
+        for value in ('','0','true','1'):
+            result = self.run_script(first=value)
+            self.assert_not_uploaded(result)
+            self.assertIn('unsupported',result.stderr)
+        self.pack(self.retained,b'old fixture bytes')
+        self.assert_not_uploaded(self.run_script(first='1'))
+
+    def test_existing_remote_only_chunks_require_restoring_complete_retention(self):
+        # Authored stand-in for an existing service. The deployer must not infer
+        # remote emptiness from a missing local directory or an environment flag.
+        remote = self.root/'.agent/remote-service'
+        self.pack(remote,b'old remote-only fixture bytes')
+        before = {p.name:p.read_bytes() for p in (remote/'chunks').iterdir()}
+        self.assert_not_uploaded(self.run_script())
+        self.assert_not_uploaded(self.run_script(first='1'))
+        self.assertEqual({p.name:p.read_bytes() for p in (remote/'chunks').iterdir()},before)
+        shutil.copytree(remote,self.retained)
+        result = self.run_script()
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertTrue(self.capture.exists())
-        self.assertEqual(audit(self.retained)['revision'],audit(self.release)['revision'])
-        self.assert_not_uploaded_after_existing_first_flag()
-
-    def assert_not_uploaded_after_existing_first_flag(self):
-        before = self.capture.read_bytes()
-        result = self.run_script(first='1')
-        self.assertNotEqual(result.returncode,0)
-        self.assertIn('existing retained generation',result.stderr)
-        self.assertEqual(self.capture.read_bytes(),before)
+        for name,data in before.items():
+            self.assertEqual((self.retained/'chunks'/name).read_bytes(),data)
+        self.assertEqual(len(list((self.retained/'chunks').iterdir())),2)
 
     def test_valid_retention_is_audited_and_union_is_uploaded(self):
         self.pack(self.retained,b'old fixture bytes')

@@ -35,9 +35,9 @@ The pinned Wrangler CLI supports `--use-keyring`. On Linux, install `secret-tool
 
 `wrangler.game-assets.jsonc` deploys the `pullfiction-assets` service at `assets.pullfiction.com`. The script audits the local directory and adds the reviewed CORS and cache headers. Assets are public static responses. Requests do not invoke a Worker script. The `.gz` files use `application/gzip` without `Content-Encoding`; the browser verifies the compressed hash and decompresses them explicitly.
 
-The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases and restore it when using a fresh checkout or another machine. Deployment fails before staging or upload if retention is missing or invalid. For the first generation of a new, empty asset service only, run `HOSTED_ASSETS_FIRST_DEPLOY=1 bash scripts/deploy-game-assets.sh .agent/work/hosted-assets-ready`. The override must be exactly `1` and is rejected when a retained generation already exists. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes.
+The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases and restore it when using a fresh checkout or another machine. Deployment fails before staging or upload if retention is missing or invalid. The normal deployer always requires a complete retained generation. `HOSTED_ASSETS_FIRST_DEPLOY` is unsupported and is rejected even when set to `1`. Missing local files, an unauthenticated 404, or the current public manifest cannot establish that the remote service is empty. For the existing `pullfiction-assets` service, restore the complete retained directory from the deployment machine or a verified backup; a newly prepared pack is not a substitute for that history. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes.
 
-Before upload, the deployer saves and syncs the complete old-plus-new chunk union and a transaction journal beneath `.agent/work/hosted-assets/`. It serializes deployment and recovery with a POSIX file lock on macOS or Linux. After upload, it installs retention through directory renames and keeps the previous generation in a `previous.*` directory. A pending transaction blocks later uploads, including the first-generation override.
+Before upload, the deployer saves and syncs the complete old-plus-new chunk union and a transaction journal beneath `.agent/work/hosted-assets/`. It serializes deployment and recovery with a POSIX file lock on macOS or Linux. After upload, it installs retention through directory renames and keeps the previous generation in a `previous.*` directory. A pending transaction blocks later uploads, including attempts using the obsolete first-generation override.
 
 If an upload reports an uncertain failure or local finalization fails, preserve the entire `.agent/work/hosted-assets/` directory and run:
 
@@ -46,6 +46,15 @@ bash scripts/deploy-game-assets.sh --recover
 ```
 
 Recovery verifies the saved manifest, headers and complete chunk inventory, then finishes the local retention transaction. It never contacts Cloudflare. If recovery reports missing or altered bytes, restore those bytes from the saved generation or a backup before retrying. Do not delete `pending.json` to bypass recovery. After an uncertain upload, check the actual Cloudflare version separately; local recovery preserves chunks for both possible outcomes. Keep previous manifests locally. Cloudflare deployment rollback restores the previous asset version.
+
+## Bootstrap a separate new service
+
+The configured `pullfiction-assets` service already exists. Use restoration and recovery for that service. Bootstrap is a separate operator procedure for a newly created service, with no environment-variable bypass in the deployer.
+
+1. Through the authenticated Cloudflare control plane, create a never-used service with a distinct name and an unused hostname. Record the account and new resource identity, and reserve it against other deployments during bootstrap. A public URL or manifest check is not proof of a new service.
+2. Use an isolated checkout and configure `wrangler.game-assets.jsonc` for that exact new service. Review the account, service name and route before proceeding; preserve the existing service's checkout and retained state.
+3. Prepare and audit the initial pack locally. In the isolated checkout only, seed `.agent/work/hosted-assets/deployed` with a complete copy of that initial audited generation. This is valid only because the authenticated resource creation established a new service with no earlier asset generations. Do not seed an existing service's missing retention with a new pack.
+4. Audit the seeded retention and invoke the normal deployer. Its durable staging, journal and recovery rules apply to this first upload too. Verify actual Cloudflare delivery, then keep a verified backup of the complete retained directory for every subsequent deployment.
 
 ## Prune local recovery copies manually
 
