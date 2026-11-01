@@ -1314,3 +1314,13 @@ test("Hosted startup downloads automatically and exposes no local-client import"
     globalThis.fetch = originalFetch;
   }
 });
+
+test("front door initializes local storage without opening raid assets or the renderer", async (t) => {
+  const cache = new IndexedClientAssetCache(new IDBFactory(), "converter-a");
+  t.after(() => cache.close());
+  const { c, opens } = cachedController(t, cache);
+  await c.initializeFrontDoor();
+  assert.equal(opens(), 0);
+  assert.equal(c.getSnapshot().ready, false);
+  assert.equal(c.getSnapshot().clientStatus, "select");
+});

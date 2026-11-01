@@ -18,6 +18,12 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_FILES = 20_000
 MAX_VIEWER_BYTES = 256 * 1024 * 1024
 EDITOR_ASSET = re.compile(r"assets/[A-Za-z0-9_-]+-[A-Za-z0-9_-]+\.(?:js|css)")
+LANDING_FONT = re.compile(r"assets/barlow-condensed-bold-[A-Za-z0-9_-]+\.ttf")
+LANDING_FONT_SOURCE = "web/editor/src/landing-assets/barlow-condensed-bold.ttf"
+LANDING_FILES = {name: f"web/editor/public/{name}" for name in (
+    "landing/replay.jpg", "landing/plan.jpg", "landing/tactical-plan.jpg", "landing/library.jpg",
+    "landing/favicon.svg", "landing/font-license.txt", "landing/SOURCES.md", "robots.txt", "sitemap.xml",
+)}
 RENDERER_SNIPPET = re.compile(r"snippets/[A-Za-z0-9_-]+/inline[0-9]+\.js")
 ARCHIVE_FILES = {
     "CascLib-LICENSE.txt", "cache.mjs", "casc.mjs", "casc.wasm", "client.mjs",
@@ -107,7 +113,15 @@ def validate_npc_metadata(path: Path, repo: Path) -> None:
         raise PackageError(f"Invalid approved NPC metadata: {error}") from error
 
 
-def editor_files(editor: Path) -> list[str]:
+def has_landing(root: Path) -> bool:
+    return 'class="pf-landing"' in regular_file(root, "index.html").read_text()
+
+
+def editor_asset(relative: str) -> bool:
+    return bool(EDITOR_ASSET.fullmatch(relative) or LANDING_FONT.fullmatch(relative))
+
+
+def editor_files(editor: Path, repo: Path = REPO) -> list[str]:
     regular_file(editor, "index.html")
     # Follow the new Vite entry graph. Merely looking for hashed filenames also
     # copies stale JavaScript left in a contaminated input directory.
@@ -138,7 +152,7 @@ def editor_files(editor: Path) -> list[str]:
                 raise PackageError(f"Invalid Vite {field} list: {key}")
             files.extend(values)
         for relative in files:
-            if not isinstance(relative, str) or not EDITOR_ASSET.fullmatch(relative):
+            if not isinstance(relative, str) or not editor_asset(relative):
                 raise PackageError(f"Unapproved Vite output: {relative}")
             regular_file(editor, relative)
             selected.add(relative)
@@ -147,6 +161,17 @@ def editor_files(editor: Path) -> list[str]:
             if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
                 raise PackageError(f"Invalid Vite {field} list: {key}")
             pending.extend(values)
+    # Only these source-owned marketing files may accompany the application.
+    # Do not copy arbitrary public/ contents, game images, or extracted fonts.
+    if has_landing(editor):
+        for relative, source in LANDING_FILES.items():
+            if regular_file(editor, relative).read_bytes() != regular_file(repo, source).read_bytes():
+                raise PackageError(f"Landing asset differs from repository: {relative}")
+            selected.add(relative)
+    for relative in selected:
+        if LANDING_FONT.fullmatch(relative):
+            if regular_file(editor, relative).read_bytes() != regular_file(repo, LANDING_FONT_SOURCE).read_bytes():
+                raise PackageError(f"Landing font differs from repository: {relative}")
     return sorted(selected)
 
 
@@ -171,7 +196,7 @@ def pack(editor: Path, renderer: Path, archive: Path, output: Path, repo: Path =
     expected = converter_files(repo)
     validate_manifest(archive, expected)
     output.mkdir(parents=True)
-    for relative in editor_files(editor):
+    for relative in editor_files(editor, repo):
         copy_file(editor, relative, output)
     copy_file(renderer, "pullfiction_viewer.js", output, "pullfiction_viewer.bindgen.js")
     for relative in sorted(renderer_snippets(renderer, "pullfiction_viewer.js")):
@@ -202,6 +227,8 @@ def audit(output: Path, repo: Path = REPO) -> dict:
     allowed.update(f"archive/converter/{name}" for name in expected_converter)
     allowed.update(renderer_snippets(output, "pullfiction_viewer.bindgen.js"))
     allowed.update(METADATA_FILES)
+    if has_landing(output):
+        allowed.update(LANDING_FILES)
     allowed_directories = {"assets"}
     for name in allowed:
         allowed_directories.update(str(parent) for parent in PurePosixPath(name).parents if str(parent) != ".")
@@ -219,8 +246,13 @@ def audit(output: Path, repo: Path = REPO) -> dict:
             continue
         if not path.is_file():
             raise PackageError(f"Non-regular file is forbidden: {relative}")
-        if relative not in allowed and not EDITOR_ASSET.fullmatch(relative):
+        if relative not in allowed and not editor_asset(relative):
             raise PackageError(f"File is not approved application code: {relative}")
+        source = LANDING_FILES.get(relative)
+        if LANDING_FONT.fullmatch(relative):
+            source = LANDING_FONT_SOURCE
+        if source and path.read_bytes() != regular_file(repo, source).read_bytes():
+            raise PackageError(f"Landing asset differs from repository: {relative}")
         size = path.stat().st_size
         # Keep every uploaded file strictly below the documented 25 MiB cap.
         if size >= MAX_FILE_BYTES:

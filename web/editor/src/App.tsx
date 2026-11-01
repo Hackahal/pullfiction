@@ -1,3 +1,4 @@
+import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
 import { ShareDialog, type ShareTarget } from "./ShareDialog";
 import { shareId } from "./share-client";
 import { CommunityLinks } from "./CommunityLinks";
@@ -41,7 +42,7 @@ import {
 import { DockWorkspace } from "./DockWorkspace";
 import { DamageGraph } from "./DamageGraph";
 import { EditorController } from "./controller";
-import { Library } from "./Library";
+import { Library, type LibraryTab } from "./Library";
 const Timeline = lazy(() =>
   import("./Timeline").then((module) => ({ default: module.Timeline })),
 );
@@ -61,7 +62,7 @@ export { GameIcon } from "./GameIcon";
 export function App({ controller }: { controller: EditorController }) {
   useEffect(() => {
     controller.start();
-    void controller.boot();
+    void controller.initializeFrontDoor();
     return () => controller.stop();
   }, [controller]);
   const state = useSyncExternalStore(
@@ -70,16 +71,16 @@ export function App({ controller }: { controller: EditorController }) {
       controller.getSnapshot,
     ),
     [dialog, setDialog] = useState<"import" | "settings" | null>(null),
-    [library, setLibrary] = useState<"projects" | "logs" | "runs" | null>(
-      () => {
-        try {
-          const tab = sessionStorage.getItem("pullfiction.library.tab");
-          return tab === "logs" || tab === "runs" ? tab : "projects";
-        } catch {
-          return "projects";
-        }
-      },
-    ),
+    [library, setLibrary] = useState<LibraryTab | null>(() => {
+      try {
+        return initialLibraryTab(
+          globalThis.location?.search ?? "",
+          sessionStorage.getItem("pullfiction.library.tab"),
+        );
+      } catch {
+        return initialLibraryTab(globalThis.location?.search ?? "", null);
+      }
+    }),
     [panelLayouts, setPanelLayouts] = useState<
       Record<"analyse" | "plan", PaneId[]>
     >(() => {
@@ -151,6 +152,13 @@ export function App({ controller }: { controller: EditorController }) {
   function openLibrary(tab: "projects" | "logs") {
     if (state.playing || state.playPreparing) controller.toggle();
     if (state.projectId || state.dirty) void controller.saveProject();
+    try {
+      history.replaceState(
+        history.state,
+        "",
+        libraryNavigationUrl(location.href, tab),
+      );
+    } catch {}
     setLibrary(tab);
   }
   useEffect(() => {
@@ -931,7 +939,10 @@ export function App({ controller }: { controller: EditorController }) {
             state={state}
             controller={controller}
             initialTab={library}
-            close={() => setLibrary(null)}
+            close={() => {
+              setLibrary(null);
+              void controller.boot();
+            }}
             share={(projectId) => setShareTarget({ projectId })}
           />
         )}
@@ -948,6 +959,7 @@ export function App({ controller }: { controller: EditorController }) {
             opened={() => {
               closeShare();
               setLibrary(null);
+              void controller.boot();
             }}
           />
         )}

@@ -8,6 +8,8 @@ import { IncrementalReplayNormalizer } from "./incremental-replay";
 import { EncounterAssetWarmer } from "./encounter-assets";
 import { ReplayPresenceIndex } from "./replay-presence-index";
 import { ReplayFrameTransport } from "./replay-frame-transport";
+import type { RankingSearch } from "./wcl-discovery";
+import { summarizeRun } from "./library-model";
 import { resetLocalMaps } from "./local-map";
 import {
   recordedTransferEvidence,
@@ -254,6 +256,15 @@ export class EditorController {
   private undoStack: Plan[] = [];
   private redoStack: Plan[] = [];
   private saved = "";
+  private libraryMetadata = new Map<
+    string,
+    {
+      name?: string;
+      pinned?: boolean;
+      savedRun?: boolean;
+      lastViewedAt?: number;
+    }
+  >();
   private rangeSource: string | null = null;
   private mapDrafts = new Map<
     string,
@@ -1196,15 +1207,34 @@ export class EditorController {
       plan,
       source: this.projectSource,
       updatedAt: Date.now(),
-      time: this.clockTime,
+      time: this.pendingProjectReplay?.time ?? this.clockTime,
       mode: this.state.workspaceMode,
       kind: this.projectKind,
+      lastViewedAt: this.activeProject?.lastViewedAt ?? Date.now(),
+      savedRun: this.activeProject
+        ? (this.activeProject.savedRun ?? true)
+        : false,
     };
     this.activeProject = project;
     this.patch({ projectId: project.id, saveStatus: "saving" });
-    const serialized = JSON.stringify(plan);
+    const metadataAtSave = this.libraryMetadata.get(project.id);
     const write = async () => {
       try {
+        const metadata = this.libraryMetadata.get(project.id);
+        if (metadata) {
+          for (const key of ["pinned", "savedRun", "lastViewedAt"] as const)
+            if (
+              metadata[key] !== undefined &&
+              metadata[key] !== metadataAtSave?.[key]
+            )
+              Object.assign(project, { [key]: metadata[key] });
+          if (
+            metadata.name !== undefined &&
+            metadata.name !== metadataAtSave?.name
+          )
+            project.plan = { ...project.plan, name: metadata.name };
+        }
+        const serialized = JSON.stringify(project.plan);
         await this.projectStore!.put(project);
         this.patch({
           projects: [
@@ -1348,6 +1378,11 @@ export class EditorController {
       this.mapDrafts.clear();
       this.selectRaid(project.plan.mapId, true, project.plan.gameVersion);
       this.patch({ busy: true });
+      if (raw && project.source)
+        project.source = {
+          ...project.source,
+          summary: summarizeRun(raw, project.plan.mapId),
+        };
       this.resetProject(project);
       this.saved = JSON.stringify(project.plan);
       this.undoStack = [];
@@ -1387,6 +1422,7 @@ export class EditorController {
           );
       }
       this.setWorkspaceMode(project.mode);
+      await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
       return true;
     } catch (error) {
       this.notify(`Could not open project: ${message(error)}`);
@@ -1394,6 +1430,81 @@ export class EditorController {
     } finally {
       this.restoringProject = false;
       this.patch({ busy: false });
+    }
+  }
+  async initializeFrontDoor() {
+    const epoch = this.clientAccessEpoch;
+    await this.initializeLibrary();
+    if (epoch !== this.clientAccessEpoch) return;
+    if (this.state.browserAssets) await this.initializeWcl();
+  }
+  async updateProjectMetadata(
+    id: string,
+    values: {
+      lastViewedAt?: number;
+      pinned?: boolean;
+      savedRun?: boolean;
+      name?: string;
+    },
+  ) {
+    try {
+      if (
+        this.activeProject?.id === id &&
+        !this.restoringProject &&
+        (this.state.dirty || this.state.saveStatus !== "saved")
+      )
+        await this.flushProject();
+      const write = async () => {
+        const project = await this.projectStore?.get(id);
+        if (!project) return;
+        const { name, ...metadata } = values;
+        const next = {
+          ...project,
+          ...metadata,
+          ...(name !== undefined
+            ? {
+                plan: {
+                  ...project.plan,
+                  name: name.trim().slice(0, 100) || "Untitled plan",
+                },
+                updatedAt: Date.now(),
+              }
+            : {}),
+        };
+        await this.projectStore!.put(next);
+        this.libraryMetadata.set(id, {
+          ...this.libraryMetadata.get(id),
+          ...metadata,
+          ...(name !== undefined ? { name: next.plan.name } : {}),
+        });
+        if (this.activeProject?.id === id) {
+          this.activeProject = next;
+          if (name !== undefined) {
+            this.saved = JSON.stringify(next.plan);
+            const renamed = (plan: Plan): Plan => ({
+              ...plan,
+              name: next.plan.name,
+            });
+            this.undoStack = this.undoStack.map(renamed);
+            this.redoStack = this.redoStack.map(renamed);
+            this.planState(renamed(this.state.plan));
+            if (!this.state.dirty) {
+              clearTimeout(this.autosaveTimer);
+              this.patch({ saveStatus: "saved", savedAt: next.updatedAt });
+            }
+          }
+        }
+        this.patch({
+          projects: this.state.projects.map((p) => (p.id === id ? next : p)),
+        });
+      };
+      const pending = this.projectWrites.then(write, write);
+      this.projectWrites = pending.catch(() => {});
+      await pending;
+    } catch (error) {
+      this.patch({
+        libraryError: `Could not update library: ${message(error)}`,
+      });
     }
   }
   async duplicateProject(id: string) {
@@ -1636,6 +1747,34 @@ export class EditorController {
       map,
       category,
       selection,
+      signal,
+    );
+  }
+  findLogCharacter(search: GuildSearch, signal?: AbortSignal) {
+    return this.requireBrowserLogs().character(
+      search,
+      this.state.gameVersion,
+      signal,
+    );
+  }
+  characterReports(id: number, page: number, signal?: AbortSignal) {
+    return this.requireBrowserLogs().characterReports(
+      id,
+      page,
+      this.state.gameVersion,
+      signal,
+    );
+  }
+  rankingRaids(signal?: AbortSignal) {
+    return this.requireBrowserLogs().rankingRaids(
+      this.state.gameVersion,
+      signal,
+    );
+  }
+  rankingPage(search: RankingSearch, signal?: AbortSignal) {
+    return this.requireBrowserLogs().rankingPage(
+      search,
+      this.state.gameVersion,
       signal,
     );
   }
@@ -4639,7 +4778,7 @@ export class EditorController {
           const returnTo = await session.finish(callback);
           history.replaceState(null, "", returnTo);
           this.patch({ wclConnected: true });
-          this.notify("Warcraft Logs connected. Loading game assets.");
+          this.notify("Warcraft Logs connected.");
         } finally {
           // Authorization codes and state never remain in the address bar.
           if (isWclCallback(new URL(location.href)))

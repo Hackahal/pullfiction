@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 import { EditorController } from "./controller";
-import { IndexedProjectStore, newProject } from "./project-store";
+import { IndexedProjectStore, newProject, replaySource } from "./project-store";
 import { emptyPlan, STORAGE_KEY } from "./domain";
 import type { Engine, RawReplay } from "./types";
 const raw = {
@@ -733,3 +733,158 @@ test("synchronous native rejection completion releases a marker that cannot be q
     f.controller.stop();
   }
 });
+
+test("library metadata persists independently of autosave and opening records a real view", async () => {
+  const { controller: c, store } = setup();
+  const p = {
+    ...newProject(emptyPlan(469)),
+    kind: "replay" as const,
+    lastViewedAt: 1,
+  };
+  await store.put(p);
+  await c.initializeLibrary();
+  await c.updateProjectMetadata(p.id, { savedRun: false, pinned: true });
+  assert.equal((await store.get(p.id))?.lastViewedAt, 1);
+  assert.equal((await store.get(p.id))?.savedRun, false);
+  assert(await c.openProject(p.id));
+  assert((await store.get(p.id))!.lastViewedAt! > 1);
+  await c.updateProjectMetadata(p.id, { name: "Renamed" });
+  await c.saveProject();
+  const saved = await store.get(p.id);
+  assert.equal(saved?.plan.name, "Renamed");
+  assert.equal(saved?.savedRun, false);
+  assert.equal(saved?.pinned, true);
+  c.stop();
+});
+
+for (const cached of [true, false]) {
+  test(`deferred replay view preserves its stored seek position with cache=${cached}`, async () => {
+    const f = setup();
+    const source = replaySource(raw, 409);
+    const project = {
+      ...newProject(emptyPlan(409), source),
+      time: 5000,
+      lastViewedAt: 1,
+    };
+    await f.store.put(project);
+    if (cached) await f.store.putReplay(source.cacheKey, raw);
+    const c = new EditorController(f.storage, {
+      browserAssets: true,
+      projectStore: f.store,
+      clientCache: null,
+      clientFolders: null,
+    });
+    try {
+      await c.initializeLibrary();
+      assert.equal(c.getSnapshot().clientStatus, "select");
+      assert(await c.openProject(project.id));
+      assert.equal(c.getSnapshot().replay, null);
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      assert((await f.store.get(project.id))!.lastViewedAt! > 1);
+      await c.updateProjectMetadata(project.id, {
+        pinned: true,
+        name: "Resume here",
+      });
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      c.cancelClient();
+      await c.saveProject();
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+    } finally {
+      c.stop();
+      f.controller.stop();
+    }
+  });
+}
+
+test("library rename stays saved without autosave and preserves drawing undo/redo with the new name", async () => {
+  const f = setup();
+  try {
+    await f.controller.initializeLibrary();
+    await f.controller.createProject(409, "vanilla", "Original");
+    const id = f.controller.getSnapshot().projectId!;
+    f.controller.updateStep({ notes: "First edit" });
+    f.controller.updateStep({ notes: "Second edit" });
+    f.controller.undo();
+    await f.controller.updateProjectMetadata(id, { name: "Renamed" });
+    assert.equal(f.controller.getSnapshot().dirty, false);
+    assert.equal(f.controller.getSnapshot().saveStatus, "saved");
+    let writes = 0;
+    const put = f.store.put.bind(f.store);
+    f.store.put = async (project) => {
+      writes++;
+      return put(project);
+    };
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    assert.equal(
+      writes,
+      0,
+      "persisted rename must not schedule a redundant save",
+    );
+    f.controller.undo();
+    assert.equal(f.controller.getSnapshot().plan.name, "Renamed");
+    assert.equal(f.controller.getSnapshot().plan.steps[0].notes, "");
+    f.controller.redo();
+    assert.equal(f.controller.getSnapshot().plan.name, "Renamed");
+    assert.equal(f.controller.getSnapshot().plan.steps[0].notes, "First edit");
+    assert.equal(f.controller.getSnapshot().dirty, false);
+    f.controller.redo();
+    assert.equal(f.controller.getSnapshot().plan.name, "Renamed");
+    assert.equal(f.controller.getSnapshot().plan.steps[0].notes, "Second edit");
+    await f.controller.saveProject();
+    assert.equal((await f.store.get(id))!.plan.name, "Renamed");
+  } finally {
+    f.controller.stop();
+  }
+});
+
+test("concurrent library metadata updates serialize read-modify-write without losing either change", async () => {
+  const f = setup();
+  try {
+    await f.controller.initializeLibrary();
+    await f.controller.createProject(409, "vanilla", "Original");
+    const id = f.controller.getSnapshot().projectId!;
+    await Promise.all([
+      f.controller.updateProjectMetadata(id, { pinned: true }),
+      f.controller.updateProjectMetadata(id, { name: "Renamed" }),
+      f.controller.updateProjectMetadata(id, { savedRun: false }),
+    ]);
+    const project = (await f.store.get(id))!;
+    assert.equal(project.pinned, true);
+    assert.equal(project.plan.name, "Renamed");
+    assert.equal(project.savedRun, false);
+    assert.equal(f.controller.getSnapshot().dirty, false);
+  } finally {
+    f.controller.stop();
+  }
+});
+
+for (const metadata of [
+  { pinned: true },
+  { name: "Library rename", pinned: true },
+]) {
+  test(`queued metadata and active saves preserve edits and metadata: ${JSON.stringify(metadata)}`, async () => {
+    const f = setup();
+    try {
+      await f.controller.initializeLibrary();
+      await f.controller.createProject(409, "vanilla", "Original");
+      const id = f.controller.getSnapshot().projectId!;
+      const updating = f.controller.updateProjectMetadata(id, metadata);
+      f.controller.updateStep({ notes: "Important new edit" });
+      await Promise.all([updating, f.controller.saveProject()]);
+      const project = (await f.store.get(id))!;
+      assert.equal(project.plan.steps[0].notes, "Important new edit");
+      assert.equal(project.pinned, true);
+      assert.equal(project.plan.name, metadata.name ?? "Original");
+      assert.equal(
+        f.controller.getSnapshot().plan.steps[0].notes,
+        "Important new edit",
+      );
+      assert.equal(f.controller.getSnapshot().dirty, false);
+      assert.equal(f.controller.getSnapshot().saveStatus, "saved");
+    } finally {
+      f.controller.stop();
+    }
+  });
+}

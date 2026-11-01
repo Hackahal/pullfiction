@@ -234,6 +234,49 @@ class StaticPackageTests(unittest.TestCase):
             self.pack()
         self.assertEqual(sentinel.read_text(), "preserve")
 
+    def install_landing_fixture(self):
+        self.write(self.editor, "index.html", '<main class="pf-landing"></main>')
+        for relative, source in package.LANDING_FILES.items():
+            self.write(self.editor, relative, (package.REPO / source).read_bytes())
+        font = "assets/barlow-condensed-bold-fixture.ttf"
+        self.write(self.editor, font, (package.REPO / package.LANDING_FONT_SOURCE).read_bytes())
+        self.write(self.editor, ".vite/manifest.json", json.dumps({
+            "index.html": {"file": "assets/index-fixture.js", "isEntry": True, "assets": [font]},
+        }))
+        return font
+
+    def test_landing_media_and_open_font_are_packaged_and_audited(self):
+        font = self.install_landing_fixture()
+        result = self.pack()
+        for name in (*package.LANDING_FILES, font):
+            self.assertTrue((self.output / name).is_file(), name)
+        self.assertEqual(package.audit(self.output), result)
+
+    def test_changed_landing_media_is_rejected(self):
+        self.install_landing_fixture()
+        self.write(self.editor, "landing/replay.jpg", b"unreviewed media")
+        with self.assertRaisesRegex(package.PackageError, "Landing asset differs"):
+            self.pack()
+
+    def test_missing_landing_media_is_rejected(self):
+        self.install_landing_fixture()
+        (self.editor / "landing/replay.jpg").unlink()
+        with self.assertRaisesRegex(package.PackageError, "Missing regular file: landing/replay.jpg"):
+            self.pack()
+
+    def test_landing_font_must_match_the_reviewed_open_font(self):
+        self.install_landing_fixture()
+        self.write(self.editor, "assets/barlow-condensed-bold-fixture.ttf", b"other font")
+        with self.assertRaisesRegex(package.PackageError, "Landing font differs"):
+            self.pack()
+
+    def test_landing_media_is_verified_again_during_release_audit(self):
+        self.install_landing_fixture()
+        self.pack()
+        self.write(self.output, "landing/library.jpg", b"unreviewed media")
+        with self.assertRaisesRegex(package.PackageError, "Landing asset differs"):
+            package.audit(self.output)
+
     def test_vite_manifest_follows_dynamic_chunks_and_styles(self):
         self.write(self.editor, "assets/worker-fixture.js", "export const worker = true;")
         self.write(self.editor, "assets/index-fixture.css", "body { color: white; }")

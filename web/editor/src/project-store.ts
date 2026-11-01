@@ -1,5 +1,10 @@
 import { parsePlan, planId, validatePlan } from "./domain";
 import type { GameVersion, Plan, RawReplay } from "./types";
+import {
+  summarizeRun,
+  validRunSummary,
+  type RunSummary,
+} from "./library-model";
 import { validateReplayStream } from "./replay-buffer";
 
 export interface ProjectSource {
@@ -10,9 +15,13 @@ export interface ProjectSource {
   map: number;
   cacheKey: string;
   buffered?: boolean;
+  summary?: RunSummary;
 }
 export interface LocalProject {
   schema: 1;
+  lastViewedAt?: number;
+  pinned?: boolean;
+  savedRun?: boolean;
   id: string;
   createdAt: number;
   updatedAt: number;
@@ -37,6 +46,7 @@ export function replaySource(raw: RawReplay, map: number): ProjectSource {
   if (!Number.isSafeInteger(fight) && fight !== "run")
     throw new Error("Invalid source encounter");
   return {
+    summary: summarizeRun(raw, map),
     code: raw.report.code,
     title: raw.report.title,
     gameVersion,
@@ -100,8 +110,17 @@ export function validateProject(value: unknown): LocalProject {
       !/^[A-Za-z0-9:-]{1,200}$/.test(s.cacheKey)
     )
       throw new Error("Invalid project source");
+    if (s.summary !== undefined && !validRunSummary(s.summary))
+      throw new Error("Invalid run summary");
     source = { ...s };
   }
+  if (
+    (p.lastViewedAt !== undefined &&
+      (!Number.isFinite(p.lastViewedAt) || p.lastViewedAt < 0)) ||
+    (p.pinned !== undefined && typeof p.pinned !== "boolean") ||
+    (p.savedRun !== undefined && typeof p.savedRun !== "boolean")
+  )
+    throw new Error("Invalid project library metadata");
   const kind = p.kind ?? (p.source && p.mode === "analyse" ? "replay" : "plan");
   if (kind !== "plan" && kind !== "replay")
     throw new Error("Invalid project kind");
