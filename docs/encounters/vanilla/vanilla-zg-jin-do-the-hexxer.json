@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-jin-do-the-hexxer",
+  "ruleset": "vanilla",
+  "boss": "Jin'do the Hexxer",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50792,
+  "rawEncounterId": 792,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-jin-do-the-hexxer"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Jindo.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/jindo-the-hexxer-zul-gurub-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Delusions and shade visibility",
+      "spellIds": [
+        24306,
+        24308,
+        24313
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon curse application; baseline only cursed can see/damage shades",
+      "state": "Delusions and shade visibility",
+      "lifecycle": "Actual curse membership and shade birth/death independent",
+      "placement": "Per-viewer visibility, not global despawn",
+      "animation": "Native ghost body and actual aura",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-SHADE",
+      "acceptanceCriteria": "JINDO-SHADE: cursed/uncursed views and seek membership",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Healing Ward",
+      "spellIds": [
+        24309
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon hostile ward summon",
+      "state": "Healing Ward",
+      "lifecycle": "Actual independent ward birth/heal/death ends effect",
+      "placement": "Real ward anchor",
+      "animation": "Native ward model, not heal puff actor substitute",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-WARD",
+      "acceptanceCriteria": "JINDO-WARD: owner and death stop healing effect",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Brain Wash",
+      "spellIds": [
+        24262,
+        24261
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon totem summon and control aura",
+      "state": "Brain Wash",
+      "lifecycle": "Actual totem/control dependency; real target and early end",
+      "placement": "Independent totem and controlled player motion",
+      "animation": "Native totem/control tether",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-CONTROL",
+      "acceptanceCriteria": "JINDO-CONTROL: retain player identity and actual end",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Hex",
+      "spellIds": [
+        17172
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon player Hex applied",
+      "state": "Hex",
+      "lifecycle": "Actual polymorph/dispel/removal, control and target switch",
+      "placement": "Actual target body, no player-as-NPC identity rewrite",
+      "animation": "Native frog form requires display evidence",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-HEX",
+      "acceptanceCriteria": "JINDO-HEX: transformed body restored on dispel",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Pit teleport and skeletons",
+      "spellIds": [
+        24466
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon hostile Banish success; baseline pit teleport relation",
+      "state": "Pit teleport and skeletons",
+      "lifecycle": "Actual discontinuity and independent skeleton births",
+      "placement": "Recorded pit anchor/Z; no straight interpolated flight",
+      "animation": "Native teleport and skeletons",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-PIT",
+      "acceptanceCriteria": "JINDO-PIT: correct jump and no prebirth skeletons",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Reset and death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death or wipe",
+      "state": "Reset and death",
+      "lifecycle": "Shades/totems/control cleanup only actual known edges",
+      "placement": "Retain surviving actors when evidenced",
+      "animation": "Native final death, no global fake corpse",
+      "acceptanceCheck": "vanilla-zg-jin-do-the-hexxer/JINDO-END",
+      "acceptanceCriteria": "JINDO-END: no leftover curse view/control after reset",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      11380
+    ]
+  }
+}

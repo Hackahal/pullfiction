@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq20-ossirian",
+  "ruleset": "vanilla",
+  "boss": "Ossirian the Unscarred",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": null,
+  "rawEncounterId": 723,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-aq20-ossirian"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Ossirian.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/ossirian-the-unscarred-ruins-of-ahnqiraj-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Ossirian.lua",
+      "quality": "pinned primary addon baseline branch"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
+      "quality": "official 2020 baseline overview retrieved via search index; direct 403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Supreme strength",
+      "spellIds": [
+        25176
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both addons Strength aura; official crystal weakness mechanic",
+      "state": "Supreme strength",
+      "lifecycle": "Actual strength apply/remove/reapply; not 45s predicted state",
+      "placement": "Boss body state and actual attacks",
+      "animation": "Native aura 6446 and actual scale/speed only",
+      "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-STRENGTH",
+      "acceptanceCriteria": "OSSIRIAN-STRENGTH: weakness and strength independent observed states",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Crystals and school weaknesses",
+      "spellIds": [
+        25192,
+        25193,
+        25177,
+        25178,
+        25180,
+        25181,
+        25183
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official interact crystals; primary five school debuffs",
+      "state": "Crystals and school weaknesses",
+      "lifecycle": "Actual crystal birth/click/despawn and weakness removal; refresh 45s not generator",
+      "placement": "Actual object anchors and boss proximity; no random point generation",
+      "animation": "Native crystal assets and corresponding weakness effects",
+      "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-CRYSTAL",
+      "acceptanceCriteria": "OSSIRIAN-CRYSTAL: actor/object source and consumed state seek",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Enveloping Winds",
+      "spellIds": [
+        25189
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons player wind aura",
+      "state": "Enveloping Winds",
+      "lifecycle": "Actual aura duration/removal and target control require Vanilla evidence; threat behavior remains unresolved because the preservation claim came from a SoD account.",
+      "placement": "Observed player aura anchor only when available; relation to roaming tornadoes remains unresolved for Vanilla.",
+      "animation": "Native aura 861 and real motion",
+      "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-WIND",
+      "acceptanceCriteria": "OSSIRIAN-WIND: early damage break and target restore",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Sand vortex actors",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Unresolved for Vanilla: tornado activation and roaming were attributed to a SoD account and do not establish baseline behavior.",
+      "state": "Sand vortex actors",
+      "lifecycle": "Unresolved Vanilla activation, contact and reset behavior; require qualified baseline evidence.",
+      "placement": "Unresolved Vanilla actor identity, routes, height and contact center; no movement is generated.",
+      "animation": "Unresolved Vanilla vortex appearance; require qualified baseline evidence before selecting assets.",
+      "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-VORTEX",
+      "acceptanceCriteria": "OSSIRIAN-VORTEX: establish Vanilla actor identity, activation, motion and cleanup before accepting behavior",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Tongues and War Stomp",
+      "spellIds": [
+        25195,
+        25188
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon curse and BigWigs stomp success",
+      "state": "Tongues and War Stomp",
+      "lifecycle": "Actual recipients/decurse and displacement",
+      "placement": "Boss facing/area versus actual target motion",
+      "animation": "Native curse 502 and stomp",
+      "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-STOMP",
+      "acceptanceCriteria": "OSSIRIAN-STOMP: real cast-impact-target relationships",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and independent actor cleanup",
+      "state": "Boss, adds and control remain separate",
+      "lifecycle": "Only actual lifetime/removal edges; no checkpoint, inherited curse or automatic add retirement",
+      "placement": "Actual spawn/return anchors and surviving actor positions",
+      "animation": "Native death/reset/object state only when established",
+      "acceptanceCheck": "vanilla-aq20-ossirian/VANILLA-OSSIRIAN-RESET",
+      "acceptanceCriteria": "VANILLA-OSSIRIAN-RESET: repeated pull, surviving adds and exact cleanup without synthesized actors",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity.",
+    "Vanilla Enveloping Winds threat behavior and tornado activation/roaming remain unsupported by the cited SoD account; no substitute baseline behavior is asserted."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15339,
+      15428,
+      15590
+    ]
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-balnazzar",
+  "ruleset": "sod",
+  "boss": "Balnazzar",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3185,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-balnazzar"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/balnazaar-scarlet-enclave-strategy",
+      "date": "2025-04-21",
+      "quality": "authored SoD guide"
+    },
+    {
+      "id": "S2",
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-scarlet-enclave",
+      "date": "2025-05-01",
+      "quality": "authored SoD guide"
+    },
+    {
+      "id": "S3",
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss1.html",
+      "date": "2025-05-09",
+      "quality": "original authored encounter account"
+    },
+    {
+      "id": "S4",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24179333/hotfixes-april-28-2025",
+      "quality": "official primary hotfix"
+    },
+    {
+      "id": "client",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Ground/air/ground",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss70% and40%, corroborate observed phase abilities",
+      "state": "Boss70% and40%, corroborate observed phase abilities",
+      "lifecycle": "Ground, move to center, takeoff, airborne, land",
+      "placement": "Logged XY, Z unknown without flight data; no global lift",
+      "animation": "Flight/server transition must be sourced",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-FLIGHT",
+      "acceptanceCriteria": "BAL-FLIGHT",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Carrion Swarm",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded applications and stack changes",
+      "state": "Recorded applications and stack changes",
+      "lifecycle": "Aura stacks/removals, damage splash separate",
+      "placement": "Follow affected player; exact footprint unknown",
+      "animation": "Actual aura kit, not generic insects",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-SWARM",
+      "acceptanceCriteria": "BAL-SWARM",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Shades and Prey",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Prey activation and per-instance observations",
+      "state": "Prey activation and per-instance observations",
+      "lifecycle": "Spawn/action/disappear evidence individually",
+      "placement": "Spawn near selected players per guide; log source coordinates preferred",
+      "animation": "Shadow appearance/server action unverified",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-SHADE",
+      "acceptanceCriteria": "BAL-SHADE",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Screeching Terror",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded spawn/activity and fear cast",
+      "state": "Recorded spawn/activity and fear cast",
+      "lifecycle": "Cast completion or interrupt, death/cleanup",
+      "placement": "Individual actor instances",
+      "animation": "Distinct fear and light-triggered frenzy",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-TERROR",
+      "acceptanceCriteria": "BAL-TERROR",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Suppressing Darkness",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Air phase activation",
+      "state": "Air phase activation",
+      "lifecycle": "Persists through final ground phase until encounter cleanup",
+      "placement": "Arena/global state plus protection areas",
+      "animation": "Client/server darkness handling required",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-DARKNESS",
+      "acceptanceCriteria": "BAL-DARKNESS",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Lightbearer Light's Hope",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual light channel casts",
+      "state": "Individual light channel casts",
+      "lifecycle": "Sustain until removal/death",
+      "placement": "Four distinct holy zones on recorded hosts",
+      "animation": "Channel hold and ending must agree with actor life",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-LIGHT-CHANNEL",
+      "acceptanceCriteria": "BAL-LIGHT-CHANNEL",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Circle of Domination",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Target warning then separate control result",
+      "state": "Target warning then separate control result",
+      "lifecycle": "Warning ends; control only on actual successful result",
+      "placement": "Follow warned player; area/result requires destination provenance",
+      "animation": "Marker differs from charm; player identity retained",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-DOMINATION",
+      "acceptanceCriteria": "BAL-DOMINATION",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Infernal replacements",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Summon Infernal cast/result, Death Touch on light",
+      "state": "Summon Infernal cast/result, Death Touch on light",
+      "lifecycle": "Light ceases, infernal arrives, presence persists",
+      "placement": "Match summoned instance to replaced light; landing radius unknown",
+      "animation": "Falling/landing then ground body; never substitute instant flash",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-INFERNAL",
+      "acceptanceCriteria": "BAL-INFERNAL",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Sleep and scripted ending",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "About5%, observed Sleep",
+      "state": "About5%, observed Sleep",
+      "lifecycle": "Combat stops, Sleep/RP then scripted death outside pull if retained",
+      "placement": "Boss/players stay in correct phase; no guessed Caldoran spawn",
+      "animation": "Sleep and execution need own evidence",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-END",
+      "acceptanceCriteria": "BAL-END",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M10",
+      "mechanic": "Wipe and seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Explicit death/encounterend/reset",
+      "state": "Explicit death/encounterend/reset",
+      "lifecycle": "Cancel casts, close encounter-owned zones; seek restores current age",
+      "placement": "Preserve ordinary persistent auras",
+      "animation": "No duplicated impact or restarted channel age",
+      "acceptanceCheck": "sod-scarlet-balnazzar/BAL-SEEK",
+      "acceptanceCriteria": "BAL-SEEK",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "client"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Flight altitude and path",
+    "Exact safe-zone radius/ground geometry",
+    "Mind-control removal missing in inspected continuation",
+    "Final execution absent from inspected continuation",
+    "Wipe/berserk unobserved",
+    "Scripted shadow body/procedures not validated",
+    "Client postdates log; exact patch appearance unproven"
+  ]
+}

@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-bwl-flamegor",
+  "ruleset": "vanilla",
+  "boss": "Flamegor",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 50615,
+  "rawEncounterId": 615,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-bwl-flamegor"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Flamegor.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/flamegor-blackwing-lair-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-03-11",
+      "author": "Neryssa",
+      "patch": "Page patch1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=23462/fire-nova",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=19801/tranquilizing-shot",
+        "https://www.wowhead.com/classic/spell=3391/thrash"
+      ],
+      "quality": "Resolved exact baseline links. Flamegor FireNova23462 is not Vaelastrasz guide26073; no same-name alias."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID6, cachedRevision10001, liveRevision10001; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Frenzy and Tranquilizing Shot",
+      "spellIds": [
+        23342,
+        19801
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual self aura, Hunter cast/dispel and removal",
+      "state": "Actual dispel source independent from boss buff",
+      "lifecycle": "No forced10second frenzy or remove on any Hunter cast",
+      "placement": "Boss and Hunter target anchors",
+      "animation": "Self-owned body state and shot impact separate",
+      "acceptanceCheck": "vanilla-bwl-flamegor/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Frenzied Fire Nova",
+      "spellIds": [
+        23462
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Nova casts/results while Frenzy state retained",
+      "state": "Frenzy alone does not generate Nova damage",
+      "lifecycle": "Recorded pulses and removals only",
+      "placement": "Boss host; complete raid radius unverified",
+      "animation": "Body burst and recipient hits separate",
+      "acceptanceCheck": "vanilla-bwl-flamegor/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Shadow Flame and Wing Buffet",
+      "spellIds": [
+        22539,
+        23339
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast/impacts and knockback",
+      "state": "Cloak-dependent secondary aura and real hit victims distinct",
+      "lifecycle": "No fixed timers, synthetic threat or assumed cloak immunity",
+      "placement": "Recorded facing/endpoints; no invented cone mesh or launch arc",
+      "animation": "Breath, impact and movement separate",
+      "acceptanceCheck": "vanilla-bwl-flamegor/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Thrash and independent Classic life",
+      "spellIds": [
+        3391
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual extraattacks and instance lifecycle",
+      "state": "Flamegor11981 remains independent from Ebonroc14601",
+      "lifecycle": "Actual death/destroy; no combined boss death contract",
+      "placement": "Actual lower-ramp XY, unknown Z",
+      "animation": "Attack cadence and translation speed independent",
+      "acceptanceCheck": "vanilla-bwl-flamegor/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-bwl-flamegor/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Classic report has separate Ebonroc/Flamegor identities; no SoD paired/trial script applied.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5seconds before and5000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      11981
+    ]
+  }
+}

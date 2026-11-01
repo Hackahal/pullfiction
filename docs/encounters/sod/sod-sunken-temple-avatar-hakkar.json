@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-avatar-hakkar",
+  "ruleset": "sod",
+  "boss": "Avatar of Hakkar",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2956,
+  "rawEncounterId": 2956,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        21
+      ],
+      "selectedFightNames": [
+        "Avatar of Hakkar"
+      ],
+      "matchedNpcTemplateIds": [
+        221394,
+        221396,
+        221426
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-avatar-hakkar"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/AvatarOfHakkar.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/avatar-of-hakkar-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "skeletal-db",
+      "url": "https://www.wowhead.com/classic/spell=444165/skeletal",
+      "quality": "Explicit Change Model Skeletal Horror NPC202, Cancel Aura Corrupted Blood, six-second duration"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Ritualists, Bloodkeeper and Avatar activation",
+      "spellIds": [
+        443917,
+        444761
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Four ritualists release Bloodkeeper; Tides regenerates mana; 444761 marks Avatar stage in addon",
+      "state": "Four ritualists release Bloodkeeper; Tides regenerates mana; 444761 marks Avatar stage in addon",
+      "lifecycle": "Distinct ritualists/Bloodkeeper/Avatar; actual resource and activation events override guide 33-second estimate",
+      "placement": "Actual prison, Bloodkeeper and Avatar anchors",
+      "animation": "Transformation/summon relation requires observed identity, not reused actor mesh",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-START",
+      "acceptanceCriteria": "ST-AH-START: no attackable Avatar before actual activation; partial retained windows cannot fabricate ritual",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Blood pools and Spirit Chains",
+      "spellIds": [
+        443953,
+        443975,
+        443990
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Bloodkeeper blood contact, curse application/removal, interruptible Howl",
+      "state": "Bloodkeeper blood contact, curse application/removal, interruptible Howl",
+      "lifecycle": "Pool independent of contact aura; curse spread on removal needs actual recipients",
+      "placement": "Actual pool center and curse recipient positions",
+      "animation": "Separate ground blood and body chain effects",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-POOL",
+      "acceptanceCriteria": "ST-AH-POOL: subsequent entrant may touch existing pool; removed curse does not erase world object",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Corrupted Blood and Drain Blood",
+      "spellIds": [
+        444255,
+        444132
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual blood aura dose/application and frontal Drain cast",
+      "state": "Actual blood aura dose/application and frontal Drain cast",
+      "lifecycle": "Per-target transmission; removal by Drain requires actual affected targets",
+      "placement": "Observed source facing; no mass cleanse of players outside cone",
+      "animation": "Blood cast and frontal interaction independently verified",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-DRAIN",
+      "acceptanceCriteria": "ST-AH-DRAIN: only recorded recipients lose blood; delayed seek restores correct contagion state",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Skeletal transformation",
+      "spellIds": [
+        444165
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Explicit recipient Skeletal aura after Drain; database effect Change Model to Skeletal Horror NPC202",
+      "state": "Explicit recipient Skeletal aura after Drain; database effect Change Model to Skeletal Horror NPC202",
+      "lifecycle": "Restore original appearance at removal/expiry; six-second database duration is fallback metadata, not observed application",
+      "placement": "Retain player movement and identity while form changes",
+      "animation": "Explicit Change Model semantics; exact target display/skin must be resolved from NPC202 metadata",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-FORM",
+      "acceptanceCriteria": "ST-AH-FORM: before/during/after aura and direct seeks agree; player gear/form restored; healing reduction distinct",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Mind control, curse and blood nova",
+      "spellIds": [
+        444039,
+        444046,
+        444050
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Insanity applied/removed, Tongues interrupted/removed, Nova cast",
+      "state": "Insanity applied/removed, Tongues interrupted/removed, Nova cast",
+      "lifecycle": "Temporary hostile-to-allies status belongs to recipient; removal restores prior allegiance",
+      "placement": "Actual target and movement; no faction change inferred from cast start alone",
+      "animation": "Do not substitute raid marker for allegiance or model",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-MC",
+      "acceptanceCriteria": "ST-AH-MC: hostile attacks, targetability and cleanup agree with explicit aura boundaries",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Death, wipe and prephase reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Verified boss death or reset at any ritual/Bloodkeeper/Avatar stage",
+      "state": "Verified boss death or reset at any ritual/Bloodkeeper/Avatar stage",
+      "lifecycle": "Clean owned pools/auras, restore controlled and transformed players; retain normal persistent player buffs",
+      "placement": "No lastSeen actor removal guess",
+      "animation": "All phase appearances and corpses checked separately",
+      "acceptanceCheck": "sod-sunken-temple-avatar-hakkar/ST-AH-END",
+      "acceptanceCriteria": "ST-AH-END: no orphan prison, pool, control or skeleton across repeated pulls",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Skeletal target display and skin projection, actual observed aura duration",
+    "Mind-control recipient allegiance evidence and independent cast target versus actual application",
+    "Pool creation/destruction coordinates and post-fight cleanup",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "221426, 221396, 221394"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

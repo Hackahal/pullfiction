@@ -75,12 +75,26 @@ export class IncrementalReplayNormalizer {
       }
     });
     const reused = new Map<string, Actor>();
-    if (canReuse && sameEvidence(this.evidence.get("global"), global))
+    if (canReuse && sameEvidence(this.evidence.get("global"), global)) {
       for (const actor of this.previous!.actors) {
         const row = evidence.get(actor.key) ?? { events: [], indices: [] };
         if (sameEvidence(this.evidence.get(actor.key), row))
           reused.set(actor.key, actor);
       }
+      // A victim's source-free aura removal can change its caster's channel
+      // endpoint without appearing in the caster's own event signature.
+      const unchangedEvidence = new Set(reused.keys());
+      for (const [key, actor] of reused)
+        if (
+          actor.casts.some(
+            (cast) =>
+              cast.channel &&
+              cast.target &&
+              !unchangedEvidence.has(cast.target),
+          )
+        )
+          reused.delete(key);
+    }
     const replay = enrichCombat(
       normalizeReplay(raw, models, reused),
       items,

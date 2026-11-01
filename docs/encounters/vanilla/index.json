@@ -1,0 +1,1322 @@
+{
+  "schemaVersion": 1,
+  "ruleset": "vanilla",
+  "verification": "unverified",
+  "counts": {
+    "encounterFiles": 59,
+    "bossResearchUnits": 59,
+    "retainedEvidenceEncounters": 51,
+    "sourceOnlyEncounters": 8,
+    "providerMappedEncounters": 51,
+    "providerUnresolvedEncounters": 8,
+    "metadataOnlyMappings": 0
+  },
+  "entries": [
+    {
+      "unitId": "vanilla-aq20-ayamiss",
+      "boss": "Ayamiss the Hunter",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-ayamiss.json",
+      "bossUnits": [
+        "vanilla-aq20-ayamiss"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 722,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq20-buru",
+      "boss": "Buru the Gorger",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-buru.json",
+      "bossUnits": [
+        "vanilla-aq20-buru"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 721,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq20-kurinnaxx",
+      "boss": "Kurinnaxx",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-kurinnaxx.json",
+      "bossUnits": [
+        "vanilla-aq20-kurinnaxx"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 718,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq20-moam",
+      "boss": "Moam",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-moam.json",
+      "bossUnits": [
+        "vanilla-aq20-moam"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 720,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq20-ossirian",
+      "boss": "Ossirian the Unscarred",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-ossirian.json",
+      "bossUnits": [
+        "vanilla-aq20-ossirian"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 723,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq20-rajaxx",
+      "boss": "General Rajaxx and wave commanders",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq20-rajaxx.json",
+      "bossUnits": [
+        "vanilla-aq20-rajaxx"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 719,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 10,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-aq40-bug-trio",
+      "boss": "Bug Trio",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-bug-trio.json",
+      "bossUnits": [
+        "vanilla-aq40-bug-trio"
+      ],
+      "encounterId": 50710,
+      "rawEncounterId": 710,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-cthun",
+      "boss": "C'Thun",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-cthun.json",
+      "bossUnits": [
+        "vanilla-aq40-cthun"
+      ],
+      "encounterId": 50717,
+      "rawEncounterId": 717,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-fankriss",
+      "boss": "Fankriss the Unyielding",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-fankriss.json",
+      "bossUnits": [
+        "vanilla-aq40-fankriss"
+      ],
+      "encounterId": 50712,
+      "rawEncounterId": 712,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-huhuran",
+      "boss": "Princess Huhuran",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-huhuran.json",
+      "bossUnits": [
+        "vanilla-aq40-huhuran"
+      ],
+      "encounterId": 50714,
+      "rawEncounterId": 714,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-ouro",
+      "boss": "Ouro",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-ouro.json",
+      "bossUnits": [
+        "vanilla-aq40-ouro"
+      ],
+      "encounterId": 50716,
+      "rawEncounterId": 716,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-sartura",
+      "boss": "Battleguard Sartura",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-sartura.json",
+      "bossUnits": [
+        "vanilla-aq40-sartura"
+      ],
+      "encounterId": 50711,
+      "rawEncounterId": 711,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-skeram",
+      "boss": "The Prophet Skeram",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-skeram.json",
+      "bossUnits": [
+        "vanilla-aq40-skeram"
+      ],
+      "encounterId": 50709,
+      "rawEncounterId": 709,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-twin-emperors",
+      "boss": "Twin Emperors",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-twin-emperors.json",
+      "bossUnits": [
+        "vanilla-aq40-twin-emperors"
+      ],
+      "encounterId": 50715,
+      "rawEncounterId": 715,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-aq40-viscidus",
+      "boss": "Viscidus",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "vanilla/vanilla-aq40-viscidus.json",
+      "bossUnits": [
+        "vanilla-aq40-viscidus"
+      ],
+      "encounterId": 50713,
+      "rawEncounterId": 713,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-broodlord",
+      "boss": "Broodlord Lashlayer",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-broodlord.json",
+      "bossUnits": [
+        "vanilla-bwl-broodlord"
+      ],
+      "encounterId": 50612,
+      "rawEncounterId": 612,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-chromaggus",
+      "boss": "Chromaggus",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-chromaggus.json",
+      "bossUnits": [
+        "vanilla-bwl-chromaggus"
+      ],
+      "encounterId": 50616,
+      "rawEncounterId": 616,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-ebonroc",
+      "boss": "Ebonroc",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-ebonroc.json",
+      "bossUnits": [
+        "vanilla-bwl-ebonroc"
+      ],
+      "encounterId": 50614,
+      "rawEncounterId": 614,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-firemaw",
+      "boss": "Firemaw",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-firemaw.json",
+      "bossUnits": [
+        "vanilla-bwl-firemaw"
+      ],
+      "encounterId": 50613,
+      "rawEncounterId": 613,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-flamegor",
+      "boss": "Flamegor",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-flamegor.json",
+      "bossUnits": [
+        "vanilla-bwl-flamegor"
+      ],
+      "encounterId": 50615,
+      "rawEncounterId": 615,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-nefarian",
+      "boss": "Nefarian",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-nefarian.json",
+      "bossUnits": [
+        "vanilla-bwl-nefarian"
+      ],
+      "encounterId": 50617,
+      "rawEncounterId": 617,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-razorgore",
+      "boss": "Razorgore the Untamed",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-razorgore.json",
+      "bossUnits": [
+        "vanilla-bwl-razorgore"
+      ],
+      "encounterId": 50610,
+      "rawEncounterId": 610,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-bwl-vaelastrasz",
+      "boss": "Vaelastrasz the Corrupt",
+      "raid": "Blackwing Lair",
+      "path": "vanilla/vanilla-bwl-vaelastrasz.json",
+      "bossUnits": [
+        "vanilla-bwl-vaelastrasz"
+      ],
+      "encounterId": 50611,
+      "rawEncounterId": 611,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-baron-geddon",
+      "boss": "Baron Geddon",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-baron-geddon.json",
+      "bossUnits": [
+        "vanilla-mc-baron-geddon"
+      ],
+      "encounterId": 50668,
+      "rawEncounterId": 668,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-garr",
+      "boss": "Garr",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-garr.json",
+      "bossUnits": [
+        "vanilla-mc-garr"
+      ],
+      "encounterId": 50666,
+      "rawEncounterId": 666,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-gehennas",
+      "boss": "Gehennas",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-gehennas.json",
+      "bossUnits": [
+        "vanilla-mc-gehennas"
+      ],
+      "encounterId": 50665,
+      "rawEncounterId": 665,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-golemagg",
+      "boss": "Golemagg the Incinerator",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-golemagg.json",
+      "bossUnits": [
+        "vanilla-mc-golemagg"
+      ],
+      "encounterId": 50670,
+      "rawEncounterId": 670,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-lucifron",
+      "boss": "Lucifron",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-lucifron.json",
+      "bossUnits": [
+        "vanilla-mc-lucifron"
+      ],
+      "encounterId": 50663,
+      "rawEncounterId": 663,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-magmadar",
+      "boss": "Magmadar",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-magmadar.json",
+      "bossUnits": [
+        "vanilla-mc-magmadar"
+      ],
+      "encounterId": 50664,
+      "rawEncounterId": 664,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-majordomo-executus",
+      "boss": "Majordomo Executus",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-majordomo-executus.json",
+      "bossUnits": [
+        "vanilla-mc-majordomo-executus"
+      ],
+      "encounterId": 50671,
+      "rawEncounterId": 671,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-ragnaros",
+      "boss": "Ragnaros",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-ragnaros.json",
+      "bossUnits": [
+        "vanilla-mc-ragnaros"
+      ],
+      "encounterId": 50672,
+      "rawEncounterId": 672,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-shazzrah",
+      "boss": "Shazzrah",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-shazzrah.json",
+      "bossUnits": [
+        "vanilla-mc-shazzrah"
+      ],
+      "encounterId": 50667,
+      "rawEncounterId": 667,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-mc-sulfuron-harbinger",
+      "boss": "Sulfuron Harbinger",
+      "raid": "Molten Core",
+      "path": "vanilla/vanilla-mc-sulfuron-harbinger.json",
+      "bossUnits": [
+        "vanilla-mc-sulfuron-harbinger"
+      ],
+      "encounterId": 50669,
+      "rawEncounterId": 669,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-anub-rekhan",
+      "boss": "Anub'Rekhan",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-anub-rekhan.json",
+      "bossUnits": [
+        "vanilla-naxx-anub-rekhan"
+      ],
+      "encounterId": 51107,
+      "rawEncounterId": 1107,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-four-horsemen",
+      "boss": "The Four Horsemen",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-four-horsemen.json",
+      "bossUnits": [
+        "vanilla-naxx-four-horsemen"
+      ],
+      "encounterId": 51121,
+      "rawEncounterId": 1121,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-gluth",
+      "boss": "Gluth",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-gluth.json",
+      "bossUnits": [
+        "vanilla-naxx-gluth"
+      ],
+      "encounterId": 51108,
+      "rawEncounterId": 1108,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-gothik",
+      "boss": "Gothik the Harvester",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-gothik.json",
+      "bossUnits": [
+        "vanilla-naxx-gothik"
+      ],
+      "encounterId": 51109,
+      "rawEncounterId": 1109,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-grand-widow-faerlina",
+      "boss": "Grand Widow Faerlina",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-grand-widow-faerlina.json",
+      "bossUnits": [
+        "vanilla-naxx-grand-widow-faerlina"
+      ],
+      "encounterId": 51110,
+      "rawEncounterId": 1110,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-grobbulus",
+      "boss": "Grobbulus",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-grobbulus.json",
+      "bossUnits": [
+        "vanilla-naxx-grobbulus"
+      ],
+      "encounterId": 51111,
+      "rawEncounterId": 1111,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-heigan",
+      "boss": "Heigan the Unclean",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-heigan.json",
+      "bossUnits": [
+        "vanilla-naxx-heigan"
+      ],
+      "encounterId": 51112,
+      "rawEncounterId": 1112,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-kelthuzad",
+      "boss": "Kel'Thuzad",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-kelthuzad.json",
+      "bossUnits": [
+        "vanilla-naxx-kelthuzad"
+      ],
+      "encounterId": 51114,
+      "rawEncounterId": 1114,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-loatheb",
+      "boss": "Loatheb",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-loatheb.json",
+      "bossUnits": [
+        "vanilla-naxx-loatheb"
+      ],
+      "encounterId": 51115,
+      "rawEncounterId": 1115,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-maexxna",
+      "boss": "Maexxna",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-maexxna.json",
+      "bossUnits": [
+        "vanilla-naxx-maexxna"
+      ],
+      "encounterId": 51116,
+      "rawEncounterId": 1116,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-noth",
+      "boss": "Noth the Plaguebringer",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-noth.json",
+      "bossUnits": [
+        "vanilla-naxx-noth"
+      ],
+      "encounterId": 51117,
+      "rawEncounterId": 1117,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-patchwerk",
+      "boss": "Patchwerk",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-patchwerk.json",
+      "bossUnits": [
+        "vanilla-naxx-patchwerk"
+      ],
+      "encounterId": 51118,
+      "rawEncounterId": 1118,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-razuvious",
+      "boss": "Instructor Razuvious",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-razuvious.json",
+      "bossUnits": [
+        "vanilla-naxx-razuvious"
+      ],
+      "encounterId": 51113,
+      "rawEncounterId": 1113,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-sapphiron",
+      "boss": "Sapphiron",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-sapphiron.json",
+      "bossUnits": [
+        "vanilla-naxx-sapphiron"
+      ],
+      "encounterId": 51119,
+      "rawEncounterId": 1119,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-naxx-thaddius",
+      "boss": "Thaddius",
+      "raid": "Naxxramas",
+      "path": "vanilla/vanilla-naxx-thaddius.json",
+      "bossUnits": [
+        "vanilla-naxx-thaddius"
+      ],
+      "encounterId": 51120,
+      "rawEncounterId": 1120,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-onyxia",
+      "boss": "Onyxia",
+      "raid": "Onyxia's Lair",
+      "path": "vanilla/vanilla-onyxia.json",
+      "bossUnits": [
+        "vanilla-onyxia"
+      ],
+      "encounterId": null,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "vanilla-zg-bloodlord-mandokir",
+      "boss": "Bloodlord Mandokir",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-bloodlord-mandokir.json",
+      "bossUnits": [
+        "vanilla-zg-bloodlord-mandokir"
+      ],
+      "encounterId": 50787,
+      "rawEncounterId": 787,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-edge-of-madness",
+      "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-edge-of-madness.json",
+      "bossUnits": [
+        "vanilla-zg-edge-of-madness"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 788,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved",
+      "variants": [
+        "Gri'lek",
+        "Renataki",
+        "Hazza'rah",
+        "Wushoolay"
+      ]
+    },
+    {
+      "unitId": "vanilla-zg-gahz-ranka",
+      "boss": "Gahz'ranka",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-gahz-ranka.json",
+      "bossUnits": [
+        "vanilla-zg-gahz-ranka"
+      ],
+      "encounterId": 50790,
+      "rawEncounterId": 790,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-hakkar",
+      "boss": "Hakkar the Soulflayer",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-hakkar.json",
+      "bossUnits": [
+        "vanilla-zg-hakkar"
+      ],
+      "encounterId": 50793,
+      "rawEncounterId": 793,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-high-priest-thekal",
+      "boss": "High Priest Thekal",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-high-priest-thekal.json",
+      "bossUnits": [
+        "vanilla-zg-high-priest-thekal"
+      ],
+      "encounterId": 50789,
+      "rawEncounterId": 789,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-high-priest-venoxis",
+      "boss": "High Priest Venoxis",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-high-priest-venoxis.json",
+      "bossUnits": [
+        "vanilla-zg-high-priest-venoxis"
+      ],
+      "encounterId": 50784,
+      "rawEncounterId": 784,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-arlokk",
+      "boss": "High Priestess Arlokk",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-high-priestess-arlokk.json",
+      "bossUnits": [
+        "vanilla-zg-high-priestess-arlokk"
+      ],
+      "encounterId": 50791,
+      "rawEncounterId": 791,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-jeklik",
+      "boss": "High Priestess Jeklik",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-high-priestess-jeklik.json",
+      "bossUnits": [
+        "vanilla-zg-high-priestess-jeklik"
+      ],
+      "encounterId": 50785,
+      "rawEncounterId": 785,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-mar-li",
+      "boss": "High Priestess Mar'li",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-high-priestess-mar-li.json",
+      "bossUnits": [
+        "vanilla-zg-high-priestess-mar-li"
+      ],
+      "encounterId": 50786,
+      "rawEncounterId": 786,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "vanilla-zg-jin-do-the-hexxer",
+      "boss": "Jin'do the Hexxer",
+      "raid": "Zul'Gurub",
+      "path": "vanilla/vanilla-zg-jin-do-the-hexxer.json",
+      "bossUnits": [
+        "vanilla-zg-jin-do-the-hexxer"
+      ],
+      "encounterId": 50792,
+      "rawEncounterId": 792,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    }
+  ],
+  "units": [
+    {
+      "unitId": "vanilla-aq20-ayamiss",
+      "boss": "Ayamiss the Hunter",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-ayamiss.json",
+      "canonicalUnitId": "vanilla-aq20-ayamiss"
+    },
+    {
+      "unitId": "vanilla-aq20-buru",
+      "boss": "Buru the Gorger",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-buru.json",
+      "canonicalUnitId": "vanilla-aq20-buru"
+    },
+    {
+      "unitId": "vanilla-aq20-kurinnaxx",
+      "boss": "Kurinnaxx",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-kurinnaxx.json",
+      "canonicalUnitId": "vanilla-aq20-kurinnaxx"
+    },
+    {
+      "unitId": "vanilla-aq20-moam",
+      "boss": "Moam",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-moam.json",
+      "canonicalUnitId": "vanilla-aq20-moam"
+    },
+    {
+      "unitId": "vanilla-aq20-ossirian",
+      "boss": "Ossirian the Unscarred",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-ossirian.json",
+      "canonicalUnitId": "vanilla-aq20-ossirian"
+    },
+    {
+      "unitId": "vanilla-aq20-rajaxx",
+      "boss": "General Rajaxx and wave commanders",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq20-rajaxx.json",
+      "canonicalUnitId": "vanilla-aq20-rajaxx"
+    },
+    {
+      "unitId": "vanilla-aq40-bug-trio",
+      "boss": "Bug Trio",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-bug-trio.json",
+      "canonicalUnitId": "vanilla-aq40-bug-trio"
+    },
+    {
+      "unitId": "vanilla-aq40-cthun",
+      "boss": "C'Thun",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-cthun.json",
+      "canonicalUnitId": "vanilla-aq40-cthun"
+    },
+    {
+      "unitId": "vanilla-aq40-fankriss",
+      "boss": "Fankriss the Unyielding",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-fankriss.json",
+      "canonicalUnitId": "vanilla-aq40-fankriss"
+    },
+    {
+      "unitId": "vanilla-aq40-huhuran",
+      "boss": "Princess Huhuran",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-huhuran.json",
+      "canonicalUnitId": "vanilla-aq40-huhuran"
+    },
+    {
+      "unitId": "vanilla-aq40-ouro",
+      "boss": "Ouro",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-ouro.json",
+      "canonicalUnitId": "vanilla-aq40-ouro"
+    },
+    {
+      "unitId": "vanilla-aq40-sartura",
+      "boss": "Battleguard Sartura",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-sartura.json",
+      "canonicalUnitId": "vanilla-aq40-sartura"
+    },
+    {
+      "unitId": "vanilla-aq40-skeram",
+      "boss": "The Prophet Skeram",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-skeram.json",
+      "canonicalUnitId": "vanilla-aq40-skeram"
+    },
+    {
+      "unitId": "vanilla-aq40-twin-emperors",
+      "boss": "Twin Emperors",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-twin-emperors.json",
+      "canonicalUnitId": "vanilla-aq40-twin-emperors"
+    },
+    {
+      "unitId": "vanilla-aq40-viscidus",
+      "boss": "Viscidus",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "vanilla/vanilla-aq40-viscidus.json",
+      "canonicalUnitId": "vanilla-aq40-viscidus"
+    },
+    {
+      "unitId": "vanilla-bwl-broodlord",
+      "boss": "Broodlord Lashlayer",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-broodlord.json",
+      "canonicalUnitId": "vanilla-bwl-broodlord"
+    },
+    {
+      "unitId": "vanilla-bwl-chromaggus",
+      "boss": "Chromaggus",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-chromaggus.json",
+      "canonicalUnitId": "vanilla-bwl-chromaggus"
+    },
+    {
+      "unitId": "vanilla-bwl-ebonroc",
+      "boss": "Ebonroc",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-ebonroc.json",
+      "canonicalUnitId": "vanilla-bwl-ebonroc"
+    },
+    {
+      "unitId": "vanilla-bwl-firemaw",
+      "boss": "Firemaw",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-firemaw.json",
+      "canonicalUnitId": "vanilla-bwl-firemaw"
+    },
+    {
+      "unitId": "vanilla-bwl-flamegor",
+      "boss": "Flamegor",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-flamegor.json",
+      "canonicalUnitId": "vanilla-bwl-flamegor"
+    },
+    {
+      "unitId": "vanilla-bwl-nefarian",
+      "boss": "Nefarian",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-nefarian.json",
+      "canonicalUnitId": "vanilla-bwl-nefarian"
+    },
+    {
+      "unitId": "vanilla-bwl-razorgore",
+      "boss": "Razorgore the Untamed",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-razorgore.json",
+      "canonicalUnitId": "vanilla-bwl-razorgore"
+    },
+    {
+      "unitId": "vanilla-bwl-vaelastrasz",
+      "boss": "Vaelastrasz the Corrupt",
+      "raid": "Blackwing Lair",
+      "encounterFile": "vanilla/vanilla-bwl-vaelastrasz.json",
+      "canonicalUnitId": "vanilla-bwl-vaelastrasz"
+    },
+    {
+      "unitId": "vanilla-mc-baron-geddon",
+      "boss": "Baron Geddon",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-baron-geddon.json",
+      "canonicalUnitId": "vanilla-mc-baron-geddon"
+    },
+    {
+      "unitId": "vanilla-mc-garr",
+      "boss": "Garr",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-garr.json",
+      "canonicalUnitId": "vanilla-mc-garr"
+    },
+    {
+      "unitId": "vanilla-mc-gehennas",
+      "boss": "Gehennas",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-gehennas.json",
+      "canonicalUnitId": "vanilla-mc-gehennas"
+    },
+    {
+      "unitId": "vanilla-mc-golemagg",
+      "boss": "Golemagg the Incinerator",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-golemagg.json",
+      "canonicalUnitId": "vanilla-mc-golemagg"
+    },
+    {
+      "unitId": "vanilla-mc-lucifron",
+      "boss": "Lucifron",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-lucifron.json",
+      "canonicalUnitId": "vanilla-mc-lucifron"
+    },
+    {
+      "unitId": "vanilla-mc-magmadar",
+      "boss": "Magmadar",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-magmadar.json",
+      "canonicalUnitId": "vanilla-mc-magmadar"
+    },
+    {
+      "unitId": "vanilla-mc-majordomo-executus",
+      "boss": "Majordomo Executus",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-majordomo-executus.json",
+      "canonicalUnitId": "vanilla-mc-majordomo-executus"
+    },
+    {
+      "unitId": "vanilla-mc-ragnaros",
+      "boss": "Ragnaros",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-ragnaros.json",
+      "canonicalUnitId": "vanilla-mc-ragnaros"
+    },
+    {
+      "unitId": "vanilla-mc-shazzrah",
+      "boss": "Shazzrah",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-shazzrah.json",
+      "canonicalUnitId": "vanilla-mc-shazzrah"
+    },
+    {
+      "unitId": "vanilla-mc-sulfuron-harbinger",
+      "boss": "Sulfuron Harbinger",
+      "raid": "Molten Core",
+      "encounterFile": "vanilla/vanilla-mc-sulfuron-harbinger.json",
+      "canonicalUnitId": "vanilla-mc-sulfuron-harbinger"
+    },
+    {
+      "unitId": "vanilla-naxx-anub-rekhan",
+      "boss": "Anub'Rekhan",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-anub-rekhan.json",
+      "canonicalUnitId": "vanilla-naxx-anub-rekhan"
+    },
+    {
+      "unitId": "vanilla-naxx-four-horsemen",
+      "boss": "The Four Horsemen",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-four-horsemen.json",
+      "canonicalUnitId": "vanilla-naxx-four-horsemen"
+    },
+    {
+      "unitId": "vanilla-naxx-gluth",
+      "boss": "Gluth",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-gluth.json",
+      "canonicalUnitId": "vanilla-naxx-gluth"
+    },
+    {
+      "unitId": "vanilla-naxx-gothik",
+      "boss": "Gothik the Harvester",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-gothik.json",
+      "canonicalUnitId": "vanilla-naxx-gothik"
+    },
+    {
+      "unitId": "vanilla-naxx-grand-widow-faerlina",
+      "boss": "Grand Widow Faerlina",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-grand-widow-faerlina.json",
+      "canonicalUnitId": "vanilla-naxx-grand-widow-faerlina"
+    },
+    {
+      "unitId": "vanilla-naxx-grobbulus",
+      "boss": "Grobbulus",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-grobbulus.json",
+      "canonicalUnitId": "vanilla-naxx-grobbulus"
+    },
+    {
+      "unitId": "vanilla-naxx-heigan",
+      "boss": "Heigan the Unclean",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-heigan.json",
+      "canonicalUnitId": "vanilla-naxx-heigan"
+    },
+    {
+      "unitId": "vanilla-naxx-kelthuzad",
+      "boss": "Kel'Thuzad",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-kelthuzad.json",
+      "canonicalUnitId": "vanilla-naxx-kelthuzad"
+    },
+    {
+      "unitId": "vanilla-naxx-loatheb",
+      "boss": "Loatheb",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-loatheb.json",
+      "canonicalUnitId": "vanilla-naxx-loatheb"
+    },
+    {
+      "unitId": "vanilla-naxx-maexxna",
+      "boss": "Maexxna",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-maexxna.json",
+      "canonicalUnitId": "vanilla-naxx-maexxna"
+    },
+    {
+      "unitId": "vanilla-naxx-noth",
+      "boss": "Noth the Plaguebringer",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-noth.json",
+      "canonicalUnitId": "vanilla-naxx-noth"
+    },
+    {
+      "unitId": "vanilla-naxx-patchwerk",
+      "boss": "Patchwerk",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-patchwerk.json",
+      "canonicalUnitId": "vanilla-naxx-patchwerk"
+    },
+    {
+      "unitId": "vanilla-naxx-razuvious",
+      "boss": "Instructor Razuvious",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-razuvious.json",
+      "canonicalUnitId": "vanilla-naxx-razuvious"
+    },
+    {
+      "unitId": "vanilla-naxx-sapphiron",
+      "boss": "Sapphiron",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-sapphiron.json",
+      "canonicalUnitId": "vanilla-naxx-sapphiron"
+    },
+    {
+      "unitId": "vanilla-naxx-thaddius",
+      "boss": "Thaddius",
+      "raid": "Naxxramas",
+      "encounterFile": "vanilla/vanilla-naxx-thaddius.json",
+      "canonicalUnitId": "vanilla-naxx-thaddius"
+    },
+    {
+      "unitId": "vanilla-onyxia",
+      "boss": "Onyxia",
+      "raid": "Onyxia's Lair",
+      "encounterFile": "vanilla/vanilla-onyxia.json",
+      "canonicalUnitId": "vanilla-onyxia"
+    },
+    {
+      "unitId": "vanilla-zg-bloodlord-mandokir",
+      "boss": "Bloodlord Mandokir",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-bloodlord-mandokir.json",
+      "canonicalUnitId": "vanilla-zg-bloodlord-mandokir"
+    },
+    {
+      "unitId": "vanilla-zg-edge-of-madness",
+      "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-edge-of-madness.json",
+      "canonicalUnitId": "vanilla-zg-edge-of-madness"
+    },
+    {
+      "unitId": "vanilla-zg-gahz-ranka",
+      "boss": "Gahz'ranka",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-gahz-ranka.json",
+      "canonicalUnitId": "vanilla-zg-gahz-ranka"
+    },
+    {
+      "unitId": "vanilla-zg-hakkar",
+      "boss": "Hakkar the Soulflayer",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-hakkar.json",
+      "canonicalUnitId": "vanilla-zg-hakkar"
+    },
+    {
+      "unitId": "vanilla-zg-high-priest-thekal",
+      "boss": "High Priest Thekal",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-high-priest-thekal.json",
+      "canonicalUnitId": "vanilla-zg-high-priest-thekal"
+    },
+    {
+      "unitId": "vanilla-zg-high-priest-venoxis",
+      "boss": "High Priest Venoxis",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-high-priest-venoxis.json",
+      "canonicalUnitId": "vanilla-zg-high-priest-venoxis"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-arlokk",
+      "boss": "High Priestess Arlokk",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-high-priestess-arlokk.json",
+      "canonicalUnitId": "vanilla-zg-high-priestess-arlokk"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-jeklik",
+      "boss": "High Priestess Jeklik",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-high-priestess-jeklik.json",
+      "canonicalUnitId": "vanilla-zg-high-priestess-jeklik"
+    },
+    {
+      "unitId": "vanilla-zg-high-priestess-mar-li",
+      "boss": "High Priestess Mar'li",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-high-priestess-mar-li.json",
+      "canonicalUnitId": "vanilla-zg-high-priestess-mar-li"
+    },
+    {
+      "unitId": "vanilla-zg-jin-do-the-hexxer",
+      "boss": "Jin'do the Hexxer",
+      "raid": "Zul'Gurub",
+      "encounterFile": "vanilla/vanilla-zg-jin-do-the-hexxer.json",
+      "canonicalUnitId": "vanilla-zg-jin-do-the-hexxer"
+    }
+  ]
+}

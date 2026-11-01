@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-viscidus",
+  "ruleset": "sod",
+  "boss": "Viscidus",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100713,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-viscidus"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-overview",
+      "url": "https://warcraft.wiki.gg/wiki/Viscidus_%28Season_of_Discovery%29",
+      "quality": "SoD-specific secondary overview; poison/toxin and optional Pustule/Burst; not exact freeze thresholds"
+    },
+    {
+      "id": "baseline-guide",
+      "url": "https://www.icy-veins.com/wow-classic/viscidus-guide-strategy-abilities-loot",
+      "author": "Abide",
+      "updated": "2024-11-18",
+      "quality": "baseline authored freeze/shatter/glob guide; SoD heading does not prove SoD thresholds"
+    },
+    {
+      "id": "classic-npc-record",
+      "url": "https://www.wowhead.com/classic/npc=15299/viscidus",
+      "quality": "Classic record with Seasonal data; baseline comments not authoritative SoD script"
+    },
+    {
+      "id": "retained-events",
+      "quality": "matching SoD fight12;17658 events;103906ms",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "current-client-graph",
+      "quality": "fresh converter graph client1.15.9.70576 build5604ce35a8644bdcf0e26c1daf979c15",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Active ooze body",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Encounter start/observed boss",
+      "state": "Encounter start/observed boss",
+      "lifecycle": "Active until recorded phase transition, death/reset",
+      "placement": "Native ooze model, sampled motion/facing and base scale; no global lifts",
+      "animation": "Native ooze model, sampled motion/facing and base scale; no global lifts",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-BODY",
+      "acceptanceCriteria": "VISC-BODY: correct actor and observed pose throughout active intervals",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Progressive cooling and freeze",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded self auras/phase events following frost hits",
+      "state": "Recorded self auras/phase events following frost hits",
+      "lifecycle": "Slow stages, frozen state, thaw/removal from events; no simulated hit-count timer",
+      "placement": "Authored body tint, freeze animation/rate and attached effects only where supported",
+      "animation": "Authored body tint, freeze animation/rate and attached effects only where supported",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-FREEZE",
+      "acceptanceCriteria": "VISC-FREEZE: direct seek reproduces each cooling/frozen state and removal",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Crack and shatter",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded transition spell or blob creation after frozen stage",
+      "state": "Recorded transition spell or blob creation after frozen stage",
+      "lifecycle": "Boss breaks apart, body absence/transition; cancel uncompleted action appropriately",
+      "placement": "Shatter native animation/effects, independent blob instances; no idle boss left active during split",
+      "animation": "Shatter native animation/effects, independent blob instances; no idle boss left active during split",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-SHATTER",
+      "acceptanceCriteria": "VISC-SHATTER: body/glob states match observed phase boundaries",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Globules and reformation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded summon/instance observations",
+      "state": "Recorded summon/instance observations",
+      "lifecycle": "Each glob has independent creation, death/merge; survivors return; boss reforms only when evidenced",
+      "placement": "Actual sampled radial/inward paths, size and facing; no invented spokes or acceleration",
+      "animation": "Actual sampled radial/inward paths, size and facing; no invented spokes or acceleration",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-GLOBS",
+      "acceptanceCriteria": "VISC-GLOBS: identities, motion, kill/removal and reformation seek consistently",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Poison Bolt Volley and Shock",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cast and target damage/aura records",
+      "state": "Cast and target damage/aura records",
+      "lifecycle": "Cast-to-impact and per-target DoT independent; stop on removals",
+      "placement": "Native missiles/impacts and actual owners; periodic ticks do not launch repeated missiles",
+      "animation": "Native missiles/impacts and actual owners; periodic ticks do not launch repeated missiles",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-POISON",
+      "acceptanceCriteria": "VISC-POISON: target effects and damage timing correct without fabricated bolts",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Toxin pools/clouds",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Targeted toxin/cast/area object observations",
+      "state": "Targeted toxin/cast/area object observations",
+      "lifecycle": "Warning/landing/persistent area then actual expiry",
+      "placement": "Freeze proven destination, area owner and native ground model; victim position is not pool center",
+      "animation": "Freeze proven destination, area owner and native ground model; victim position is not pool center",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-TOXIN",
+      "acceptanceCriteria": "VISC-TOXIN: ground cloud lifetime and fixed position agree after movement/seek",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "SoD Noxious Pustules/Burst",
+      "spellIds": [
+        1215202,
+        1220637,
+        1213258
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Optional curse and per-instance spawn/burst",
+      "state": "Optional curse and per-instance spawn/burst",
+      "lifecycle": "Under-player warning then detonation; retained death/destroy/end",
+      "placement": "Actual creation anchors and independent blast center; no scheduled clouds from guide alone",
+      "animation": "Actual creation anchors and independent blast center; no scheduled clouds from guide alone",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-PUSTULE",
+      "acceptanceCriteria": "VISC-PUSTULE: observed optional mechanic present and removed per instance",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Shrink/health changes",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed self aura/resource/phase change",
+      "state": "Observed self aura/resource/phase change",
+      "lifecycle": "Compose native model scale only from established state semantics",
+      "placement": "Killed glob health reduction must not be reused as a guessed scale multiplier",
+      "animation": "Killed glob health reduction must not be reused as a guessed scale multiplier",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-SCALE",
+      "acceptanceCriteria": "VISC-SCALE: body scale changes are evidence-backed and seekable",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Defeat, wipe and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/zeroHP/boundary",
+      "state": "Recorded death/zeroHP/boundary",
+      "lifecycle": "Cancel current phase, actors and hazards; rewind restores prior state",
+      "placement": "No assumed post-pull reform or corpse without evidence",
+      "animation": "No assumed post-pull reform or corpse without evidence",
+      "acceptanceCheck": "sod-aq40-viscidus/VISC-END",
+      "acceptanceCriteria": "VISC-END: no stale boss/globs/hazards after clean reset",
+      "sourceRefs": [
+        "baseline-guide",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "proofBoundary": "Guide expectation; only retained/local observations establish this run",
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD freeze/shatter thresholds and unlogged phase boundaries",
+    "Glob126/127 GUID alias identity and contradictory127:1 death/positiveHP snapshots",
+    "Rejoin native animation/retirement duration",
+    "Body shrink multiplier and growth semantics",
+    "Toxin centers/lifetimes and no postend room-reset data",
+    "Noxious exact native age/deduplication across player-source multi-victim damage",
+    "Missing Z and original gameplay animation parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod"
+  }
+}

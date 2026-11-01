@@ -1,4 +1,9 @@
 // Recorded timestamps always win. DBC/observed timing hints only bound missing ends.
+import {isBeatrixCannonPulse} from './encounters/sod-beatrix.mjs';
+import {targetedChannelAuras} from './replay-channel-auras.mjs';
+import {aq40ResultPolicy} from './encounters/sod-aq40-results.mjs';
+import {raidResultPolicy} from './encounters/sod-raid-results.mjs';
+import {recordedOssirianTargets} from './encounters/sod-ossirian.mjs';
 const spellOf = (e) => {
   const id = e.abilityGameID ?? e.ability?.guid ?? 0;
   return id === -4 ? 1 : Math.max(0, id);
@@ -19,6 +24,37 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
   const key = (e, side) => `${e[side + "ID"]}:${e[side + "Instance"] || 1}`;
   const ability = (spell) =>
     replay.abilities?.get(spell) ?? { name: `Spell ${spell}` };
+  // A declared infinite channel needs observed state, not an invented timeout.
+  // Build self-aura windows lazily; absent ownership/end evidence stays unknown.
+  const auraWindows = new Map();
+  let targetAura;
+  const channelAura = (actor, spell, at) => {
+    if (!auraWindows.has(actor.key)) {
+      const windows = new Map(), active = new Map();
+      const finish = (id, end, recorded) => {
+        const entry = active.get(id);
+        if (!entry) return;
+        entry.end = end;
+        entry.recordedEnd = recorded;
+        active.delete(id);
+      };
+      for (const [time, aura] of actor.auras ?? []) {
+        if (aura.reset) {
+          for (const id of active.keys()) if (!aura.preserve?.includes(id)) finish(id, time, true);
+        } else if (aura.remove || !aura.selfCast) {
+          finish(aura.spell, time, true);
+        } else if (!active.has(aura.spell)) {
+          const window = { start: time, end: replay.duration, recordedEnd: false };
+          const list = windows.get(aura.spell) ?? [];
+          list.push(window);
+          windows.set(aura.spell, list);
+          active.set(aura.spell, window);
+        }
+      }
+      auraWindows.set(actor.key, windows);
+    }
+    return auraWindows.get(actor.key).get(spell)?.find(w => w.start <= at && at < w.end);
+  };
   // First pass measures this actor's successfully paired casts. A missing end must
   // never inherit the next encounter's completion, nor a different spell's proc.
   const starts = new Map();
@@ -41,7 +77,7 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
     } else if (["death", "interrupt"].includes(e.type))
       starts.delete(key(e, "target"));
     else if (e.type === "combatantinfo") starts.delete(k);
-    else if (e.type === "encounterend" || e.type === "encounterstart")
+    else if (e.type === "encounterstart")
       starts.clear();
   }
   for (const values of observed.values()) values.sort((a, b) => a - b);
@@ -80,13 +116,17 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
       tk = key(e, "target"),
       a = actors.get(k),
       spell = spellOf(e);
-    if (e.type === "encounterend" || e.type === "encounterstart") {
+    // A recorded completion can follow a defeat boundary (boss roleplay, a
+    // surviving add, or a player's cast). A new encounter is a reset boundary;
+    // ending an encounter alone is not an interrupt.
+    if (e.type === "encounterstart") {
       for (const map of [pending, channels])
         for (const id of map.keys()) close(map, id, t, "encounter boundary");
     }
     if (e.type === "combatantinfo") {
       close(pending, k, t, "snapshot boundary");
-      close(channels, k, t, "snapshot boundary");
+      const reset=actors.get(k)?.auras?.find(([at,aura])=>at===t&&aura.reset)?.[1];
+      if (!reset?.preserve?.includes(channels.get(k)?.spell)) close(channels, k, t, "snapshot boundary");
     }
     if (e.type === "death") {
       close(pending, tk, t, "death");
@@ -141,16 +181,22 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
       if (metadata[spell]?.channel) {
         close(channels, k, t, "superseded");
         const h = hint(k, spell, true);
+        const selfAura = channelAura(a, spell, t);
+        const hintedEnd = Math.min(replay.duration, t + h.ms);
+        const ownAura = selfAura && (metadata[spell]?.durationMs === -1 || selfAura.end <= hintedEnd) ? selfAura : null;
+        if(!ownAura&&h.ms>0&&k!==tk)targetAura??=targetedChannelAuras(events,metadata,replay.duration);
+        const victimAura = !ownAura&&h.ms>0&&k!==tk?targetAura(k,tk,spell,id,t,hintedEnd):null;
+        const aura = ownAura??victimAura;
         const channel = {
           id,
           spell,
           ...ability(spell),
           start: t,
-          end: Math.min(replay.duration, t + h.ms),
+          end: aura?.end ?? hintedEnd,
           channel: true,
           target: actors.has(tk) ? tk : null,
-          inferredEnd: true,
-          timingSource: h.source,
+          inferredEnd: aura ? !aura.recordedEnd : true,
+          timingSource: ownAura ? "recorded self aura" : victimAura ? "recorded target aura" : h.source,
           outcome: "unresolved",
         };
         // One channel entry replaces the instantaneous activation glyph. A preceding
@@ -170,13 +216,18 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
 // Build once per import, not once per rendered frame. Each recorded direct result
 // is emitted once; periodic ticks remain available to charts without replaying a missile.
 export function buildVisualEvents(replay) {
+  const auraTargets=recordedOssirianTargets(replay);
   const visual = [],
-    launches = new Map();
+    launches = new Map(), areaPulses = new WeakSet();
   for (const e of replay.combat) {
     if (e.kind === "summon-cue") {
       visual.push(e);
     } else if (e.kind === "go") {
       const go = { ...e, impacts: [] };
+      if(!go.target&&auraTargets.has(e.id))Object.assign(go,auraTargets.get(e.id));
+      const policy=aq40ResultPolicy(replay,e)??raidResultPolicy(replay,e);
+      if(policy)go.associationEvidence=policy;
+      if(policy||isBeatrixCannonPulse(replay,e))areaPulses.add(go);
       visual.push(go);
       if (!e.melee && e.spell > 1) {
         const key = `${e.source}/${e.spell}`;
@@ -188,6 +239,7 @@ export function buildVisualEvents(replay) {
         );
       }
     } else if ((e.kind === "damage" || e.kind === "heal") && e.target) {
+      if(e.environmental)continue;
       if (e.melee) {
         visual.push(e);
         continue;
@@ -195,16 +247,17 @@ export function buildVisualEvents(replay) {
       if (e.tick || e.spell <= 1) continue;
       const impact = { ...e, kind: "impact" };
       visual.push(impact);
-      const candidates =
+      const available =
         launches
           .get(`${e.source}/${e.spell}`)
           ?.filter(
             (x) =>
               e.t >= x.t &&
-              e.t - x.t <= 30000 &&
-              !x.impacts.some((p) => p.target === e.target),
+              e.t - x.t <= 30000,
           ) ?? [];
+      const candidates = available.filter(x=>!x.impacts.some(p=>p.target===e.target));
       const launch =
+        available.findLast((x) => areaPulses.has(x)) ??
         candidates.find((x) => x.target === e.target) ??
         candidates.find((x) => !x.target) ??
         candidates[0];

@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-gluth",
+  "ruleset": "vanilla",
+  "boss": "Gluth",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51108,
+  "rawEncounterId": 1108,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-gluth"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/ConstructQuarter/Gluth.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/gluth-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-12",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=28375/decimate",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=29682/call-all-zombie-chow",
+        "https://www.wowhead.com/classic/spell=28217/summon-zombie-chow",
+        "https://www.wowhead.com/classic/spell=28404/zombie-chow-search",
+        "https://www.wowhead.com/classic/spell=25646/mortal-wound",
+        "https://www.wowhead.com/classic/spell=29307/infected-wound",
+        "https://www.wowhead.com/classic/npc=16360/zombie-chow"
+      ],
+      "quality": "Resolved Classic baseline links; DBM warning28374 is not silently aliased to registered damage28375."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Mortal Wound and Fear",
+      "spellIds": [
+        25646,
+        29685
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual tank debuff stacks and Roar fear",
+      "state": "Per-recipient stacks, immunities and threat target separate",
+      "lifecycle": "Actual removal/death; no Wrath taunt behavior assumed",
+      "placement": "Measured boss/fear victim anchors",
+      "animation": "Fear locomotion and debuff age separate",
+      "acceptanceCheck": "vanilla-naxx-gluth/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Frenzy and hard enrage",
+      "spellIds": [
+        28371,
+        26662
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded boss self aura and dispel/removal",
+      "state": "Frenzy separate from late hard enrage",
+      "lifecycle": "Actual Tranquilizing/removal; no timer-forced application",
+      "placement": "Boss host",
+      "animation": "Self-owned aura and attack animation cadence independent",
+      "acceptanceCheck": "vanilla-naxx-gluth/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Zombie Chow lifecycle and feeding",
+      "spellIds": [
+        28217,
+        28404,
+        29307
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual summon, add activity, search/heal evidence",
+      "state": "NPC16360 instances and Infected Wound recipients",
+      "lifecycle": "No proximity-derived consume/heal; actual death/destroy wins",
+      "placement": "Observed kite/charge anchors; no guessed chase path",
+      "animation": "Running zombie, eating animation and heal separate",
+      "acceptanceCheck": "vanilla-naxx-gluth/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Decimate and called zombies",
+      "spellIds": [
+        28375,
+        29682
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded damage and Call actions",
+      "state": "Actual HP changes and independent Zombie retargeting",
+      "lifecycle": "No100second simulated stomp; actual impacts",
+      "placement": "Health victims do not establish ground geometry",
+      "animation": "Warning28374 differs from actual damage28375",
+      "acceptanceCheck": "vanilla-naxx-gluth/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Pipe entry elevation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded precombat movement/environmental activity",
+      "state": "Pipe descent separate from boss summon/teleport",
+      "lifecycle": "Do not drop prelude based only on boss provider start",
+      "placement": "Observed XY and unknown Z; no global height lift",
+      "animation": "Fall and tunnel hazard not authored from victim damage",
+      "acceptanceCheck": "vanilla-naxx-gluth/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-gluth/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15932,
+      16360
+    ]
+  }
+}

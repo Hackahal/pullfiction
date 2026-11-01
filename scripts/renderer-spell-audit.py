@@ -17,7 +17,7 @@ import math
 from pathlib import Path
 
 from classic_compat import read, table
-from classic_spells import chain_procedure_id, trail_procedure_compatible
+from classic_spells import chain_procedure_id, trail_procedure_compatible, freeze_procedure_compatible
 from classic_db2 import f32
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +44,14 @@ def sha(data):
 
 
 def capability_tests(key):
+    if key=='procedure:freeze-consumer':
+        return ['python3 scripts/renderer-spell-audit-test.py',
+                'modern_freeze_body_procedure_arms_holds_reaps_and_rearms',
+                'modern_zero_rate_import_freezes_and_restores_the_actual_animation_clocks']
+    if key=='procedure:type:11':
+        return ['python3 scripts/classic-spells-test.py',
+                'modern_exact_zero_rate_freezes_survive_combined_aura_kits',
+                'modern_freeze_body_procedure_arms_holds_reaps_and_rearms']
     if key=='reference:missing-effect':
         return ['python3 scripts/renderer-spell-audit-test.py AuditTest.test_missing_missile_effect_is_an_unresolved_requirement_for_its_spell']
     if key.startswith('effect:asset-format:'):
@@ -265,10 +273,10 @@ def audit(graph, model_records=(), particle_records=()):
                 reference={'owner':f'procedure:{proc.get("id")}','dependency':f'chain:{chain_id}',
                            'renderContext':'zero-beams' if zero_beams else 'potential-draw'}
                 if reference not in missing:missing.append(reference)
-            supported = trail_procedure_compatible(proc) or zero_beams or chain.get('rendererCompatible') is True
+            supported = trail_procedure_compatible(proc) or freeze_procedure_compatible(proc) or zero_beams or chain.get('rendererCompatible') is True
             caps.add(mode(f'procedure:type:{proc.get("type")}', f'procedure:{proc.get("id")}',
                 'implemented' if supported else 'unsupported', NATIVE,
-                'Only exact simple-chain0/12 and validated weapon-trail8 subsets are mapped.'))
+                'Only exact simple-chain0/12, validated weapon-trail8, and four-zero animation-rate11 freeze subsets are mapped. Other body parameters remain untraced.'))
             if proc.get('type') in (0, 12):
                 if zero_beams:
                     caps.add(mode('procedure:chain-zero-beams',f'procedure:{proc.get("id")}',
@@ -298,15 +306,24 @@ def audit(graph, model_records=(), particle_records=()):
             caps |= kit_modes.get(kid, set())
             record = f'visual:{key}:event:{i}'
             caps |= extra_modes(event,'SpellVisualEvent',record)
+            for proc in groups['kits'].get(kid, {}).get('proceduralEffects', []):
+                if freeze_procedure_compatible(proc):
+                    aura_consumer = event.get('start') == 'Aura Start' and event.get('target') in (
+                        'Caster', 'Target', 'Target (Not Caster)')
+                    caps.add(mode('procedure:freeze-consumer', f'{record}:procedure:{proc.get("id")}',
+                        'implemented' if aura_consumer else 'unsupported', NATIVE,
+                        'Exact zero-rate parameters are imported, but only the aura-state watcher dispatches body nodes. Cast, Impact and Channel kit playback do not; owner and lifecycle evidence remain separate.'))
             mapped = (event.get('start'), event.get('target')) in MAPPED_EVENTS
             unproved_caster=event.get('start')=='Impact' and event.get('target')=='Caster'
+            self_aura=event.get('start')=='Aura Start' and event.get('target')=='Caster'
             expected_end={'Precast Start':'Precast End','Cast':'One-Shot','Impact':'One-Shot',
                           'Aura Start':'Aura End','Channel Start':'Channel End'}.get(event.get('start'))
             standard_timing=(not event.get('delay') and not event.get('maxDelay')
                              and event.get('end')==expected_end
                              and not any(event.get('authored',{}).get(f) for f in ('EndMinOffsetMs','EndMaxOffsetMs')))
             caps.add(mode('event:' + str(event.get('start')) + ':' + str(event.get('target')), record,
-                'unknown' if unproved_caster else ('implemented' if standard_timing else 'partial') if mapped else 'unsupported', NATIVE,
+                'partial' if self_aura else 'unknown' if unproved_caster else ('implemented' if standard_timing else 'partial') if mapped else 'unsupported', NATIVE,
+                'Recorded self applications combine Caster and Target kits on the aura owner. Other or unknown sources remain unresolved; replay provenance is required.' if self_aura else
                 'Identical Caster/Target pairs exist on ordinary projectiles; extra caster dispatch is gated until target-context semantics are established.' if unproved_caster else
                 ('Channel Caster wins over Target; event end/timing and caller context are separate requirements.'
                  if event.get('start')=='Channel Start' else

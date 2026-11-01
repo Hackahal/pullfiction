@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-viscous-fallout",
+  "ruleset": "sod",
+  "boss": "Viscous Fallout",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2928,
+  "rawEncounterId": 2928,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        7
+      ],
+      "selectedFightNames": [
+        "Viscous Fallout"
+      ],
+      "matchedNpcTemplateIds": [
+        217308,
+        220007
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-viscous-fallout"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/viscous-fallout-strategy",
+      "date": "2024-04-01",
+      "quality": "authoredexactSoDguide"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/ViscousFallout.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primaryaddonruntime eventmapping"
+    },
+    {
+      "id": "client",
+      "quality": "currentclient1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "V01",
+      "mechanic": "Sludge",
+      "spellIds": [
+        434434,
+        434433
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recordedboss cast434434",
+      "state": "persistent groundpool plus separatevictim contact aura",
+      "lifecycle": "client300000ms isestimate;actual areaend/removal wins",
+      "placement": "bossdrop location;fixedworld center/radius mustbe observed",
+      "animation": "434434 AreaTriggerStart/Area;434433 Targetaura",
+      "acceptanceCheck": "sod-gnomeregan-viscous-fallout/V01",
+      "acceptanceCriteria": "pool remains atdrop whilebossmoves;victimexit endscontact only",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "V02",
+      "mechanic": "Goo summoning/motion",
+      "spellIds": [
+        434358,
+        434399
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "summonstart andspawn ToxicEmission",
+      "state": "3 independentGoo move towardcorpse targets",
+      "lifecycle": "actualsummon/death/contact/resurrection;no timerroute",
+      "placement": "NPC217308;realstart/targetXY andsamefloor needed",
+      "animation": "434358 Casterprecast/cast;434399 novisual",
+      "acceptanceCheck": "sod-gnomeregan-viscous-fallout/V02",
+      "acceptanceCriteria": "3instances;killbeforecontact preventsrevival;rewind restoresstate",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "V03",
+      "mechanic": "Desiccated revival",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Goo reachesdormantcorpse",
+      "state": "deadcorpse→living caster",
+      "lifecycle": "recordedinitialdead/positivehealth/revive identity;unknown ifnotlogged",
+      "placement": "corpsepositions fromclientmap/logs;no substitutes",
+      "animation": "serverrevive/birth animation unrecorded",
+      "acceptanceCheck": "sod-gnomeregan-viscous-fallout/V03",
+      "acceptanceCriteria": "pre-pull corpses remain dead;onlyactualcontact revives;death cancelscasts",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "V04",
+      "mechanic": "RadiationBurn",
+      "spellIds": [
+        433546
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "revivedFallout cast",
+      "state": "interruptible3.5s cast andstacking targetDoT",
+      "lifecycle": "recordedinterrupt/cast/impact/removal;client15s duration",
+      "placement": "actualsource andrecipients;notbossattack",
+      "animation": "visual138148 TargetNotCasterimpact;recipientaura",
+      "acceptanceCheck": "sod-gnomeregan-viscous-fallout/V04",
+      "acceptanceCriteria": "interruptedcast createsno impact/DoT;stack/remove andseek consistency",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "DesiccatedNPCidentifier andinitialdeadrecord",
+    "actualGoo target/path/contact",
+    "Sludge radius/center/expiration",
+    "nativeTargetNotCasterselector",
+    "wipe/seekeffectage"
+  ],
+  "researchContext": {
+    "npcIds": [
+      220007,
+      217308
+    ],
+    "encounterIdEvidence": "pinned primaryDBM SetEncounterID2928;notdungeon378",
+    "supportLimits": [
+      "no confirmedretainedlogs orruntimecredit",
+      "Sludge Targetaura isnotpoolcreation;AreaTrigger route needsdestination/lifetime",
+      "generic normalization doesnotinfer corpsearrival/revival;initialdeadstate needed",
+      "TargetNotCasterimpact selector mustbecheckedin native;graphpresence notexecution"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

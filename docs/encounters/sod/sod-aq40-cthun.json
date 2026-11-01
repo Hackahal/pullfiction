@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-cthun",
+  "ruleset": "sod",
+  "boss": "C'Thun",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100717,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-cthun"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556/",
+      "date": "2024-12-06",
+      "quality": "official primary SoD announcement"
+    },
+    {
+      "id": "S2",
+      "url": "https://eu.forums.blizzard.com/en/wow/t/season-of-discovery-hotfixes-25-june/495964?page=21",
+      "date": "2024-12-13",
+      "quality": "official primary patch statement",
+      "claims": [
+        "No tentacles during vulnerability",
+        "Acid stacks restored",
+        "Tentacle cadence reduced"
+      ]
+    },
+    {
+      "id": "S3",
+      "url": "https://www.icy-veins.com/wow-classic/c-thun-guide-strategy-abilities-loot",
+      "date": "2024-11-18",
+      "quality": "authored mixedSoD/Anniversary baseline",
+      "limitation": "Timings and interrupt rules require SoD observations; no Era behavior imported wholesale"
+    },
+    {
+      "id": "S4",
+      "url": "https://warcraft.wiki.gg/wiki/C%27Thun_%28Season_of_Discovery%29",
+      "quality": "secondary SoD-specific record",
+      "limitation": "EyeBeamShadow description conflicts with observed current-client schoolMask8"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Eye Beam chain",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded actor cast and individual results",
+      "state": "Recorded actor cast and individual results",
+      "lifecycle": "Cast, launch, each jump/impact; cancellation if interrupted/dead",
+      "placement": "Eye to initial player, then actual jump source to next player; order may be unknown",
+      "animation": "Authored chain/procedural effect, green beam per guide",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-EYE-CHAIN",
+      "acceptanceCriteria": "CTH-EYE-CHAIN",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Dark Glare",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded phase/sweep evidence needed",
+      "state": "Recorded phase/sweep evidence needed",
+      "lifecycle": "Charge, directional sweep, end",
+      "placement": "Eye yaw/pitch and rotating ray, not victim homing",
+      "animation": "Red eye/body charge and beam; no guessed rotation",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-GLARE",
+      "acceptanceCriteria": "CTH-GLARE",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Eye to full body",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Eye death and body emergence/activity",
+      "state": "Eye death and body emergence/activity",
+      "lifecycle": "Independent eye/body actors, phase-owned presence",
+      "placement": "Shared chamber anchor with sourced height/scale",
+      "animation": "Birth/withdrawal and body animation separate",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-BODY",
+      "acceptanceCriteria": "CTH-BODY",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Small tentacles",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual observed instances and Birth",
+      "state": "Individual observed instances and Birth",
+      "lifecycle": "Emerge, attack/channel, death/disappearance",
+      "placement": "Ground eruption and host positions independent",
+      "animation": "Birth127 and rupture source routes",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-TENTACLES",
+      "acceptanceCriteria": "CTH-TENTACLES",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Mind Flay",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded channel cast and victim aura/results",
+      "state": "Recorded channel cast and victim aura/results",
+      "lifecycle": "Channel ends by removal/death/interrupt",
+      "placement": "Caster tentacle to actual victim",
+      "animation": "Beam with original channel age",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-FLAY",
+      "acceptanceCriteria": "CTH-FLAY",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Giant tentacles",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded instances and abilities",
+      "state": "Recorded instances and abilities",
+      "lifecycle": "Emerge, cast/melee, death; SoD cadence",
+      "placement": "Individual source positions, no name merge",
+      "animation": "Exact NPC/rupture/beam definitions",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-GIANTS",
+      "acceptanceCriteria": "CTH-GIANTS",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Stomach movement",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Digestive Acid and actor observations",
+      "state": "Digestive Acid and actor observations",
+      "lifecycle": "Entry, separate floor/room, exit, acid removal",
+      "placement": "Room/floor transition; missingZ unknown",
+      "animation": "Swallow/ejection requires evidence",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-STOMACH",
+      "acceptanceCriteria": "CTH-STOMACH",
+      "sourceRefs": [
+        "S3",
+        "S4",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Flesh and weakened state",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Two Flesh deaths per cycle",
+      "state": "Two Flesh deaths per cycle",
+      "lifecycle": "Weakness opens, ends; stomach actors can respawn as new instances",
+      "placement": "Stomach geometry, not surface-floor projection",
+      "animation": "Carapace/body state mechanism unresolved",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-WEAKEN",
+      "acceptanceCriteria": "CTH-WEAKEN",
+      "sourceRefs": [
+        "S3",
+        "S4",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "SoD optional madness",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded curses/raid setting",
+      "state": "Recorded curses/raid setting",
+      "lifecycle": "Curse application/stack/cleanup",
+      "placement": "Actor state; optional mechanics only if observed",
+      "animation": "Source/client-specific visuals",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-MADNESS",
+      "acceptanceCriteria": "CTH-MADNESS",
+      "sourceRefs": [
+        "S1",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M10",
+      "mechanic": "Death/wipe/seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Explicit life/end events",
+      "state": "Explicit life/end events",
+      "lifecycle": "Stop encounter-owned casts/areas, preserve ordinary buffs",
+      "placement": "Phase presence and original effect age restored",
+      "animation": "Correct eye death distinct from boss kill",
+      "acceptanceCheck": "sod-aq40-cthun/CTH-END-SEEK",
+      "acceptanceCriteria": "CTH-END-SEEK",
+      "sourceRefs": [
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Stomach room/verticalfloor state absent; renderedfloor not GPU-verified",
+    "DarkGlare activation/orientation/sweep unobserved",
+    "Exact body weakness aura/script/visual and expiry unobserved",
+    "Tentacle birth and corpse lifetimes without explicitcreate/destroy",
+    "SoD optional difficulty settings cannot be inferred entirely from observedDespair",
+    "Scale/height and eye-body transition require client/server/footage evidence",
+    "Wipe reset unobserved",
+    "Shared currentclient graph does not establish historical samepatch visual parity"
+  ]
+}

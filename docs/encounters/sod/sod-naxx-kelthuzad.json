@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-kelthuzad",
+  "ruleset": "sod",
+  "boss": "Kel'Thuzad",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201114,
+  "rawEncounterId": 1114,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        42
+      ],
+      "selectedFightNames": [
+        "Kel'Thuzad"
+      ],
+      "matchedNpcTemplateIds": [
+        15990,
+        16429,
+        16441
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-kelthuzad"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/FrostwyrmLair/Kel'Thuzad.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/kelthuzad-naxxramas-raid-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "emp-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/SoD_Hardmode.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD code; PTR comments and later handlers attributed separately"
+    },
+    {
+      "id": "emp-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-hardmodes-overview",
+      "date": "2025-02-15",
+      "quality": "authored live SoD difficulty guide"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24171906/fase-7-de-la-temporada-del-descubrimiento-%C2%A1naxxramas-ya-est%C3%A1-disponible",
+      "date": "2025-02-06",
+      "quality": "official live phase7 launch;20-player tuning/up to40 and augmented final bosses"
+    },
+    {
+      "id": "seal-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24179333/hotfixes-february-26-2025",
+      "quality": "official hotfix archive caps Seal progression at rank7; supersedes plannedrank10 guide"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "date": "2025-02-26",
+      "quality": "authored SoD overview; rank10 plan is stale versus official cap"
+    },
+    {
+      "id": "official-decomposition-fix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24148555",
+      "quality": "official February14,2025 maximumdifficulty decay/petrification correction"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "K01",
+      "mechanic": "Portal adds, inactive lich and combat start",
+      "spellIds": [
+        28457,
+        28459,
+        25646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual add appearance/portal summons and boss attackable state",
+      "state": "Abomination16428/Soldier16427/SoulWeaver16429 independently active; lich15990 initially inactive; Abomination MortalWound25646 is an independent recipient stack, not the boss mana bomb",
+      "lifecycle": "primary stage229–231s timer changedJuly2026 is versioned estimate; actual enable/remainingadd life",
+      "placement": "actual seven portals, inward walking, Wail knockback and slow soldier proximity",
+      "animation": "inactive lich visible versus combat active distinct; no generated wave or path",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K01-acceptance",
+      "acceptanceCriteria": "future adds absent before actual appearance; killed soldier vs proximityblast, knockback, remaining adds afterboss becomes active",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "K02",
+      "mechanic": "Frostbolt, blast and mana explosion",
+      "spellIds": [
+        28478,
+        28479,
+        27808,
+        27819
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual interruptible bolt/cast, volley, recipient freeze and mana aura",
+      "state": "single-target versus raid volley; chained frozen targets and player mana detonation",
+      "lifecycle": "actual2s bolt,5s frostblast; remove/cancel/death boundaries; no assumed30/60s casts",
+      "placement": "actual target list and proximity; mana explosion position observed at resolution",
+      "animation": "self-source mana proc and victim effects stay distinct; no auto AoE at boss",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K02-acceptance",
+      "acceptanceCriteria": "interrupt stops bolt, resisted volley, simultaneous blast recipients, petmana recipient and death before detonation",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "K03",
+      "mechanic": "Mind control and Shadow Fissure",
+      "spellIds": [
+        28408,
+        28410,
+        27810
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual cast versus recipient Chains aura and fissure placement",
+      "state": "ownership/faction/tempmodel changes; target can buff/heal boss; fissure delayedground hit",
+      "lifecycle": "actual remove, no assumedfiveMC recipients or3s explosion if absent terminal",
+      "placement": "groundcenter must be actual creation destination; unknown-target cast remains unknown; movingMC not poolhost",
+      "animation": "cast28408 differs aura28410; no cosmetic root substitute",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K03-acceptance",
+      "acceptanceCriteria": "tank controlled/targetchanges, forced player cast heals boss, aura removal, fissure cast no target and victim moves; repeat/randomseek",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "K04",
+      "mechanic": "Guardians, shackle and growth",
+      "spellIds": [
+        10836,
+        28470
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual guardian16441 summon/shackle/bloodtap",
+      "state": "independent kited guardians with stackinggrowth; baseline40% trigger not empoweredfinalphase",
+      "lifecycle": "actual death/despawn; baseline killcleanup must not fire on first empowered boss death",
+      "placement": "portal spawn, actual path and scale-state relation; no guessed99-stack geometry",
+      "animation": "scale/modelfx need aura and actualclient evidence",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K04-acceptance",
+      "acceptanceCriteria": "fourshackles and shatter, guardian grows, firstbossdeath retainsactual livingadds, finalvictory cleanup",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "K05",
+      "mechanic": "Empowered contracting boundary",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "four-wing condition plus observed circle object/area lifecycle",
+      "state": "shrinking safe region; mindcontrolled recipient exemption reported",
+      "lifecycle": "no guessed shrinkrate or radius from fightduration; actual phase/object transforms required",
+      "placement": "center/radius/verticalextent unknown; Authority1224428 namecandidate not provencontroller",
+      "animation": "blue ring visual and lethaloutside servercondition need actual evidence",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K05-acceptance",
+      "acceptanceCriteria": "playercrosses ring while free/MC, fearedacross boundary, partialbuffer and randomseek; no falsely safe circle",
+      "sourceRefs": [
+        "emp-guide",
+        "client",
+        "official"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "K06",
+      "mechanic": "Actual death, resurrection and Rapid Decomposition",
+      "spellIds": [
+        1222430
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded first death, resurrection/life and self-aura1222430",
+      "state": "SoD exclusive survival phase and recurring phase1 addfamilies; actual boss dead then alive",
+      "lifecycle": "primary disables boss-death kill;1222430 indefinite; observed finalencounterend not firstdeath",
+      "placement": "small remaining safe region and independent spawning adds; no newactor unless actualinstancechanges",
+      "animation": "death→revive→decay animation and aura age distinct; preserve rawdeath events",
+      "acceptanceCheck": "sod-naxx-kelthuzad/K06-acceptance",
+      "acceptanceCriteria": "same-instance death/revive, different-instance possibility, earlywipe, repeatedrandomseek beforedeath/afterrevive; guardians/auras cleanup only actualfinalend",
+      "sourceRefs": [
+        "primary",
+        "emp-guide",
+        "official",
+        "client",
+        "official-decomposition-fix"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "POWER",
+      "mechanic": "Observed Empowerment and Seal version",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual enabled quarter auras, Sanctified/Seal snapshot and change records",
+      "state": "quarter-specific mechanics plus raidwide scaling; Seal rank/role separate from NPC power",
+      "lifecycle": "15-minute orb interaction cooldown is a game rule, not a synthesized replay event; actual enable/reset/disable",
+      "placement": "lobby world orbs/wing gates need object identity; no global cosmetic aura replacement",
+      "animation": "Authority/Seal client-name candidates do not establish exact rank or scaling",
+      "acceptanceCheck": "sod-naxx-kelthuzad/POWER-acceptance",
+      "acceptanceCriteria": "normal versus enabled quarter, rank/role change and partial snapshot; no damage-derived rank assumption",
+      "sourceRefs": [
+        "official",
+        "emp-guide",
+        "seal-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1218232,
+    1218271,
+    1218275,
+    1218276,
+    1218283,
+    1224428,
+    1219539,
+    1219548,
+    1220514
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Pinned primary explicitly disables boss-death kill in SoD because maximum-difficulty KT dies then resurrects;1222430 marks exclusive phase.",
+    "Official February14 hotfix slows RapidDecomposition and prevents Flask of Petrification bypass; do not infer survival duration from initial gameplay.",
+    "Primary does not trigger SoD finalphase at40%; baseline guardian phase and exclusive resurrection phase must remain separate.",
+    "Guide contracting ring is source-backed but exact controller/object/spell/radius curve is unresolved; no numeric model invented.",
+    "Baseline DetonateMana school description disagrees its own comments; actual client school/result is authoritative, not prose.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Authority same-name variant→quarter/empower count and Seal variant→rank/role mapping",
+    "raid-warning/emote, object and unit-event retention by provider"
+  ],
+  "researchContext": {
+    "npcIds": [
+      15990,
+      16427,
+      16428,
+      16429,
+      16441
+    ],
+    "wing": "frostwyrm",
+    "sourceFindings": [
+      "Pinned primary explicitly disables boss-death kill in SoD because maximum-difficulty KT dies then resurrects;1222430 marks exclusive phase.",
+      "Official February14 hotfix slows RapidDecomposition and prevents Flask of Petrification bypass; do not infer survival duration from initial gameplay.",
+      "Primary does not trigger SoD finalphase at40%; baseline guardian phase and exclusive resurrection phase must remain separate.",
+      "Guide contracting ring is source-backed but exact controller/object/spell/radius curve is unresolved; no numeric model invented.",
+      "Baseline DetonateMana school description disagrees its own comments; actual client school/result is authoritative, not prose.",
+      "Official Seal rank7 cap supersedes plannedrank10; no numeric damage/HP scaling inferred from current guide table.",
+      "Global manager237752 and quarter effects can cross boss/trash chapter boundaries; missing cast/aura is unknown, not disabled."
+    ],
+    "candidateSpellIds": {
+      "authorityNameOnly": [
+        1218232,
+        1218271,
+        1218275,
+        1218276,
+        1218283,
+        1224428
+      ],
+      "sealNameOnly": [
+        1219539,
+        1219548,
+        1220514
+      ]
+    },
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "No confirmed retained SoD Naxx pull. Old ruleset-unknown Naxx cache excluded; no observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

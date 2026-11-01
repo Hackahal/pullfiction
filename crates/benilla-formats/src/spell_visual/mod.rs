@@ -185,6 +185,9 @@ pub struct VisualStages {
     pub impact_caster: u32,
     pub impact_not_caster: u32,
     pub state: u32,
+    /// Target state plus Caster state when the replay proves a self-applied aura.
+    /// Never select this for an aura from another or unknown source.
+    pub state_self: u32,
     pub channel: u32,
     /// Field 7: the missile's `SpellVisualEffectName` id; 0 flies the ammo or weapon model, and an
     /// id with no row the client's `Spells\ErrorCube.mdx` (`0x60a3d0`). A missile exists whenever
@@ -553,6 +556,7 @@ pub fn load_spell_visual_catalog(chain: &mut Chain) -> Result<SpellVisualCatalog
                 impact_caster: 0,
                 impact_not_caster: 0,
                 state: g(4),
+                state_self: g(4),
                 channel: g(5),
                 missile_model: g(7),
                 missile_attach: g(9),

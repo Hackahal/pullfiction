@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-thekal",
+  "ruleset": "sod",
+  "boss": "High Priest Thekal",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 100789,
+  "rawEncounterId": 789,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "reportRevision": 1,
+      "reportResponseSha256": "2200f0f1f8688bf21158dd629f66653bb35a9b4c591d651ef740680631d2cb39",
+      "provenanceResponseSha256": "0e9f58d0a8e576c227602da0f7eee5b3bfb22b8d834a5c856049527073e03df1",
+      "providerZoneId": 2014,
+      "discoveryPartitions": [
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 309,
+      "selectedFightIds": [
+        15
+      ],
+      "selectedFightNames": [
+        "High Priest Thekal"
+      ],
+      "matchedNpcTemplateIds": [
+        11347,
+        11348,
+        14509
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-zg-thekal"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Thekal.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/high-priest-thekal-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=2111s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "35:11",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
+      "quality": "Exact SoD authored overview indexed content; direct fetch 403; supports postdeath loa spirit and exclusive selectable blessing"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Trio and preliminary tigers",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline Thekal/LorKhan/Zath plus two tigers engage",
+      "state": "Trio and preliminary tigers",
+      "lifecycle": "Independent actor health/CC/death; no identity merge",
+      "placement": "Actual three positions and add paths",
+      "animation": "Native troll/zealot/tiger bodies",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-TRIO",
+      "acceptanceCriteria": "THEKAL-TRIO: actor ownership and instances remain distinct",
+      "sourceRefs": [
+        "guide",
+        "dbm"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Zealot cast and controls",
+      "spellIds": [
+        24208,
+        21060,
+        12540
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM hostile Heal and player Blind/Gouge",
+      "state": "Zealot cast and controls",
+      "lifecycle": "Actual interrupts and aura removals",
+      "placement": "Correct zealot source and real victim",
+      "animation": "Native cast/control effects",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-CONTROL",
+      "acceptanceCriteria": "THEKAL-CONTROL: source-sensitive heal/control lifecycle",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24208,
+          21060,
+          12540
+        ],
+        "addonSourceLines": [
+          32,
+          33,
+          34,
+          43,
+          44,
+          48,
+          51,
+          52,
+          69,
+          78,
+          81,
+          88,
+          90
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Downed and resurrection window",
+      "spellIds": [
+        24173
+      ],
+      "clientCandidateSpellIds": [
+        24171,
+        24172
+      ],
+      "trigger": "DBM PriestDied emote starts 15s prediction; baseline trio revive",
+      "state": "Downed and resurrection window",
+      "lifecycle": "Distinguish downed, revived and final dead; never timer-generate resurrection",
+      "placement": "Each real actor retains position/life evidence",
+      "animation": "Actual downed/resurrection sequences",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-REVIVE",
+      "acceptanceCriteria": "THEKAL-REVIVE: repeated down/revive and reverse seek",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24173
+        ],
+        "addonSourceLines": [
+          42,
+          50
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Tiger transformation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        24169
+      ],
+      "trigger": "DBM phase 2 yell; baseline simultaneous trio defeat",
+      "state": "Tiger transformation",
+      "lifecycle": "Persistent form from actual transition until true end",
+      "placement": "Real Thekal instance; no automatic heal/identity rewrite",
+      "animation": "Native tiger display, impact 721 insufficient",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-FORM",
+      "acceptanceCriteria": "THEKAL-FORM: phase 2 and final death distinct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Force Punch, charge and tigers",
+      "spellIds": [
+        24183
+      ],
+      "clientCandidateSpellIds": [
+        24189,
+        24193
+      ],
+      "trigger": "Baseline knockback/charge; DBM actual guardian summon",
+      "state": "Force Punch, charge and tigers",
+      "lifecycle": "Actual launches, newborn tigers and deaths",
+      "placement": "Real facing/displacement; no assumed pair or fixed wave",
+      "animation": "Native punch/movement/tiger models",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-MOVE",
+      "acceptanceCriteria": "THEKAL-MOVE: no generated trajectory or add birth",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24183
+        ],
+        "addonSourceLines": [
+          35,
+          46,
+          96
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Frenzy, enrage and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline low-health/frenzy and actual boss end",
+      "state": "Frenzy, enrage and reset",
+      "lifecycle": "Real removal/Tranq/reset; no 20 percent buff generator",
+      "placement": "Boss body; surviving adds independent",
+      "animation": "Native buff and true corpse",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-END",
+      "acceptanceCriteria": "THEKAL-END: downed state never masquerades final kill",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Postdeath loa and blessing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        467125,
+        467127
+      ],
+      "trigger": "SoD defeated priest produces selectable loa spirit; actual player blessing application",
+      "state": "Shirvallah blessing",
+      "lifecycle": "One selected priest blessing at a time; observed apply/replace/remove and actual spirit spawn/despawn, not generated on boss death",
+      "placement": "Spirit at actual anchor; player aura/proc uses actual owner and targets",
+      "animation": "Native loa/spell assets only when identities established; Attacks/spells apply target bleed",
+      "acceptanceCheck": "sod-zg-thekal/THEKAL-LOA",
+      "acceptanceCriteria": "THEKAL-LOA: postboss spirit, exclusive blessing and actual proc/cleanup survive seeks",
+      "sourceRefs": [
+        "official-sod-p5",
+        "sod-overview",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "Exact-name client candidates for identified SoD blessing; no guide-linked IDs, addon event or retained occurrence credit.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    24171,
+    24172,
+    24169,
+    24189,
+    24193,
+    467125,
+    467127
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD downed/resurrection/emote representation and native animations",
+    "Frenzy/enrage IDs and occurrence",
+    "Full trio wipe/reset and surviving tiger behavior",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "14509, 11348, 11347"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

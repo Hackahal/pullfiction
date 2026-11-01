@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-hakkar",
+  "ruleset": "vanilla",
+  "boss": "Hakkar the Soulflayer",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50793,
+  "rawEncounterId": 793,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-hakkar"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Hakkar.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/hakkar-the-soulflayer-zul-gurub-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Sons and poisonous blood",
+      "spellIds": [
+        24320,
+        24321
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline Son death leaves poison used before siphon",
+      "state": "Sons and poisonous blood",
+      "lifecycle": "Actual NPC death, independent cloud, poison acquisition/removal",
+      "placement": "Son corpse cloud center and real entrants",
+      "animation": "Native cloud/poison aura 564",
+      "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-POISON",
+      "acceptanceCriteria": "HAKKAR-POISON: no player-centered relocated pool",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Blood Siphon",
+      "spellIds": [
+        24324,
+        24322,
+        24323
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon 24324 success; distinct channel variants",
+      "state": "Blood Siphon",
+      "lifecycle": "Actual 8s interval/ticks and target effects; no 90s generated cast",
+      "placement": "Real per-target source direction and poisoned state",
+      "animation": "Native channels 6378/6379 and aura 6380",
+      "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-SIPHON",
+      "acceptanceCriteria": "HAKKAR-SIPHON: preserve damage/heal branches and cancellation",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Insanity and Corrupted Blood",
+      "spellIds": [
+        24327,
+        24328
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon player control and blood apply",
+      "state": "Insanity and Corrupted Blood",
+      "lifecycle": "Actual control/faction and spread hits; no proximity damage generator",
+      "placement": "Real victim instances and actual controlled movement",
+      "animation": "Native control 325/channel 4911 and blood impact 220",
+      "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-CONTROL",
+      "acceptanceCriteria": "HAKKAR-CONTROL: preserve player identity, removal and real spread",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Priest-alive baseline aspects",
+      "spellIds": [
+        24686,
+        24687,
+        24688,
+        24689,
+        24690
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual surviving priests and observed aspect effects",
+      "state": "Baseline Marli/Jeklik/Venoxis/Thekal/Arlokk abilities are distinct",
+      "lifecycle": "Actual application/removal and independent aspect casts; guide/addon duration differences unresolved",
+      "placement": "Actual source and victims; no priest-kill or maxHP cosmetic inference",
+      "animation": "Exact baseline effects only; no generated aspect cycle",
+      "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-ASPECTS",
+      "acceptanceCriteria": "HAKKAR-ASPECTS: actual remaining-priest context plus recorded spell variants; absence in a short/incomplete pull stays unknown",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Final enrage, evade and death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual late enrage/reset/death",
+      "state": "Final boss life and real control/channel cleanup",
+      "lifecycle": "Guide 600s and addon 585s are expectations, not generated events",
+      "placement": "Observed reset route; no stair teleport generator",
+      "animation": "Native death/reset only when observed",
+      "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-END",
+      "acceptanceCriteria": "HAKKAR-END: no stale control/channel on real death or repeated pull",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14834
+    ]
+  }
+}

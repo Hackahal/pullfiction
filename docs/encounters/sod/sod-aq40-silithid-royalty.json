@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-silithid-royalty",
+  "ruleset": "sod",
+  "boss": "Silithid Royalty",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100710,
+  "rawEncounterId": 710,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-silithid-royalty"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "quality": "official SoDoptionalhardmode",
+      "id": "source-01"
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Silithid_Royalty_%28Season_of_Discovery%29",
+      "quality": "SoDsecondary",
+      "scope": "specificbossabilities,Despairghosts",
+      "id": "source-02"
+    },
+    {
+      "url": "https://www.thecomfywizard.com/sod-rogue-dps-compendium-p6",
+      "quality": "authoredSoDguide",
+      "scope": "survivorheals,ghosts,SoDlootdifference",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.icy-veins.com/wow-classic/silithid-royalty-guide-strategy-abilities-loot",
+      "quality": "Classicbaseline",
+      "caveat": "notSoDloot/killorderauthority",
+      "id": "source-04"
+    },
+    {
+      "quality": "primary",
+      "id": "source-05",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "freshcurrentclient",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-06",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "R01",
+      "mechanic": "death order/heals",
+      "spellIds": [
+        25790
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Yauj→Vem→Kri primary deaths",
+      "state": "track each boss death independently, survivor heals and buffs at recorded times; do not kill all three at first death or infer a corpse absorption path from a health reset.",
+      "lifecycle": "37.082/74.272/98.575s;Vengeance74.247–98.565s",
+      "placement": "no corpse absorption transform established",
+      "animation": "no invented devour animation",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R01",
+      "acceptanceCriteria": "R01",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary health/deaths+SoD corroboration",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R02",
+      "mechanic": "Kri cloud/poison",
+      "spellIds": [
+        26590,
+        25786,
+        25812,
+        15584,
+        3391
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Kri summon98.569;cloudcast98.580",
+      "state": "frontal/poison recipient state follows actual casts and removals; corpse cloud anchors at Kri's recorded death location and has separate recorded trigger identity/lifetime.",
+      "lifecycle": "cloud duration120s clientestimate;no observedend",
+      "placement": "sameXY asKri death -8615.60,2111.15;Zunknown",
+      "animation": "AreaModel2968 kit152419;Area execution unverified",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R02",
+      "acceptanceCriteria": "R02",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client+SoD cloudresearch",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R03",
+      "mechanic": "Yauj cast/control",
+      "spellIds": [
+        25807,
+        25808,
+        26580,
+        3242
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "GreatHeal/Dispel starts andFear recipients",
+      "state": "interrupted Great Heal/Dispel must not become completed actions; fear recipient/control state and brood creation are distinct. No fabricated threat ledger.",
+      "lifecycle": "all3 heals interrupted;0 successes",
+      "placement": "actual targetactors",
+      "animation": "visual7261/86/336;no fabricated success",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R03",
+      "acceptanceCriteria": "R03",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R04",
+      "mechanic": "Vem charge/knockback",
+      "spellIds": [
+        26561,
+        18670,
+        19128,
+        25790
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "3 chargecasts;Vengeance actualdeathtrigger",
+      "state": "charge and knockback use observed source/target geometry; death Vengeance follows actual surviving recipients. Last-boss Berserk needs logged or otherwise verified state, not a generic schedule.",
+      "lifecycle": "actualcast/hit/aura removals",
+      "placement": "observedanchors,no guessed straightpath",
+      "animation": "visual4259 speed27;Vengeance47",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R04",
+      "acceptanceCriteria": "R04",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R05",
+      "mechanic": "Yauj Brood",
+      "spellIds": [
+        25788
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual NPC15621 actor99/100 observations",
+      "state": "record actual entry/instance and birth/summon, position confidence, death and continuation; do not render dozens of duplicated insects at the mother's origin without evidence.",
+      "lifecycle": "no Birth/summon;preserve death/reuse",
+      "placement": "7 positioned99;7 unpositioned100",
+      "animation": "Birth26586 isNOTBrood",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R05",
+      "acceptanceCriteria": "R05",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary identity",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R06",
+      "mechanic": "SoD Despair ghosts",
+      "spellIds": [
+        1213255,
+        26586,
+        1214871
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "playercurse;NPC235668 Birth thenShatter",
+      "state": "optional hard-mode marker, per-player source/target, ghost/spawn/impact and contact timing. Player-self curse and spell events are encounter mechanics. Damage victims are not independent ghost spawns.",
+      "lifecycle": "58birth/44detonation observed;14endsunknown",
+      "placement": "1–2samples each;no measured chasepath",
+      "animation": "Birthkit797 Loop127;Shatter154536",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R06",
+      "acceptanceCriteria": "R06",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "SoDresearch+primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R07",
+      "mechanic": "seek/end",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "seek,wipe,chapterboundaries",
+      "state": "retain corpse/cloud and living adds as evidence requires, clear on explicit boundaries, preserve actor/instance identity and effect age under random/reverse seek. Missing Z is unknown.",
+      "lifecycle": "ghostscontinue postkill;cloudnotuniversallydestroyed",
+      "placement": "rootrelative timeline",
+      "animation": "exactFXage unresolved",
+      "acceptanceCheck": "sod-aq40-silithid-royalty/R07",
+      "acceptanceCriteria": "R07",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "CPU+consumerinspection",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "exactrealgameghostappearance/servermorph",
+    "14ghostendsandallintermediatechasepaths",
+    "cloudexactlifetimeandnativeAreaModelexecution",
+    "corpseabsorption/devouranimationnotestablished",
+    "unpositionedBrood100",
+    "nativecharge/knockbackarcs,poisonfootprint,Z",
+    "absoluteFXageafterseek"
+  ]
+}

@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bfd-baron-aquanis",
+  "ruleset": "sod",
+  "boss": "Baron Aquanis",
+  "raid": "Blackfathom Deeps",
+  "mapId": 48,
+  "encounterId": 2694,
+  "rawEncounterId": 2694,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "reportRevision": 1,
+      "reportResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "provenanceResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "providerZoneId": 2007,
+      "discoveryPartitions": [
+        "Discovery P1",
+        "Discovery P2+"
+      ],
+      "selectedMapId": 48,
+      "selectedFightIds": [
+        3
+      ],
+      "selectedFightNames": [
+        "Baron Aquanis"
+      ],
+      "matchedNpcTemplateIds": [
+        202699
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "d2d9b25b956c25ce468c37a0b2bf736dc2d40a17c5ff9bd61962f93cbbea6802"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bfd-baron-aquanis"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackfathom-deeps-raid/baron-aquanis-strategy",
+      "author": "Joardee",
+      "updated": "2023-12-05",
+      "quality": "authored exact SoD BFD strategy; not gameplay frames, retained events or exact server script"
+    },
+    {
+      "id": "current-client",
+      "quality": "current production converter graph; record existence only, not occurrence or supported pixels",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bubble-record",
+      "url": "https://www.wowhead.com/classic/spell=405998/bubble-beam",
+      "quality": "primary client dummy; does not appear in log"
+    },
+    {
+      "id": "charge-record",
+      "url": "https://www.wowhead.com/classic/spell=404805/depth-charge",
+      "quality": "primary client damage/knockback; caster not logged"
+    },
+    {
+      "id": "pinned-dbmsod",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_BFD/BaronAuanis.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "Primary addon explicitly gated IsSeasonal SeasonOfDiscovery; SetEncounterID is raw encounter ID, not WCL offset",
+      "lines": "1-10"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Barrier and platforms",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        405663
+      ],
+      "trigger": "Three stones unlock stationary boss",
+      "state": "Barrier and platforms",
+      "lifecycle": "Remove barrier on observed activation",
+      "placement": "Ruins and water need independently evidenced Z",
+      "animation": "Native barrier; no invented platform jump",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-ACTIVATE",
+      "acceptanceCriteria": "AQUANIS-ACTIVATE: barrier/engagement follows actual event",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Greater Frostbolt",
+      "spellIds": [
+        404316
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Successful tank cast",
+      "state": "Greater Frostbolt",
+      "lifecycle": "Cast then slow until removal",
+      "placement": "Actual source/target",
+      "animation": "Native missile and slow",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-BOLT",
+      "acceptanceCriteria": "AQUANIS-BOLT: cast/impact/slow seek consistently",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          404316
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Bubble Beam",
+      "spellIds": [
+        405998
+      ],
+      "clientCandidateSpellIds": [
+        404373,
+        413664,
+        413671
+      ],
+      "trigger": "Beam state with clockwise facing sweep",
+      "state": "Bubble Beam",
+      "lifecycle": "Channel/rotation ends or cancels",
+      "placement": "Stationary body, recorded facing and frontal knockback",
+      "animation": "Authored beam; no timer-driven spin",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-BEAM",
+      "acceptanceCriteria": "AQUANIS-BEAM: beam/facing/samples align",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          405998
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Depth Charge",
+      "spellIds": [
+        404805
+      ],
+      "clientCandidateSpellIds": [
+        404806
+      ],
+      "trigger": "Target warning then expiry blast",
+      "state": "Depth Charge",
+      "lifecycle": "Eight-second client aura; actual removal governs",
+      "placement": "Holder then detonation position; water altitude unknown",
+      "animation": "Native warning/explosion",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-DEPTH",
+      "acceptanceCriteria": "AQUANIS-DEPTH: holder movement and blast owner correct",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          404805
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Torrential Downpour",
+      "spellIds": [
+        405953
+      ],
+      "clientCandidateSpellIds": [
+        404433
+      ],
+      "trigger": "Rain over chosen area",
+      "state": "Torrential Downpour",
+      "lifecycle": "Independent ground field until observed end",
+      "placement": "Freeze proven area center",
+      "animation": "Native cloud/area lifecycle",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-RAIN",
+      "acceptanceCriteria": "AQUANIS-RAIN: area stays fixed and seeks with age",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          405953
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "End and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Death/wipe",
+      "state": "End and reset",
+      "lifecycle": "Cancel barrier/beam/rain/charge",
+      "placement": "Preserve real lifecycle",
+      "animation": "No idle living boss after death",
+      "acceptanceCheck": "sod-bfd-baron-aquanis/AQUANIS-END",
+      "acceptanceCriteria": "AQUANIS-END: replay end and rewind clean",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    405663,
+    404373,
+    413664,
+    413671,
+    404806,
+    404433
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact beam variant/current script and clockwise angular curve",
+    "Stone activation events, platform/water level",
+    "Charge owner and rain center/lifetime",
+    "Actual retained phase/actor/spell IDs and source ownership",
+    "Missing log Z and stacked/water geometry",
+    "Original gameplay frame comparison and native visual acceptance"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "bossNpcId": 202699
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

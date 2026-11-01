@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bfd-lady-sarevess",
+  "ruleset": "sod",
+  "boss": "Lady Sarevess",
+  "raid": "Blackfathom Deeps",
+  "mapId": 48,
+  "encounterId": 2699,
+  "rawEncounterId": 2699,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "reportRevision": 1,
+      "reportResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "provenanceResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "providerZoneId": 2007,
+      "discoveryPartitions": [
+        "Discovery P1",
+        "Discovery P2+"
+      ],
+      "selectedMapId": 48,
+      "selectedFightIds": [
+        7
+      ],
+      "selectedFightNames": [
+        "Lady Sarevess"
+      ],
+      "matchedNpcTemplateIds": [
+        204068
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "d2d9b25b956c25ce468c37a0b2bf736dc2d40a17c5ff9bd61962f93cbbea6802"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bfd-lady-sarevess"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackfathom-deeps-raid/lady-sarevess-strategy",
+      "author": "Joardee",
+      "updated": "2023-12-08",
+      "quality": "authored exact SoD BFD strategy; not gameplay frames, retained events or exact server script"
+    },
+    {
+      "id": "current-client",
+      "quality": "current production converter graph; record existence only, not occurrence or supported pixels",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "freeze-record",
+      "url": "https://www.wowhead.com/classic/spell=407546/freezing-arrow",
+      "quality": "primary10s stunned effect"
+    },
+    {
+      "id": "original-video-candidate",
+      "url": "https://www.youtube.com/watch?v=_YHjE8pZsjA",
+      "published": "2023-12-03",
+      "quality": "original SoD boss-guide gameplay candidate; frames uninspected, no visual credit"
+    },
+    {
+      "id": "pinned-dbmsod",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_BFD/LadySarevess.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "Primary addon explicitly gated IsSeasonal SeasonOfDiscovery; SetEncounterID is raw encounter ID, not WCL offset",
+      "lines": "1-10"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Naga and Blackfathom Elites",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss with Elite; later reinforcements",
+      "state": "Naga and Blackfathom Elites",
+      "lifecycle": "Elites retire when boss dies, not fake corpses",
+      "placement": "Recorded swim/land positions and facing",
+      "animation": "Native naga ranged body",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-ADDS",
+      "acceptanceCriteria": "SAREVESS-ADDS: exact instances and boss-linked cleanup",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Frost Arrow",
+      "spellIds": [
+        407819
+      ],
+      "clientCandidateSpellIds": [
+        407813,
+        407821,
+        407822
+      ],
+      "trigger": "Targeted frost shot",
+      "state": "Frost Arrow",
+      "lifecycle": "Cast/impact then slow removal",
+      "placement": "Actual target",
+      "animation": "Native arrow; interruption only if logged",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-SHOT",
+      "acceptanceCriteria": "SAREVESS-SHOT: preserve successful/interrupted outcomes",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407819
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Forked Lightning",
+      "spellIds": [
+        407653
+      ],
+      "clientCandidateSpellIds": [
+        407667,
+        407720,
+        407736,
+        407745
+      ],
+      "trigger": "Boss lightning and secondary targets",
+      "state": "Forked Lightning",
+      "lifecycle": "Cast/chain/results/debuff removal",
+      "placement": "Actual source and chain targets",
+      "animation": "Client chain effect; no generic straight fan",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-CHAIN",
+      "acceptanceCriteria": "SAREVESS-CHAIN: exact fork ownership and target list",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407653
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Freezing ground",
+      "spellIds": [
+        407568
+      ],
+      "clientCandidateSpellIds": [
+        407551,
+        407548
+      ],
+      "trigger": "Targeted freezing shot lays patch",
+      "state": "Freezing ground",
+      "lifecycle": "Independent ground patch until observed end",
+      "placement": "Fixed landing center",
+      "animation": "Native frost field",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-PATCH",
+      "acceptanceCriteria": "SAREVESS-PATCH: no victim-following area and seek age",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407568
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Frozen solid",
+      "spellIds": [
+        407546
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Exposure freezes players or Elite",
+      "state": "Frozen solid",
+      "lifecycle": "Ten-second client stun with actual removal",
+      "placement": "Correct frozen actor, including enemy Elite",
+      "animation": "Native freeze body/control",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-FREEZE",
+      "acceptanceCriteria": "SAREVESS-FREEZE: enemy and friendly lifecycle supported",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407546
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Reset and defeat",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Death/wipe",
+      "state": "Reset and defeat",
+      "lifecycle": "End fields and adds from evidence",
+      "placement": "No unobserved reinforcements",
+      "animation": "No invented swim route",
+      "acceptanceCheck": "sod-bfd-lady-sarevess/SAREVESS-END",
+      "acceptanceCriteria": "SAREVESS-END: direct/reverse seeks clean",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    407813,
+    407821,
+    407822,
+    407667,
+    407720,
+    407736,
+    407745,
+    407551,
+    407548
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Actual Elite NPC IDs/births/despawn and count",
+    "Current Frost Arrow interruption rule: guide claims interruptible while a comment disputes it",
+    "Patch center/radius/age and exposure-to-freeze relation",
+    "Actual retained phase/actor/spell IDs and source ownership",
+    "Missing log Z and stacked/water geometry",
+    "Original gameplay frame comparison and native visual acceptance"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "bossNpcId": 204068
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

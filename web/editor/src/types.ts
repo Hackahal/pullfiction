@@ -34,6 +34,7 @@ export interface Annotation {
   comments: PlanComment[];
 }
 export interface PlannedActor {
+  friendly?: boolean;
   displayID?: number | null;
   gameID?: number;
   scale?: number;
@@ -100,6 +101,19 @@ export interface Aura {
   stack: number;
   debuff: boolean;
   remove?: boolean;
+  /** True only when the log identifies the aura source as this actor instance. */
+  selfCast?: boolean;
+  /** Encounter-scoped recorded continuation through a snapshot; never seeds an aura. */
+  preserve?: number[];
+  preserveEvidence?: {
+    mechanic: string;
+    encounterID: number;
+    snapshotTimestamp: number;
+    witnessTimestamp: number;
+    witnessType: string;
+    actor: string;
+    provenance: string;
+  };
 }
 export interface Cast {
   spell: number;
@@ -157,6 +171,8 @@ export interface SpawnPlacement {
   synthetic: boolean;
 }
 export interface Actor {
+  /** Initial provider ownership classification; does not simulate control changes. */
+  friendly?: boolean;
   bufferedRanges?: [number, number][];
   spawn?: SpawnPlacement;
   key: string;
@@ -172,6 +188,17 @@ export interface Actor {
   activityWindows?: [number, number][];
   samples: [number, number, number, number | null][];
   deaths: [number, boolean][];
+  lifeEvents?: [number, boolean][];
+  /** Evidence-labelled visibility intervals; end is exclusive, in replay milliseconds. */
+  presentationWindows?: [number, number][];
+  presentationEvidence?: Record<string, unknown>;
+  chargeSegments?: [number, number][];
+  chargeEvidence?: Record<string, unknown>[];
+  viscidusPresentation?: {
+    retirements: { start: number; end: number; endInclusive: boolean }[];
+    [key: string]: unknown;
+  };
+  initiallyPresent?: boolean;
   firstSeen: number;
   lastSeen: number;
   runLifetime: boolean;
@@ -201,6 +228,15 @@ export interface Chapter {
   enemyNPCs?: { id: number }[];
 }
 export interface Fight {
+  reportedBounds?: { startTime: number; endTime: number };
+  recordedPrelude?: {
+    kind: "recorded-encounter-boundaries";
+    rawEncounterID: number;
+    startEvent: { timestamp: number; fight: number | string };
+    endEvent: { timestamp: number; fight: number | string };
+    chapterIds: (number | string)[];
+  };
+  enemyNPCs?: { id: number; instanceCount?: number }[];
   categoryMixed?: boolean;
   difficulty?: number;
   size?: number;
@@ -319,6 +355,7 @@ export interface NativeFrame {
   channel?: boolean;
   channel_target?: string | null;
   auras: number[];
+  self_auras?: number[];
 }
 export interface NativeTrajectoryReference {
   source: string;

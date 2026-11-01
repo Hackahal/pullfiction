@@ -18,6 +18,7 @@ const units = () =>
     channel: false,
     channel_target: null as string | null,
     auras: [] as number[],
+    self_auras: [] as number[],
   }));
 
 test("cast fixtures exercise windup and release at distinct authored ages", () => {
@@ -47,6 +48,19 @@ test("cast fixtures exercise windup and release at distinct authored ages", () =
       amount: 0,
     },
   ]);
+});
+test("self aura fixtures carry source provenance and remove it with the aura", () => {
+  const c = fixture("aura");
+  c.effects[0].targetId = "caster";
+  const actions = spellTimeline(c),
+    bodies = units();
+  applySpellActions(bodies, actions.slice(0, 1));
+  assert.deepEqual(bodies[0].self_auras, [133]);
+  applySpellActions(bodies, actions.slice(1));
+  assert.deepEqual(bodies[0].self_auras, []);
+  const other = units();
+  applySpellActions(other, spellTimeline(fixture("aura")).slice(0, 1));
+  assert.deepEqual(other[1].self_auras, []);
 });
 test("launch and instant-cast fixtures emit one Go rather than a sample-boundary duplicate", () => {
   for (const c of [fixture("flight"), fixture("cast", 0)]) {

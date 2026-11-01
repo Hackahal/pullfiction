@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-mason",
+  "ruleset": "sod",
+  "boss": "Mason the Echo",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3197,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-mason"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/mason-the-echo-scarlet-enclave-strategy",
+      "date": "2025-05-04",
+      "quality": "authored SoD encounter guide",
+      "limit": "no pixel parity;timer/cannon-count patch differences unresolved",
+      "id": "source-01"
+    },
+    {
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-scarlet-enclave",
+      "quality": "authored SoD walkthrough",
+      "limit": "two cannon requirement differs from one logged shot per phase",
+      "id": "source-02"
+    },
+    {
+      "quality": "primary current client graph",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-03",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "retained primary combat events",
+      "id": "source-04",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Tidal Force",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231585 precast and self aura",
+      "state": "Tidal Force has a precast, channel, immunity aura and stack state. Actual removal or interruption ends it.",
+      "lifecycle": "27914-32916;58673-63207;89463-94110ms",
+      "placement": "Mason241021 at recorded XY;Z unknown",
+      "animation": "visual160508 kit229792 LoopAnimID125",
+      "acceptanceCheck": "sod-scarlet-mason/M01",
+      "acceptanceCriteria": "M01",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Blade Dance",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1228331 followed by1228370 action chain",
+      "state": "Blade Dance follows recorded boss motion and impact timing. Oil objects require independent creation evidence.",
+      "lifecycle": "116577-119014 observed phase bounds",
+      "placement": "4034 boss XY samples;34 dense fast segments",
+      "animation": "current interpolation proposed gate;no substituted visual",
+      "acceptanceCheck": "sod-scarlet-mason/M02",
+      "acceptanceCriteria": "M02",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Oil/Burning Oil",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "researched1228372/3/4,1228503/9;not observed",
+      "state": "Oil has an unlit slowing state and a separate burning state. Neither placement nor ignition is inferred from victim ticks.",
+      "lifecycle": "unresolved area-trigger lifecycle",
+      "placement": "destination/radius absent",
+      "animation": "client1228373 Area Trigger Start/End kit228678",
+      "acceptanceCheck": "sod-scarlet-mason/M03",
+      "acceptanceCriteria": "M03",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Cannonfire",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231639 cast from actor117:1",
+      "state": "Cannon objects, projectile travel, warning and impact are separate. Intermission shots differ from enemy barrages.",
+      "lifecycle": "three cast/impact pairs recorded",
+      "placement": "NPC242886 fixed XY2114.6,-6186.99 targets Mason",
+      "animation": "visual160525 missile and Area route incomplete",
+      "acceptanceCheck": "sod-scarlet-mason/M04",
+      "acceptanceCriteria": "M04",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "ship transport",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "researched dock cannons and ships",
+      "state": "Dock, ship and beach positions require observed transport and elevation evidence.",
+      "lifecycle": "boarding/return timestamps unresolved",
+      "placement": "missing Z;floor inference separate from server motion",
+      "animation": "no launch curve invented",
+      "acceptanceCheck": "sod-scarlet-mason/M05",
+      "acceptanceCriteria": "M05",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "adds",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "NPC242853 Scallywags;244122/242106 cannoneers",
+      "state": "Scallywags and cannoneers are independent instances with their own creation, death and continuation.",
+      "lifecycle": "recorded death;119:6 continues to fight8",
+      "placement": "recorded instance XY where available",
+      "animation": "no universal cleanup on boss end",
+      "acceptanceCheck": "sod-scarlet-mason/M06",
+      "acceptanceCriteria": "M06",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "debuff targets",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1229005 Mortal Wound;1231592 Drowning Shallows",
+      "state": "Mortal Wound and Drowning Shallows belong to actual recipients and end at observed removal.",
+      "lifecycle": "recorded target application/removal",
+      "placement": "recipient actor identity",
+      "animation": "1231592 body procedure1 incomplete",
+      "acceptanceCheck": "sod-scarlet-mason/M07",
+      "acceptanceCriteria": "M07",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "seek and boundary",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "seek,end,wipe",
+      "state": "Seek reconstruction preserves active actors and effect age while retaining independently surviving trash.",
+      "lifecycle": "same state/age at same time",
+      "placement": "preserve surviving trash across chapters",
+      "animation": "absolute aura effect age contract unresolved",
+      "acceptanceCheck": "sod-scarlet-mason/M08",
+      "acceptanceCriteria": "M08",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "two-ship guide expectation versus one logged cannon shot per phase",
+    "exact oil/fire destinations,lifetime and warning geometry",
+    "boat transport and ship Z",
+    "unobserved NPC spawn timing and4 cannoneers with no XY",
+    "native attachment/missile source and Area execution",
+    "native absolute FX age after seek",
+    "actual charge window tail beyond last observed subcast"
+  ],
+  "researchContext": {
+    "identityCorrection": "Sir Dornel belongs to Alexei the Beastlord and is excluded"
+  }
+}

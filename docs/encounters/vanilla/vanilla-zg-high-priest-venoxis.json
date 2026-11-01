@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-high-priest-venoxis",
+  "ruleset": "vanilla",
+  "boss": "High Priest Venoxis",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50784,
+  "rawEncounterId": 784,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-high-priest-venoxis"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Venoxis.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/high-priest-venoxis-zul-gurub-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-04-23",
+      "author": "Neryssa",
+      "patch": "Page patch 1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=23979/holy-wrath",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=25058/renew"
+      ],
+      "quality": "Resolved guide links; Renew 25058 differs from primary 23895. No same-name alias; HolyWrath page robots-denied, identity link only."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Troll to snake transformation",
+      "spellIds": [
+        23849
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual unit-spell/morph evidence, researched 50 percent boundary",
+      "state": "Same boss identity can have distinct model/combat state",
+      "lifecycle": "No HP-only phase or new actor fabricated; unit-only evidence may be absent",
+      "placement": "Actual boss path; morph height/scale unverified",
+      "animation": "Troll model, serpent model and animation separately validated",
+      "acceptanceCheck": "vanilla-zg-high-priest-venoxis/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Renew, Holy Fire and Holy Wrath",
+      "spellIds": [
+        23895,
+        23860,
+        23979,
+        25058
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual casts, auras and impacts",
+      "state": "Boss Renew and player fire/chain victims distinct; guide Renew variant separate",
+      "lifecycle": "Actual dispel/remove/interrupt; no chain inferred from nearby positions",
+      "placement": "Observed recipients; full jump topology and LOS unknown",
+      "animation": "Precast, projectile, DoT/heal and chain routing separate",
+      "acceptanceCheck": "vanilla-zg-high-priest-venoxis/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Poison Cloud",
+      "spellIds": [
+        23861
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cloud cast/host evidence and exposures",
+      "state": "Ground cloud independent from affected player aura",
+      "lifecycle": "Conflicting guide/primary durations not promoted to lifecycle",
+      "placement": "Actual world anchor required; no victim-centered cloud",
+      "animation": "Host growth/age/cleanup needs actual area/native evidence",
+      "acceptanceCheck": "vanilla-zg-high-priest-venoxis/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Serpent poison and initial snakes",
+      "spellIds": [
+        23865
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual aura, snake-add activity and low-health state",
+      "state": "Initial adds and serpent recipient state remain separate",
+      "lifecycle": "Observed creation/death and aura removal; no four generated adds or enrage timer",
+      "placement": "Measured add/boss anchors and unknown Z",
+      "animation": "Snake morph, add life and poison aura distinct",
+      "acceptanceCheck": "vanilla-zg-high-priest-venoxis/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-zg-high-priest-venoxis/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Guide PoisonCloud remainder-of-fight claim conflicts with primary 10 second timer. Actual object terminal remains unknown; neither becomes a fixed lifetime.",
+    "Primary phase 23849 is UNIT_SPELLCAST_SUCCEEDED, not guaranteed ordinary retained CLEU. No HP-only morph inferred.",
+    "Cached revision is absent. Live metadata revision 1 is not retroactively assigned to cached events; realmseason 2 retained without subtype assumption.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5 seconds before and 5000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14507
+    ]
+  }
+}

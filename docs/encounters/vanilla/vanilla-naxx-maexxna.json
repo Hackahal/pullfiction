@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-maexxna",
+  "ruleset": "vanilla",
+  "boss": "Maexxna",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51116,
+  "rawEncounterId": 1116,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-maexxna"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Maexxna.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/maexxna-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-03",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=28622/web-wrap",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=28741/poison-shock",
+        "https://www.wowhead.com/classic/spell=29434/summon-maexxna-spiderling",
+        "https://www.wowhead.com/classic/npc=17055/maexxna-spiderling"
+      ],
+      "quality": "Resolved Classic guide links; Web Wrap spell page1minute authored ceiling, actual removal still authoritative"
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Web Wrap wall relocation and cocoon",
+      "spellIds": [
+        28622
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded wrap aura and cocoon activity",
+      "state": "Wrapped player, cocoon actor and relocation separate",
+      "lifecycle": "Cocoon death and actual aura removal; no fixed60s hold",
+      "placement": "Wall position and elevation require measured anchors; no interpolation through teleport",
+      "animation": "Stun, cocoon, death and fall need separate validation",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Raid Web Spray",
+      "spellIds": [
+        29484
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded boss cast and applications",
+      "state": "Raid stun has actual recipients",
+      "lifecycle": "Removal or immunity decides duration; not40s addon schedule",
+      "placement": "No inferred cocoon or wall destination",
+      "animation": "Raid aura age distinct from cast",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Poison cone and healing reduction",
+      "spellIds": [
+        28741,
+        28776
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded impacts and poison aura",
+      "state": "Frontal cone and Necrotic Poison recipients separate",
+      "lifecycle": "Actual dispel/removal",
+      "placement": "Observed boss facing; targets do not reconstruct full cone",
+      "animation": "Impact versus persistent poison",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Spiderling swarm",
+      "spellIds": [
+        29434
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed summon/instance activity",
+      "state": "Independent NPC17055 instances",
+      "lifecycle": "Creation, death and postkill survival retain identity",
+      "placement": "Spawn location not assumed under boss absent samples",
+      "animation": "Independent emergence and death",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Low-health enrage",
+      "spellIds": [
+        28747
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual enrage aura, researched30percent threshold",
+      "state": "Boss buff; do not force state from a guessed HP curve",
+      "lifecycle": "Actual removal/death",
+      "placement": "Boss anchor",
+      "animation": "Self-owned body effect only",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-maexxna/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested.",
+    "Raw instance identities across provider chapters/event categories are ambiguous. Repeated keys cannot be assumed to represent the same physical cocoon."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15952,
+      17055
+    ]
+  }
+}

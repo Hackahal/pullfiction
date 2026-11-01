@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-rajaxx",
+  "ruleset": "sod",
+  "boss": "General Rajaxx and wave commanders",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100719,
+  "rawEncounterId": 719,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        41,
+        80
+      ],
+      "selectedFightNames": [
+        "General Rajaxx"
+      ],
+      "matchedNpcTemplateIds": [
+        15341
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-rajaxx"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Rajaxx.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/general-rajaxx-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Rajaxx.lua",
+      "quality": "Pinned primary commander NPC IDs/deaths, Enlarge25462, enrage8269; local complete source"
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/General_Rajaxx_%28Season_of_Discovery%29",
+      "quality": "Indexed exact SoD commander and pursuing ghost mechanics; direct403"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Andorov activation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official speak to Andorov starts event; addon events registered outside boss combat",
+      "state": "Andorov activation",
+      "lifecycle": "Actual RP/wave starts and allied NPC lives",
+      "placement": "Actual ally/army movement, not30s scripted entry",
+      "animation": "Native allied soldiers and commanders",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-START",
+      "acceptanceCriteria": "RAJAXX-START: preserve preboss waves",
+      "sourceRefs": [
+        "official-sod-p6",
+        "dbm",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Qeez wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "First commander fear",
+      "state": "Qeez wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native fear and actual flee motion",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-QEEZ",
+      "acceptanceCriteria": "RAJAXX-QEEZ: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Tuubid wave",
+      "spellIds": [
+        25471
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "AttackOrder marks actual player",
+      "state": "Tuubid wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native marker/actual pursuing army",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-TUUBID",
+      "acceptanceCriteria": "RAJAXX-TUUBID: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25471
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            36,
+            40,
+            41,
+            43,
+            47
+          ],
+          "BigWigs-source.lua": [
+            40,
+            60,
+            61
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          36,
+          40,
+          41,
+          43,
+          47
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Drenn wave",
+      "spellIds": [
+        26550
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "LightningCloud/Hurricane around commander",
+      "state": "Drenn wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native cloud and actual affected area",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-DRENN",
+      "acceptanceCriteria": "RAJAXX-DRENN: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          26550
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            30,
+            37,
+            44,
+            60
+          ],
+          "BigWigs-source.lua": [
+            44,
+            67,
+            68,
+            69
+          ]
+        },
+        "addonSourceLines": [
+          30,
+          37,
+          44,
+          60
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Xurrem wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Shockwave damage and slow",
+      "state": "Xurrem wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native actual shockwave/control",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-XURREM",
+      "acceptanceCriteria": "RAJAXX-XURREM: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Yeggeth wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Physical protection buff",
+      "state": "Yeggeth wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native immunity aura",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-YEGGETH",
+      "acceptanceCriteria": "RAJAXX-YEGGETH: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Pakkon wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Frontal SweepingSlam and knockback",
+      "state": "Pakkon wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native strike and actual displacement",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-PAKKON",
+      "acceptanceCriteria": "RAJAXX-PAKKON: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "bigwigs"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Zerran wave",
+      "spellIds": [
+        25462
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Enlarge self/allies until dispelled",
+      "state": "Zerran wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native body growth only with scale evidence",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-ZERRAN",
+      "acceptanceCriteria": "RAJAXX-ZERRAN: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25462
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": [
+            43,
+            64,
+            159,
+            160
+          ]
+        },
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "General Rajaxx",
+      "spellIds": [
+        25599,
+        8269
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM Thundercrash, BigWigs enrage",
+      "state": "General Rajaxx",
+      "lifecycle": "Actual hit, displacement/threat and aura removal",
+      "placement": "Boss facing and observed victim motion",
+      "animation": "Native crash and enrage",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-BOSS",
+      "acceptanceCriteria": "RAJAXX-BOSS: no generated knockback/target choice",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25599,
+          8269
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            30,
+            38,
+            63
+          ],
+          "BigWigs-source.lua": [
+            41,
+            42,
+            46,
+            47,
+            62,
+            63
+          ]
+        },
+        "addonSourceLines": [
+          30,
+          38,
+          63
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M10",
+      "mechanic": "SoD pursuing ghosts",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213255,
+        1214777,
+        1214871
+      ],
+      "trigger": "SoD wiki ghosts chase and shatter on contact",
+      "state": "SoD pursuing ghosts",
+      "lifecycle": "Actual births/pursuit/contact/retirement; client IDs candidates",
+      "placement": "Actual independent ghost path",
+      "animation": "Native apparition and contact blast",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-MADNESS",
+      "acceptanceCriteria": "RAJAXX-MADNESS: no timed spawn/path synthesis",
+      "sourceRefs": [
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M11",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual win/wipe and Andorov death",
+      "state": "Death and reset",
+      "lifecycle": "Independent ally/remaining army death/despawn, actual reset",
+      "placement": "No boss-death blanket actor retirement",
+      "animation": "Native corpses and actual reset",
+      "acceptanceCheck": "sod-aq20-rajaxx/RAJAXX-END",
+      "acceptanceCriteria": "RAJAXX-END: preserve actual ally survival and complete wave reset",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1213255,
+    1214777,
+    1214871
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD wave sizes/timing and reset changes",
+    "Ghost candidate IDs and source/target contact mapping",
+    "Andorov heal/aura and actor despawn semantics",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 719,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15341",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15341",
+    "waveCommanders": [
+      {
+        "name": "Qeez",
+        "npcId": 15391,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Tuubid",
+        "npcId": 15392,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Drenn",
+        "npcId": 15389,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Xurrem",
+        "npcId": 15390,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Yeggeth",
+        "npcId": 15386,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Pakkon",
+        "npcId": 15388,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      },
+      {
+        "name": "Zerran",
+        "npcId": 15385,
+        "identityEvidence": "Pinned BigWigs Death registration; SoD retained instance unverified"
+      }
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

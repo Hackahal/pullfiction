@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ReplayPresenceIndex } from "./replay-presence-index";
-import { poseAt } from "./domain";
-import type { Actor } from "./types";
+import { normalizeReplay, poseAt } from "./domain";
+import type { Actor, RawReplay } from "./types";
 test("presence candidates preserve every live pose at spawn, lifetime and death boundaries", () => {
   const base = {
     type: "NPC",
@@ -52,5 +52,62 @@ test("presence candidates preserve every live pose at spawn, lifetime and death 
         assert.ok(candidates.has(actor.key), `${actor.key} at ${time}`);
     }
     if (time >= 400) assert.equal(candidates.has("observed"), false);
+  }
+});
+
+test("recorded summon and destroy bound held run pets without an activity timeout", () => {
+  const raw = {
+    report: { code: "presence" },
+    fight: {
+      startTime: 0,
+      endTime: 20000,
+      gameZone: { id: 409 },
+      friendlyPlayers: [1],
+      chapters: [{ id: 1, startTime: 0, endTime: 20000 }],
+    },
+    actors: [
+      { id: 1, type: "Player", name: "P" },
+      { id: 2, type: "Pet", name: "Pet", petOwner: 1 },
+    ],
+    events: [
+      { timestamp: 1000, type: "summon", sourceID: 1, targetID: 2 },
+      {
+        timestamp: 1100,
+        type: "damage",
+        sourceID: 2,
+        targetID: 1,
+        resourceActor: 1,
+        x: 100,
+        y: 200,
+      },
+      { timestamp: 12000, type: "destroy", targetID: 2 },
+      { timestamp: 15000, type: "create", targetID: 2 },
+    ],
+  };
+  for (const events of [
+    raw.events,
+    raw.events.filter((e) => e.type !== "destroy" && e.type !== "create"),
+  ]) {
+    const pet = normalizeReplay(
+      { ...raw, events } as unknown as RawReplay,
+      {},
+    ).actors.find((a) => a.id === 2)!;
+    const index = new ReplayPresenceIndex([pet]);
+    assert.equal(pet.runLifetime, true);
+    assert.ok(poseAt(pet, 10000));
+    assert.ok(index.at(10000).has(pet.key));
+    for (const time of [11999, 12000, 14000, 15000, 19000, 1100, 10000]) {
+      assert.equal(
+        index.at(time).has(pet.key),
+        !!poseAt(pet, time),
+        `at ${time}`,
+      );
+    }
+    assert.ok(index.between(10000, 11999).has(pet.key));
+    if (events === raw.events) {
+      assert.equal(index.at(12000).has(pet.key), false);
+      assert.equal(index.between(12000, 14999).has(pet.key), false);
+      assert.ok(index.at(15000).has(pet.key));
+    }
   }
 });

@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bfd-ghamoo-ra",
+  "ruleset": "sod",
+  "boss": "Ghamoo-ra",
+  "raid": "Blackfathom Deeps",
+  "mapId": 48,
+  "encounterId": 2697,
+  "rawEncounterId": 2697,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "reportRevision": 1,
+      "reportResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "provenanceResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "providerZoneId": 2007,
+      "discoveryPartitions": [
+        "Discovery P1",
+        "Discovery P2+"
+      ],
+      "selectedMapId": 48,
+      "selectedFightIds": [
+        5
+      ],
+      "selectedFightNames": [
+        "Ghamoo-ra"
+      ],
+      "matchedNpcTemplateIds": [
+        201722
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "d2d9b25b956c25ce468c37a0b2bf736dc2d40a17c5ff9bd61962f93cbbea6802"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bfd-ghamoo-ra"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackfathom-deeps-raid/ghamoo-ra-strategy",
+      "author": "Joardee",
+      "updated": "2023-12-05",
+      "quality": "authored exact SoD BFD strategy; not gameplay frames, retained events or exact server script"
+    },
+    {
+      "id": "current-client",
+      "quality": "current production converter graph; record existence only, not occurrence or supported pixels",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "shell-crack",
+      "url": "https://www.wowhead.com/classic/spell=414370/aqua-shell",
+      "quality": "primary client4s scripted crack warning"
+    },
+    {
+      "id": "chomp",
+      "url": "https://www.wowhead.com/classic/spell=407077/triple-chomp",
+      "quality": "primary3.5s periodic trigger channel"
+    },
+    {
+      "id": "pinned-dbmsod",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_BFD/Ghamoora.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "Primary addon explicitly gated IsSeasonal SeasonOfDiscovery; SetEncounterID is raw encounter ID, not WCL offset",
+      "lines": "1-10"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Aqua Shell",
+      "spellIds": [
+        414370
+      ],
+      "clientCandidateSpellIds": [
+        406970,
+        406973
+      ],
+      "trigger": "Self shell, hit-count shield and crack warning",
+      "state": "Aqua Shell",
+      "lifecycle": "Observe shield removal; do not simulate100hits",
+      "placement": "Boss attached barrier",
+      "animation": "Native shield/crack",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-SHELL",
+      "acceptanceCriteria": "GHAMOO-SHELL: shield/crack/absence match actual aura",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          414370
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Shell burst and Exposed",
+      "spellIds": [
+        407014,
+        407025
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Barrier breaks, raid burst and vulnerable window",
+      "state": "Shell burst and Exposed",
+      "lifecycle": "Actual cast/impacts then Exposed removal",
+      "placement": "Boss center; actual victim knockback",
+      "animation": "Native burst and vulnerability state",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-BREAK",
+      "acceptanceCriteria": "GHAMOO-BREAK: no damage phase before observed break",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407014,
+          407025
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Unstable bubbles",
+      "spellIds": [
+        406985
+      ],
+      "clientCandidateSpellIds": [
+        406992,
+        407010
+      ],
+      "trigger": "Hits shed ground bubbles",
+      "state": "Unstable bubbles",
+      "lifecycle": "Land, persist, pop on contact with mana return",
+      "placement": "Independent fixed landing points",
+      "animation": "Native bubble flight/area/pop",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-BUBBLES",
+      "acceptanceCriteria": "GHAMOO-BUBBLES: correct objects/centers/expiry and mana event",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          406985
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Crunch Armor",
+      "spellIds": [
+        407095
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Tank stack hit",
+      "state": "Crunch Armor",
+      "lifecycle": "Stack/removal from events",
+      "placement": "Actual tank",
+      "animation": "Native strike",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-ARMOR",
+      "acceptanceCriteria": "GHAMOO-ARMOR: tank swaps preserve stacks",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407095
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Triple Chomp",
+      "spellIds": [
+        407077
+      ],
+      "clientCandidateSpellIds": [
+        407085
+      ],
+      "trigger": "Three-attack channel",
+      "state": "Triple Chomp",
+      "lifecycle": "3.5s client duration with actual cancellation",
+      "placement": "Boss to actual target",
+      "animation": "Native chomp attacks",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-CHOMP",
+      "acceptanceCriteria": "GHAMOO-CHOMP: three results stay distinct",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          407077
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Patrol and end",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Patrol/pull/death/reset",
+      "state": "Patrol and end",
+      "lifecycle": "No guessed recast minute",
+      "placement": "Sampled turtle movement",
+      "animation": "No Retail Shell Shocker substitution",
+      "acceptanceCheck": "sod-bfd-ghamoo-ra/GHAMOO-END",
+      "acceptanceCriteria": "GHAMOO-END: stable seek and cleanup",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    406970,
+    406973,
+    406992,
+    407010,
+    407085
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact hit-count state and repeat timer for captured patch",
+    "Bubble landing paths, contact ownership, pool count and lifetime",
+    "Turtle shell animation and knockback trajectories",
+    "Actual retained phase/actor/spell IDs and source ownership",
+    "Missing log Z and stacked/water geometry",
+    "Original gameplay frame comparison and native visual acceptance"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "bossNpcId": 201722
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

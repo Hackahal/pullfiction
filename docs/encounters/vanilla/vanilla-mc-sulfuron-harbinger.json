@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-mc-sulfuron-harbinger",
+  "ruleset": "vanilla",
+  "boss": "Sulfuron Harbinger",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 50669,
+  "rawEncounterId": 669,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-mc-sulfuron-harbinger"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Sulfuron.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/sulfuron-harbinger-molten-core-strategy-wow-classic",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Four Priests and Dark Mending",
+      "spellIds": [
+        19775
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Independent source cast starts, interrupts and actual heals",
+      "state": "Each Priest owns one active cast/HP/life identity",
+      "lifecycle": "Explicit interrupt/death closes exact cast; warning6.5second nameplate is not cast duration",
+      "placement": "Observed Priest and actual heal recipient, not assumed boss",
+      "animation": "Recorded cast duration and native heal impact remain separate",
+      "acceptanceCheck": "vanilla-mc-sulfuron-harbinger/V-MC-SUL-MENDING",
+      "acceptanceCriteria": "V-MC-SUL-MENDING: interrupt one Priest only; no fabricated late heal or shared-HP collapse",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Inspire, Shout and Hand",
+      "spellIds": [
+        19779,
+        19778,
+        19780
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual ally buff, recipient debuff and knockback results",
+      "state": "Inspire belongs to actual ally, Shout/stun to victims",
+      "lifecycle": "Exact application/removal and impact; no nominal10second scheduler",
+      "placement": "Actual source/recipient facing and anchors; unknown height remains unknown",
+      "animation": "Exact aura and impact routes; no geometry guessed from range",
+      "acceptanceCheck": "vanilla-mc-sulfuron-harbinger/V-MC-SUL-INSPIRE",
+      "acceptanceCriteria": "V-MC-SUL-INSPIRE: own correct target, preserve death/removal and seek state",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Priest DoTs and Dark Strike",
+      "spellIds": [
+        20294,
+        19776,
+        19777
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Source-specific application, ticks and direct attacks",
+      "state": "Independent Priest DoT ownership on each recipient",
+      "lifecycle": "One source removal must not erase another active source; source-free removal policy explicit",
+      "placement": "Actual target bodies/positions",
+      "animation": "Exact baseline spells; no SoD Fallout",
+      "acceptanceCheck": "vanilla-mc-sulfuron-harbinger/V-MC-SUL-DOTS",
+      "acceptanceCriteria": "V-MC-SUL-DOTS: same-spell multi-source removals preserve remaining owner; dead Priest does not invent DoT cleanup",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-mc-sulfuron-harbinger/V-MC-SUL-END",
+      "acceptanceCriteria": "V-MC-SUL-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No exact knockback height/route, original cast animations or body visual acceptance.",
+    "Priest immunity to cast-time modifiers is source expectation; no actual immunity result is promoted from guide wording.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      12098,
+      11662
+    ],
+    "baselineScope": "Baseline four independent Flamewaker Priests. SoD shared-health and Living Fallout are excluded; contemporary SoD LoS hotfix is not assumed for baseline. Use actual heal/interrupt events rather than range-based cancellation."
+  }
+}

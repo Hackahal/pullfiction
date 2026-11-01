@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-thaddius",
+  "ruleset": "sod",
+  "boss": "Thaddius",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201120,
+  "rawEncounterId": 1120,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        30
+      ],
+      "selectedFightNames": [
+        "Thaddius"
+      ],
+      "matchedNpcTemplateIds": [
+        15928,
+        15929,
+        15930
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-thaddius"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/ConstructQuarter/Thaddius.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/thaddius-naxxramas-raid-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "emp-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/SoD_Hardmode.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD code; PTR comments and later handlers attributed separately"
+    },
+    {
+      "id": "emp-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-hardmodes-overview",
+      "date": "2025-02-15",
+      "quality": "authored live SoD difficulty guide"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24171906/fase-7-de-la-temporada-del-descubrimiento-%C2%A1naxxramas-ya-est%C3%A1-disponible",
+      "date": "2025-02-06",
+      "quality": "official live phase7 launch;20-player tuning/up to40 and augmented final bosses"
+    },
+    {
+      "id": "seal-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24179333/hotfixes-february-26-2025",
+      "quality": "official hotfix archive caps Seal progression at rank7; supersedes plannedrank10 guide"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "date": "2025-02-26",
+      "quality": "authored SoD overview; rank10 plan is stale versus official cap"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "T01",
+      "mechanic": "Two wights, revival and activation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual Stalagg15929/Feugen15930 death/revive emotes and Thaddius15928 activation yell",
+      "state": "two independent health pools; near-simultaneous downs awaken dormant mainboss",
+      "lifecycle": "baseline about5s death window; exact end from revive/activation, not11–16s addonestimate",
+      "placement": "two elevated platforms and jump-to-main platform; missingZ unknown",
+      "animation": "stone→awake model state and Tesla activation require actual clips/events",
+      "acceptanceCheck": "sod-naxx-thaddius/T01-acceptance",
+      "acceptanceCriteria": "one add dies/revives, second then both die, mainboss wakes later; repeated seek distinguishes dormant visible host from active combat",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "T02",
+      "mechanic": "Magnetic tank swap and coil tether",
+      "spellIds": [
+        28338,
+        28339,
+        28108,
+        23106
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual pull cast and tank displacement; coil attack evidence",
+      "state": "paired tanks thrown across platforms; Tesla chain attacks when wight leaves",
+      "lifecycle": "no21s generated pulls; explicit departure/arrival events or measured anchors",
+      "placement": "observed air path/height only; do not smooth diagonal through void or invent parabola",
+      "animation": "tether source Tesla object identity unknown; graph beam not proof of binding",
+      "acceptanceCheck": "sod-naxx-thaddius/T02-acceptance",
+      "acceptanceCriteria": "both tanks swap same time, one lacksZ, fall/reset, coil source independent; random midpull seek and sparse-gap refusal",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T03",
+      "mechanic": "Polarity application, refresh and proximity",
+      "spellIds": [
+        28089,
+        28059,
+        28084
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded3s shift cast and recipient apply/refresh",
+      "state": "positive/negative opposite damage, same-charge benefit; unchanged refresh not flip",
+      "lifecycle": "actual removal/snapshot resets; no30s generated shifts; death clears only recorded state",
+      "placement": "actual camp movement, not forced left/right strategy; player-self proximity pulses retained",
+      "animation": "same-name28062/28085 client candidates; effect relationship needs observed IDs",
+      "acceptanceCheck": "sod-naxx-thaddius/T03-acceptance",
+      "acceptanceCriteria": "unchanged refresh versus changed apply, snapshot initiallycharged, death, opposite near and same near; repeated/random seek exact marker",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T04",
+      "mechanic": "Wight buffs and lightning attacks",
+      "spellIds": [
+        28134,
+        28135,
+        28167,
+        28299
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual surge/field and chain/ball results",
+      "state": "source-specific surge/static and chained/single attacks",
+      "lifecycle": "observed cast/result/removal; no synthetic melee-absence ball cast or five-minute enrage",
+      "placement": "actual source/victim for every chain; no cross-platform target guess",
+      "animation": "ground versus model aura needs route/ownership evidence",
+      "acceptanceCheck": "sod-naxx-thaddius/T04-acceptance",
+      "acceptanceCriteria": "powerbuff removed early, actual chain multiple victims, ball without melee evidence; source actor dies during launch",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "POWER",
+      "mechanic": "Observed Empowerment and Seal version",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual enabled quarter auras, Sanctified/Seal snapshot and change records",
+      "state": "quarter-specific mechanics plus raidwide scaling; Seal rank/role separate from NPC power",
+      "lifecycle": "15-minute orb interaction cooldown is a game rule, not a synthesized replay event; actual enable/reset/disable",
+      "placement": "lobby world orbs/wing gates need object identity; no global cosmetic aura replacement",
+      "animation": "Authority/Seal client-name candidates do not establish exact rank or scaling",
+      "acceptanceCheck": "sod-naxx-thaddius/POWER-acceptance",
+      "acceptanceCriteria": "normal versus enabled quarter, rank/role change and partial snapshot; no damage-derived rank assumption",
+      "sourceRefs": [
+        "official",
+        "emp-guide",
+        "seal-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "CHARGE",
+      "mechanic": "Construct Overcharged",
+      "spellIds": [
+        1219229,
+        1219234,
+        1219235
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual quarter state, warning debuff and subsequent aura",
+      "state": "bomb warning distinct from haste plus damaging pulses; actual recipients",
+      "lifecycle": "primary PTR5s claim versus active10s timer; current duration and recorded end distinct; no arbitrary selectioncount",
+      "placement": "recipient-centered damaging aura moves with actual actor; no stationary pool assumption",
+      "animation": "client authored aura routes; initial self/foreign provenance retained",
+      "acceptanceCheck": "sod-naxx-thaddius/CHARGE-acceptance",
+      "acceptanceCriteria": "two targets with staggered warning/buff, early death/remove, player-self pulses and repeated seeks",
+      "sourceRefs": [
+        "emp-primary",
+        "emp-guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1218232,
+    1218271,
+    1218275,
+    1218276,
+    1218283,
+    1224428,
+    1219539,
+    1219548,
+    1220514,
+    28062,
+    28085
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Primary uses death/revive emotes and activation yell rather than treating an add death as final retirement; WCL retention of those markers is unverified.",
+    "No extra boss-specific SoD mechanic is established by current primary beyond the shared Construct modifier; absence of script does not prove absence in game.",
+    "28062/28085 same-name charge client records are candidates; marker28059/28084 are the primary registered application/refresh IDs.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Authority same-name variant→quarter/empower count and Seal variant→rank/role mapping",
+    "raid-warning/emote, object and unit-event retention by provider"
+  ],
+  "researchContext": {
+    "npcIds": [
+      15928,
+      15929,
+      15930
+    ],
+    "wing": "construct",
+    "sourceFindings": [
+      "Primary uses death/revive emotes and activation yell rather than treating an add death as final retirement; WCL retention of those markers is unverified.",
+      "No extra boss-specific SoD mechanic is established by current primary beyond the shared Construct modifier; absence of script does not prove absence in game.",
+      "28062/28085 same-name charge client records are candidates; marker28059/28084 are the primary registered application/refresh IDs.",
+      "Official Seal rank7 cap supersedes plannedrank10; no numeric damage/HP scaling inferred from current guide table.",
+      "Global manager237752 and quarter effects can cross boss/trash chapter boundaries; missing cast/aura is unknown, not disabled."
+    ],
+    "candidateSpellIds": {
+      "authorityNameOnly": [
+        1218232,
+        1218271,
+        1218275,
+        1218276,
+        1218283,
+        1224428
+      ],
+      "sealNameOnly": [
+        1219539,
+        1219548,
+        1220514
+      ]
+    },
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "No confirmed retained SoD Naxx pull. Old ruleset-unknown Naxx cache excluded; no observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

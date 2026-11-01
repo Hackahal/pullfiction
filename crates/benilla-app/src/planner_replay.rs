@@ -486,6 +486,8 @@ pub struct ReplayUnit {
     pub cast: u32,
     #[serde(default)]
     pub auras: Vec<u32>,
+    #[serde(default)]
+    pub self_auras: Vec<u32>,
 }
 #[derive(Clone, serde::Deserialize)]
 pub struct ReplayImpact {
@@ -600,6 +602,7 @@ pub struct ReplayBody {
     pub(crate) estimated: bool,
     pub(crate) plate_cast: Option<ReplayCast>,
     pub(crate) plate_auras: Vec<ReplayAura>,
+    self_auras: Vec<u32>,
     cast: u32,
 }
 
@@ -1236,6 +1239,14 @@ pub(crate) fn apply(
                     body.estimated = unit.estimated;
                     body.plate_cast = unit.plate_cast.clone();
                     body.plate_auras = unit.plate_auras.clone();
+                    if body.self_auras != unit.self_auras {
+                        body.self_auras = unit.self_auras.clone();
+                        commands.entity(*entity).insert(
+                            crate::creature_anim::spell_visual::RecordedSelfAuras(
+                                unit.self_auras.clone(),
+                            ),
+                        );
+                    }
                     for (field, old, new) in
                         net::write_fields(&mut store.0, ObjectFields::from_pairs(&fields))
                     {
@@ -1347,11 +1358,13 @@ pub(crate) fn apply(
                         estimated: unit.estimated,
                         plate_cast: unit.plate_cast.clone(),
                         plate_auras: unit.plate_auras.clone(),
+                        self_auras: unit.self_auras.clone(),
                         health_known: unit.health.is_some(),
                         power_known: unit.power.is_some(),
                         label_height: if unit.player { 2.6 } else { 4.5 * unit.scale },
                         cast: 0,
                     },
+                    crate::creature_anim::spell_visual::RecordedSelfAuras(unit.self_auras.clone()),
                     net::motion::RecordedFacing,
                     net::Guid(guid),
                     net::ObjectStore(crate::planner_replay_identity::initial_fields(

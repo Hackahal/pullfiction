@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-electrocutioner",
+  "ruleset": "sod",
+  "boss": "Electrocutioner 6000",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2927,
+  "rawEncounterId": 2927,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        15
+      ],
+      "selectedFightNames": [
+        "Electrocutioner 6000"
+      ],
+      "matchedNpcTemplateIds": [
+        220072
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-electrocutioner"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/electrocutioner-6000-strategy",
+      "quality": "exactSoD authored guide",
+      "date": "2024-02-22"
+    },
+    {
+      "id": "corroboration",
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-gnomeregan",
+      "quality": "authoredSoD guide",
+      "caveat": "reports4chain targets versus Wowhead3; unresolved"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24057474/hotfixes-may-6-2024",
+      "quality": "official February14 StaticArc range/LOS hotfix inarchive"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/Electrocutioner6000.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon event mapping"
+    },
+    {
+      "id": "client",
+      "quality": "currentclient1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "E01",
+      "mechanic": "Static Arc",
+      "spellIds": [
+        433251
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded cast toward actual furthest target",
+      "state": "ordered chain recipients and20s vulnerability",
+      "lifecycle": "3.5s client cast; recorded impact/remove/cancel",
+      "placement": "actual boss→initial→bounce positions; do not infer order from simultaneous damage",
+      "animation": "visual PrecastTarget and TargetNotCaster impact; kit193094 flags BeamEffectID5806 unsupported",
+      "acceptanceCheck": "sod-gnomeregan-electrocutioner/E01",
+      "acceptanceCriteria": "verify initial recipient,bounce count/order,20s expiry; no range/LOS cancellation after hotfix",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client",
+        "official"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "E02",
+      "mechanic": "Magnetic Pulse",
+      "spellIds": [
+        433359
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual recipient debuff",
+      "state": "12s client pulse/nearby pull",
+      "lifecycle": "recorded aura and pulses; damage participants separate",
+      "placement": "8yd researched proximity; exact pull trajectories not recorded",
+      "animation": "no declared visual; cannot manufacture ring/beam",
+      "acceptanceCheck": "sod-gnomeregan-electrocutioner/E02",
+      "acceptanceCriteria": "moving recipient AoE and actual pulled actors; stack/exit/seek correct",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "E03",
+      "mechanic": "Discombobulation",
+      "spellIds": [
+        433398
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "observed cast",
+      "state": "raid damage/knockback",
+      "lifecycle": "actualcast/impact; avoid fixed30s replay",
+      "placement": "boss-centered; lower floor versus old dungeon platform",
+      "animation": "CasterCast and TargetNotCaster impact",
+      "acceptanceCheck": "sod-gnomeregan-electrocutioner/E03",
+      "acceptanceCriteria": "time-aligned knockbacks and floor/edge behavior; retain actualZ or unknown",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "chain3versus4recipient sourceconflict",
+    "beam primitive andbounce order",
+    "MagneticPull exact motion and visual",
+    "arena groundlevel andknockback Z",
+    "event encoding/seekage/cleanup"
+  ],
+  "researchContext": {
+    "npcIds": [
+      220072
+    ],
+    "encounterIdEvidence": "pinned primary exactSoD module",
+    "supportLimits": [
+      "no confirmedlogs/runtime credit",
+      "chain order/cardinality differs among sources; do not hardcode3or4",
+      "StaticArc kitflags BeamEffectID5806 unsupported; no chainparity claim",
+      "MagneticPulse has no visualroute; pull state cannot be inferred from identicalaura names",
+      "lower-floor arena must not reuse dungeon elevation"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

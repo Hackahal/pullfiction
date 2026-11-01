@@ -38,6 +38,15 @@ def simple_chain(texture=123):
 
 
 class SpellTest(unittest.TestCase):
+    def test_only_complete_exact_zero_rate_body_procedures_are_compatible(self):
+        freeze = {'type': 11, 'values': [0, 0, 0, 0]}
+        self.assertTrue(s.freeze_procedure_compatible(freeze))
+        for changed in [dict(freeze, rendererCompatible=False), dict(freeze, type=11.0),
+                        dict(freeze, type=14), dict(freeze, values=[0, 2, 0, 0]),
+                        dict(freeze, values=[1, 0, 0, 0]), dict(freeze, values=[0, 0, 0]),
+                        dict(freeze, values=[0, 0, 0, None]), dict(freeze, values=[False, 0, 0, 0])]:
+            self.assertFalse(s.freeze_procedure_compatible(changed), changed)
+
     def test_reference_closure_is_sparse_cycle_safe_and_preserves_float_bits_and_stand(self):
         definitions={
             'Positioner':{7:{'ID':7,'FirstStateID':8},999:{'ID':999}},

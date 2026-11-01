@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-shade-eranikus",
+  "ruleset": "sod",
+  "boss": "Shade of Eranikus",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2959,
+  "rawEncounterId": 2959,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        18
+      ],
+      "selectedFightNames": [
+        "Shade of Eranikus"
+      ],
+      "matchedNpcTemplateIds": [
+        218571
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-shade-eranikus"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/ShadeOfEranikus.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/shade-of-eranikus-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Sleep clouds versus protective sleep",
+      "spellIds": [
+        437301,
+        437324,
+        437398
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cloud cast, individual sleep application/removal and Waking Nightmare cast",
+      "state": "Cloud cast, individual sleep application/removal and Waking Nightmare cast",
+      "lifecycle": "Cloud remains separate from recipient sleep; Nightmare resolves against sleep at impact time",
+      "placement": "Actual persistent cloud coordinates; target position cannot establish footprint",
+      "animation": "Sleep body pose and world cloud are distinct",
+      "acceptanceCheck": "sod-sunken-temple-shade-eranikus/ST-ERA-CLOUD",
+      "acceptanceCriteria": "ST-ERA-CLOUD: same cloud can affect sequential entrants; seek restores cloud original age and exact recipient protection",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Boss slumber and staged summons",
+      "spellIds": [
+        437416,
+        437410
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Dreamwalker cast success increments stage; boss Deep Slumber removal ends pause",
+      "state": "Dreamwalker cast success increments stage; boss Deep Slumber removal ends pause",
+      "lifecycle": "Two guide handoffs near 70/40 percent; use actual application/removal rather than addon 23-second display timer",
+      "placement": "Boss stays actual position; summoned adds need their own instances",
+      "animation": "Sleeping boss pose/appearance and wake are separately evidenced",
+      "acceptanceCheck": "sod-sunken-temple-shade-eranikus/ST-ERA-STAGE",
+      "acceptanceCriteria": "ST-ERA-STAGE: sleeping boss not dead; each real wake resumes correct phase",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Adds and independent spell provenance",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Lumbering Dreamwalkers, Nightmare Whelplings and Scalebanes summoned in later stages",
+      "state": "Lumbering Dreamwalkers, Nightmare Whelplings and Scalebanes summoned in later stages",
+      "lifecycle": "Individual summon, combat, death/despawn; do not schedule guide counts/cadence",
+      "placement": "Actual spawn/facing and movement; distinguish add-generated clouds from boss clouds",
+      "animation": "Exact model and summon appearance before animation credit",
+      "acceptanceCheck": "sod-sunken-temple-shade-eranikus/ST-ERA-ADDS",
+      "acceptanceCriteria": "ST-ERA-ADDS: add cloud source retained; no early cleanup when boss sleeps",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Dragon directional attacks and fear",
+      "spellIds": [
+        437353,
+        445498,
+        437390,
+        3391
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual breath, roar, poison and thrash events",
+      "state": "Actual breath, roar, poison and thrash events",
+      "lifecycle": "Interrupt roar closes corresponding cast; poison removal and breath debuff remain recipient-specific",
+      "placement": "Actual frontal/tail orientation and fear-driven movement",
+      "animation": "Native cast/attack cadence requires actual events",
+      "acceptanceCheck": "sod-sunken-temple-shade-eranikus/ST-ERA-DIRECTION",
+      "acceptanceCriteria": "ST-ERA-DIRECTION: interrupt prevents late roar and target-only poison removal closes correct aura",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Final death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual encounter end or wipe",
+      "state": "Actual encounter end or wipe",
+      "lifecycle": "Close persistent clouds and outstanding add casts under proven ownership",
+      "placement": "Preserve separate corpses and any verified continuation",
+      "animation": "Do not invent boss wake after death",
+      "acceptanceCheck": "sod-sunken-temple-shade-eranikus/ST-ERA-END",
+      "acceptanceCriteria": "ST-ERA-END: seeks and repeated pulls retain no prior cloud or add cast",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Add spell IDs, templates and lifecycle not established by primary module",
+    "Tail Sweep ID not guessed; guide linkage needs additional verification",
+    "Cloud exact radius, lifetime, original-game appearance and end cleanup",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "218571"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

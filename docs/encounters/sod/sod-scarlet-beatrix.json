@@ -1,0 +1,432 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-beatrix",
+  "ruleset": "sod",
+  "boss": "High Commander Beatrix",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3187,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-beatrix"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://us.forums.blizzard.com/en/wow/t/raid-adjustments-are-now-live/2091421",
+      "author": "Kaivax / Blizzard",
+      "published": "2025-04-11",
+      "quality": "primary SoD hotfix; wave counts and timings changed",
+      "id": "source-01"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/high-commander-beatrix-scarlet-enclave-strategy",
+      "author": "Jurdi",
+      "updated": "2025-04-21",
+      "ruleset": "SoD1.15.7",
+      "quality": "authored encounter guide; opening timer conflicts with later guide",
+      "id": "source-02"
+    },
+    {
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss2.html",
+      "author": "Kim",
+      "updated": "2025-05-09",
+      "quality": "authored SoD guide; not pixel/curve evidence",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1232637",
+      "quality": "client spell record; script semantics limited",
+      "id": "source-04"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1231712",
+      "quality": "client spell record; script semantics limited",
+      "id": "source-05"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1237324",
+      "quality": "client spell record; script semantics limited",
+      "id": "source-06"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1231642",
+      "quality": "client spell record; script semantics limited",
+      "id": "source-07"
+    },
+    {
+      "quality": "current converter; client1.15.9.70576 build5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-08",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "retained October6 fight5;124.105s;27297 events",
+      "id": "source-09",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Opening troops and boss activation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded wave births and boss participation; lieutenant call selection is encounter-specific",
+      "state": "Recorded wave births and boss participation; lieutenant call selection is encounter-specific",
+      "lifecycle": "Troops enter independently; boss later joins; both continue until death/end",
+      "placement": "Preserve NPC instances, spawn visibility, recorded motion and casts; no fixed two-minute activation",
+      "animation": "Preserve NPC instances, spawn visibility, recorded motion and casts; no fixed two-minute activation",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-PHASE",
+      "acceptanceCriteria": "BEATRIX-PHASE: direct seek matches observed wave/activation state",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Lieutenant calls and queue",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast/call/associated observations",
+      "state": "Recorded cast/call/associated observations",
+      "lifecycle": "Each call starts/ends from evidence; do not import guide ordering or force absent calls",
+      "placement": "Use actual caller/area actor ownership; no invented overlaps or announcements",
+      "animation": "Use actual caller/area actor ownership; no invented overlaps or announcements",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-CALLS",
+      "acceptanceCriteria": "BEATRIX-CALLS: only observed active calls, correct sequence and independent effects",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Scarlet Arrows",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Channel or observed damage window",
+      "state": "Channel or observed damage window",
+      "lifecycle": "Hold through recorded channel; stop on end/interruption/death",
+      "placement": "Correct archer caster/ground rain using current graph; periodic ticks alone do not establish new missiles",
+      "animation": "Correct archer caster/ground rain using current graph; periodic ticks alone do not establish new missiles",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-ARROWS",
+      "acceptanceCriteria": "BEATRIX-ARROWS: no per-tick projectile spam; seek restores ongoing rain if supported",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Scarlet Phalanx and Thundering Hooves",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded summons/motion/collision damage",
+      "state": "Recorded summons/motion/collision damage",
+      "lifecycle": "Each non-targetable wave instance enters and exits separately",
+      "placement": "Real infantry/cavalry lines and gaps require path evidence; player damage is not mount coordinate evidence",
+      "animation": "Real infantry/cavalry lines and gaps require path evidence; player damage is not mount coordinate evidence",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-WAVES",
+      "acceptanceCriteria": "BEATRIX-WAVES: horses/infantry use proven positions, full wave lifecycle and gap behavior",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Artillery shell and ember",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Target marker/area cast then impact",
+      "state": "Target marker/area cast then impact",
+      "lifecycle": "Swirl precedes impact; stationary ember persists only its supported lifetime",
+      "placement": "Freeze destination; shell arc/delay and native ground assets from records; never follow victim after impact",
+      "animation": "Freeze destination; shell arc/delay and native ground assets from records; never follow victim after impact",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-SHELL",
+      "acceptanceCriteria": "BEATRIX-SHELL: target/impact/ember remain aligned after movement and seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Meteor",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Call/start then impact",
+      "state": "Call/start then impact",
+      "lifecycle": "Descending meteor and soak footprint until impact; cleanup",
+      "placement": "Use proven destination and native effect age; absent call stays absent",
+      "animation": "Use proven destination and native effect age; absent call stays absent",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-METEOR",
+      "acceptanceCriteria": "BEATRIX-METEOR: no invented meteor in a run lacking it",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Confession",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Target aura application and expiry",
+      "state": "Target aura application and expiry",
+      "lifecycle": "Per-player warning then proximity effect and cleanup",
+      "placement": "Warning follows holder; impact uses expiration position",
+      "animation": "Warning follows holder; impact uses expiration position",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-CONFESSION",
+      "acceptanceCriteria": "BEATRIX-CONFESSION: correct owners and cleanup without applying absent mechanics",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Unwavering Blade",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss successful strike and tank aura",
+      "state": "Boss successful strike and tank aura",
+      "lifecycle": "Tank vulnerability until observed removal/end",
+      "placement": "Target attached native visual and tank identity, with no extra simulated taunts",
+      "animation": "Target attached native visual and tank identity, with no extra simulated taunts",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-BLADE",
+      "acceptanceCriteria": "BEATRIX-BLADE: state follows correct tank across seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Rose's Thorn",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss cast/charge and target bleed",
+      "state": "Boss cast/charge and target bleed",
+      "lifecycle": "Charge displacement where sampled; bleed until removal/healed full",
+      "placement": "Record target, track boss movement and avoid fabricated charge curve",
+      "animation": "Record target, track boss movement and avoid fabricated charge curve",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-ROSE",
+      "acceptanceCriteria": "BEATRIX-ROSE: sampled endpoint/cast target and aura removal agree",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M10",
+      "mechanic": "Stock Break",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Begin/cast and three target effects",
+      "state": "Begin/cast and three target effects",
+      "lifecycle": "Windup can cancel on death; health reduction/stun/immunity only if observed",
+      "placement": "Current native start/cast and target aura records; do not fabricate completion",
+      "animation": "Current native start/cast and target aura records; do not fabricate completion",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-STOCK",
+      "acceptanceCriteria": "BEATRIX-STOCK: unfinished end-of-fight cast cancels cleanly",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M11",
+      "mechanic": "Death, wipe, reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/encounter boundaries",
+      "state": "Recorded death/encounter boundaries",
+      "lifecycle": "Stop pending casts/channels and clean hazard state",
+      "placement": "Boss death at observed time, not50% guide rumor; reset restores initial state on seek",
+      "animation": "Boss death at observed time, not50% guide rumor; reset restores initial state on seek",
+      "acceptanceCheck": "sod-scarlet-beatrix/BEATRIX-END",
+      "acceptanceCriteria": "BEATRIX-END: no post-death cast or lingering prior-pull effects",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07",
+        "source-08",
+        "source-09"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact activation/call queue and empowered lieutenant choices",
+    "Wave paths, formation gaps and mounted seat relations",
+    "Arrow rain controller interval beyond observed damage window",
+    "Cannon/Explosive Shell destinations and stationary ember lifetimes",
+    "Modern nonzero procedure mode/timing semantics",
+    "Rose charge curve and unknown Z",
+    "Original gameplay visual parity"
+  ]
+}

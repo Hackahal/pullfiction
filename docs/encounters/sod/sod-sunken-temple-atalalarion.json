@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-atalalarion",
+  "ruleset": "sod",
+  "boss": "Atal'alarion",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2952,
+  "rawEncounterId": 2952,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        1
+      ],
+      "selectedFightNames": [
+        "Atal'alarion"
+      ],
+      "matchedNpcTemplateIds": [
+        218624
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-atalalarion"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/Atalalarion.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/atalalarion-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Pillars and damage stacks",
+      "spellIds": [
+        437503
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Pillars of Might completion creates physical pillars; live pillars raise boss damage stacks",
+      "state": "Pillars of Might completion creates physical pillars; live pillars raise boss damage stacks",
+      "lifecycle": "Create each pillar, retain until body collision destruction; track stack count separately",
+      "placement": "Actual arena pillar transforms and collision; no radial guessed layout",
+      "animation": "Ground slam, pillar appearance and shatter require actual object records",
+      "acceptanceCheck": "sod-sunken-temple-atalalarion/ST-ATAL-PILLARS",
+      "acceptanceCriteria": "ST-ATAL-PILLARS: pillar count and stack changes agree; destroy only collided instances; direct seek restores survivors",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Demolishing Smash and collision",
+      "spellIds": [
+        437597
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast start and completion",
+      "state": "Recorded cast start and completion",
+      "lifecycle": "Windup, raid hit, knockback, collision then recovery; cancel pending action on death",
+      "placement": "Player-specific knockback and verified pillar collision; missing altitude remains unknown",
+      "animation": "Actual smash and displaced bodies; no generic earthquake replacement",
+      "acceptanceCheck": "sod-sunken-temple-atalalarion/ST-ATAL-SMASH",
+      "acceptanceCriteria": "ST-ATAL-SMASH: cast-to-hit timing, pillar interception and landing agree with original reference",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Death, wipe and seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded life and encounter end",
+      "state": "Recorded life and encounter end",
+      "lifecycle": "Close encounter-owned pillars/effects, restore correct state on seek",
+      "placement": "Preserve boss and per-pillar identity",
+      "animation": "Corpse and reset require evidence",
+      "acceptanceCheck": "sod-sunken-temple-atalalarion/ST-ATAL-END",
+      "acceptanceCriteria": "ST-ATAL-END: no persistent pillar after verified cleanup; ordinary buffs survive",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Pillar object identity, count, radius and exact stack aura ID",
+    "Knockback trajectory and server collision",
+    "Boss threat reset events and wipe cleanup",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "218624"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

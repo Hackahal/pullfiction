@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "raid research library index",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "ruleset",
+    "verification",
+    "counts",
+    "entries",
+    "units"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "ruleset": {
+      "enum": [
+        "sod",
+        "vanilla"
+      ]
+    },
+    "verification": {
+      "const": "unverified"
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "encounterFiles",
+        "bossResearchUnits",
+        "retainedEvidenceEncounters",
+        "sourceOnlyEncounters",
+        "providerMappedEncounters",
+        "providerUnresolvedEncounters",
+        "metadataOnlyMappings"
+      ],
+      "properties": {
+        "encounterFiles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bossResearchUnits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retainedEvidenceEncounters": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceOnlyEncounters": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providerMappedEncounters": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providerUnresolvedEncounters": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "metadataOnlyMappings": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "unitId",
+          "boss",
+          "raid",
+          "path",
+          "bossUnits",
+          "encounterId",
+          "rawEncounterId",
+          "retainedCombatEventsAvailable",
+          "mechanicCount",
+          "verification"
+        ],
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "boss": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "providerMappingStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metadataReportCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eventAvailability": {
+            "type": "string",
+            "minLength": 1
+          },
+          "bossUnits": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "encounterId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "rawEncounterId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "retainedCombatEventsAvailable": {
+            "type": "boolean"
+          },
+          "mechanicCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verification": {
+            "const": "unverified"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "group": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "unitId",
+          "boss",
+          "raid",
+          "encounterFile",
+          "canonicalUnitId"
+        ],
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "boss": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "encounterFile": {
+            "type": "string",
+            "minLength": 1
+          },
+          "canonicalUnitId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

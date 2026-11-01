@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-sapphiron",
+  "ruleset": "sod",
+  "boss": "Sapphiron",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201119,
+  "rawEncounterId": 1119,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        40
+      ],
+      "selectedFightNames": [
+        "Sapphiron"
+      ],
+      "matchedNpcTemplateIds": [
+        15989
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-sapphiron"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/FrostwyrmLair/Sapphiron.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/sapphiron-naxxramas-raid-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "emp-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/SoD_Hardmode.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD code; PTR comments and later handlers attributed separately"
+    },
+    {
+      "id": "emp-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-hardmodes-overview",
+      "date": "2025-02-15",
+      "quality": "authored live SoD difficulty guide"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24171906/fase-7-de-la-temporada-del-descubrimiento-%C2%A1naxxramas-ya-est%C3%A1-disponible",
+      "date": "2025-02-06",
+      "quality": "official live phase7 launch;20-player tuning/up to40 and augmented final bosses"
+    },
+    {
+      "id": "seal-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24179333/hotfixes-february-26-2025",
+      "quality": "official hotfix archive caps Seal progression at rank7; supersedes plannedrank10 guide"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "date": "2025-02-26",
+      "quality": "authored SoD overview; rank10 plan is stale versus official cap"
+    },
+    {
+      "id": "official-pets-portal",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "quality": "official Feb2025 pet Avoidance exceptions and postkill portal"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "S01",
+      "mechanic": "Ground/air cycles and landing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual flight-state/takeoff/landing evidence, not missing target alone",
+      "state": "ground combat versus elevated hover, repeats; lowhealth cancels future flight only if recorded",
+      "lifecycle": "primary31/39.66s initial timer markedTODO, air36s SoD vs28.5s Era; no inferred fixed window",
+      "placement": "actual Z and ground plane separate; missingheight unknown",
+      "animation": "takeoff/hover/landing clips and skeletal orientation need actual evidence",
+      "acceptanceCheck": "sod-naxx-sapphiron/S01-acceptance",
+      "acceptanceCriteria": "seek preflight/air/descent/touchdown twice/randomly, boss temporarily untargeted onground, lowHP and wipe; no lift from timer",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "S02",
+      "mechanic": "Icebolt blocks and Frost Breath",
+      "spellIds": [
+        28522,
+        28524
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual icebolt impact/aura and breath cast",
+      "state": "independent iceblock recipients provide cover; breath releases blocks",
+      "lifecycle": "actual block aura/removal/cast cancellation; primary7s breath timer not ground impact automatically",
+      "placement": "fixed observed block locations, actual airborne source and floorimpact; LOS cover geometry requires evidence",
+      "animation": "primary28522 aura versus guide31800 Icebolt candidate; no invented target-host duplicate",
+      "acceptanceCheck": "sod-naxx-sapphiron/S02-acceptance",
+      "acceptanceCriteria": "two nearby blocks, player dies before impact, early cancel, breath hits uncovered and misses covered; exact age/occlusion on seek",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "S03",
+      "mechanic": "Blizzard, drain, frost aura and directional attacks",
+      "spellIds": [
+        28561,
+        28547,
+        28542,
+        28531,
+        15584,
+        15847
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual summon/moving hazard, curse/pulses and hit results",
+      "state": "roaming Blizzard, curse heals boss, FrostAura recipient pulses, front/rear attack geometry",
+      "lifecycle": "actual aura removals and hazard life; no synthetic2s frost schedule from oldtooltip",
+      "placement": "hazard measured path; floor and height explicit, curse target not moving storm center",
+      "animation": "author route graph does not recover storm chase or effectage",
+      "acceptanceCheck": "sod-naxx-sapphiron/S03-acceptance",
+      "acceptanceCriteria": "moving storm crosses old position, curse early dispel/source heal, pet drain retained but Avoidance excludes breath/aura as actualresults",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client",
+        "official-pets-portal"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "S04",
+      "mechanic": "Empowered Glacial Crash and Frozen Ground",
+      "spellIds": [
+        1219729,
+        1219732,
+        1219338
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "four-wing condition plus actual8s crash target auras and pool creation",
+      "state": "two independently marked targets, soak hits, stationary FrozenGround",
+      "lifecycle": "actual aura end/impact;1219338 indefinite needs observed lifecycle, no timed floorclear",
+      "placement": "warning follows recipient; pool stays at actual explosion XY; no Area fallback at last damagevictim",
+      "animation": "1219728/1219733 same-name candidates not inferred causal link; observed whitecircle and floor visual nativeunrun",
+      "acceptanceCheck": "sod-naxx-sapphiron/S04-acceptance",
+      "acceptanceCriteria": "two crashes same time, separate placements, target moves then source dies, overlappingstorm and pool; repeated/random seek",
+      "sourceRefs": [
+        "primary",
+        "emp-guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "POWER",
+      "mechanic": "Observed Empowerment and Seal version",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual enabled quarter auras, Sanctified/Seal snapshot and change records",
+      "state": "quarter-specific mechanics plus raidwide scaling; Seal rank/role separate from NPC power",
+      "lifecycle": "15-minute orb interaction cooldown is a game rule, not a synthesized replay event; actual enable/reset/disable",
+      "placement": "lobby world orbs/wing gates need object identity; no global cosmetic aura replacement",
+      "animation": "Authority/Seal client-name candidates do not establish exact rank or scaling",
+      "acceptanceCheck": "sod-naxx-sapphiron/POWER-acceptance",
+      "acceptanceCriteria": "normal versus enabled quarter, rank/role change and partial snapshot; no damage-derived rank assumption",
+      "sourceRefs": [
+        "official",
+        "emp-guide",
+        "seal-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1218232,
+    1218271,
+    1218275,
+    1218276,
+    1218283,
+    1224428,
+    1219539,
+    1219548,
+    1220514,
+    1219728,
+    1219733,
+    31800
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Primary bomb1219729 and1219732 trigger together; preserve both actual recipients rather than global deduplication.",
+    "Primary timers, initial air timing and mythic detection are explicitly uncertain; missing boss target>0.5s is addon heuristic, not flight/elevation evidence.",
+    "Official February2025 pet fix: FrostAura honors Avoidance and FrostBreath excludes Avoidance pets; LifeDrain intentionally may hit pets.",
+    "Official portal added after Sapphiron defeat is a worldobject lifecycle check, not a combat spell.",
+    "Empowered FrozenGround1219338 is indefinite client state; destination and actual removal unknown without retained evidence.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Authority same-name variant→quarter/empower count and Seal variant→rank/role mapping",
+    "raid-warning/emote, object and unit-event retention by provider"
+  ],
+  "researchContext": {
+    "npcIds": [
+      15989
+    ],
+    "wing": "frostwyrm",
+    "sourceFindings": [
+      "Primary bomb1219729 and1219732 trigger together; preserve both actual recipients rather than global deduplication.",
+      "Primary timers, initial air timing and mythic detection are explicitly uncertain; missing boss target>0.5s is addon heuristic, not flight/elevation evidence.",
+      "Official February2025 pet fix: FrostAura honors Avoidance and FrostBreath excludes Avoidance pets; LifeDrain intentionally may hit pets.",
+      "Official portal added after Sapphiron defeat is a worldobject lifecycle check, not a combat spell.",
+      "Empowered FrozenGround1219338 is indefinite client state; destination and actual removal unknown without retained evidence.",
+      "Official Seal rank7 cap supersedes plannedrank10; no numeric damage/HP scaling inferred from current guide table.",
+      "Global manager237752 and quarter effects can cross boss/trash chapter boundaries; missing cast/aura is unknown, not disabled."
+    ],
+    "candidateSpellIds": {
+      "authorityNameOnly": [
+        1218232,
+        1218271,
+        1218275,
+        1218276,
+        1218283,
+        1224428
+      ],
+      "sealNameOnly": [
+        1219539,
+        1219548,
+        1220514
+      ]
+    },
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "No confirmed retained SoD Naxx pull. Old ruleset-unknown Naxx cache excluded; no observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

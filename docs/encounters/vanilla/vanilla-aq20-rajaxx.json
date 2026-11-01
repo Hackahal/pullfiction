@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq20-rajaxx",
+  "ruleset": "vanilla",
+  "boss": "General Rajaxx and wave commanders",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": null,
+  "rawEncounterId": 719,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-aq20-rajaxx"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Rajaxx.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/general-rajaxx-ruins-of-ahnqiraj-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Rajaxx.lua",
+      "quality": "pinned primary addon baseline branch"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
+      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Andorov activation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official speak to Andorov starts event; addon events registered outside boss combat",
+      "state": "Andorov activation",
+      "lifecycle": "Actual RP/wave starts and allied NPC lives",
+      "placement": "Actual ally/army movement, not30s scripted entry",
+      "animation": "Native allied soldiers and commanders",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-START",
+      "acceptanceCriteria": "RAJAXX-START: preserve preboss waves",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Qeez wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "First commander fear",
+      "state": "Qeez wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native fear and actual flee motion",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-QEEZ",
+      "acceptanceCriteria": "RAJAXX-QEEZ: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Tuubid wave",
+      "spellIds": [
+        25471
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "AttackOrder marks actual player",
+      "state": "Tuubid wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native marker/actual pursuing army",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-TUUBID",
+      "acceptanceCriteria": "RAJAXX-TUUBID: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Drenn wave",
+      "spellIds": [
+        26550
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "LightningCloud/Hurricane around commander",
+      "state": "Drenn wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native cloud and actual affected area",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-DRENN",
+      "acceptanceCriteria": "RAJAXX-DRENN: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Xurrem wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Shockwave damage and slow",
+      "state": "Xurrem wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native actual shockwave/control",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-XURREM",
+      "acceptanceCriteria": "RAJAXX-XURREM: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Yeggeth wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Physical protection buff",
+      "state": "Yeggeth wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native immunity aura",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-YEGGETH",
+      "acceptanceCriteria": "RAJAXX-YEGGETH: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C07",
+      "mechanic": "Pakkon wave",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Frontal SweepingSlam and knockback",
+      "state": "Pakkon wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native strike and actual displacement",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-PAKKON",
+      "acceptanceCriteria": "RAJAXX-PAKKON: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C08",
+      "mechanic": "Zerran wave",
+      "spellIds": [
+        25462
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Enlarge self/allies until dispelled",
+      "state": "Zerran wave",
+      "lifecycle": "Actual wave actor activation, targets, removal and independent deaths; no assumed add counts",
+      "placement": "Distinct commander/army instances and actual paths/facing",
+      "animation": "Native body growth only with scale evidence",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-ZERRAN",
+      "acceptanceCriteria": "RAJAXX-ZERRAN: phase/source/control and reused instances exact",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C09",
+      "mechanic": "General Rajaxx",
+      "spellIds": [
+        25599,
+        8269
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon Thundercrash, BigWigs enrage",
+      "state": "General Rajaxx",
+      "lifecycle": "Actual hit, displacement/threat and aura removal",
+      "placement": "Boss facing and observed victim motion",
+      "animation": "Native crash and enrage",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/RAJAXX-BOSS",
+      "acceptanceCriteria": "RAJAXX-BOSS: no generated knockback/target choice",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C10",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and independent actor cleanup",
+      "state": "Boss, adds and control remain separate",
+      "lifecycle": "Only actual lifetime/removal edges; no checkpoint, inherited curse or automatic add retirement",
+      "placement": "Actual spawn/return anchors and surviving actor positions",
+      "animation": "Native death/reset/object state only when established",
+      "acceptanceCheck": "vanilla-aq20-rajaxx/VANILLA-RAJAXX-RESET",
+      "acceptanceCriteria": "VANILLA-RAJAXX-RESET: repeated pull, surviving adds and exact cleanup without synthesized actors",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15341,
+      15471,
+      15473,
+      15391,
+      15392,
+      15389,
+      15390,
+      15386,
+      15388,
+      15385
+    ]
+  }
+}
