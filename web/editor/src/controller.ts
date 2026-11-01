@@ -5288,8 +5288,12 @@ export class EditorController {
             row.component,
             row.content,
           );
-          if (!this.trajectoryRejected.has(key))
-            resend = this.trajectorySent.delete(key) || resend;
+          if (!this.trajectoryRejected.has(key)) {
+            this.trajectorySent.delete(key);
+            // A transient capacity error may already have cleared this marker.
+            // The renderer's changed missing set supplies the next-frame retry.
+            resend = true;
+          }
         }
         if (resend) queueMicrotask(() => this.sendPositions());
       } catch {
@@ -5311,7 +5315,9 @@ export class EditorController {
           row.component,
           row.content,
         );
-        if (!this.trajectoryRejected.has(key)) {
+        if (row.message === "Canonical active cache capacity exceeded") {
+          this.trajectorySent.delete(key);
+        } else if (!this.trajectoryRejected.has(key)) {
           this.trajectoryRejected.add(key);
           this.notify(
             `Movement could not be prepared: ${String(row.message).slice(0, 240)}`,
@@ -6323,8 +6329,13 @@ export class EditorController {
           try {
             this.engine!.submit_replay_trajectory!(JSON.stringify(packet));
           } catch (error) {
-            this.trajectoryRejected.add(key);
-            this.notify(`Movement could not be prepared: ${message(error)}`);
+            const text = message(error);
+            if (text === "Too many queued trajectory components") {
+              this.trajectorySent.delete(key);
+            } else {
+              this.trajectoryRejected.add(key);
+              this.notify(`Movement could not be prepared: ${text}`);
+            }
           }
         }
       }

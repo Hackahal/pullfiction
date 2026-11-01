@@ -3742,6 +3742,90 @@ function canonicalTransportFixture(
   return { f, actor, packets, sources, player };
 }
 
+test("transient native queue pressure recovers on the renderer missing notification while paused", async () => {
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+  ]);
+  let attempts = 0;
+  f.engine.submit_replay_trajectory = (json) => {
+    attempts++;
+    if (attempts === 1)
+      throw new Error("Too many queued trajectory components");
+    packets.push(JSON.parse(json));
+  };
+  f.c.seek(500);
+  assert.equal(attempts, 1);
+  assert.equal(packets.length, 0);
+  const identity = { ...player().trajectory!, actor: actor.key };
+  f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+  await Promise.resolve();
+  assert.equal(attempts, 2);
+  assert.equal(packets.length, 1);
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.seek(600);
+  assert.equal(attempts, 2, "successful content stays deduplicated");
+  f.c.stop();
+});
+
+test("transient active-cache pressure recovers when an already-unsent missing key is reported", async () => {
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+  ]);
+  f.c.seek(500);
+  const identity = { ...player().trajectory!, actor: actor.key };
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...identity,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+  await Promise.resolve();
+  assert.equal(packets.length, 2, "retry after capacity becomes available");
+  assert.deepEqual(
+    packets[1],
+    packets[0],
+    "retry preserves immutable source content",
+  );
+  f.c.seek(600);
+  assert.equal(packets.length, 2);
+  f.c.stop();
+});
+
+test("permanent trajectory errors remain rejected for synchronous and asynchronous failures", async () => {
+  for (const kind of ["sync", "async"]) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    let attempts = 0;
+    f.engine.submit_replay_trajectory = (json) => {
+      attempts++;
+      if (kind === "sync") throw new Error("Canonical input capacity exceeded");
+      packets.push(JSON.parse(json));
+    };
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    if (kind === "async")
+      f.c.receive(
+        "trajectoryError",
+        JSON.stringify({ ...identity, message: "Invalid canonical sample" }),
+      );
+    f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+    await Promise.resolve();
+    f.c.seek(600);
+    assert.equal(
+      attempts,
+      1,
+      `${kind} malformed or oversized content must not loop`,
+    );
+    f.c.stop();
+  }
+});
+
 test("canonical transport sends one immutable dense packet across forward, backward and repeated seeks", () => {
   const { f, actor, packets, sources, player } = canonicalTransportFixture([
     [0, 2, -1, 0],
