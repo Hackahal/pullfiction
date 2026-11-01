@@ -27,13 +27,15 @@ Install the pinned CLI and authenticate locally:
 
 ```sh
 npm ci --prefix tools/release --ignore-scripts
-./tools/release/node_modules/.bin/wrangler login --scopes account:read user:read workers_scripts:write workers_routes:write zone:read
+./tools/release/node_modules/.bin/wrangler login --use-keyring --scopes account:read user:read workers_scripts:write workers_routes:write zone:read
 bash scripts/deploy-game-assets.sh .agent/work/hosted-assets-ready
 ```
 
+The pinned Wrangler CLI supports `--use-keyring`. On Linux, install `secret-tool` before login, provided by `libsecret-tools` on Debian/Ubuntu or `libsecret` on Fedora/Arch. Check Wrangler output to confirm keyring storage; do not accept a plaintext fallback unnoticed.
+
 `wrangler.game-assets.jsonc` deploys the `pullfiction-assets` service at `assets.pullfiction.com`. The script audits the local directory and adds the reviewed CORS and cache headers. Assets are public static responses. Requests do not invoke a Worker script. The `.gz` files use `application/gzip` without `Content-Encoding`; the browser verifies the compressed hash and decompresses them explicitly.
 
-The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes. Keep previous manifests locally for recovery. Cloudflare deployment rollback restores the previous asset version.
+The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases and restore it when using a fresh checkout or another machine. Deployment fails before staging or upload if retention is missing or invalid. For the first generation of a new, empty asset service only, run `HOSTED_ASSETS_FIRST_DEPLOY=1 bash scripts/deploy-game-assets.sh .agent/work/hosted-assets-ready`. The override must be exactly `1` and is rejected when a retained generation already exists. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes. Keep previous manifests locally for recovery. Cloudflare deployment rollback restores the previous asset version.
 
 ## Release application code
 
@@ -43,14 +45,25 @@ Deploy a compatible asset generation first, then release the application code. A
 
 ## Preview locally
 
-Serve a completed generation on loopback:
+First [build and audit an application package](STATIC-HOSTING.md). Start its runtime in one terminal; Vite needs the archive modules and viewer files from this server:
+
+```sh
+python3 scripts/static-preview.py .agent/work/browser-static/release --port 8096
+```
+
+In a second terminal, serve a completed asset generation on loopback:
 
 ```sh
 python3 scripts/preview-game-assets.py .agent/work/hosted-assets-ready --port 8312
+```
+
+In a third terminal, start Vite:
+
+```sh
 VITE_GAME_ASSET_URL=http://127.0.0.1:8312/ npm run dev --prefix web/editor
 ```
 
-The Vite development build permits loopback HTTP asset URLs. Production builds require HTTPS. The asset preview audits its directory before serving and supplies CORS headers.
+Vite proxies `/archive`, `/metadata`, `/snippets` and `/pullfiction_viewer` to port 8096. Set `PULLFICTION_RUNTIME_ORIGIN` when the runtime uses another origin. The Vite development build permits loopback HTTP asset URLs. Production builds require HTTPS. The asset preview audits its directory before serving and supplies CORS headers.
 
 ## Verify delivery
 

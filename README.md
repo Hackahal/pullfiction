@@ -10,7 +10,7 @@ The renderer builds on [Wenilla](https://github.com/Arnesen/wenilla) and [Benill
 
 Use a desktop Chromium browser with WebGPU. The application downloads prepared raid and shared assets automatically and caches them in browser storage. No game installation or folder selection is required.
 
-Game archives, models, textures, sounds and extracted assets are excluded from this repository and GitHub release artifacts. The owner prepares assets locally and deploys them directly to a separate Cloudflare Static Assets service. The application release contains code and approved numeric metadata only. See [hosted asset preparation](docs/HOSTED-ASSETS.md).
+Game archives, models, textures, sounds and extracted assets are excluded from this repository and GitHub release artifacts. The owner prepares assets locally and deploys them directly to a separate Cloudflare Static Assets service. The application release contains code and approved metadata only. See [hosted asset preparation](docs/HOSTED-ASSETS.md).
 
 Classic Era and accessible Season of Discovery assets are the current focus. Unsupported or unavailable assets remain explicit errors; prepared data does not establish complete rendering fidelity.
 

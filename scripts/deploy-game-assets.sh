@@ -26,11 +26,32 @@ PY
 python3 scripts/prepare-hosted-assets.py audit "$release"
 # Retain immutable chunks so already-open sessions survive a manifest update.
 retained=".agent/work/hosted-assets/deployed"
+first="${HOSTED_ASSETS_FIRST_DEPLOY:-}"
+if [ -n "$first" ] && [ "$first" != 1 ]; then
+  echo 'HOSTED_ASSETS_FIRST_DEPLOY must be exactly 1 for a new, empty asset service.' >&2
+  exit 1
+fi
+if [ -L "$retained" ] || { [ -e "$retained" ] && [ ! -d "$retained" ]; }; then
+  echo "Invalid retention directory: $retained. Restore the retained generation before deploying." >&2
+  exit 1
+fi
+if [ "$first" = 1 ] && [ -e "$retained" ]; then
+  echo 'First-deploy override cannot be used with an existing retained generation.' >&2
+  exit 1
+fi
+if [ ! -d "$retained" ] && [ "$first" != 1 ]; then
+  echo "Missing $retained. Restore the retained generation before deploying. Use HOSTED_ASSETS_FIRST_DEPLOY=1 only for the first generation of a new, empty asset service." >&2
+  exit 1
+fi
+# Validate retention before creating an upload directory. An invalid or missing
+# generation must never be mistaken for a first deployment on a fresh checkout.
+if [ -d "$retained" ]; then
+  python3 scripts/prepare-hosted-assets.py audit "$retained"
+fi
 mkdir -p .agent/work/hosted-assets
 stage="$(mktemp -d .agent/work/hosted-assets/upload.XXXXXX)"
 mkdir "$stage/chunks"
 if [ -d "$retained" ]; then
-  python3 scripts/prepare-hosted-assets.py audit "$retained"
   cp "$retained"/chunks/*.bin.gz "$stage/chunks/"
 fi
 cp "$release"/chunks/*.bin.gz "$stage/chunks/"

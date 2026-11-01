@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
+import { createServer } from "node:http";
 import {
   openHostedAssets,
   validateHostedManifest,
@@ -375,4 +376,200 @@ test("oversized response bodies fail without retry and unsupported resources ret
   });
   await assert.rejects(reader.read("id:99"), { name: "NotFoundError" });
   reader.close();
+});
+
+test("stalled headers time out and retry even when transport ignores abort", async () => {
+  const f = fixture();
+  let calls = 0;
+  const signals: AbortSignal[] = [];
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    retries: 1,
+    requestTimeoutMs: 20,
+    fetch: async (url, options) => {
+      calls++;
+      signals.push(options!.signal!);
+      if (calls === 1) return new Promise<Response>(() => {});
+      return f.fetcher(url, options);
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(signals[0].reason.name, "TimeoutError");
+  assert.equal(signals[1].aborted, false);
+  reader.close();
+});
+
+test("deadline AbortError from fetch stays retryable and bounded", async () => {
+  let calls = 0;
+  await assert.rejects(
+    openHostedAssets("https://assets.example", undefined, {
+      cache: null,
+      retries: 1,
+      requestTimeoutMs: 20,
+      fetch: async (_url, options) => {
+        calls++;
+        return new Promise<Response>((_resolve, reject) => {
+          options!.signal!.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        });
+      },
+    }),
+    { name: "TimeoutError" },
+  );
+  assert.equal(calls, 2);
+});
+
+test("stalled chunk bodies exhaust one retry budget, cancel streams, and allow later recovery", async () => {
+  const f = fixture();
+  let requests = 0,
+    cancellations = 0,
+    failures = 2;
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    retries: 1,
+    requestTimeoutMs: 20,
+    fetch: async (url, options) => {
+      if (!String(url).includes(f.hashes[0])) return f.fetcher(url, options);
+      requests++;
+      if (failures-- <= 0) return f.fetcher(url, options);
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(f.zipped[0].slice(0, 2));
+          },
+          cancel() {
+            cancellations++;
+          },
+        }),
+      );
+    },
+  });
+  await assert.rejects(reader.read("fonts/a.ttf"), { name: "TimeoutError" });
+  assert.equal(requests, 2);
+  assert.equal(cancellations, 2);
+  assert.deepEqual(
+    [...new Uint8Array((await reader.read("fonts/a.ttf")).bytes)],
+    [1, 2, 3, 4],
+  );
+  assert.equal(requests, 3);
+  reader.close();
+});
+
+test("user abort during stalled headers is terminal and retains the user's reason", async () => {
+  const controller = new AbortController();
+  const reason = new DOMException("User cancelled", "AbortError");
+  let started!: () => void,
+    calls = 0;
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const opening = openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    signal: controller.signal,
+    requestTimeoutMs: 100,
+    fetch: async () => {
+      calls++;
+      started();
+      return new Promise<Response>(() => {});
+    },
+  });
+  await ready;
+  controller.abort(reason);
+  await assert.rejects(opening, (error) => error === reason);
+  assert.equal(calls, 1);
+});
+
+test("closing a reader cancels a stalled body without retrying", async () => {
+  const f = fixture();
+  let started!: () => void,
+    calls = 0,
+    cancelled = 0;
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    requestTimeoutMs: 100,
+    fetch: async (url, options) => {
+      if (!String(url).includes(f.hashes[0])) return f.fetcher(url, options);
+      calls++;
+      return new Response(
+        new ReadableStream({
+          start() {
+            started();
+          },
+          cancel() {
+            cancelled++;
+          },
+        }),
+      );
+    },
+  });
+  const reading = reader.read("fonts/a.ttf");
+  await ready;
+  reader.close();
+  await assert.rejects(reading, { name: "AbortError" });
+  assert.equal(calls, 1);
+  assert.equal(cancelled, 1);
+});
+
+test("successful requests clear deadline timers and lifetime listeners", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture(),
+    signals: AbortSignal[] = [];
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    fetch: async (url, options) => {
+      signals.push(options!.signal!);
+      return f.fetcher(url, options);
+    },
+  });
+  await reader.read("fonts/a.ttf");
+  t.mock.timers.tick(120_000);
+  reader.close();
+  assert.ok(signals.every((signal) => !signal.aborted));
+});
+
+test("native fetch recovers from stalled HTTP headers and a stalled JSON body", async () => {
+  for (const mode of ["headers", "body"] as const) {
+    const f = fixture();
+    let calls = 0;
+    const server = createServer((_request, response) => {
+      calls++;
+      if (calls === 1) {
+        if (mode === "body") {
+          response.writeHead(200, { "Content-Type": "application/json" });
+          response.write('{"schema":');
+        }
+        return;
+      }
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(f.manifest));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const address = server.address();
+      assert.ok(address && typeof address !== "string");
+      const reader = await openHostedAssets(
+        `http://127.0.0.1:${address.port}/`,
+        undefined,
+        {
+          allowLoopback: true,
+          cache: null,
+          retries: 1,
+          requestTimeoutMs: 100,
+        },
+      );
+      assert.equal(calls, 2);
+      reader.close();
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
 });

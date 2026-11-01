@@ -22,6 +22,7 @@ export interface HostedOptions {
   memoryBytes?: number;
   allowLoopback?: boolean;
   retries?: number;
+  requestTimeoutMs?: number;
 }
 const hashPattern = /^[a-f0-9]{64}$/;
 const maxChunk = 25 * 1024 * 1024;
@@ -175,6 +176,11 @@ export async function openHostedAssets(
   options: HostedOptions = {},
 ): Promise<ClientReader> {
   const baseUrl = baseURL(base, options.allowLoopback === true);
+  const timeoutMs = options.requestTimeoutMs ?? 60_000;
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000)
+    throw new RangeError(
+      "Hosted request timeout must be between 1 and 120000 ms",
+    );
   const lifetime = new AbortController();
   const abort = () => lifetime.abort(options.signal?.reason);
   options.signal?.addEventListener("abort", abort, { once: true });
@@ -189,29 +195,66 @@ export async function openHostedAssets(
   const attempts = Math.max(1, Math.min(5, (options.retries ?? 2) + 1));
   async function request<T>(
     url: URL,
-    consume: (response: Response) => Promise<T>,
+    consume: (response: Response, attemptSignal: AbortSignal) => Promise<T>,
   ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       check();
       try {
-        const response = await fetcher(url, {
-          signal,
-          credentials: "omit",
-          redirect: "error",
+        const attemptController = new AbortController();
+        const attemptSignal = attemptController.signal;
+        const cancelAttempt = () => attemptController.abort(signal.reason);
+        signal.addEventListener("abort", cancelAttempt, { once: true });
+        let rejectAbort!: () => void;
+        const aborted = new Promise<never>((_, reject) => {
+          rejectAbort = () => reject(attemptSignal.reason);
+          attemptSignal.addEventListener("abort", rejectAbort, { once: true });
         });
-        if (response.ok) return await consume(response);
-        if (
-          response.status !== 408 &&
-          response.status !== 429 &&
-          response.status < 500
-        )
-          throw namedError(
-            "AssetUnavailableError",
-            `Hosted asset request failed (${response.status})`,
-          );
-        throw new Error(
-          `Hosted asset service unavailable (${response.status})`,
+        const timer = setTimeout(
+          () =>
+            attemptController.abort(
+              namedError("TimeoutError", "Hosted asset request timed out"),
+            ),
+          timeoutMs,
         );
+        try {
+          // Race the entire transfer as well as passing the signal to fetch.
+          // A custom transport or a body stream may not honor fetch's signal.
+          const download = async () => {
+            const response = await fetcher(url, {
+              signal: attemptSignal,
+              credentials: "omit",
+              redirect: "error",
+            });
+            if (attemptSignal.aborted) {
+              void response.body?.cancel().catch(() => {});
+              attemptSignal.throwIfAborted();
+            }
+            if (response.ok) return await consume(response, attemptSignal);
+            void response.body?.cancel().catch(() => {});
+            if (
+              response.status !== 408 &&
+              response.status !== 429 &&
+              response.status < 500
+            )
+              throw namedError(
+                "AssetUnavailableError",
+                `Hosted asset request failed (${response.status})`,
+              );
+            throw new Error(
+              `Hosted asset service unavailable (${response.status})`,
+            );
+          };
+          return await Promise.race([download(), aborted]);
+        } catch (error) {
+          // Native fetch may reject with AbortError when the deadline fires.
+          // The controller's reason distinguishes that timeout from user abort.
+          if (attemptSignal.aborted) throw attemptSignal.reason;
+          throw error;
+        } finally {
+          clearTimeout(timer);
+          signal.removeEventListener("abort", cancelAttempt);
+          attemptSignal.removeEventListener("abort", rejectAbort);
+        }
       } catch (error) {
         check();
         if (
@@ -266,7 +309,11 @@ export async function openHostedAssets(
       cache = null;
     }
   }
-  async function compressedBody(response: Response, sha: string) {
+  async function compressedBody(
+    response: Response,
+    sha: string,
+    readSignal = signal,
+  ) {
     const size = manifest.chunks[sha].bytes;
     const bytes = new Uint8Array(size);
     if (!response.body)
@@ -275,10 +322,14 @@ export async function openHostedAssets(
         "Hosted chunk integrity check failed",
       );
     const stream = response.body.getReader();
+    const cancel = () => {
+      void stream.cancel(readSignal.reason).catch(() => {});
+    };
+    readSignal.addEventListener("abort", cancel, { once: true });
     let offset = 0;
     try {
       for (;;) {
-        check();
+        readSignal.throwIfAborted();
         const { value, done } = await stream.read();
         if (done) break;
         if (offset + value.length > size)
@@ -290,8 +341,10 @@ export async function openHostedAssets(
         offset += value.length;
       }
     } finally {
-      await stream.cancel().catch(() => {});
+      readSignal.removeEventListener("abort", cancel);
+      void stream.cancel().catch(() => {});
     }
+    readSignal.throwIfAborted();
     if (offset !== size)
       throw namedError(
         "AssetIntegrityError",
@@ -347,8 +400,8 @@ export async function openHostedAssets(
       }
     }
     if (!raw) {
-      const compressed = await request(url, (response) =>
-        compressedBody(response, sha),
+      const compressed = await request(url, (response, attemptSignal) =>
+        compressedBody(response, sha, attemptSignal),
       );
       raw = await verifyCompressed(compressed, sha);
       try {
