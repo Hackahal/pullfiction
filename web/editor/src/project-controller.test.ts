@@ -421,3 +421,26 @@ test("Trashing the active project rejects marker hits queued before the reset", 
   );
   c.stop();
 });
+
+test("library metadata persists independently of autosave and opening records a real view", async () => {
+  const { controller: c, store } = setup();
+  const p = {
+    ...newProject(emptyPlan(469)),
+    kind: "replay" as const,
+    lastViewedAt: 1,
+  };
+  await store.put(p);
+  await c.initializeLibrary();
+  await c.updateProjectMetadata(p.id, { savedRun: false, pinned: true });
+  assert.equal((await store.get(p.id))?.lastViewedAt, 1);
+  assert.equal((await store.get(p.id))?.savedRun, false);
+  assert(await c.openProject(p.id));
+  assert((await store.get(p.id))!.lastViewedAt! > 1);
+  await c.updateProjectMetadata(p.id, { name: "Renamed" });
+  await c.saveProject();
+  const saved = await store.get(p.id);
+  assert.equal(saved?.plan.name, "Renamed");
+  assert.equal(saved?.savedRun, false);
+  assert.equal(saved?.pinned, true);
+  c.stop();
+});

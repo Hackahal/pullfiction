@@ -1,0 +1,763 @@
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("./landing-assets/barlow-condensed-bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+body {
+  margin: 0;
+}
+.pf-landing {
+  --pf-ground: #101519;
+  --pf-panel: #1c2429;
+  --pf-ink: #f1f2ec;
+  --pf-secondary: #bac6cb;
+  --pf-action: #e5bd77;
+  --pf-inverse: #e1e7e8;
+  --pf-dark-ink: #182127;
+  --pf-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --pf-copy: Avenir, "Segoe UI", Arial, sans-serif;
+  --pf-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  height: 100dvh;
+  color: var(--pf-ink);
+  background: var(--pf-ground);
+  font: 16px/1.6 var(--pf-copy);
+  scrollbar-color: #5d696e var(--pf-ground);
+  scroll-padding-top: 24px;
+  color-scheme: dark;
+}
+.pf-landing *,
+.pf-landing *::before,
+.pf-landing *::after {
+  box-sizing: border-box;
+}
+.pf-landing ::selection {
+  color: var(--pf-dark-ink);
+  background: var(--pf-action);
+}
+.pf-width {
+  width: min(1280px, calc(100% - 96px));
+  margin-inline: auto;
+}
+.pf-landing a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 5px;
+}
+.pf-landing button {
+  font: inherit;
+  color: inherit;
+}
+.pf-landing :focus-visible {
+  outline: 2px solid var(--pf-action);
+  outline-offset: 5px;
+}
+.pf-landing img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.pf-landing figure {
+  margin: 0;
+}
+.pf-landing main h1,
+.pf-landing main h2,
+.pf-landing main h3 {
+  color: inherit;
+  text-wrap: balance;
+  margin: 0;
+}
+.pf-landing main h1,
+.pf-landing main h2 {
+  font-family: var(--pf-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+.pf-landing main h1 {
+  font-size: clamp(58px, 6.5vw, 92px);
+}
+.pf-landing main h2 {
+  font-size: clamp(38px, 4.2vw, 58px);
+}
+.pf-landing main h3 {
+  font: 600 21px/1.25 var(--pf-copy);
+}
+.pf-landing main p {
+  color: inherit;
+  margin: 0;
+  text-wrap: pretty;
+}
+.pf-landing figcaption {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pf-secondary);
+}
+.pf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.pf-skip {
+  position: absolute;
+  z-index: 100;
+  top: -100px;
+  left: 24px;
+  padding: 12px 20px;
+  background: var(--pf-action);
+  color: var(--pf-dark-ink) !important;
+}
+.pf-skip:focus {
+  top: 12px;
+}
+.pf-masthead {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.pf-wordmark {
+  font:
+    bold 25px/1.1 Georgia,
+    serif;
+  white-space: nowrap;
+}
+.pf-wordmark span {
+  color: var(--pf-action);
+}
+.pf-masthead nav {
+  display: flex;
+  gap: 28px;
+  margin-left: auto;
+}
+.pf-masthead a:not(.pf-wordmark) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+}
+.pf-workspace-link {
+  padding: 0 18px;
+  background: var(--pf-panel);
+}
+.pf-hero {
+  padding-top: 37px;
+}
+.pf-hero-copy {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: end;
+  gap: 70px;
+  margin-bottom: 38px;
+}
+.pf-hero-intro {
+  max-width: 450px;
+  justify-self: end;
+  padding-bottom: 2px;
+}
+.pf-hero-intro > p:first-child {
+  font-size: 18px;
+  line-height: 1.65;
+}
+.pf-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 24px;
+}
+.pf-landing .pf-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 26px;
+  min-height: 48px;
+  padding: 12px 23px;
+  background: var(--pf-action);
+  color: var(--pf-dark-ink);
+  font: 600 15px/1.5 var(--pf-copy);
+  transition:
+    transform 140ms var(--pf-ease),
+    background-color 140ms ease;
+}
+.pf-button:active {
+  transform: scale(0.98);
+}
+.pf-landing .pf-text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: underline;
+  text-decoration-color: #858f92;
+}
+.pf-hero-intro .pf-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--pf-secondary);
+}
+.pf-product-preview {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+  background: var(--pf-panel);
+}
+.pf-preview-bar {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 18px 8px 8px;
+}
+.pf-preview-bar > span {
+  color: var(--pf-secondary);
+  font-size: 13px;
+}
+.pf-preview-modes {
+  display: flex;
+  gap: 4px;
+}
+.pf-preview-modes label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 19px;
+  min-height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+#pf-preview-replay:checked ~ .pf-preview-bar label[for="pf-preview-replay"],
+#pf-preview-plan:checked ~ .pf-preview-bar label[for="pf-preview-plan"] {
+  background: var(--pf-action);
+  color: var(--pf-dark-ink);
+}
+#pf-preview-replay:focus-visible
+  ~ .pf-preview-bar
+  label[for="pf-preview-replay"],
+#pf-preview-plan:focus-visible ~ .pf-preview-bar label[for="pf-preview-plan"] {
+  outline: 2px solid var(--pf-ink);
+  outline-offset: 2px;
+}
+.pf-preview-sheets img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+.pf-preview-sheets figcaption {
+  padding: 15px 22px;
+}
+.pf-preview-sheets figcaption strong {
+  color: var(--pf-ink);
+  margin-right: 5px;
+}
+.pf-plan-sheet {
+  display: none;
+}
+#pf-preview-plan:checked ~ .pf-preview-sheets .pf-replay-sheet {
+  display: none;
+}
+#pf-preview-plan:checked ~ .pf-preview-sheets .pf-plan-sheet {
+  display: block;
+}
+.pf-workflow {
+  padding-block: 128px;
+}
+.pf-workflow-heading {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 70px;
+  align-items: center;
+  margin-bottom: 48px;
+}
+.pf-workflow-heading > p {
+  max-width: 400px;
+  font-size: 19px;
+  justify-self: end;
+}
+.pf-workflow-body {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 70px;
+  align-items: center;
+}
+.pf-planning-image {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pf-planning-image img {
+  width: 100%;
+  min-height: 350px;
+  object-fit: cover;
+  object-position: 68% center;
+}
+.pf-planning-image figcaption {
+  margin-top: 14px;
+}
+.pf-workflow-steps {
+  display: grid;
+  gap: 30px;
+}
+.pf-workflow-steps article p {
+  margin-top: 10px;
+  color: var(--pf-secondary);
+  max-width: 46ch;
+}
+.pf-workflow-steps .pf-text-link {
+  margin-top: 3px;
+}
+.pf-library-feature {
+  background: var(--pf-inverse);
+  color: var(--pf-dark-ink);
+  padding-block: 80px;
+}
+.pf-library-feature-inner {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 40px;
+}
+.pf-library-feature-inner > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 72px;
+}
+.pf-library-feature-inner h2 {
+  grid-row: 1 / 4;
+}
+.pf-library-feature-inner .pf-button {
+  justify-self: start;
+}
+.pf-library-feature h2 {
+  margin-bottom: 24px;
+}
+.pf-library-feature p {
+  max-width: 42ch;
+  margin-bottom: 16px;
+}
+.pf-library-feature .pf-button-dark {
+  background: var(--pf-dark-ink);
+  color: var(--pf-ink);
+  margin-top: 12px;
+}
+.pf-library-feature img {
+  width: 100%;
+  height: 380px;
+  object-fit: cover;
+  object-position: center top;
+}
+.pf-library-feature figcaption {
+  color: #46555e;
+  margin-top: 15px;
+}
+.pf-library-details {
+  display: none;
+}
+.pf-raids {
+  padding-block: 112px;
+}
+.pf-raids-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+.pf-raids-heading h2 {
+  max-width: 520px;
+}
+.pf-raids-heading p {
+  max-width: 330px;
+  color: var(--pf-secondary);
+}
+.pf-raid-list {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pf-raid-list > div {
+  flex: 1;
+  min-width: 0;
+}
+.pf-raid-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  padding-block: 12px;
+}
+.pf-raid-link img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+}
+.pf-raids-more {
+  margin-top: 26px !important;
+  color: var(--pf-secondary) !important;
+}
+.pf-raids-more .pf-text-link {
+  color: var(--pf-ink);
+  margin-left: 5px;
+}
+.pf-faq {
+  padding-bottom: 112px;
+  display: grid;
+  grid-template-columns: 0.8fr 1.3fr;
+  gap: 72px;
+}
+.pf-faq h2 {
+  max-width: 300px;
+}
+.pf-faq dl {
+  margin: 0;
+  display: grid;
+  gap: 28px;
+}
+.pf-faq dl > div {
+  display: grid;
+  gap: 9px;
+}
+.pf-faq dt {
+  font-size: 19px;
+  font-weight: 600;
+}
+.pf-faq dd {
+  margin: 0;
+  max-width: 64ch;
+  color: var(--pf-secondary);
+}
+.pf-closing {
+  background: var(--pf-panel);
+  padding-block: 64px;
+}
+.pf-closing-inner {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: center;
+  gap: 70px;
+}
+.pf-closing h2 {
+  font-size: clamp(48px, 5.8vw, 80px);
+}
+.pf-closing p {
+  margin-bottom: 22px;
+  max-width: 34ch;
+  font-size: 19px;
+}
+.pf-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px 30px;
+  padding-block: 40px;
+}
+.pf-footer > p {
+  font-size: 13px;
+  color: var(--pf-secondary);
+}
+.pf-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-left: auto;
+}
+.pf-footer nav a,
+.pf-footer nav button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+}
+.pf-footer nav button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.pf-footer .pf-footer-credit {
+  flex-basis: 100%;
+  color: var(--pf-secondary);
+  font-size: 13px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pf-landing a:not(.pf-button):hover {
+    text-decoration: underline;
+  }
+  .pf-button:hover {
+    background: #f1cd91;
+  }
+  .pf-preview-modes label:hover {
+    background: #35434a;
+  }
+  .pf-library-feature .pf-button-dark:hover {
+    background: #30424c;
+  }
+}
+@media (max-width: 1000px) {
+  .pf-width {
+    width: calc(100% - 64px);
+  }
+  .pf-masthead {
+    gap: 24px;
+  }
+  .pf-masthead nav {
+    gap: 20px;
+  }
+  .pf-hero-copy,
+  .pf-workflow-heading,
+  .pf-workflow-body,
+  .pf-library-feature-inner,
+  .pf-faq,
+  .pf-closing-inner {
+    gap: 36px;
+  }
+  .pf-landing main h1 {
+    font-size: clamp(56px, 7vw, 76px);
+  }
+  .pf-hero-intro > p:first-child {
+    font-size: 16px;
+  }
+  .pf-actions {
+    gap: 20px;
+    margin-top: 18px;
+  }
+  .pf-workflow {
+    padding-block: 96px;
+  }
+  .pf-raids-heading {
+    align-items: start;
+  }
+}
+@media (max-width: 650px) {
+  .pf-width {
+    width: calc(100% - 40px);
+  }
+  .pf-masthead {
+    min-height: 78px;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-block: 18px;
+  }
+  .pf-wordmark {
+    font-size: 23px;
+  }
+  .pf-masthead nav {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: 0;
+    gap: 26px;
+  }
+  .pf-masthead .pf-workspace-link {
+    margin-left: auto;
+    font-size: 13px;
+    padding-inline: 12px;
+  }
+  .pf-hero {
+    padding-top: 24px;
+  }
+  .pf-hero-copy,
+  .pf-workflow-heading,
+  .pf-workflow-body,
+  .pf-library-feature-inner,
+  .pf-faq,
+  .pf-closing-inner {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .pf-landing main h1 {
+    font-size: clamp(50px, 12vw, 72px);
+  }
+  .pf-hero-copy {
+    margin-bottom: 28px;
+  }
+  .pf-hero-intro {
+    max-width: none;
+    justify-self: stretch;
+  }
+  .pf-hero-intro > p:first-child {
+    font-size: 17px;
+  }
+  .pf-hero-intro .pf-note {
+    font-size: 13px;
+  }
+  .pf-actions {
+    gap: 24px;
+    margin-top: 20px;
+  }
+  .pf-preview-bar {
+    padding: 7px;
+    min-height: 58px;
+  }
+  .pf-preview-bar > span {
+    display: none;
+  }
+  .pf-preview-modes {
+    width: 100%;
+  }
+  .pf-preview-modes label {
+    flex: 1;
+    padding-inline: 12px;
+    min-height: 44px;
+  }
+  .pf-preview-sheets img {
+    height: 270px;
+    aspect-ratio: auto;
+    object-position: 66% center;
+  }
+  .pf-preview-sheets figcaption {
+    padding: 16px;
+    font-size: 14px;
+  }
+  .pf-preview-sheets figcaption strong {
+    display: block;
+    margin-bottom: 5px;
+  }
+  .pf-workflow {
+    padding-block: 80px;
+  }
+  .pf-workflow-heading {
+    margin-bottom: 32px;
+  }
+  .pf-workflow-heading > p {
+    font-size: 17px;
+    justify-self: start;
+  }
+  .pf-workflow-body {
+    gap: 38px;
+  }
+  .pf-planning-image img {
+    min-height: 280px;
+    height: 280px;
+    object-position: 67% center;
+  }
+  .pf-workflow-steps {
+    gap: 28px;
+  }
+  .pf-library-feature {
+    padding-block: 56px;
+  }
+  .pf-library-feature-inner > div {
+    display: block;
+  }
+  .pf-library-feature h2 {
+    margin-bottom: 20px;
+  }
+  .pf-library-feature img {
+    min-height: 0;
+    height: 112px;
+    object-fit: none;
+  }
+  .pf-library-overview {
+    display: none !important;
+  }
+  .pf-library-details {
+    display: grid;
+    gap: 0;
+    background: #121518;
+  }
+  .pf-library-feature .pf-library-run-detail {
+    object-position: 22.2% 27.14%;
+  }
+  .pf-library-feature .pf-library-metrics-detail {
+    object-position: 90.5% 27.14%;
+  }
+  .pf-raids {
+    padding-block: 72px;
+  }
+  .pf-raids-heading {
+    flex-direction: column;
+    gap: 22px;
+    margin-bottom: 24px;
+  }
+  .pf-raids-heading h2 {
+    max-width: 320px;
+  }
+  .pf-raid-list {
+    flex-wrap: wrap;
+    gap: 14px 24px;
+  }
+  .pf-raid-list > div {
+    flex: 1 0 42%;
+  }
+  .pf-raid-link {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+  }
+  .pf-raid-link img {
+    width: 44px;
+    height: 44px;
+  }
+  .pf-raids-more {
+    margin-top: 20px !important;
+  }
+  .pf-raids-more .pf-text-link {
+    margin-left: 0;
+  }
+  .pf-faq {
+    padding-bottom: 72px;
+    gap: 32px;
+  }
+  .pf-faq h2 {
+    max-width: none;
+  }
+  .pf-faq dl {
+    gap: 26px;
+  }
+  .pf-faq dt {
+    font-size: 18px;
+  }
+  .pf-closing {
+    padding-block: 48px;
+  }
+  .pf-closing h2 {
+    font-size: 52px;
+  }
+  .pf-closing p {
+    font-size: 17px;
+  }
+  .pf-footer {
+    padding-block: 32px;
+    gap: 14px;
+  }
+  .pf-footer > p {
+    flex-basis: 100%;
+  }
+  .pf-footer nav {
+    margin-left: 0;
+    gap: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-landing *,
+  .pf-landing *::before,
+  .pf-landing *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+  .pf-button:active {
+    transform: none;
+  }
+}

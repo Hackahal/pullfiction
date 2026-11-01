@@ -1,4 +1,5 @@
 import { WclParseData } from "./wcl-parse-data";
+import * as discovery from "./wcl-discovery";
 import {
   fetchSpeedCategory,
   fetchSpeedWorldRecord,
@@ -91,6 +92,7 @@ export interface GuildSearch {
 export interface LogGuild {
   id: number;
   name: string;
+  faction?: { id: number; name: string };
   server: { name: string; slug: string; region: { slug: string } };
 }
 export interface LogZone {
@@ -180,6 +182,31 @@ export class BrowserLogs {
       signal,
     );
   }
+  character(
+    search: GuildSearch,
+    version: "vanilla" | "sod",
+    signal?: AbortSignal,
+  ) {
+    return discovery.findCharacter(this.query, search, version, signal);
+  }
+  characterReports(
+    id: number,
+    page: number,
+    version: "vanilla" | "sod",
+    signal?: AbortSignal,
+  ) {
+    return discovery.characterReports(this.query, id, page, version, signal);
+  }
+  rankingRaids(version: "vanilla" | "sod", signal?: AbortSignal) {
+    return discovery.rankingRaids(this.query, version, signal);
+  }
+  rankingPage(
+    search: discovery.RankingSearch,
+    version: "vanilla" | "sod",
+    signal?: AbortSignal,
+  ) {
+    return discovery.rankingPage(this.query, search, version, signal);
+  }
   async realms(
     region: string,
     version = "vanilla",
@@ -267,7 +294,7 @@ export class BrowserLogs {
     )
       throw new Error("Enter the guild name, realm and region.");
     const data = await this.query(
-      "query($name:String!,$serverSlug:String!,$serverRegion:String!){guildData{guild(name:$name,serverSlug:$serverSlug,serverRegion:$serverRegion){id name server{name slug region{slug}}}}}",
+      "query($name:String!,$serverSlug:String!,$serverRegion:String!){guildData{guild(name:$name,serverSlug:$serverSlug,serverRegion:$serverRegion){id name faction{id name} server{name slug region{slug}}}}}",
       { name, serverSlug, serverRegion },
       version,
       signal,

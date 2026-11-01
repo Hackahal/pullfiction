@@ -1,5 +1,80 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#111214"><title>Pull Fiction</title></head>
-<body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101519" />
+    <title>WoW Classic Raid Replay &amp; Planner | Pull Fiction</title>
+    <meta
+      name="description"
+      content="Replay Warcraft Logs in 3D, study your WoW Classic raid, and plan the next pull. Find guild runs, browse rankings, and build strategies in your browser."
+    />
+    <link rel="canonical" href="https://pullfiction.com/" />
+    <link rel="icon" type="image/svg+xml" href="/landing/favicon.svg" />
+    <link rel="stylesheet" href="/src/landing.css" />
+    <link
+      rel="preload"
+      href="/src/landing-assets/barlow-condensed-bold.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pull Fiction" />
+    <meta property="og:url" content="https://pullfiction.com/" />
+    <meta
+      property="og:title"
+      content="WoW Classic Raid Replay &amp; Planner | Pull Fiction"
+    />
+    <meta
+      property="og:description"
+      content="Bring Warcraft Logs into the raid. Replay in 3D, see what happened, and plan the next pull in your browser."
+    />
+    <meta
+      property="og:image"
+      content="https://pullfiction.com/landing/replay.jpg"
+    />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta
+      property="og:image:alt"
+      content="Pull Fiction replaying a Molten Core raid in 3D with its encounter timeline."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="WoW Classic Raid Replay &amp; Planner | Pull Fiction"
+    />
+    <meta
+      name="twitter:description"
+      content="Replay Warcraft Logs in 3D and turn what you learn into a plan for your next raid night."
+    />
+    <meta
+      name="twitter:image"
+      content="https://pullfiction.com/landing/replay.jpg"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Pull Fiction",
+        "url": "https://pullfiction.com/",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Web browser",
+        "description": "A 3D raid replay and planning tool for WoW Classic, using Warcraft Logs reports.",
+        "featureList": [
+          "3D raid replay",
+          "Tactical raid planning",
+          "Warcraft Logs guild and character discovery",
+          "Raid speed and character rankings",
+          "Local saved plans and runs"
+        ],
+        "sameAs": "https://github.com/Hackahal/pullfiction"
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"><!--pullfiction-landing--></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
