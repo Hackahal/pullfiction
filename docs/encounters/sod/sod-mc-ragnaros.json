@@ -9,7 +9,7 @@
   "rawEncounterId": 672,
   "providerMapping": {
     "status": "mapped-from-report-metadata",
-    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "basis": "Selected Discovery Molten Core report names fights32/33 Ragnaros and identifies provider encounter100672. Matched NPC12143 is Son of Flame and corroborates encounter participation only; this receipt does not establish an exact Ragnaros boss-template match. No numeric offset.",
     "metadataReceipt": {
       "kind": "immutable-metadata-identity-receipt",
       "reportCode": "1RTF2zfK4k9xHCnj",
@@ -207,8 +207,9 @@
   "researchContext": {
     "gameVersion": "sod",
     "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
-    "registeredEnableMobs": "\n\t11502, -- Ragnaros\n\t12143, -- Son of Flame\n\t12018, -- Majordomo Executus\n\t54404, -- Majordomo Executus (Retail",
-    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+    "registeredEnableMobs": "11502, -- Ragnaros\n12143, -- Son of Flame\n12018, -- Majordomo Executus",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned",
+    "enableMobScope": "Complete retained declarations from the pinned shared addon module; not an exhaustive enable-mob list or confirmed SoD spawn identities. The truncated Retail entry was omitted."
   },
   "sourceContextUpdate": {
     "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",

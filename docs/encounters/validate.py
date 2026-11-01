@@ -27,7 +27,7 @@ def require(condition, message):
         raise ValueError(message)
 
 def read(path):
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 def types(value, name):
     return {'object': isinstance(value, dict), 'array': isinstance(value, list),
@@ -230,7 +230,8 @@ def validate_library(ruleset, expected_files, expected_units):
         if not path.is_file():
             continue
         require(path.suffix in {'.json', '.md', '.py'}, f'Unexpected asset/source file: {path.name}')
-        body = path.read_text()
+        body = path.read_text(encoding="utf-8")
+        require('\u200b' not in body, f'{path.name}: invisible zero-width space')
         for pattern in LEAKS:
             require(re.search(pattern, body) is None, f'{path.name}: local path, service or credential pattern')
     print(json.dumps({'ruleset': ruleset, 'encounters': len(documents), 'bossResearchUnits': expected_units,

@@ -99,7 +99,12 @@ def diagnose(raw, graph, *, map_id=None, coverage='unknown', expectations=()):
         raise ValueError('Replay and report rulesets disagree')
     if not graph.get('source', {}).get('buildKey'):
         raise ValueError('A client graph with build identity is required')
-    fights = raw.get('fights') or raw.get('fight', {}).get('chapters') or [raw.get('fight', {})]
+    selected_fight = raw.get('fight')
+    chapters = selected_fight.get('chapters') if isinstance(selected_fight, dict) else None
+    fights = next((rows for rows in (raw.get('fights'), chapters)
+                   if isinstance(rows, list) and rows), None)
+    if fights is None:
+        fights = [selected_fight] if selected_fight is not None else raw.get('report', {}).get('fights', [])
     fights = [f for f in fights if f.get('encounterID') and
               (map_id is None or f.get('gameZone', {}).get('id') == map_id)]
     if not fights:

@@ -54,7 +54,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -85,7 +85,7 @@
     {
       "id": "sod-overview",
       "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
-      "quality": "Exact SoD authored overview indexed content; direct fetch403; supports postdeath loa spirit and exclusive selectable blessing"
+      "quality": "Exact SoD authored overview indexed content; direct fetch 403; supports postdeath loa spirit and exclusive selectable blessing"
     },
     {
       "id": "provider-identity-metadata",
@@ -125,7 +125,7 @@
         24223
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "DBM UNIT_SPELLCAST_SUCCEEDED24223",
+      "trigger": "DBM UNIT_SPELLCAST_SUCCEEDED 24223",
       "state": "Vanish",
       "lifecycle": "Actual hidden interval; first actual boss swing ends addon vanish",
       "placement": "Unknown hidden route; no interpolation into seen position",
@@ -187,11 +187,11 @@
       "clientCandidateSpellIds": [
         24211
       ],
-      "trigger": "DBM24210 target aura",
+      "trigger": "DBM 24210 target aura",
       "state": "Mark and panther targeting",
       "lifecycle": "Actual mark end and real panther threat; no forced permanent fixation",
       "placement": "Marked player instance; panthers independently tauntable",
-      "animation": "Native mark6372, no invented raid icon",
+      "animation": "Native mark 6372, no invented raid icon",
       "acceptanceCheck": "sod-zg-arlokk/ARLOKK-MARK",
       "acceptanceCriteria": "ARLOKK-MARK: aura and actual add targets independent",
       "sourceRefs": [
@@ -317,7 +317,7 @@
   "unresolved": [
     "SoD postdeath panther behavior and gong creation evidence",
     "Hidden movement and actual vanish/form boundaries",
-    "Whether24183/24190/24211/24236 variants are used by exact SoD pull",
+    "Whether 24183/24190/24211/24236 variants are used by exact SoD pull",
     "Exact SoD variant and pull date; baseline mechanics not blanket verified",
     "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
     "Native asset/procedure pixels and original gameplay parity"

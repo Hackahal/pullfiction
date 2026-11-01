@@ -39,7 +39,7 @@
     {
       "id": "official",
       "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
-      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+      "quality": "official 2020 baseline overview retrieved via search index; direct 403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
     },
     {
       "id": "client",
@@ -58,9 +58,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Both addons Strength aura; official crystal weakness mechanic",
       "state": "Supreme strength",
-      "lifecycle": "Actual strength apply/remove/reapply; not45s predicted state",
+      "lifecycle": "Actual strength apply/remove/reapply; not 45s predicted state",
       "placement": "Boss body state and actual attacks",
-      "animation": "Native aura6446 and actual scale/speed only",
+      "animation": "Native aura 6446 and actual scale/speed only",
       "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-STRENGTH",
       "acceptanceCriteria": "OSSIRIAN-STRENGTH: weakness and strength independent observed states",
       "sourceRefs": [
@@ -89,7 +89,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Official interact crystals; primary five school debuffs",
       "state": "Crystals and school weaknesses",
-      "lifecycle": "Actual crystal birth/click/despawn and weakness removal; refresh45s not generator",
+      "lifecycle": "Actual crystal birth/click/despawn and weakness removal; refresh 45s not generator",
       "placement": "Actual object anchors and boss proximity; no random point generation",
       "animation": "Native crystal assets and corresponding weakness effects",
       "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-CRYSTAL",
@@ -114,9 +114,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Both primary addons player wind aura",
       "state": "Enveloping Winds",
-      "lifecycle": "Actual10s/early break and target control; threat preserved per SoD account",
-      "placement": "Player-held wind distinct from roaming tornado",
-      "animation": "Native aura861 and real motion",
+      "lifecycle": "Actual aura duration/removal and target control require Vanilla evidence; threat behavior remains unresolved because the preservation claim came from a SoD account.",
+      "placement": "Observed player aura anchor only when available; relation to roaming tornadoes remains unresolved for Vanilla.",
+      "animation": "Native aura 861 and real motion",
       "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-WIND",
       "acceptanceCriteria": "OSSIRIAN-WIND: early damage break and target restore",
       "sourceRefs": [
@@ -135,13 +135,13 @@
       "mechanic": "Sand vortex actors",
       "spellIds": [],
       "clientCandidateSpellIds": [],
-      "trigger": "SoD account tornadoes activate and roam",
+      "trigger": "Unresolved for Vanilla: tornado activation and roaming were attributed to a SoD account and do not establish baseline behavior.",
       "state": "Sand vortex actors",
-      "lifecycle": "Actual active span, contacts and reset",
-      "placement": "Independent NPC routes, height and contact center",
-      "animation": "Native sand vortex assets; no player Cyclone substitute",
+      "lifecycle": "Unresolved Vanilla activation, contact and reset behavior; require qualified baseline evidence.",
+      "placement": "Unresolved Vanilla actor identity, routes, height and contact center; no movement is generated.",
+      "animation": "Unresolved Vanilla vortex appearance; require qualified baseline evidence before selecting assets.",
       "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-VORTEX",
-      "acceptanceCriteria": "OSSIRIAN-VORTEX: preserve roaming source identity",
+      "acceptanceCriteria": "OSSIRIAN-VORTEX: establish Vanilla actor identity, activation, motion and cleanup before accepting behavior",
       "sourceRefs": [
         "dbm",
         "guide",
@@ -165,7 +165,7 @@
       "state": "Tongues and War Stomp",
       "lifecycle": "Actual recipients/decurse and displacement",
       "placement": "Boss facing/area versus actual target motion",
-      "animation": "Native curse502 and stomp",
+      "animation": "Native curse 502 and stomp",
       "acceptanceCheck": "vanilla-aq20-ossirian/OSSIRIAN-STOMP",
       "acceptanceCriteria": "OSSIRIAN-STOMP: real cast-impact-target relationships",
       "sourceRefs": [
@@ -208,8 +208,9 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
-    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity.",
+    "Vanilla Enveloping Winds threat behavior and tornado activation/roaming remain unsupported by the cited SoD account; no substitute baseline behavior is asserted."
   ],
   "researchContext": {
     "npcIds": [

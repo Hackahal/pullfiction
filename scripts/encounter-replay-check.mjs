@@ -54,11 +54,12 @@ const graph = await load("graph"),
   encounters = [];
 const key = (e, side) => `${e[`${side}ID`]}:${e[`${side}Instance`] || 1}`;
 for (const encounter of audit.encounters) {
-  const selected = (
-    raw.fights ??
-    raw.fight?.chapters ??
-    raw.report.fights ?? [raw.fight]
-  ).find((f) => String(f.id) === String(encounter.id));
+  // Selected replay metadata outranks report metadata, including its bounds.
+  // Empty collections do not constitute a selection.
+  const fights = [raw.fights, raw.fight?.chapters].find(
+    (rows) => Array.isArray(rows) && rows.length > 0,
+  ) ?? (raw.fight != null ? [raw.fight] : raw.report.fights ?? []);
+  const selected = fights.find((f) => String(f.id) === String(encounter.id));
   if (!selected)
     throw new Error(`Encounter ${encounter.id} is absent from the input`);
   const fight=resolveEncounterBounds({...raw.report,gameVersion:raw.gameVersion},selected,

@@ -33,7 +33,7 @@
       "retrieved": "2026-11-01",
       "date": "2025-04-23",
       "author": "Neryssa",
-      "patch": "Page patch1.15.8; historical server/client build not established"
+      "patch": "Page patch 1.15.8; historical server/client build not established"
     },
     {
       "id": "guide-links",
@@ -44,17 +44,17 @@
         "https://www.wowhead.com/classic/npc=11388/witherbark-speaker",
         "https://www.wowhead.com/classic/npc=15041"
       ],
-      "quality": "Resolved baseline links; DrainLife7s is authored ceiling, actual channel end is recorded. Primary explicitly questions Enlarge dispel warning validity."
+      "quality": "Resolved baseline links; DrainLife 7s is authored ceiling, actual channel end is recorded. Primary explicitly questions Enlarge dispel warning validity."
     },
     {
       "id": "cache",
-      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID2, cachedRevisionNone, liveRevision1; coverage unknown",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
       "kind": "retained-evidence",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
     {
       "id": "client",
-      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
       "kind": "client-reference",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
@@ -72,7 +72,7 @@
       "spellIds": [],
       "clientCandidateSpellIds": [],
       "trigger": "Actual morph/unit-state and observed root/charge evidence",
-      "state": "Boss14510 identity retained across different models",
+      "state": "Boss 14510 identity retained across different models",
       "lifecycle": "No automatic transform from a timer or every web application",
       "placement": "Measured movement and unknown Z; reject guessed charge arcs",
       "animation": "Morph, threat change and locomotion separate",
@@ -96,7 +96,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Actual cast, target aura, ticks/heal and interrupt/removal",
       "state": "Caster heal and actual drained recipient retained",
-      "lifecycle": "Recorded interrupt/aura terminal/death; no forced7s hold",
+      "lifecycle": "Recorded interrupt/aura terminal/death; no forced 7s hold",
       "placement": "Actual source/target anchors, no inferred chain topology",
       "animation": "Channel beam, host hold and pulse age separate",
       "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M02-before-active-terminal-rewind",
@@ -142,7 +142,7 @@
         24109
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Observed summons, actual NPC15041 activity and buff",
+      "trigger": "Observed summons, actual NPC 15041 activity and buff",
       "state": "Each spider instance and growth state independent",
       "lifecycle": "No generated spider count/growth timer; dispel requires actual evidence",
       "placement": "Actual spawn/path anchors; scale not derived from health",
@@ -166,7 +166,7 @@
         24110
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Actual control on11388 and boss root/silence",
+      "trigger": "Actual control on 11388 and boss root/silence",
       "state": "Controlled Speaker, boss and rooted recipients distinct",
       "lifecycle": "Actual control/root removal; no synthesized tank switch or threat wipe",
       "placement": "Real recipient/movement anchors",
@@ -212,10 +212,10 @@
     "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
     "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
     "Primary TODO questions whether Enlarge dispel warning is valid; no automatic dispel success or model scale inferred.",
-    "Cached revision absent; live revision1 and season2 do not establish complete historical coverage.",
+    "Cached revision absent; live revision 1 and season 2 do not establish complete historical coverage.",
     "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
     "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
-    "Bounded full-run context includes selected pull(s),5seconds before and5000ms after. Longer continuation outside this probe remains untested."
+    "Bounded full-run context includes selected pull(s),5 seconds before and 5000ms after. Longer continuation outside this probe remains untested."
   ],
   "researchContext": {
     "npcIds": [

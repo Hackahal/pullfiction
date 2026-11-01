@@ -70,9 +70,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Primary addon yell target precedes logged aura",
       "state": "Threatening Gaze",
-      "lifecycle": "Preserve warning onset separate from actual6s aura interval",
+      "lifecycle": "Preserve warning onset separate from actual 6s aura interval",
       "placement": "Exact watched player, optional observed raid marker",
-      "animation": "Native target6376; no invented marker",
+      "animation": "Native target 6376; no invented marker",
       "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-GAZE",
       "acceptanceCriteria": "MANDOKIR-GAZE: warning and aura timing distinct",
       "sourceRefs": [
@@ -118,9 +118,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Primary addon enrage aura, guide Ohgan death relation",
       "state": "Ohgan death enrage",
-      "lifecycle": "Actual end; baseline60s versus client90s conflict",
+      "lifecycle": "Actual end; baseline 60s versus client 90s conflict",
       "placement": "Boss body aura distinct from Ohgan corpse",
-      "animation": "Native enrage668",
+      "animation": "Native enrage 668",
       "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-ENRAGE",
       "acceptanceCriteria": "MANDOKIR-ENRAGE: true removal overrides candidate duration",
       "sourceRefs": [
@@ -187,7 +187,7 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
     "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
   ],
   "researchContext": {

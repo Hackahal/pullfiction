@@ -33,7 +33,7 @@
       "retrieved": "2026-11-01",
       "date": "2025-04-23",
       "author": "Neryssa",
-      "patch": "Page patch1.15.8; historical server/client build not established"
+      "patch": "Page patch 1.15.8; historical server/client build not established"
     },
     {
       "id": "guide-links",
@@ -41,17 +41,17 @@
       "urls": [
         "https://www.wowhead.com/classic/spell=25058/renew"
       ],
-      "quality": "Resolved guide links; Renew25058 differs from primary23895. No same-name alias; HolyWrath page robots-denied, identity link only."
+      "quality": "Resolved guide links; Renew 25058 differs from primary 23895. No same-name alias; HolyWrath page robots-denied, identity link only."
     },
     {
       "id": "cache",
-      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID2, cachedRevisionNone, liveRevision1; coverage unknown",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
       "kind": "retained-evidence",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
     {
       "id": "client",
-      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
       "kind": "client-reference",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
@@ -70,7 +70,7 @@
         23849
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Actual unit-spell/morph evidence, researched50percent boundary",
+      "trigger": "Actual unit-spell/morph evidence, researched 50 percent boundary",
       "state": "Same boss identity can have distinct model/combat state",
       "lifecycle": "No HP-only phase or new actor fabricated; unit-only evidence may be absent",
       "placement": "Actual boss path; morph height/scale unverified",
@@ -187,12 +187,12 @@
     "Current client graph build is not proof of the historical server build.",
     "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
     "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
-    "Guide PoisonCloud remainder-of-fight claim conflicts with primary10second timer. Actual object terminal remains unknown; neither becomes a fixed lifetime.",
-    "Primary phase23849 is UNIT_SPELLCAST_SUCCEEDED, not guaranteed ordinary retained CLEU. No HP-only morph inferred.",
-    "Cached revision is absent. Live metadata revision1 is not retroactively assigned to cached events; realmseason2 retained without subtype assumption.",
+    "Guide PoisonCloud remainder-of-fight claim conflicts with primary 10 second timer. Actual object terminal remains unknown; neither becomes a fixed lifetime.",
+    "Primary phase 23849 is UNIT_SPELLCAST_SUCCEEDED, not guaranteed ordinary retained CLEU. No HP-only morph inferred.",
+    "Cached revision is absent. Live metadata revision 1 is not retroactively assigned to cached events; realmseason 2 retained without subtype assumption.",
     "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
     "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
-    "Bounded full-run context includes selected pull(s),5seconds before and5000ms after. Longer continuation outside this probe remains untested."
+    "Bounded full-run context includes selected pull(s),5 seconds before and 5000ms after. Longer continuation outside this probe remains untested."
   ],
   "researchContext": {
     "npcIds": [

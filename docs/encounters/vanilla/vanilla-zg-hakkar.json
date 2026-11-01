@@ -51,7 +51,7 @@
       "state": "Sons and poisonous blood",
       "lifecycle": "Actual NPC death, independent cloud, poison acquisition/removal",
       "placement": "Son corpse cloud center and real entrants",
-      "animation": "Native cloud/poison aura564",
+      "animation": "Native cloud/poison aura 564",
       "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-POISON",
       "acceptanceCriteria": "HAKKAR-POISON: no player-centered relocated pool",
       "sourceRefs": [
@@ -73,11 +73,11 @@
         24323
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Primary addon24324 success; distinct channel variants",
+      "trigger": "Primary addon 24324 success; distinct channel variants",
       "state": "Blood Siphon",
-      "lifecycle": "Actual8s interval/ticks and target effects; no90s generated cast",
+      "lifecycle": "Actual 8s interval/ticks and target effects; no 90s generated cast",
       "placement": "Real per-target source direction and poisoned state",
-      "animation": "Native channels6378/6379 and aura6380",
+      "animation": "Native channels 6378/6379 and aura 6380",
       "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-SIPHON",
       "acceptanceCriteria": "HAKKAR-SIPHON: preserve damage/heal branches and cancellation",
       "sourceRefs": [
@@ -102,7 +102,7 @@
       "state": "Insanity and Corrupted Blood",
       "lifecycle": "Actual control/faction and spread hits; no proximity damage generator",
       "placement": "Real victim instances and actual controlled movement",
-      "animation": "Native control325/channel4911 and blood impact220",
+      "animation": "Native control 325/channel 4911 and blood impact 220",
       "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-CONTROL",
       "acceptanceCriteria": "HAKKAR-CONTROL: preserve player identity, removal and real spread",
       "sourceRefs": [
@@ -150,7 +150,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Actual late enrage/reset/death",
       "state": "Final boss life and real control/channel cleanup",
-      "lifecycle": "Guide600s and addon585s are expectations, not generated events",
+      "lifecycle": "Guide 600s and addon 585s are expectations, not generated events",
       "placement": "Observed reset route; no stair teleport generator",
       "animation": "Native death/reset only when observed",
       "acceptanceCheck": "vanilla-zg-hakkar/HAKKAR-END",
@@ -171,7 +171,7 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
     "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
   ],
   "researchContext": {

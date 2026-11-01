@@ -199,6 +199,46 @@ class EncounterAuditTest(unittest.TestCase):
             self.assertEqual(result['encounters'][0]['status'], 'pass')
             self.assertEqual(result['encounters'][0]['unpositionedLifecycle'][0]['actor'], '3:2')
 
+    def test_cli_auditor_and_checker_share_selected_fight_precedence(self):
+        for selection in ('selected', 'chapters', 'fights'):
+            with self.subTest(selection=selection), tempfile.TemporaryDirectory() as directory:
+                raw, graph = fixture()
+                report_fight = dict(raw['fight'])
+                raw['report']['fights'] = [report_fight]
+                raw['fight'] = {**raw['fight'], 'startTime': 1500, 'chapters': []}
+                raw['fights'] = []
+                expected_start = 1500
+                if selection in ('chapters', 'fights'):
+                    raw['fight']['chapters'] = [{**report_fight, 'startTime': 1750}]
+                    expected_start = 1750
+                if selection == 'fights':
+                    raw['fights'] = [{**report_fight, 'startTime': 2000}]
+                    expected_start = 2000
+                self.check_cli_selection(raw, graph, Path(directory), expected_start)
+
+    def test_cli_empty_selections_fall_back_to_report_only_without_selected_fight(self):
+        for selected in ('absent', 'null'):
+            with self.subTest(selected=selected), tempfile.TemporaryDirectory() as directory:
+                raw, graph = fixture()
+                raw['report']['fights'] = [raw.pop('fight')]
+                raw['fights'] = []
+                if selected == 'null':
+                    raw['fight'] = None
+                self.check_cli_selection(raw, graph, Path(directory), 1000)
+
+    def check_cli_selection(self, raw, graph, root, expected_start):
+        (root / 'replay.json').write_text(json.dumps(raw))
+        (root / 'graph.json').write_text(json.dumps(graph))
+        audit = subprocess.run([sys.executable, str(Path(a.__file__)), '--replay', str(root / 'replay.json'),
+            '--graph', str(root / 'graph.json'), '--output', str(root / 'output')], capture_output=True, text=True)
+        self.assertEqual(audit.returncode, 0, audit.stdout + audit.stderr)
+        report = json.loads((root / 'output/report.json').read_text())
+        self.assertEqual(report['encounters'][0]['recordedBounds']['startTime'], expected_start)
+        checked = subprocess.run(['node', str(Path(a.__file__).with_name('encounter-replay-check.mjs')),
+            '--audit', str(root / 'output/report.json'), '--output', str(root / 'checked.json')], capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+        self.assertEqual(json.loads((root / 'checked.json').read_text())['encounters'][0]['status'], 'pass')
+
     def test_legitimate_identical_events_retain_indices_and_counts(self):
         raw, graph = fixture()
         raw['events'].append(dict(raw['events'][0]))

@@ -54,7 +54,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -78,7 +78,7 @@
       "id": "original-sod-video",
       "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=928s",
       "date": "2024-09-29",
-      "quality": "SimonizeShow original SoD full clear, chapter15:28 hardmode; indexed metadata inspected, frames not inspected, no visual acceptance"
+      "quality": "SimonizeShow original SoD full clear, chapter 15:28 hardmode; indexed metadata inspected, frames not inspected, no visual acceptance"
     },
     {
       "id": "original-full-clear",
@@ -139,7 +139,7 @@
       "state": "Sons and poisonous blood",
       "lifecycle": "Actual NPC death, independent cloud, poison acquisition/removal",
       "placement": "Son corpse cloud center and real entrants",
-      "animation": "Native cloud/poison aura564",
+      "animation": "Native cloud/poison aura 564",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-POISON",
       "acceptanceCriteria": "HAKKAR-POISON: no player-centered relocated pool",
       "sourceRefs": [
@@ -163,11 +163,11 @@
         24322,
         24323
       ],
-      "trigger": "DBM24324 success; distinct channel variants",
+      "trigger": "DBM 24324 success; distinct channel variants",
       "state": "Blood Siphon",
-      "lifecycle": "Actual8s interval/ticks and target effects; no90s generated cast",
+      "lifecycle": "Actual 8s interval/ticks and target effects; no 90s generated cast",
       "placement": "Real per-target source direction and poisoned state",
-      "animation": "Native channels6378/6379 and aura6380",
+      "animation": "Native channels 6378/6379 and aura 6380",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-SIPHON",
       "acceptanceCriteria": "HAKKAR-SIPHON: preserve damage/heal branches and cancellation",
       "sourceRefs": [
@@ -204,7 +204,7 @@
       "state": "Insanity and Corrupted Blood",
       "lifecycle": "Actual control/faction and spread hits; no proximity damage generator",
       "placement": "Real victim instances and actual controlled movement",
-      "animation": "Native control325/channel4911 and blood impact220",
+      "animation": "Native control 325/channel 4911 and blood impact 220",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-CONTROL",
       "acceptanceCriteria": "HAKKAR-CONTROL: preserve player identity, removal and real spread",
       "sourceRefs": [
@@ -241,9 +241,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Explicit SoD DBM player SonicBurst aura",
       "state": "SoD Jeklik silence",
-      "lifecycle": "Actual10s silence/removal;20s aspect timer is prediction",
+      "lifecycle": "Actual 10s silence/removal;20s aspect timer is prediction",
       "placement": "Actual affected players",
-      "animation": "Native burst visual875 target297",
+      "animation": "Native burst visual 875 target 297",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-JEKLIK",
       "acceptanceCriteria": "HAKKAR-JEKLIK: real recipients and silence end",
       "sourceRefs": [
@@ -280,7 +280,7 @@
       "state": "SoD Thekal and Arlokk",
       "lifecycle": "Actual buff/end and hit targets, no old aspect alias",
       "placement": "Boss versus actual affected actors",
-      "animation": "Native Bloodlust108; Arlokk468491 no visual",
+      "animation": "Native Bloodlust 108; Arlokk 468491 no visual",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-ASPECT",
       "acceptanceCriteria": "HAKKAR-ASPECT: distinguish old and SoD IDs and target roles",
       "sourceRefs": [
@@ -318,7 +318,7 @@
       ],
       "trigger": "DBM says SoD spiders can appear without SUMMON and one aspect absent",
       "state": "Marli spawns and other aspects",
-      "lifecycle": "Actual add births/activity; do not replay20s fallback as spawn script",
+      "lifecycle": "Actual add births/activity; do not replay 20s fallback as spawn script",
       "placement": "Independent actual spider/poison targets",
       "animation": "Native verified actor/effect only",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-UNLOGGED",
@@ -378,7 +378,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Actual late enrage/evade/death",
       "state": "Enrage, evade and final death",
-      "lifecycle": "Actual end clears known channels/control; no585s timer generated buff",
+      "lifecycle": "Actual end clears known channels/control; no 585s timer generated buff",
       "placement": "Observed stairs reset route and actual corpse",
       "animation": "Native reset/death sequences",
       "acceptanceCheck": "sod-zg-hakkar/HAKKAR-END",
@@ -414,7 +414,7 @@
     "Exact unlogged SoD aspect/spider identities and primary visual/event boundaries",
     "468488/468492/468475 relation to observed hardmode mechanics",
     "Actual Son cloud lifetime, siphon source directions and priest-alive state",
-    "Versioned585s addon enrage versus baseline10min guide; no timer simulation",
+    "Versioned 585s addon enrage versus baseline 10 min guide; no timer simulation",
     "Exact SoD variant and pull date; baseline mechanics not blanket verified",
     "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
     "Native asset/procedure pixels and original gameplay parity"

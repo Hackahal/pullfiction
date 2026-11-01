@@ -39,7 +39,7 @@
     {
       "id": "official",
       "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
-      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+      "quality": "official 2020 baseline overview retrieved via search index; direct 403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
     },
     {
       "id": "client",
@@ -54,7 +54,7 @@
       "mechanic": "Airborne and landing",
       "spellIds": [],
       "clientCandidateSpellIds": [],
-      "trigger": "Official starts airborne; Primary addon70percent phase with75percent prewarning",
+      "trigger": "Official starts airborne; Primary addon 70 percent phase with 75 percent prewarning",
       "state": "Airborne and landing",
       "lifecycle": "Actual flight interval/landing, not instant health-based Z switch",
       "placement": "Real altitude, landing path and facing",
@@ -80,13 +80,13 @@
         25749
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "SoD account poison stacks while airborne and raid spray",
+      "trigger": "Unresolved for Vanilla: the air-phase poison stacking and raid-spray attribution came from a SoD account and does not establish baseline behavior.",
       "state": "Stingers",
-      "lifecycle": "Actual cast/hits/stack removal; no30s spray generator",
-      "placement": "Actual high-threat victim and observed spray targets",
-      "animation": "Native2370/222018 casts and impact222019",
+      "lifecycle": "Actual cast/hits/stack removal; no 30s spray generator",
+      "placement": "Unresolved Vanilla target selection and relation to flight; no high-threat recipient or spray targets are inferred.",
+      "animation": "Native 2370/222018 casts and impact 222019",
       "acceptanceCheck": "vanilla-aq20-ayamiss/AYAMISS-STING",
-      "acceptanceCriteria": "AYAMISS-STING: preserve targets/variants and flight relation",
+      "acceptanceCriteria": "AYAMISS-STING: establish Vanilla trigger, recipients and flight relation before accepting behavior",
       "sourceRefs": [
         "dbm",
         "guide",
@@ -107,9 +107,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "Primary addons player Paralyze",
       "state": "Paralyze and altar",
-      "lifecycle": "Actual10s or early removal; teleport/immobilization independent",
+      "lifecycle": "Actual 10s or early removal; teleport/immobilization independent",
       "placement": "Observed altar anchor/Z and movement discontinuity",
-      "animation": "Native target6441/222024 and actual restraint",
+      "animation": "Native target 6441/222024 and actual restraint",
       "acceptanceCheck": "vanilla-aq20-ayamiss/AYAMISS-ALTAR",
       "acceptanceCriteria": "AYAMISS-ALTAR: no interpolated teleport or generated marker",
       "sourceRefs": [
@@ -161,7 +161,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Baseline airborne swarm descends",
       "state": "Swarmers",
-      "lifecycle": "Actual independent spawn/teleport/start/death; no assumed20 actors",
+      "lifecycle": "Actual independent spawn/teleport/start/death; no assumed 20 actors",
       "placement": "Observed aerial and ground paths",
       "animation": "Native swarmer actors",
       "acceptanceCheck": "vanilla-aq20-ayamiss/AYAMISS-SWARM",
@@ -232,8 +232,9 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
-    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity.",
+    "Vanilla air-phase poison stacking, raid-spray behavior and target selection remain unsupported by the cited SoD account; no substitute baseline behavior is asserted."
   ],
   "researchContext": {
     "npcIds": [

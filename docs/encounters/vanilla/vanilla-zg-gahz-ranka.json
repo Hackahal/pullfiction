@@ -68,11 +68,11 @@
         16099
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Primary addon2s breath cast",
+      "trigger": "Primary addon 2s breath cast",
       "state": "Frost Breath",
-      "lifecycle": "Actual completion/interruption then10s target slow/mana results",
+      "lifecycle": "Actual completion/interruption then 10s target slow/mana results",
       "placement": "Caster facing and actual cone victims",
-      "animation": "Native caster2610 breath and impact68",
+      "animation": "Native caster 2610 breath and impact 68",
       "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-BREATH",
       "acceptanceCriteria": "GAHZ-BREATH: correct facing and actual targets",
       "sourceRefs": [
@@ -116,11 +116,11 @@
         22421
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "Primary addon1.5s cast",
+      "trigger": "Primary addon 1.5s cast",
       "state": "Massive Geyser",
       "lifecycle": "Actual impact, launch, landing and threat continuation",
       "placement": "Real airborneZ and water landing; no fixed jump parabola",
-      "animation": "Native area impact152390 and actual motion",
+      "animation": "Native area impact 152390 and actual motion",
       "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-GEYSER",
       "acceptanceCriteria": "GAHZ-GEYSER: source/hazard center and airborne interval correct",
       "sourceRefs": [
@@ -161,7 +161,7 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
     "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
   ],
   "researchContext": {

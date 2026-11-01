@@ -33,7 +33,7 @@
       "retrieved": "2026-11-01",
       "date": "2025-04-23",
       "author": "Neryssa",
-      "patch": "Page patch1.15.8; historical server/client build not established"
+      "patch": "Page patch 1.15.8; historical server/client build not established"
     },
     {
       "id": "guide-links",
@@ -41,17 +41,17 @@
       "urls": [
         "https://www.wowhead.com/classic/spell=24236/whirlwind"
       ],
-      "quality": "Resolved baseline links. Primary Vanish24223 trigger is unit-spell event; return detected by actual boss swing, not fixed hidden duration."
+      "quality": "Resolved baseline links. Primary Vanish 24223 trigger is unit-spell event; return detected by actual boss swing, not fixed hidden duration."
     },
     {
       "id": "cache",
-      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID2, cachedRevisionNone, liveRevision1; coverage unknown",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
       "kind": "retained-evidence",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
     {
       "id": "client",
-      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
       "kind": "client-reference",
       "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
     },
@@ -69,7 +69,7 @@
       "spellIds": [],
       "clientCandidateSpellIds": [],
       "trigger": "Actual gong interaction, spawn or encounter evidence",
-      "state": "Boss entry14515 distinct from gong object and existing pen panthers",
+      "state": "Boss entry 14515 distinct from gong object and existing pen panthers",
       "lifecycle": "No firstSeen-based generated summon or fixed spawn location",
       "placement": "Actual entrance/gong anchors; object ID/placement unresolved",
       "animation": "Summon/appearance and attackable state separate",
@@ -93,7 +93,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Actual unit vanish and observed subsequent boss swing",
       "state": "Hidden boss, Panther model and actual return independently evidenced",
-      "lifecycle": "No43.7–61.5s inferred hidden window or health-only morph",
+      "lifecycle": "No 43.7–61.5s inferred hidden window or health-only morph",
       "placement": "No movement interpolation through invisible teleport; endpoint needs evidence",
       "animation": "Fade, form model and return animation retain actual age",
       "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M02-before-active-terminal-rewind",
@@ -205,12 +205,12 @@
     "Current client graph build is not proof of the historical server build.",
     "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
     "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
-    "Guide says roughly1minute first Vanish; primary first timer33.7–34.4s and later timings explicitly need more logs. No fixed schedule chosen.",
+    "Guide says roughly 1 minute first Vanish; primary first timer 33.7–34.4s and later timings explicitly need more logs. No fixed schedule chosen.",
     "Gong/spawn and stealthed-panther presence need actual unit/object evidence; absence of attacks is not invisibility proof.",
-    "Cached revision absent, live revision1/season2 separate; coverage remains unknown.",
+    "Cached revision absent, live revision 1/season 2 separate; coverage remains unknown.",
     "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
     "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
-    "Bounded full-run context includes selected pull(s),5seconds before and30000ms after. Longer continuation outside this probe remains untested."
+    "Bounded full-run context includes selected pull(s),5 seconds before and 30000ms after. Longer continuation outside this probe remains untested."
   ],
   "researchContext": {
     "npcIds": [

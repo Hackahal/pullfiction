@@ -51,3 +51,38 @@ test('self-aura channel reset consumer respects only explicit preserved state',(
  const r=data();r.events.splice(1,0,event(10,'cast'));const replay=enrichCombat(normalizeReplay(r),{},{24321:{channel:true,durationMs:-1}});
  const channel=replay.actors[0].casts.find(c=>c.channel);assert.ok(channel);assert.equal(channel.end,400);
 });
+
+test('actual Hakkar carryover uses canonical zones and the replay Vanilla default',()=>{
+ const cases=[
+  ['numeric parent and chapter',()=>{}],
+  ['name-only parent and chapter',r=>{r.fight.gameZone={name:"Zul'Gurub"};r.fight.chapters[0].gameZone={name:"Zul'Gurub"};}],
+  ['numeric parent and name-only chapter',r=>{r.fight.chapters[0].gameZone={name:"Zul'Gurub"};}],
+  ['name-only parent and numeric chapter',r=>{r.fight.gameZone={name:"Zul'Gurub"};}],
+  ['chapter inherits parent zone',r=>{r.fight.gameZone={name:"Zul'Gurub"};delete r.fight.chapters[0].gameZone;}],
+  ['canonical names override provider IDs',r=>{r.fight.gameZone={id:999,name:"Zul'Gurub"};r.fight.chapters[0].gameZone={id:888,name:"Zul'Gurub"};}],
+  ['report declares Vanilla',r=>{delete r.gameVersion;r.report.gameVersion='vanilla';}],
+  ['missing ruleset defaults to Vanilla',r=>{delete r.gameVersion;r.fight.gameZone={name:"Zul'Gurub"};r.fight.chapters[0].gameZone={name:"Zul'Gurub"};}],
+ ];
+ for(const[label,change]of cases){
+  const raw=data();change(raw);const before=JSON.stringify(raw);
+  const replay=enrichCombat(normalizeReplay(raw)),actor=replay.actors[0];
+  assert.equal(replay.gameVersion,'vanilla',label);assert.equal(replay.map,309,label);
+  assert.equal(hakkarSnapshotPreservations(raw).size,1,label);
+  assert.equal(poison(actor,100)?.selfCast,true,label);assert.equal(poison(actor,399)?.selfCast,true,label);
+  assert.equal(poison(actor,400),undefined,label);assert.equal(JSON.stringify(raw),before,label);
+ }
+});
+test('SoD and canonical non-ZG zones cannot preserve Hakkar carryover',()=>{
+ for(const change of [
+  r=>{r.gameVersion='sod';r.fight.gameZone={name:"Zul'Gurub"};},
+  r=>{delete r.gameVersion;r.report.gameVersion='sod';},
+  r=>{r.fight.gameZone={id:309,name:'Molten Core'};},
+  r=>{r.fight.chapters[0].gameZone={id:309,name:'Molten Core'};},
+ ]){
+  const raw=data();change(raw);assert.equal(hakkarSnapshotPreservations(raw).size,0);
+  assert.equal(poison(enrichCombat(normalizeReplay(raw)).actors[0],100),undefined);
+ }
+ const unknown=data();unknown.gameVersion='unsupported';
+ assert.throws(()=>hakkarSnapshotPreservations(unknown),/Unsupported game version/);
+ assert.throws(()=>normalizeReplay(unknown),/Unsupported game version/);
+});

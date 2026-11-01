@@ -55,7 +55,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -124,9 +124,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "DBM yell target precedes logged aura",
       "state": "Threatening Gaze",
-      "lifecycle": "Preserve warning onset separate from actual6s aura interval",
+      "lifecycle": "Preserve warning onset separate from actual 6s aura interval",
       "placement": "Exact watched player, optional observed raid marker",
-      "animation": "Native target6376; no invented marker",
+      "animation": "Native target 6376; no invented marker",
       "acceptanceCheck": "sod-zg-mandokir/MANDOKIR-GAZE",
       "acceptanceCriteria": "MANDOKIR-GAZE: warning and aura timing distinct",
       "sourceRefs": [
@@ -184,9 +184,9 @@
       "clientCandidateSpellIds": [],
       "trigger": "DBM enrage aura, guide Ohgan death relation",
       "state": "Ohgan death enrage",
-      "lifecycle": "Actual end; baseline60s versus client90s conflict",
+      "lifecycle": "Actual end; baseline 60s versus client 90s conflict",
       "placement": "Boss body aura distinct from Ohgan corpse",
-      "animation": "Native enrage668",
+      "animation": "Native enrage 668",
       "acceptanceCheck": "sod-zg-mandokir/MANDOKIR-ENRAGE",
       "acceptanceCriteria": "MANDOKIR-ENRAGE: true removal overrides candidate duration",
       "sourceRefs": [

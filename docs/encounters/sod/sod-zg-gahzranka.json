@@ -24,7 +24,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -83,11 +83,11 @@
         16099
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "DBM2s breath cast",
+      "trigger": "DBM 2s breath cast",
       "state": "Frost Breath",
-      "lifecycle": "Actual completion/interruption then10s target slow/mana results",
+      "lifecycle": "Actual completion/interruption then 10s target slow/mana results",
       "placement": "Caster facing and actual cone victims",
-      "animation": "Native caster2610 breath and impact68",
+      "animation": "Native caster 2610 breath and impact 68",
       "acceptanceCheck": "sod-zg-gahzranka/GAHZ-BREATH",
       "acceptanceCriteria": "GAHZ-BREATH: correct facing and actual targets",
       "sourceRefs": [
@@ -142,11 +142,11 @@
         22421
       ],
       "clientCandidateSpellIds": [],
-      "trigger": "DBM1.5s cast",
+      "trigger": "DBM 1.5s cast",
       "state": "Massive Geyser",
       "lifecycle": "Actual impact, launch, landing and threat continuation",
       "placement": "Real airborneZ and water landing; no fixed jump parabola",
-      "animation": "Native area impact152390 and actual motion",
+      "animation": "Native area impact 152390 and actual motion",
       "acceptanceCheck": "sod-zg-gahzranka/GAHZ-GEYSER",
       "acceptanceCriteria": "GAHZ-GEYSER: source/hazard center and airborne interval correct",
       "sourceRefs": [

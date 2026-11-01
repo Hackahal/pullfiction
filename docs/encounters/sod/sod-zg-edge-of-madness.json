@@ -24,7 +24,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -55,13 +55,13 @@
     {
       "id": "sod-overview",
       "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
-      "quality": "Authored exact SoD guide indexed search content; direct fetch403; supports chosen Edge boss, not Classic calendar"
+      "quality": "Authored exact SoD guide indexed search content; direct fetch 403; supports chosen Edge boss, not Classic calendar"
     },
     {
       "id": "original-wushoolay",
       "url": "https://www.youtube.com/watch?v=8yOPLmFa0hc&t=2311s",
       "date": "2024-10-08",
-      "quality": "Original SoD clear chapter38:31 Wushoolay; metadata only, frames uninspected"
+      "quality": "Original SoD clear chapter 38:31 Wushoolay; metadata only, frames uninspected"
     }
   ],
   "expectedMechanics": [
@@ -97,7 +97,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "DBM Avatar success; baseline pursuit",
       "state": "Gri'lek Avatar",
-      "lifecycle": "Actual15s buff or true end; size/speed/target state",
+      "lifecycle": "Actual 15s buff or true end; size/speed/target state",
       "placement": "Real slow pursuit, no generated random target",
       "animation": "Native body enlargement requires server-scale evidence",
       "acceptanceCheck": "sod-zg-edge-of-madness/EOM-GRILEK",
@@ -274,7 +274,7 @@
   "clientCandidateSpellIds": [],
   "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
   "unresolved": [
-    "Primary SoD raw encounter IDs for all four variants: shared DBM declares only788/NPC15083",
+    "Primary SoD raw encounter IDs for all four variants: shared DBM declares only 788/NPC 15083",
     "Illusion contact rules, Avatar target swaps and early Vanish break",
     "Exact SoD variant and pull date; baseline mechanics not blanket verified",
     "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",

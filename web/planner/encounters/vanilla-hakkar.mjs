@@ -1,6 +1,8 @@
 // Preserve only recorded Poisonous Blood carryover in the Vanilla Hakkar pull.
 // A snapshot is still authoritative for every other aura. This policy neither
 // seeds state nor assigns a duration; its witnesses remain raw log events.
+import {gameVersion} from '../game-versions.mjs';
+import {raidForZone} from '../raids.mjs';
 const POISON = 24321;
 const key = (e, side) => `${e[`${side}ID`]}:${e[`${side}Instance`] || 1}`;
 const spell = e => e.abilityGameID ?? e.ability?.guid;
@@ -8,9 +10,10 @@ const sameScope = (e, c) => e.timestamp >= c.startTime && e.timestamp <= c.endTi
   (e.fight == null || e.fight === c.id);
 export function hakkarSnapshotPreservations(raw) {
   const result = new Map();
-  if ((raw.gameVersion ?? raw.report?.gameVersion) !== 'vanilla' || Number(raw.fight?.gameZone?.id) !== 309) return result;
+  const ruleset = gameVersion(raw.gameVersion ?? raw.report?.gameVersion ?? 'vanilla').id;
+  if (ruleset !== 'vanilla' || raidForZone(raw.fight?.gameZone, ruleset)?.map !== 309) return result;
   const chapters = raw.fight.chapters?.length ? raw.fight.chapters : [raw.fight];
-  const scopes = chapters.filter(c => c.encounterID === 50793 && Number(c.gameZone?.id ?? raw.fight.gameZone.id) === 309);
+  const scopes = chapters.filter(c => c.encounterID === 50793 && raidForZone(c.gameZone ?? raw.fight.gameZone, ruleset)?.map === 309);
   const players = new Set(raw.actors.filter(a => a.type === 'Player').map(a => a.id));
   const rows = raw.events.filter(e => Number.isFinite(e.timestamp) && e.timestamp >= raw.fight.startTime && e.timestamp <= raw.fight.endTime)
     .map((e, i) => ({e, i})).sort((a,b) => a.e.timestamp-b.e.timestamp || a.i-b.i).map(r => r.e);

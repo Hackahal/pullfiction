@@ -70,7 +70,7 @@
       "clientCandidateSpellIds": [],
       "trigger": "Primary addon Avatar success; baseline pursuit",
       "state": "Gri'lek Avatar",
-      "lifecycle": "Actual15s buff or true end; size/speed/target state",
+      "lifecycle": "Actual 15s buff or true end; size/speed/target state",
       "placement": "Real slow pursuit, no generated random target",
       "animation": "Native body enlargement requires server-scale evidence",
       "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-GRILEK",
@@ -189,7 +189,7 @@
   "unresolved": [
     "Retained cache completeness unknown unless a coverage receipt is established.",
     "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
-    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
     "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
   ],
   "researchContext": {

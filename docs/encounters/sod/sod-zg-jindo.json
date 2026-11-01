@@ -54,7 +54,7 @@
       "id": "official-sod-p5",
       "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
       "date": "2024-09-26",
-      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
       "quality": "Quality was not supplied in the upstream research; corroboration is required."
     },
     {
@@ -308,7 +308,7 @@
   "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
   "unresolved": [
     "Exact SoD shade visibility/attackability and native ghost opacity",
-    "Banish24466 association with actual teleport/skeleton events",
+    "Banish 24466 association with actual teleport/skeleton events",
     "Totem death/control release and Hex displayIDs",
     "Exact SoD variant and pull date; baseline mechanics not blanket verified",
     "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
