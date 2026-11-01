@@ -160,8 +160,8 @@ export function progressText(value: unknown): string {
       progress.message ??
         progress.status ??
         progress.phase ??
-        "Preparing local client",
+        "Preparing game assets",
     );
   }
-  return "Preparing local client";
+  return "Preparing game assets";
 }

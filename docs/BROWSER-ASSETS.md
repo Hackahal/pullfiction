@@ -1,4 +1,7 @@
-# Browser-local modern assets
+# Asset conversion internals
+
+Production uses [locally prepared hosted assets](HOSTED-ASSETS.md) and does not expose a game-client picker. The archive reader and conversion details below describe the retained development tooling and the adapters reused by local pack preparation. Character atlas composition still runs in the browser using prepared inputs.
+
 
 Pull Fiction's browser asset modules read an official Classic 1.15.9 installation
 without a native helper or game-data server. The static editor connects these

@@ -1,14 +1,13 @@
 # Build and release the static application
 
-Pull Fiction runs at `https://pullfiction.com` on Cloudflare Workers Static Assets. The deployment contains application code and the browser conversion runtime. Game files stay on each user's device.
+Pull Fiction runs at `https://pullfiction.com` on Cloudflare Workers Static Assets. The deployment contains application code and the browser conversion runtime. Prepared game files are served by the separate, locally deployed asset service described in [hosted assets](HOSTED-ASSETS.md).
 
 `scripts/browser-static-build.sh` prepares a release in a fresh temporary directory. Building does not deploy or change a Cloudflare account.
 
 The `browser-static` feature runs the original planner renderer, native raid frames,
-nameplates, camera, and editor. Browser-local preparation replaces the game-data
-server. The earlier replacement-scene experiment is excluded from this feature.
+nameplates, camera, and editor. Downloaded prepared assets replace browser-local archive extraction. The earlier replacement-scene experiment is excluded from this feature.
 
-The browser reads the user's selected modern Classic client directory. The release contains no client archives, extracted models, textures, map art, report caches, credentials, or native helper. Existing files in `web/dist` are not packaging inputs. The explicit metadata exception is a prefetched Wowhead NPC name and numeric display-reference index at `/metadata/npc-models.json`, with its source and attribution notices.
+The browser downloads prepared assets automatically. The game asset service is deployed directly from the owner's machine and never passes through GitHub. The release contains no client archives, extracted models, textures, map art, report caches, credentials, or native helper. Existing files in `web/dist` are not packaging inputs. The explicit metadata exception is a prefetched Wowhead NPC name and numeric display-reference index at `/metadata/npc-models.json`, with its source and attribution notices.
 
 ## Build a release
 
@@ -42,7 +41,7 @@ The command runs these builds:
 4. `scripts/browser-assets-build.sh` and `scripts/browser-codec-build.sh` into a fresh archive runtime directory.
 5. `scripts/static-package.py pack`, which copies an explicit application allowlist and audits the result.
 
-For production, set the public `VITE_WCL_CLIENT_ID` and `VITE_WCL_REDIRECT_URI=https://pullfiction.com/`. Never pass a client secret through a `VITE_` variable. Register that exact callback with Warcraft Logs while retaining the localhost callback for development.
+For production, set `VITE_GAME_ASSET_URL` to the prepared asset service URL, default `https://assets.pullfiction.com/`, and set the public `VITE_WCL_CLIENT_ID` and `VITE_WCL_REDIRECT_URI=https://pullfiction.com/`. Never pass a client secret through a `VITE_` variable. Register that exact callback with Warcraft Logs while retaining the localhost callback for development.
 
 Production builds exclude the renderer-lab screen and WASM diagnostics. Vite development can use `?renderer-lab=1`; its diagnostic WASM must be built with `--features browser-static,renderer-lab`. A separate Vite build can use `--mode renderer-lab`. The production packager rejects lab entries and diagnostic WASM exports.
 
@@ -96,17 +95,14 @@ python3 scripts/static-preview.py .agent/work/browser-static/release
 ```
 
 Open `http://127.0.0.1:8096` in a desktop Chromium browser with WebGPU. Select the
-World of Warcraft root folder, wait for the local catalogs, then import a replay
-JSON or connect the configured public Warcraft Logs client. The 3D view reads
-the selected raid environment locally; the 2D tactical view uses local minimap
-tiles and floor geometry. The folder reader can
-use retained Classic 1.15.9 data when a Forever installation has replaced the
-top-level product metadata; full Forever 1.60 asset compatibility remains
-unverified. See [BROWSER-ASSETS.md](BROWSER-ASSETS.md).
+raid, wait for the hosted catalogs, then import a replay
+JSON or connect the configured public Warcraft Logs client. The 3D and tactical
+views download the selected raid's prepared geometry and minimap resources.
 
-The preview command serves the code-only release. It has no route that serves
-the selected game directory. The existing local site on port 8090 and its
-importer on port 8091 are independent.
+The preview serves application code only. For local asset-service testing, use
+a loopback static server for the prepared asset directory and set
+`VITE_GAME_ASSET_URL` when running the Vite development server. Production
+requires an HTTPS asset URL. See [hosted assets](HOSTED-ASSETS.md).
 
 ## Check the output
 

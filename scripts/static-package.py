@@ -21,7 +21,7 @@ EDITOR_ASSET = re.compile(r"assets/[A-Za-z0-9_-]+-[A-Za-z0-9_-]+\.(?:js|css)")
 RENDERER_SNIPPET = re.compile(r"snippets/[A-Za-z0-9_-]+/inline[0-9]+\.js")
 ARCHIVE_FILES = {
     "CascLib-LICENSE.txt", "cache.mjs", "casc.mjs", "casc.wasm", "client.mjs",
-    "converter-files.json", "converter.mjs", "policy.mjs", "revision.mjs", "worker.mjs",
+    "converter-files.json", "converter.mjs", "hosted-appearance.mjs", "policy.mjs", "revision.mjs", "worker.mjs",
     "pullfiction_asset_codec.js", "pullfiction_asset_codec_bg.wasm",
     "python/pyodide.mjs", "python/pyodide.asm.mjs", "python/pyodide.asm.wasm",
     "python/python_stdlib.zip", "python/pyodide-lock.json", "python/Pyodide-LICENSE.txt",

@@ -74,6 +74,7 @@ jobs:
         env:
           VITE_WCL_CLIENT_ID: ${{ vars.VITE_WCL_CLIENT_ID }}
           VITE_WCL_REDIRECT_URI: https://pullfiction.com/
+          VITE_GAME_ASSET_URL: ${{ vars.VITE_GAME_ASSET_URL || 'https://assets.pullfiction.com/' }}
           CARGO_BUILD_JOBS: '2'
         run: |
           test -n "$VITE_WCL_CLIENT_ID" || { echo 'Set the public VITE_WCL_CLIENT_ID repository variable.' >&2; exit 1; }

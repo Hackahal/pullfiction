@@ -16,7 +16,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 FORBIDDEN_SUFFIXES = {'.mpq', '.blp', '.m2', '.wmo', '.adt', '.wdt', '.dbc', '.db2',
-                      '.wasm', '.zip', '.7z', '.ogg', '.mp3', '.wav', '.har', '.pem', '.key'}
+                      '.wasm', '.bin', '.gz', '.zip', '.7z', '.ogg', '.mp3', '.wav', '.har', '.pem', '.key'}
 PREFIXES = ('.agent/', '.agents/', '.codex/', '.claude/', 'target/', 'WoW/', 'extracted/', 'out/', 'web/dist/', 'benilla-config/')
 PATTERNS = {
     'private key': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----(?:\s|\\n)+[A-Za-z0-9+/=]{32,}'),

@@ -239,9 +239,7 @@ export function MapView({
     if (state.browserAssets) {
       if (!localMaps || !raid) {
         setError(
-          localMaps
-            ? "Raid map unavailable"
-            : "Select your local client to load the raid map",
+          localMaps ? "Raid map unavailable" : "Loading raid map assets",
         );
         return () => abort.abort();
       }
@@ -1349,9 +1347,7 @@ export function MapView({
         </div>
       )}
       <div className="map-controls">
-        {mapNote && (
-          <span title="Read from the selected local client">{mapNote}</span>
-        )}
+        {mapNote && <span title="Prepared raid assets">{mapNote}</span>}
         <button
           onClick={() => {
             controller.setOption("followRaid", false);
