@@ -227,17 +227,17 @@ class EncounterAuditTest(unittest.TestCase):
                 self.check_cli_selection(raw, graph, Path(directory), 1000)
 
     def check_cli_selection(self, raw, graph, root, expected_start):
-        (root / 'replay.json').write_text(json.dumps(raw))
-        (root / 'graph.json').write_text(json.dumps(graph))
+        (root / 'replay.json').write_text(json.dumps(raw), encoding='utf-8')
+        (root / 'graph.json').write_text(json.dumps(graph), encoding='utf-8')
         audit = subprocess.run([sys.executable, str(Path(a.__file__)), '--replay', str(root / 'replay.json'),
             '--graph', str(root / 'graph.json'), '--output', str(root / 'output')], capture_output=True, text=True)
         self.assertEqual(audit.returncode, 0, audit.stdout + audit.stderr)
-        report = json.loads((root / 'output/report.json').read_text())
+        report = json.loads((root / 'output/report.json').read_text(encoding='utf-8'))
         self.assertEqual(report['encounters'][0]['recordedBounds']['startTime'], expected_start)
         checked = subprocess.run(['node', str(Path(a.__file__).with_name('encounter-replay-check.mjs')),
             '--audit', str(root / 'output/report.json'), '--output', str(root / 'checked.json')], capture_output=True, text=True)
         self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
-        self.assertEqual(json.loads((root / 'checked.json').read_text())['encounters'][0]['status'], 'pass')
+        self.assertEqual(json.loads((root / 'checked.json').read_text(encoding='utf-8'))['encounters'][0]['status'], 'pass')
 
     def test_legitimate_identical_events_retain_indices_and_counts(self):
         raw, graph = fixture()
