@@ -285,7 +285,7 @@ impl Routes {
                     from_inferred: segment.from_inferred,
                     to_inferred: segment.to_inferred,
                     candidates: segment.floor_candidates.clone(),
-                    next_attempt: usize::from(!segment.unrestricted),
+                    next_attempt: 0,
                     primary_failure: None,
                     selected: None,
                     estimated_drop: false,
@@ -298,7 +298,6 @@ impl Routes {
         // Fraction/rate can change during playback while the geometric segment
         // is identical. Do not discard an in-progress A* for a cadence change.
         if memo.drop_rate != segment.rate
-            && segment.unrestricted
             && (memo.from_inferred || memo.to_inferred)
             && memo.primary_failure.is_some()
             && memo.next_attempt > memo.candidates.len()
@@ -362,6 +361,12 @@ impl Routes {
                 while memo.next_attempt <= memo.candidates.len()
                     && (memo.from_inferred || memo.to_inferred)
                 {
+                    // The primary-only fallback is a downward estimate. Skip
+                    // ineligible upward/level pairs without spending a probe job.
+                    if memo.next_attempt == 0 && from.y <= to.y {
+                        memo.next_attempt += 1;
+                        continue;
+                    }
                     if self.search_jobs == 0 {
                         self.deferred = true;
                         candidate_deferred = true;
@@ -459,14 +464,15 @@ fn direct_alternative(
     }
 }
 /// A local presentation estimate: walk to support's end, sweep a short air leg,
-/// then sweep vertically onto a verified lower floor. Walking limits stay intact.
+/// then sweep vertically onto a verified lower floor and walk to the goal.
+/// Walking limits stay intact.
 fn estimated_drop(
     probe: &impl Probe,
     from: Vec3,
     to: Vec3,
     segment: &Segment,
 ) -> Option<Vec<Vec3>> {
-    if !segment.unrestricted || !(segment.from_inferred || segment.to_inferred) {
+    if !(segment.from_inferred || segment.to_inferred) {
         return None;
     }
     let flat = (to - from).with_y(0.).length();
@@ -502,23 +508,57 @@ fn estimated_drop(
         return None;
     }
     let edge = *points.last()?;
-    let drop = edge.y - to.y;
-    if drop <= 0. || drop > 32. || (to - edge).with_y(0.).length() > 3. {
+    let remaining = (to - edge).with_y(0.).length();
+    if remaining <= 0. {
         return None;
     }
-    let air = to.with_y(edge.y);
-    if !probe.clear(edge, air) || !probe.clear(air, to) {
-        return None;
+    let direction = (to - edge).with_y(0.) / remaining;
+    // Six bounded landing probes stay on the same horizontal segment. Landing
+    // near the ledge permits the rest of the interval to walk on the lower floor.
+    for attempt in 1..=6 {
+        let distance = (attempt as f32 * 0.5).min(remaining);
+        let horizontal = if distance == remaining {
+            to
+        } else {
+            edge + direction * distance
+        };
+        let landing = probe
+            .floor(horizontal.x, horizontal.z, to.y)
+            .map(|y| Vec3::new(horizontal.x, y, horizontal.z));
+        if let Some(landing) = landing {
+            let drop = edge.y - landing.y;
+            let air = landing.with_y(edge.y);
+            if drop > 0.
+                && drop <= 32.
+                && (air - edge).with_y(0.).length() <= 3.
+                && probe.clear(edge, air)
+                && probe.clear(air, landing)
+            {
+                let lower = if landing == to {
+                    Some(vec![to])
+                } else if landing.distance(to) <= 0.03 && path::straight(probe, landing, to) {
+                    Some(vec![landing, to])
+                } else {
+                    direct_alternative(probe, landing, to, segment)
+                };
+                if let Some(lower) = lower {
+                    let mut assembled = points.clone();
+                    if air != edge {
+                        assembled.push(air);
+                    }
+                    assembled.extend(lower);
+                    let length: f32 = assembled.windows(2).map(|p| p[0].distance(p[1])).sum();
+                    if length / segment.duration <= 20. && length * segment.rate <= 20. {
+                        return Some(assembled);
+                    }
+                }
+            }
+        }
+        if distance == remaining {
+            break;
+        }
     }
-    if air != edge {
-        points.push(air);
-    }
-    points.push(to);
-    let length: f32 = points.windows(2).map(|p| p[0].distance(p[1])).sum();
-    if length / segment.duration > 20. || length * segment.rate > 20. {
-        return None;
-    }
-    Some(points)
+    None
 }
 
 fn start_route(
@@ -1563,7 +1603,10 @@ mod tests {
     }
     impl Probe for DropLedge {
         fn floor(&self, x: f32, z: f32, y: f32) -> Option<f32> {
-            if !(-1. ..=42.).contains(&x) || !(-1. ..=1.).contains(&z) || self.block == 3 && x >= 4.
+            if !(-1. ..=42.).contains(&x)
+                || !(-1. ..=1.).contains(&z)
+                || self.block == 3 && x >= 4.
+                || self.block == 5 && (2. ..6.).contains(&x)
             {
                 return None;
             }
@@ -1571,8 +1614,14 @@ mod tests {
             (floor <= y + 1.6 && floor >= y - 4.).then_some(floor)
         }
         fn clear(&self, a: Vec3, b: Vec3) -> bool {
-            !(self.block == 1 && b.x >= 4. && a.y == self.height && b.y == self.height
-                || self.block == 2 && a.x == b.x && a.y > b.y)
+            !(self.block == 1 && b.x >= 2. && a.y == self.height && b.y == self.height
+                || self.block == 2 && a.x == b.x && a.y > b.y
+                || self.block == 6 && a.x == b.x && a.y - b.y > 2. && a.x < 3.
+                || self.block == 4
+                    && a.y == self.landing
+                    && b.y == self.landing
+                    && a.x.min(b.x) <= 6.
+                    && a.x.max(b.x) >= 6.)
         }
     }
     fn drop_segment() -> Segment {
@@ -1613,8 +1662,8 @@ mod tests {
         for pair in points.windows(2) {
             assert!(probe.clear(pair[0], pair[1]));
         }
-        let air = points[points.len() - 2];
-        assert_eq!(air, Vec3::new(4., 10., 0.));
+        let air = points.windows(2).find(|p| p[0].y - p[1].y > 2.).unwrap()[0];
+        assert_eq!(air, Vec3::new(2., 10., 0.));
         assert!(points.windows(2).map(|p| p[0].distance(p[1])).sum::<f32>() / s.duration <= 20.);
         s.rate = 10.;
         routes.begin(1);
@@ -1643,74 +1692,185 @@ mod tests {
         assert_eq!(rejected.diagnostics()[0].expanded, primary_expanded);
     }
     #[test]
-    fn blocked_oversized_fast_upward_and_observed_drops_remain_safe_holds() {
-        for block in [1, 2, 3] {
-            let s = drop_segment();
-            let probe = DropLedge {
-                height: 10.,
-                landing: 0.,
-                block,
+    fn inferred_normal_drop_can_land_before_goal_and_walk_on_lower_floor() {
+        let probe = DropLedge {
+            height: 10.,
+            landing: 0.,
+            block: 0,
+        };
+        for unrestricted in [false, true] {
+            // The close target exercises landing == target; the distant target
+            // is over six yards past the ledge and requires a lower-floor walk.
+            for target_x in [2., 8.] {
+                let mut s = drop_segment();
+                s.unrestricted = unrestricted;
+                s.to[1] = -target_x;
+                let mut routes = Routes::default();
+                routes.begin(1);
+                let pose = routes.pose("normal-drop", &s, &probe).unwrap();
+                assert!(pose.2 > 0. && pose.2 <= 20.);
+                let row = routes.diagnostics().pop().unwrap();
+                assert_eq!(row.reason, RouteReason::EstimatedDrop);
+                assert_eq!(row.status, RouteStatus::Ready);
+                let RouteState::Ready(points) = &routes.actors["normal-drop"].state else {
+                    panic!()
+                };
+                let vertical = points.windows(2).find(|p| p[0].y - p[1].y > 2.).unwrap();
+                assert_eq!(vertical[0], Vec3::new(2., 10., 0.));
+                assert_eq!(vertical[1], Vec3::new(2., 0., 0.));
+                assert_eq!(*points.last().unwrap(), Vec3::new(target_x, 0., 0.));
+                for pair in points.windows(2) {
+                    assert!(probe.clear(pair[0], pair[1]));
+                }
+                s.fraction = 1.;
+                assert_eq!(
+                    routes.pose("normal-drop", &s, &probe).unwrap().0,
+                    Vec3::new(target_x, 0., 0.)
+                );
+            }
+        }
+    }
+    #[test]
+    fn blocked_first_landings_can_advance_to_a_later_clear_landing() {
+        let probe = DropLedge {
+            height: 10.,
+            landing: 0.,
+            block: 6,
+        };
+        let mut s = drop_segment();
+        s.unrestricted = false;
+        s.to[1] = -8.;
+        let points = estimated_drop(
+            &probe,
+            benilla_assets::coords::wow_to_bevy(s.from),
+            benilla_assets::coords::wow_to_bevy(s.to),
+            &s,
+        )
+        .unwrap();
+        let fall = points.windows(2).find(|p| p[0].y - p[1].y > 2.).unwrap();
+        assert_eq!(fall[0], Vec3::new(3., 10., 0.));
+        for pair in points.windows(2) {
+            assert!(probe.clear(pair[0], pair[1]));
+        }
+    }
+    #[test]
+    fn blocked_lower_walk_rejects_all_six_bounded_landings_in_one_job() {
+        struct CountLandings {
+            vertical: Cell<usize>,
+            inner: DropLedge,
+        }
+        impl Probe for CountLandings {
+            fn floor(&self, x: f32, z: f32, y: f32) -> Option<f32> {
+                self.inner.floor(x, z, y)
+            }
+            fn clear(&self, a: Vec3, b: Vec3) -> bool {
+                if a.x == b.x && a.z == b.z && a.y - b.y > 2. {
+                    self.vertical.set(self.vertical.get() + 1);
+                }
+                self.inner.clear(a, b)
+            }
+        }
+        for unrestricted in [false, true] {
+            let probe = CountLandings {
+                vertical: Cell::new(0),
+                inner: DropLedge {
+                    height: 10.,
+                    landing: 0.,
+                    block: 4,
+                },
             };
+            let mut s = drop_segment();
+            s.unrestricted = unrestricted;
+            s.to[1] = -8.;
             let mut routes = Routes::default();
             routes.begin(1);
-            let pose = routes.pose("drop", &s, &probe).unwrap();
+            let pose = routes.pose("blocked-walk", &s, &probe).unwrap();
             assert_eq!(pose.0, benilla_assets::coords::wow_to_bevy(s.from));
             assert_eq!(pose.2, 0.);
-            assert_eq!(routes.diagnostics()[0].status, RouteStatus::Held);
-        }
-        for case in 0..6 {
-            let mut s = drop_segment();
-            let mut probe = DropLedge {
-                height: 10.,
-                landing: 0.,
-                block: 0,
-            };
-            match case {
-                0 => {
-                    s.from[2] = 33.;
-                    probe.height = 33.;
-                }
-                1 => {
-                    s.duration = 0.5;
-                    s.rate = 2.;
-                }
-                2 => {
-                    s.to[1] = -6.;
-                }
-                3 => {
-                    s.to[1] = -41.;
-                }
-                4 => {
-                    s.from_inferred = false;
-                    s.to_inferred = false;
-                }
-                _ => {
-                    s.to[2] = 20.;
-                    probe.landing = 20.;
-                }
-            }
-            assert!(
-                estimated_drop(
-                    &probe,
-                    benilla_assets::coords::wow_to_bevy(s.from),
-                    benilla_assets::coords::wow_to_bevy(s.to),
-                    &s
-                )
-                .is_none(),
-                "case {case}"
-            );
-            let mut routes = Routes::default();
-            routes.begin(1);
-            let held = routes.pose("rejected-drop", &s, &probe).unwrap();
+            assert_eq!(probe.vertical.get(), 6);
             assert_eq!(
-                held.0,
-                benilla_assets::coords::wow_to_bevy(s.from),
-                "case {case}"
+                routes.search_jobs, 2,
+                "one primary search and one bounded drop job"
             );
-            assert_eq!(held.2, 0., "case {case}");
             let row = routes.diagnostics().pop().unwrap();
-            assert_eq!(row.status, RouteStatus::Held, "case {case}");
+            assert_eq!(row.status, RouteStatus::Held);
             assert_eq!(Some(row.reason), row.primary_failure);
+        }
+    }
+    #[test]
+    fn blocked_oversized_fast_upward_and_observed_drops_remain_safe_holds() {
+        for unrestricted in [false, true] {
+            for block in [1, 2, 3] {
+                let mut s = drop_segment();
+                s.unrestricted = unrestricted;
+                let probe = DropLedge {
+                    height: 10.,
+                    landing: 0.,
+                    block,
+                };
+                let mut routes = Routes::default();
+                routes.begin(1);
+                let pose = routes.pose("drop", &s, &probe).unwrap();
+                assert_eq!(pose.0, benilla_assets::coords::wow_to_bevy(s.from));
+                assert_eq!(pose.2, 0.);
+                assert_eq!(routes.diagnostics()[0].status, RouteStatus::Held);
+            }
+            for case in 0..6 {
+                let mut s = drop_segment();
+                s.unrestricted = unrestricted;
+                let mut probe = DropLedge {
+                    height: 10.,
+                    landing: 0.,
+                    block: 0,
+                };
+                match case {
+                    0 => {
+                        s.from[2] = 33.;
+                        probe.height = 33.;
+                    }
+                    1 => {
+                        s.duration = 0.5;
+                        s.rate = 2.;
+                    }
+                    2 => {
+                        s.to[1] = -6.;
+                        probe.block = 5;
+                    }
+                    3 => {
+                        s.to[1] = -41.;
+                    }
+                    4 => {
+                        s.from_inferred = false;
+                        s.to_inferred = false;
+                    }
+                    _ => {
+                        s.to[2] = 20.;
+                        probe.landing = 20.;
+                    }
+                }
+                assert!(
+                    estimated_drop(
+                        &probe,
+                        benilla_assets::coords::wow_to_bevy(s.from),
+                        benilla_assets::coords::wow_to_bevy(s.to),
+                        &s
+                    )
+                    .is_none(),
+                    "case {case}"
+                );
+                let mut routes = Routes::default();
+                routes.begin(1);
+                let held = routes.pose("rejected-drop", &s, &probe).unwrap();
+                assert_eq!(
+                    held.0,
+                    benilla_assets::coords::wow_to_bevy(s.from),
+                    "case {case}"
+                );
+                assert_eq!(held.2, 0., "case {case}");
+                let row = routes.diagnostics().pop().unwrap();
+                assert_eq!(row.status, RouteStatus::Held, "case {case}");
+                assert_eq!(Some(row.reason), row.primary_failure);
+            }
         }
     }
     #[test]

@@ -24,6 +24,66 @@ type ReplayActor = benilla_app::planner_replay::ReplayUnit;
 const MAX_REPLAY_FRAME_BYTES: usize = 4_000_000;
 const MAX_REPLAY_FRAME_ACTORS: usize = 4096;
 
+/// A logical source activation, independent of visual-event seek generations.
+#[wasm_bindgen]
+pub fn set_replay_trajectory_source(source: &str) -> Result<(), JsValue> {
+    if source.len() > 512 {
+        return Err(JsValue::from_str("Trajectory source exceeds 512 bytes"));
+    }
+    COMMANDS.with(|queue| {
+        let mut queue = queue.borrow_mut();
+        queue.retain(|c| {
+            !matches!(
+                c,
+                Command::TrajectorySource(_) | Command::TrajectoryComponent(_)
+            )
+        });
+        queue.push(Command::TrajectorySource(source.to_owned()));
+    });
+    Ok(())
+}
+
+/// Immutable component input is sent on source changes, never once per render frame.
+#[wasm_bindgen]
+pub fn submit_replay_trajectory(json: &str) -> Result<(), JsValue> {
+    if json.len() > 2_000_000 {
+        return Err(JsValue::from_str(
+            "Trajectory component exceeds 2000000 bytes",
+        ));
+    }
+    let input: benilla_app::planner_trajectory::NativeComponentInput =
+        serde_json::from_str(json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    input
+        .validate()
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    COMMANDS.with(|queue| {
+        let mut queue = queue.borrow_mut();
+        queue.retain(|c| !matches!(c, Command::TrajectoryComponent(old)
+            if old.source == input.source && old.actor == input.actor && old.component == input.component));
+        if queue.iter().filter(|c| matches!(c, Command::TrajectoryComponent(_))).count() >= 128 {
+            return Err(JsValue::from_str("Too many queued trajectory components"));
+        }
+        queue.push(Command::TrajectoryComponent(input));
+        Ok(())
+    })
+}
+
+/// Diagnostic-only chronological physics; latest request cancels older work.
+#[wasm_bindgen]
+pub fn request_trajectory_probe(json: &str) -> Result<(), JsValue> {
+    if json.len() > 128_000 {
+        return Err(JsValue::from_str("Trajectory request exceeds 128000 bytes"));
+    }
+    let request: benilla_app::planner_trajectory_probe::Request =
+        serde_json::from_str(json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    request.validate().map_err(JsValue::from_str)?;
+    COMMANDS.with(|queue| {
+        let mut queue = queue.borrow_mut();
+        queue.retain(|c| !matches!(c, Command::TrajectoryProbe(_)));
+        queue.push(Command::TrajectoryProbe(request));
+    });
+    Ok(())
+}
 /// Explicit local-only snapshot, at most 256 actor rows. Latest queued request wins.
 #[wasm_bindgen]
 pub fn request_movement_diagnostics(token: u32) {
@@ -249,6 +309,9 @@ enum Command {
     Clock(f64, f64, bool),
     Portraits(Vec<benilla_app::planner_replay::ReplayPortrait>),
     MovementDiagnostics(u32),
+    TrajectoryProbe(benilla_app::planner_trajectory_probe::Request),
+    TrajectorySource(String),
+    TrajectoryComponent(benilla_app::planner_trajectory::NativeComponentInput),
     ActorInspection(Option<benilla_app::ActorInspectionRequest>),
 }
 
@@ -409,9 +472,20 @@ pub fn start() {
         Update,
         commands
             .in_set(WorldStage::Input)
-            .before(benilla_app::planner_sandbox::SandboxInput),
+            .before(benilla_app::planner_sandbox::SandboxInput)
+            .before(benilla_app::planner_trajectory_probe::ProbeDrive)
+            .before(benilla_app::planner_trajectory::TrajectoryDrive)
+            .before(benilla_app::planner_replay::ReplayApply),
     );
-    app.add_systems(Update, (telemetry, actor_labels));
+    app.add_systems(
+        Update,
+        (
+            telemetry,
+            actor_labels
+                .after(benilla_app::planner_trajectory_probe::ProbeDrive)
+                .after(benilla_app::planner_replay::ReplayApply),
+        ),
+    );
     benilla_assets::register_asset_loaders(&mut app);
     app.run();
 }
@@ -422,7 +496,11 @@ fn commands(
     world: WorldCollision,
     actors: Query<(&benilla_app::planner_replay::ReplayBody, &GlobalTransform)>,
     mut replay: ResMut<benilla_app::planner_replay::ReplayControl>,
-    mut inspection: ResMut<benilla_app::ActorInspectionControl>,
+    (mut inspection, mut trajectory, mut plans): (
+        ResMut<benilla_app::ActorInspectionControl>,
+        ResMut<benilla_app::planner_trajectory_probe::Control>,
+        ResMut<benilla_app::planner_trajectory::CanonicalTrajectories>,
+    ),
     mut points: ResMut<Annotations>,
     mut interaction: ResMut<annotations::Interaction>,
     mut current_map: ResMut<benilla_world::world_map::CurrentMap>,
@@ -478,6 +556,27 @@ fn commands(
             }
             Command::Replay(actors) => replay.pending = Some(actors),
             Command::Portraits(requests) => replay.portrait_requests.extend(requests),
+            Command::TrajectoryProbe(request) => {
+                trajectory.response = None;
+                trajectory.pending = Some(request);
+            }
+            Command::TrajectorySource(source) => plans.retain_source(&source),
+            Command::TrajectoryComponent(input) => {
+                let identity = (
+                    input.source.clone(),
+                    input.actor.clone(),
+                    input.component.clone(),
+                    input.content.clone(),
+                );
+                if let Err(error) = plans.submit(input) {
+                    report(
+                        "trajectoryError",
+                        &serde_json::json!({"source":identity.0,"actor":identity.1,
+                        "component":identity.2,"content":identity.3,"message":error})
+                        .to_string(),
+                    );
+                }
+            }
             Command::MovementDiagnostics(token) => {
                 replay.movement_diagnostics_request = Some(token)
             }
@@ -712,7 +811,30 @@ fn actor_labels(
     mut known: Local<std::collections::HashSet<u32>>,
     mut last: Local<f32>,
     mut replay: ResMut<benilla_app::planner_replay::ReplayControl>,
+    mut trajectory: ResMut<benilla_app::planner_trajectory_probe::Control>,
+    mut last_trajectory: Local<Option<benilla_app::planner_replay::ReplayTrajectoryStatus>>,
+    mut last_missing: Local<Vec<benilla_app::planner_replay::ReplayTrajectoryMissing>>,
 ) {
+    if last_trajectory.as_ref() != Some(&replay.trajectory_status) {
+        report(
+            "movementPreparation",
+            &serde_json::to_string(&replay.trajectory_status).unwrap_or_default(),
+        );
+        *last_trajectory = Some(replay.trajectory_status);
+    }
+    if *last_missing != replay.trajectory_missing {
+        report(
+            "trajectoryMissing",
+            &serde_json::to_string(&replay.trajectory_missing).unwrap_or_default(),
+        );
+        *last_missing = replay.trajectory_missing.clone();
+    }
+    if let Some(response) = trajectory.response.take() {
+        report(
+            "trajectoryProbe",
+            &serde_json::to_string(&response).unwrap_or_default(),
+        );
+    }
     if let Some((token, actors)) = replay.movement_diagnostics_response.take() {
         report(
             "movementDiagnostics",
