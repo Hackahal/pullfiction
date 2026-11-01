@@ -8,11 +8,11 @@ The renderer builds on [Wenilla](https://github.com/Arnesen/wenilla) and [Benill
 
 ## Using the application
 
-Use a desktop Chromium browser with WebGPU. Select your installed modern Classic client folder when prompted; preparation happens in the browser. Used assets can be cached in browser-local storage. The application does not require a game-data server, a local helper installation or a connection to an official game server.
+Use a desktop Chromium browser with WebGPU. The application downloads prepared raid and shared assets automatically and caches them in browser storage. No game installation or folder selection is required.
 
-Game archives, models, textures, sounds and extracted assets are not included in this repository or its static release. They stay on the user's device. The included NPC index contains approved names and numeric references only.
+Game archives, models, textures, sounds and extracted assets are excluded from this repository and GitHub release artifacts. The owner prepares assets locally and deploys them directly to a separate Cloudflare Static Assets service. The application release contains code and approved numeric metadata only. See [hosted asset preparation](docs/HOSTED-ASSETS.md).
 
-Classic Era and accessible Season of Discovery assets are the current focus. The client reader can discover retained Classic data alongside a Forever installation. Full Forever compatibility and every modern rendering feature are still in development. Unsupported or unavailable assets must not be described as verified.
+Classic Era and accessible Season of Discovery assets are the current focus. Unsupported or unavailable assets remain explicit errors; prepared data does not establish complete rendering fidelity.
 
 ## Development
 
@@ -44,7 +44,7 @@ See [Warcraft Logs integration](docs/BROWSER-LOGS.md), [buffered replay loading]
 
 ## Project map
 
-- `web/editor/`: React editor, analysis panels, local client reader and renderer workbench.
+- `web/editor/`: React editor, analysis panels, hosted asset reader and renderer workbench.
 - `web/planner/`: replay normalization, data adapters and shared planning logic.
 - `crates/pullfiction-viewer/`: browser renderer entry point and project-specific native integration.
 - `crates/benilla-*`: upstream renderer, formats and client foundations, with browser carries.

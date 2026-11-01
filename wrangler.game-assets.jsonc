@@ -1,0 +1,14 @@
+{
+  // Deploy only from the owner's machine. Game assets never enter GitHub Actions.
+  "name": "pullfiction-assets",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "assets.pullfiction.com", "custom_domain": true, "zone_id": "881c1e9b25d31dc8c9c17fb2ff4cedb5" }
+  ],
+  "assets": {
+    "directory": ".agent/work/hosted-assets/deploy",
+    "not_found_handling": "none"
+  }
+}

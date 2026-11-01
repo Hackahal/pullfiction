@@ -1062,51 +1062,6 @@ export function App({ controller }: { controller: EditorController }) {
               </>
             ) : (
               <div className="settings-list">
-                {state.browserAssets && state.clientCacheStatus !== "none" && (
-                  <div className="client-folder-setting">
-                    <span role="status">
-                      {state.clientCacheStatus === "ready"
-                        ? `Game assets cached on this device · ${state.clientBuild}`
-                        : state.clientCacheStatus === "recording"
-                          ? "Saving prepared game assets on this device"
-                          : "Automatic reopening could not be saved. Select the folder again next visit."}
-                    </span>
-                    {state.clientPrefetchProgress && (
-                      <span role="status">{state.clientPrefetchProgress}</span>
-                    )}
-                    {state.clientCacheStatus !== "recording" && (
-                      <button
-                        onClick={() => void controller.clearClientCache()}
-                      >
-                        Clear asset cache
-                      </button>
-                    )}
-                  </div>
-                )}
-                {state.browserAssets &&
-                  (state.clientRemembered || state.clientFolderError) && (
-                    <div className="client-folder-setting">
-                      <span>
-                        {state.clientRemembered && (
-                          <>Saved client folder: {state.clientFolderName}</>
-                        )}
-                        {state.clientFolderError && (
-                          <span role="status">
-                            Could not remember the folder:{" "}
-                            {state.clientFolderError}. Select it again next
-                            visit.
-                          </span>
-                        )}
-                      </span>
-                      {state.clientRemembered && (
-                        <button
-                          onClick={() => void controller.forgetClientFolder()}
-                        >
-                          Forget remembered folder
-                        </button>
-                      )}
-                    </div>
-                  )}
                 {(
                   [
                     ["raidFrames", "Raid frames"],

@@ -298,8 +298,9 @@ test("Browser boot waits for file selection and all modern catalogs without fetc
     assert.equal(c.getSnapshot().ready, false);
     assert.equal(c.getSnapshot().clientStatus, "select");
     const markup = renderToString(createElement(App, { controller: c }));
-    assert.match(markup, /World of Warcraft client folder/);
-    assert.match(markup, /webkitdirectory=""/);
+    assert.match(markup, /Retry download/);
+    assert.doesNotMatch(markup, /World of Warcraft client folder/);
+    assert.doesNotMatch(markup, /webkitdirectory/);
     assert.doesNotMatch(markup, /Native raid frame bounds/);
     await c.openClient([]);
     assert.equal(c.getSnapshot().ready, true);
@@ -1145,8 +1146,8 @@ test("The original startup reopens from committed prepared assets without select
   const reconnectMarkup = renderToString(
     createElement(App, { controller: second.c }),
   );
-  assert.match(reconnectMarkup, /Load more game assets/);
-  assert.match(reconnectMarkup, /aria-label="World of Warcraft client folder"/);
+  assert.match(reconnectMarkup, /Game assets unavailable/);
+  assert.doesNotMatch(reconnectMarkup, /webkitdirectory|Choose client folder/);
   const libraryMarkup = renderToString(
     createElement(Library, {
       state: second.c.getSnapshot(),
@@ -1155,8 +1156,8 @@ test("The original startup reopens from committed prepared assets without select
       close: () => {},
     }),
   );
-  assert.match(libraryMarkup, /Load more game assets/);
-  assert.match(libraryMarkup, /aria-label="World of Warcraft client folder"/);
+  assert.match(libraryMarkup, /Game assets unavailable/);
+  assert.doesNotMatch(libraryMarkup, /webkitdirectory|Choose client folder/);
   second.c.dismissClientSource();
   assert.equal(second.c.getSnapshot().clientNeedsFiles, true);
   assert.equal(second.c.getSnapshot().clientPromptHidden, true);
@@ -1279,4 +1280,36 @@ test("Client prefetch starts only after scene readiness and aborts when the cach
   assert.equal(starts, 1);
   await c.clearClientCache();
   assert.equal((options as any).signal.aborted, true);
+});
+
+test("Hosted startup downloads automatically and exposes no local-client import", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    requests.push(String(input));
+    return new Response("unavailable", { status: 503 });
+  }) as typeof fetch;
+  const c = new EditorController(undefined, { browserAssets: true });
+  try {
+    await c.boot();
+    assert.ok(
+      requests.some(
+        (url) => url === "https://assets.pullfiction.com/manifest.json",
+      ),
+    );
+    assert.equal(c.getSnapshot().clientStatus, "error");
+    const markup = renderToString(createElement(App, { controller: c }));
+    assert.match(markup, /Retry download/);
+    assert.doesNotMatch(
+      markup,
+      /webkitdirectory|Choose client folder|Remember a client folder/,
+    );
+    await assert.rejects(
+      c.openClient([{} as File]),
+      /supplied by Pull Fiction/,
+    );
+  } finally {
+    c.stop();
+    globalThis.fetch = originalFetch;
+  }
 });
