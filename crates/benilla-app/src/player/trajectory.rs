@@ -16,7 +16,7 @@ use std::{
     collections::VecDeque,
     hash::{Hash, Hasher},
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
     time::Duration,
@@ -412,6 +412,7 @@ pub struct CanonicalTrajectories {
     terrain_request_key: Option<u64>,
     terrain_owner_key: Option<u64>,
     terrain_seek_generation: AtomicU64,
+    terrain_seek_pending: AtomicBool,
     terrain_requests_extended: bool,
     terrain_requested_tiles: usize,
     terrain_capacity_exceeded: bool,
@@ -466,14 +467,17 @@ pub struct CacheDiagnostics {
     pub elapsed_processing_ms: f64,
 }
 impl CanonicalTrajectories {
-    /// A navigation reset replaces terrain ownership without discarding canonical checkpoints.
-    /// Ordinary frame demand renewal must not call this: discovered repair tiles stay pinned.
+    /// Queue navigation ownership replacement without changing the still-active demand set.
+    /// The replacement batch commits it at clear_demands; checkpoints remain cached.
     pub fn begin_seek(&self) {
-        self.terrain_seek_generation.fetch_add(1, Ordering::Relaxed);
+        self.terrain_seek_pending.store(true, Ordering::Relaxed);
     }
     /// Start a complete presentation demand set; queries below renew its members.
     /// Keep cached checkpoints and pending cursors so a later seek can resume them.
     pub fn clear_demands(&self) {
+        if self.terrain_seek_pending.swap(false, Ordering::Relaxed) {
+            self.terrain_seek_generation.fetch_add(1, Ordering::Relaxed);
+        }
         for entry in &self.entries {
             entry.demand_frame.store(0, Ordering::Relaxed);
             entry.visible_demand_frame.store(0, Ordering::Relaxed);
@@ -2170,6 +2174,15 @@ mod tests {
                 plans.prepare_terrain(Some(0), &mut requests);
                 let forward = requests.tiles.clone();
                 assert!(!plans.terrain_capacity_exceeded);
+                plans.begin_seek();
+                for _ in 0..3 {
+                    plans.frame += 1;
+                    assert!(!plans.prepare_terrain(Some(0), &mut requests));
+                    assert_eq!(
+                        requests.tiles, forward,
+                        "old demand may run while the replacement batch is unavailable"
+                    );
+                }
 
                 let mut candidate = initial(&i, 0, &world, &capsule).unwrap().unwrap();
                 let checkpoint = Arc::new(candidate.cursor.clone());
@@ -2216,7 +2229,6 @@ mod tests {
                     plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
                 plans.clear_demands();
                 plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
-                plans.begin_seek();
                 plans.entries[0].planning.waiting[0].cursor.guidance = Some((
                     0,
                     Arc::new(vec![
@@ -2265,9 +2277,9 @@ mod tests {
                 plans.entries[0].refresh_bytes();
                 plans.accounted_bytes =
                     plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+                plans.begin_seek();
                 plans.clear_demands();
                 plans.query(&i.source, &i.actor, &i.component, &i.content, 60000.);
-                plans.begin_seek();
                 plans.prepare_terrain(Some(0), &mut requests);
                 assert!(
                     !plans.terrain_capacity_exceeded,
@@ -2339,8 +2351,9 @@ mod tests {
                 plans.entries[0].refresh_bytes();
                 plans.accounted_bytes =
                     plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
-                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
                 plans.begin_seek();
+                plans.clear_demands();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
                 let mut requests =
                     benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
                 assert!(plans.prepare_terrain(Some(0), &mut requests));
@@ -2371,6 +2384,8 @@ mod tests {
                     );
                 }
                 plans.begin_seek();
+                plans.clear_demands();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
                 assert!(plans.prepare_terrain(Some(0), &mut requests));
                 assert!(
                     requests.tiles.contains(&terrain::tile([0., 1500.])),
@@ -2382,6 +2397,8 @@ mod tests {
                 );
                 let current = requests.tiles.clone();
                 plans.begin_seek();
+                plans.clear_demands();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
                 assert!(
                     !plans.prepare_terrain(Some(0), &mut requests),
                     "identical seek coverage does not churn residency"
@@ -2490,11 +2507,22 @@ mod tests {
             plans.entries[0].refresh_bytes();
             plans.accounted_bytes =
                 plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
-            let i = plans.entries[0].input.clone();
-            plans.clear_demands();
-            plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
             plans.begin_seek();
             epoch = plans.validation_epoch;
+        }
+        // Replay application can wait for its replacement input across several drive frames.
+        for _ in 0..3 {
+            driver.run((), app.world_mut()).unwrap();
+            assert_eq!(
+                app.world().resource::<TrajectoryTerrainRequests>().tiles,
+                previous
+            );
+        }
+        {
+            let plans = app.world().resource::<CanonicalTrajectories>();
+            let i = &plans.entries[0].input;
+            plans.clear_demands();
+            plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
         }
         driver.run((), app.world_mut()).unwrap();
         let current = &app.world().resource::<TrajectoryTerrainRequests>().tiles;
