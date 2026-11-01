@@ -681,6 +681,9 @@ pub(crate) fn apply(
     }
     // Retain the owned input, not a cloned actor graph. Native assets may finish after JS settles.
     if let Some(batch) = floor_context.7.ready(readiness_revision, control.playing) {
+        // This batch owns the complete rendered demand set. Pause old seeks
+        // without discarding their validated checkpoints or unfinished work.
+        plans.clear_demands();
         let mut spawned = false;
         // Resolve after all actors have identities, including targets later in this
         // frame. An absent recorded target stays absent rather than being guessed.
