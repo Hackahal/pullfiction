@@ -1193,7 +1193,7 @@ export class EditorController {
       plan,
       source: this.projectSource,
       updatedAt: Date.now(),
-      time: this.clockTime,
+      time: this.pendingProjectReplay?.time ?? this.clockTime,
       mode: this.state.workspaceMode,
       kind: this.projectKind,
       lastViewedAt: this.activeProject?.lastViewedAt ?? Date.now(),
@@ -1384,10 +1384,14 @@ export class EditorController {
           mode: project.mode,
         };
         this.patch({ sourceStatus: "cached" });
-      } else if (project.source)
+      } else if (project.source) {
+        // No replay clock is installed yet; retain the stored resume point.
+        this.clockTime = project.time;
+        this.patch({ time: project.time });
         this.notify(
           "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
         );
+      }
       this.setWorkspaceMode(project.mode);
       await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
       return true;
@@ -1415,7 +1419,13 @@ export class EditorController {
     },
   ) {
     try {
-      if (this.activeProject?.id === id) await this.flushProject();
+      if (
+        this.activeProject?.id === id &&
+        !this.restoringProject &&
+        (this.state.dirty || this.state.saveStatus !== "saved")
+      )
+        await this.flushProject();
+      else await this.projectWrites;
       const project = await this.projectStore?.get(id);
       if (!project) return;
       const { name, ...metadata } = values;

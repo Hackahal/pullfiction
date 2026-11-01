@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { IDBFactory } from "fake-indexeddb";
 import { EditorController } from "./controller";
-import { IndexedProjectStore, newProject } from "./project-store";
+import { IndexedProjectStore, newProject, replaySource } from "./project-store";
 import { emptyPlan, STORAGE_KEY } from "./domain";
 import type { Engine, RawReplay } from "./types";
 const raw = {
@@ -444,3 +444,44 @@ test("library metadata persists independently of autosave and opening records a 
   assert.equal(saved?.pinned, true);
   c.stop();
 });
+
+for (const cached of [true, false]) {
+  test(`deferred replay view preserves its stored seek position with cache=${cached}`, async () => {
+    const f = setup();
+    const source = replaySource(raw, 409);
+    const project = {
+      ...newProject(emptyPlan(409), source),
+      time: 5000,
+      lastViewedAt: 1,
+    };
+    await f.store.put(project);
+    if (cached) await f.store.putReplay(source.cacheKey, raw);
+    const c = new EditorController(f.storage, {
+      browserAssets: true,
+      projectStore: f.store,
+      clientCache: null,
+      clientFolders: null,
+    });
+    try {
+      await c.initializeLibrary();
+      assert.equal(c.getSnapshot().clientStatus, "select");
+      assert(await c.openProject(project.id));
+      assert.equal(c.getSnapshot().replay, null);
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      assert((await f.store.get(project.id))!.lastViewedAt! > 1);
+      await c.updateProjectMetadata(project.id, {
+        pinned: true,
+        name: "Resume here",
+      });
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+      c.cancelClient();
+      await c.saveProject();
+      assert.equal((await f.store.get(project.id))?.time, 5000);
+    } finally {
+      c.stop();
+      f.controller.stop();
+    }
+  });
+}
