@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-sapphiron",
+  "ruleset": "vanilla",
+  "boss": "Sapphiron",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51119,
+  "rawEncounterId": 1119,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-sapphiron"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/FrostwyrmLair/Sapphiron.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/sapphiron-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-12",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=28531/frost-aura",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=15584/cleave",
+        "https://www.wowhead.com/classic/spell=15847/tail-sweep",
+        "https://www.wowhead.com/classic/spell=28561/summon-blizzard",
+        "https://www.wowhead.com/classic/spell=31800/icebolt",
+        "https://www.wowhead.com/classic/spell=28524/frost-breath"
+      ],
+      "quality": "Resolved baseline guide links. Guide Icebolt31800 is not an alias for primary frozen aura28522; actual launch mapping remains unresolved."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Ground aura, drain and dragon arcs",
+      "spellIds": [
+        28531,
+        28542,
+        15584,
+        15847
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual FrostAura, LifeDrain, Cleave and TailSweep",
+      "state": "Boss proximity, cursed recipients and actual melee impacts separate",
+      "lifecycle": "Actual dispel/remove/death; no automatic aura tick generation",
+      "placement": "Measured facing and recipients; collision arcs unverified",
+      "animation": "Aura, heal/drain and melee/tail animation separate",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Roaming Blizzard",
+      "spellIds": [
+        28561,
+        28547
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed summon and victim exposure",
+      "state": "Moving hazard host separate from boss and victims",
+      "lifecycle": "Actual host life; no fixed path or inferred lifetime",
+      "placement": "Actual hazard XY only; target damage not center or complete radius",
+      "animation": "Moving area route needs authored host and correct age",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Ground to air and landing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual unit target-loss/flight state or measured motion",
+      "state": "Ground and airborne boss phases distinct",
+      "lifecycle": "Addon variable-air/landing timers are not logged flight transitions",
+      "placement": "Flight Z and vertical trajectory unknown",
+      "animation": "Takeoff, flight and landing require native/gameplay proof; no global lift",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Five Classic frozen targets",
+      "spellIds": [
+        28522
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Icebolt/frozen applications",
+      "state": "Actual frozen player and blocking object state",
+      "lifecycle": "Each recorded removal/release; never synthesize five blocks or Wrath count",
+      "placement": "Player anchors do not establish occluder mesh/height",
+      "animation": "Frozen target aura versus block geometry; guide31800 launch unresolved",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Frost Breath shelter and release",
+      "spellIds": [
+        28524
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast start, impact and block releases",
+      "state": "Line-of-sight shelter and frozen immunity separate",
+      "lifecycle": "Recorded cast/interrupt/removal; no guessed seven-second impact",
+      "placement": "Actual boss/projectile endpoint; shelter collision unverified",
+      "animation": "Orb, ground explosion and ice release separate; exclude SoD bombs1219729/1219732",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-sapphiron/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested.",
+    "Actual FrostAura damage348191 differs from aura28531. Actual Cleave19983 differs from guide15584; actual Blizzard summon28560 differs from guide28561. Retain observed IDs, no aliases."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15989
+    ]
+  }
+}

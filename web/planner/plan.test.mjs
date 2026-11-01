@@ -53,10 +53,10 @@ test('Version2 validation rejects duplicate identities, invalid shapes, bad time
 
 test('Step snapshots persist source positions and reject malformed appearance and duplicate actors',()=>{
  const plan=emptyPlan();
- plan.steps[0].snapshot={report:'public-report',time:5000,actors:[{key:'1:1',name:'Healer',class:'Priest',type:'Player',position:[10,20,30],recorded:[0,20,30],facing:1,recordedFacing:0,race:3,sex:1,scale:1,displayID:55,gameID:0}]};
+ plan.steps[0].snapshot={report:'public-report',time:5000,actors:[{key:'1:1',name:'Ward',class:'Pet',type:'Pet',friendly:false,position:[10,20,30],recorded:[0,20,30],facing:1,recordedFacing:0,race:3,sex:1,scale:1,displayID:55,gameID:0}]};
  const roundtrip=parsePlan(JSON.stringify(plan));
  assert.deepEqual(roundtrip.steps[0].snapshot,plan.steps[0].snapshot);
- for(const patch of [{position:[NaN,0,0]},{facing:Infinity},{race:'3'},{scale:0},{recorded:[1,2]},{displayID:-1}]){
+ for(const patch of [{position:[NaN,0,0]},{facing:Infinity},{race:'3'},{scale:0},{recorded:[1,2]},{displayID:-1},{friendly:'false'},{friendly:0},{friendly:null}]){
   const invalid=structuredClone(plan);Object.assign(invalid.steps[0].snapshot.actors[0],patch);assert.throws(()=>validatePlan(invalid));
  }
  const duplicate=structuredClone(plan);duplicate.steps[0].snapshot.actors.push(structuredClone(duplicate.steps[0].snapshot.actors[0]));assert.throws(()=>validatePlan(duplicate));

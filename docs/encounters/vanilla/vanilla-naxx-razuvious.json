@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-razuvious",
+  "ruleset": "vanilla",
+  "boss": "Instructor Razuvious",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51113,
+  "rawEncounterId": 1113,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-razuvious"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/MilitaryQuarter/Razuvious.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/instructor-razuvious-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-07",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Priest Mind Control before combat",
+      "spellIds": [
+        10912,
+        29051
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual priest control, possibly before encounterstart",
+      "state": "Priest channel and controlled Understudy16803 ownership distinct",
+      "lifecycle": "Observed early break/removal/death; target aura not fixed60second duration",
+      "placement": "Priest and possessed NPC on separate stair positions; Z unknown",
+      "animation": "Control channel, possessed movement and exhaustion separate; no Wrath orbs",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Understudy Taunt and Shield Wall",
+      "spellIds": [
+        29060,
+        29061
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual controlled-NPC casts",
+      "state": "Boss target and shielded Understudy retain actual hosts",
+      "lifecycle": "Actual removals; cooldowns not aura lifetimes",
+      "placement": "Measured NPC/boss anchors",
+      "animation": "Shield self kit versus boss taunt target",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Unbalancing Strike",
+      "spellIds": [
+        26613
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss strike and debuff",
+      "state": "Victim is actual Understudy/tank, never invented tank rotation",
+      "lifecycle": "Recorded impact and defense-debuff terminal",
+      "placement": "Measured facing; preserve pet/player/NPC identity",
+      "animation": "Melee strike and target aura separate",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Disrupting Shout",
+      "spellIds": [
+        29107
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast and damage/drain",
+      "state": "Line-of-sight recipients and mana users independent",
+      "lifecycle": "No25second generated shout",
+      "placement": "Stair geometry and line of sight need real collision evidence",
+      "animation": "Shout host, mana drain and impacts separately checked",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Repeated wipe and kill",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded failed fight29 and successful31",
+      "state": "Do not merge physical add identities across chapter-local instances",
+      "lifecycle": "Actual death/revive/control removal; no guessed reset",
+      "placement": "Per-pull samples, no bridge through wipe gap",
+      "animation": "Death and reset state must not leak into next pull",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-razuvious/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested.",
+    "DBM comment labels Disarm1225423 as newly observed on SoD. It is not imported into Classic expected mechanics."
+  ],
+  "researchContext": {
+    "npcIds": [
+      16061,
+      16803
+    ]
+  }
+}

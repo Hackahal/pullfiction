@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-magmadar",
+  "ruleset": "sod",
+  "boss": "Magmadar",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100664,
+  "rawEncounterId": 664,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        8
+      ],
+      "selectedFightNames": [
+        "Magmadar"
+      ],
+      "matchedNpcTemplateIds": [
+        228430
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-magmadar"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Magmadar.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Magmadar_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Panic and frenzy",
+      "spellIds": [
+        19408,
+        461125,
+        19451
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Panic cast and Frenzy aura/dispel",
+      "state": "Actual Panic cast and Frenzy aura/dispel",
+      "lifecycle": "Fear affects actual recipients; Frenzy closes on matching dispel or removal",
+      "placement": "Observed fear-driven movement; no random destination",
+      "animation": "Body aura and attack-rate presentation need actual state",
+      "acceptanceCheck": "sod-mc-magmadar/MC-MAG-FRENZY",
+      "acceptanceCriteria": "MC-MAG-FRENZY: dispelled frenzy ends once; no fixed addon cooldown schedule",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Core Hound summons by heat",
+      "spellIds": [
+        461131,
+        364727
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual unit spell success; addon records these outside combat log cast handler",
+      "state": "Actual unit spell success; addon records these outside combat log cast handler",
+      "lifecycle": "Create each confirmed NPC instance; no fixed count or revival inferred",
+      "placement": "Actual summon anchors and movement",
+      "animation": "Exact summoned Core Hound kit/model, separate from item-set pet",
+      "acceptanceCheck": "sod-mc-magmadar/MC-MAG-ADDS",
+      "acceptanceCriteria": "MC-MAG-ADDS: unit-spell-only trigger is not silently lost; no fabricated hounds in missing log interval",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Lava fire contact",
+      "spellIds": [
+        19428
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Per-recipient Conflagration application/refresh",
+      "state": "Per-recipient Conflagration application/refresh",
+      "lifecycle": "Persistent ground patch distinct from refreshed contact aura",
+      "placement": "Contact position cannot establish pool center or radius",
+      "animation": "Actual bomb/projectile and world patch require reference",
+      "acceptanceCheck": "sod-mc-magmadar/MC-MAG-FIRE",
+      "acceptanceCriteria": "MC-MAG-FIRE: leaving contact does not erase surviving patch; seek retains original age",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual end/life event",
+      "state": "Actual end/life event",
+      "lifecycle": "Clean proven owned hounds and fire; player fear/bleed continuations need actual removal",
+      "placement": "No unknown height guessed for fleeing players",
+      "animation": "Corpse and reset separate",
+      "acceptanceCheck": "sod-mc-magmadar/MC-MAG-END",
+      "acceptanceCriteria": "MC-MAG-END: repeated pull has no orphan hounds or old patch",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Actual Lava Bomb cast ID, projectile destination and patch lifetime",
+    "Summoned Core Hound template, count and despawn; no trash-pack revive rule imported",
+    "Exact Panic variant-to-heat mapping",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "11982, 228430",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

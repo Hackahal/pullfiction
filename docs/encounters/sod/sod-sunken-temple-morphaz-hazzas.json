@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-morphaz-hazzas",
+  "ruleset": "sod",
+  "boss": "Morphaz and Hazzas",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2958,
+  "rawEncounterId": 2958,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        16
+      ],
+      "selectedFightNames": [
+        "Morphaz and Hazzas"
+      ],
+      "matchedNpcTemplateIds": [
+        221942,
+        221943
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-morphaz-hazzas"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/MorphazAndHazzas.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/morphaz-and-hazzas-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Lucid Dreaming world transition",
+      "spellIds": [
+        449422,
+        445158
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Guide cast 449422; recipient application/removal 445158 registered by primary addon",
+      "state": "Guide cast 449422; recipient application/removal 445158 registered by primary addon",
+      "lifecycle": "Track real/dream state per player, not globally; wake may differ between players",
+      "placement": "Guide describes lower Morphaz room; actual realm/floor anchors and height required",
+      "animation": "Dream body/texture and phased visibility need separate reference",
+      "acceptanceCheck": "sod-sunken-temple-morphaz-hazzas/ST-MH-DREAM",
+      "acceptanceCriteria": "ST-MH-DREAM: no interpolated travel through floors; seek preserves individual dream membership",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Animate Flame and waking fire",
+      "spellIds": [
+        446661,
+        445555
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Summon cast, elemental death/fire patch, On Fire aura",
+      "state": "Summon cast, elemental death/fire patch, On Fire aura",
+      "lifecycle": "Elemental and persistent patch separate; On Fire may protect/wake by contact",
+      "placement": "Actual fire patches and recipient collision; do not infer center from contact",
+      "animation": "Fire elemental and ground patch plus body aura independently verified",
+      "acceptanceCheck": "sod-sunken-temple-morphaz-hazzas/ST-MH-FIRE",
+      "acceptanceCriteria": "ST-MH-FIRE: surviving patch does not disappear with elemental corpse; wake applies only to evidenced recipient",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Eternal Slumber damage check",
+      "spellIds": [
+        446034
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast start while recipients dreaming",
+      "state": "Actual cast start while recipients dreaming",
+      "lifecycle": "Keep cast until recorded finish/cancel; addon 30-second bar is advisory",
+      "placement": "Death affects dream recipients, not necessarily awake players",
+      "animation": "Actual cast/channel and death state",
+      "acceptanceCheck": "sod-sunken-temple-morphaz-hazzas/ST-MH-SLUMBER",
+      "acceptanceCriteria": "ST-MH-SLUMBER: interruption/cancel prevents fabricated late lethal event",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Breath, tail, lament and rocks",
+      "spellIds": [
+        446487,
+        446489,
+        446468,
+        446270
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual directional cast, per-target dose or falling rock event",
+      "state": "Actual directional cast, per-target dose or falling rock event",
+      "lifecycle": "Each aura/rock instance has own lifetime",
+      "placement": "Observed facing, rock origins/bounces and destination; no guessed ballistic route",
+      "animation": "Authored breath/tail and rock visual need original reference",
+      "acceptanceCheck": "sod-sunken-temple-morphaz-hazzas/ST-MH-DIRECTION",
+      "acceptanceCriteria": "ST-MH-DIRECTION: front/back recipients and damage anchors match; rock remains distinct from target aura",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Shared health, final death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Guide stages near 80/30 percent; actual phase casts override inferred thresholds",
+      "state": "Guide stages near 80/30 percent; actual phase casts override inferred thresholds",
+      "lifecycle": "Bosses keep separate actor identities while sharing health if logs show it; cleanup all dream continuations on end",
+      "placement": "Restore actual world/floor to each actor; no invented mass return",
+      "animation": "Check both corpses and dream form termination",
+      "acceptanceCheck": "sod-sunken-temple-morphaz-hazzas/ST-MH-END",
+      "acceptanceCriteria": "ST-MH-END: no stale dream membership or fire across repeated pulls",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Realm coordinate relationship and whether same XY with different world/floor is used",
+    "Exact rock bounce trajectories and wake-on-contact lifecycle",
+    "Shared HP representation, final return timing and animation routes",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "221943, 221942"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

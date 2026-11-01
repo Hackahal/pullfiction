@@ -1,0 +1,2119 @@
+{
+  "schemaVersion": 1,
+  "ruleset": "sod",
+  "verification": "unverified",
+  "counts": {
+    "encounterFiles": 88,
+    "bossResearchUnits": 89,
+    "retainedEvidenceEncounters": 55,
+    "sourceOnlyEncounters": 33,
+    "providerMappedEncounters": 85,
+    "providerUnresolvedEncounters": 3,
+    "metadataOnlyMappings": 68
+  },
+  "entries": [
+    {
+      "unitId": "sod-aq20-ayamiss",
+      "boss": "Ayamiss the Hunter",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-ayamiss.json",
+      "bossUnits": [
+        "sod-aq20-ayamiss"
+      ],
+      "encounterId": 100722,
+      "rawEncounterId": 722,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq20-buru",
+      "boss": "Buru the Gorger",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-buru.json",
+      "bossUnits": [
+        "sod-aq20-buru"
+      ],
+      "encounterId": 100721,
+      "rawEncounterId": 721,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq20-kurinnaxx",
+      "boss": "Kurinnaxx",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-kurinnaxx.json",
+      "bossUnits": [
+        "sod-aq20-kurinnaxx"
+      ],
+      "encounterId": 100718,
+      "rawEncounterId": 718,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq20-moam",
+      "boss": "Moam",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-moam.json",
+      "bossUnits": [
+        "sod-aq20-moam"
+      ],
+      "encounterId": 100720,
+      "rawEncounterId": 720,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq20-ossirian",
+      "boss": "Ossirian the Unscarred",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-ossirian.json",
+      "bossUnits": [
+        "sod-aq20-ossirian"
+      ],
+      "encounterId": 100723,
+      "rawEncounterId": 723,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq20-rajaxx",
+      "boss": "General Rajaxx and wave commanders",
+      "raid": "Ruins of Ahn'Qiraj",
+      "path": "sod/sod-aq20-rajaxx.json",
+      "bossUnits": [
+        "sod-aq20-rajaxx"
+      ],
+      "encounterId": 100719,
+      "rawEncounterId": 719,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 11,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-aq40-cthun",
+      "boss": "C'Thun",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-cthun.json",
+      "bossUnits": [
+        "sod-aq40-cthun"
+      ],
+      "encounterId": 100717,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 10,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-fankriss",
+      "boss": "Fankriss the Unyielding",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-fankriss.json",
+      "bossUnits": [
+        "sod-aq40-fankriss"
+      ],
+      "encounterId": 100712,
+      "rawEncounterId": 712,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-huhuran",
+      "boss": "Princess Huhuran",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-huhuran.json",
+      "bossUnits": [
+        "sod-aq40-huhuran"
+      ],
+      "encounterId": 100714,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-ouro",
+      "boss": "Ouro",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-ouro.json",
+      "bossUnits": [
+        "sod-aq40-ouro"
+      ],
+      "encounterId": 100716,
+      "rawEncounterId": 716,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-sartura",
+      "boss": "Battleguard Sartura",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-sartura.json",
+      "bossUnits": [
+        "sod-aq40-sartura"
+      ],
+      "encounterId": 100711,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-silithid-royalty",
+      "boss": "Silithid Royalty",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-silithid-royalty.json",
+      "bossUnits": [
+        "sod-aq40-silithid-royalty"
+      ],
+      "encounterId": 100710,
+      "rawEncounterId": 710,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-skeram",
+      "boss": "The Prophet Skeram",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-skeram.json",
+      "bossUnits": [
+        "sod-aq40-skeram"
+      ],
+      "encounterId": 100709,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-twin-emperors",
+      "boss": "Twin Emperors",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-twin-emperors.json",
+      "bossUnits": [
+        "sod-aq40-twin-emperors"
+      ],
+      "encounterId": 100715,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-aq40-viscidus",
+      "boss": "Viscidus",
+      "raid": "Temple of Ahn'Qiraj",
+      "path": "sod/sod-aq40-viscidus.json",
+      "bossUnits": [
+        "sod-aq40-viscidus"
+      ],
+      "encounterId": 100713,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-bfd-akumai",
+      "boss": "Aku'mai",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-akumai.json",
+      "bossUnits": [
+        "sod-bfd-akumai"
+      ],
+      "encounterId": 2891,
+      "rawEncounterId": 2891,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-baron-aquanis",
+      "boss": "Baron Aquanis",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-baron-aquanis.json",
+      "bossUnits": [
+        "sod-bfd-baron-aquanis"
+      ],
+      "encounterId": 2694,
+      "rawEncounterId": 2694,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-gelihast",
+      "boss": "Gelihast",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-gelihast.json",
+      "bossUnits": [
+        "sod-bfd-gelihast"
+      ],
+      "encounterId": 2704,
+      "rawEncounterId": 2704,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-ghamoo-ra",
+      "boss": "Ghamoo-ra",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-ghamoo-ra.json",
+      "bossUnits": [
+        "sod-bfd-ghamoo-ra"
+      ],
+      "encounterId": 2697,
+      "rawEncounterId": 2697,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-lady-sarevess",
+      "boss": "Lady Sarevess",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-lady-sarevess.json",
+      "bossUnits": [
+        "sod-bfd-lady-sarevess"
+      ],
+      "encounterId": 2699,
+      "rawEncounterId": 2699,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-lorgus-jett",
+      "boss": "Lorgus Jett",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-lorgus-jett.json",
+      "bossUnits": [
+        "sod-bfd-lorgus-jett"
+      ],
+      "encounterId": 2710,
+      "rawEncounterId": 2710,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bfd-twilight-lord-kelris",
+      "boss": "Twilight Lord Kelris",
+      "raid": "Blackfathom Deeps",
+      "path": "sod/sod-bfd-twilight-lord-kelris.json",
+      "bossUnits": [
+        "sod-bfd-twilight-lord-kelris"
+      ],
+      "encounterId": 2825,
+      "rawEncounterId": 2825,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "qJKNyxL714dBZ2Ga",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-bwl-broodlord",
+      "boss": "Broodlord Lashlayer",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-broodlord.json",
+      "bossUnits": [
+        "sod-bwl-broodlord"
+      ],
+      "encounterId": 100612,
+      "rawEncounterId": 612,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-chromaggus",
+      "boss": "Chromaggus",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-chromaggus.json",
+      "bossUnits": [
+        "sod-bwl-chromaggus"
+      ],
+      "encounterId": 100616,
+      "rawEncounterId": 616,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-ebonroc-and-flamegor",
+      "boss": "Ebonroc and Flamegor",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-ebonroc-and-flamegor.json",
+      "bossUnits": [
+        "sod-bwl-ebonroc",
+        "sod-bwl-flamegor"
+      ],
+      "encounterId": 100631,
+      "rawEncounterId": 2566,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "group": {
+        "name": "Ebonroc and Flamegor",
+        "members": [
+          "sod-bwl-ebonroc",
+          "sod-bwl-flamegor"
+        ],
+        "rawEncounterIdCandidates": [
+          614,
+          615,
+          2566
+        ],
+        "providerMapping": "mapped-from-selected-report-metadata",
+        "note": "Selected report fight is named Flamegor and includes both NPC 14601 and NPC 11981. Raw candidates 614, 615 and 2566 remain source identities, with no numeric offset. Import this paired file once.",
+        "providerEncounterId": 100631
+      },
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-firemaw",
+      "boss": "Firemaw",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-firemaw.json",
+      "bossUnits": [
+        "sod-bwl-firemaw"
+      ],
+      "encounterId": 100613,
+      "rawEncounterId": 613,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-nefarian",
+      "boss": "Nefarian",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-nefarian.json",
+      "bossUnits": [
+        "sod-bwl-nefarian"
+      ],
+      "encounterId": 100617,
+      "rawEncounterId": 617,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 13,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-razorgore",
+      "boss": "Razorgore the Untamed",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-razorgore.json",
+      "bossUnits": [
+        "sod-bwl-razorgore"
+      ],
+      "encounterId": 100610,
+      "rawEncounterId": 610,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-bwl-vaelastrasz",
+      "boss": "Vaelastrasz the Corrupt",
+      "raid": "Blackwing Lair",
+      "path": "sod/sod-bwl-vaelastrasz.json",
+      "bossUnits": [
+        "sod-bwl-vaelastrasz"
+      ],
+      "encounterId": 100611,
+      "rawEncounterId": 611,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-gnomeregan-crowd-pummeler",
+      "boss": "Crowd Pummeler 9-60",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-crowd-pummeler.json",
+      "bossUnits": [
+        "sod-gnomeregan-crowd-pummeler"
+      ],
+      "encounterId": 2899,
+      "rawEncounterId": 2899,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-gnomeregan-electrocutioner",
+      "boss": "Electrocutioner 6000",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-electrocutioner.json",
+      "bossUnits": [
+        "sod-gnomeregan-electrocutioner"
+      ],
+      "encounterId": 2927,
+      "rawEncounterId": 2927,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 3,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-gnomeregan-grubbis",
+      "boss": "Grubbis",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-grubbis.json",
+      "bossUnits": [
+        "sod-gnomeregan-grubbis"
+      ],
+      "encounterId": 2925,
+      "rawEncounterId": 2925,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-gnomeregan-mechanical-menagerie",
+      "boss": "Mechanical Menagerie",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-mechanical-menagerie.json",
+      "bossUnits": [
+        "sod-gnomeregan-mechanical-menagerie"
+      ],
+      "encounterId": 2935,
+      "rawEncounterId": 2935,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-gnomeregan-mekgineer-thermaplugg",
+      "boss": "Mekgineer Thermaplugg",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-mekgineer-thermaplugg.json",
+      "bossUnits": [
+        "sod-gnomeregan-mekgineer-thermaplugg"
+      ],
+      "encounterId": 2940,
+      "rawEncounterId": 2940,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-gnomeregan-viscous-fallout",
+      "boss": "Viscous Fallout",
+      "raid": "Gnomeregan",
+      "path": "sod/sod-gnomeregan-viscous-fallout.json",
+      "bossUnits": [
+        "sod-gnomeregan-viscous-fallout"
+      ],
+      "encounterId": 2928,
+      "rawEncounterId": 2928,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "J8BpfQtwmgbVYCLj",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-mc-baron-geddon",
+      "boss": "Baron Geddon",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-baron-geddon.json",
+      "bossUnits": [
+        "sod-mc-baron-geddon"
+      ],
+      "encounterId": 100668,
+      "rawEncounterId": 668,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-garr",
+      "boss": "Garr",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-garr.json",
+      "bossUnits": [
+        "sod-mc-garr"
+      ],
+      "encounterId": 100666,
+      "rawEncounterId": 666,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-gehennas",
+      "boss": "Gehennas",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-gehennas.json",
+      "bossUnits": [
+        "sod-mc-gehennas"
+      ],
+      "encounterId": 100665,
+      "rawEncounterId": 665,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-golemagg",
+      "boss": "Golemagg the Incinerator",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-golemagg.json",
+      "bossUnits": [
+        "sod-mc-golemagg"
+      ],
+      "encounterId": 100670,
+      "rawEncounterId": 670,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-lucifron",
+      "boss": "Lucifron",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-lucifron.json",
+      "bossUnits": [
+        "sod-mc-lucifron"
+      ],
+      "encounterId": 100663,
+      "rawEncounterId": 663,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-magmadar",
+      "boss": "Magmadar",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-magmadar.json",
+      "bossUnits": [
+        "sod-mc-magmadar"
+      ],
+      "encounterId": 100664,
+      "rawEncounterId": 664,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-majordomo-executus",
+      "boss": "Majordomo Executus",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-majordomo-executus.json",
+      "bossUnits": [
+        "sod-mc-majordomo-executus"
+      ],
+      "encounterId": 100671,
+      "rawEncounterId": 671,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-ragnaros",
+      "boss": "Ragnaros",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-ragnaros.json",
+      "bossUnits": [
+        "sod-mc-ragnaros"
+      ],
+      "encounterId": 100672,
+      "rawEncounterId": 672,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-shazzrah",
+      "boss": "Shazzrah",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-shazzrah.json",
+      "bossUnits": [
+        "sod-mc-shazzrah"
+      ],
+      "encounterId": 100667,
+      "rawEncounterId": 667,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-sulfuron-harbinger",
+      "boss": "Sulfuron Harbinger",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-sulfuron-harbinger.json",
+      "bossUnits": [
+        "sod-mc-sulfuron-harbinger"
+      ],
+      "encounterId": 100669,
+      "rawEncounterId": 669,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "1RTF2zfK4k9xHCnj",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-mc-the-molten-core",
+      "boss": "The Molten Core",
+      "raid": "Molten Core",
+      "path": "sod/sod-mc-the-molten-core.json",
+      "bossUnits": [
+        "sod-mc-the-molten-core"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 3018,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "sod-naxx-anub-rekhan",
+      "boss": "Anub'Rekhan",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-anub-rekhan.json",
+      "bossUnits": [
+        "sod-naxx-anub-rekhan"
+      ],
+      "encounterId": 201107,
+      "rawEncounterId": 1107,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-four-horsemen",
+      "boss": "The Four Horsemen",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-four-horsemen.json",
+      "bossUnits": [
+        "sod-naxx-four-horsemen"
+      ],
+      "encounterId": 201121,
+      "rawEncounterId": 1121,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-gluth",
+      "boss": "Gluth",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-gluth.json",
+      "bossUnits": [
+        "sod-naxx-gluth"
+      ],
+      "encounterId": 201108,
+      "rawEncounterId": 1108,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-gothik",
+      "boss": "Gothik the Harvester",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-gothik.json",
+      "bossUnits": [
+        "sod-naxx-gothik"
+      ],
+      "encounterId": 201109,
+      "rawEncounterId": 1109,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-grand-widow-faerlina",
+      "boss": "Grand Widow Faerlina",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-grand-widow-faerlina.json",
+      "bossUnits": [
+        "sod-naxx-grand-widow-faerlina"
+      ],
+      "encounterId": 201110,
+      "rawEncounterId": 1110,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-grobbulus",
+      "boss": "Grobbulus",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-grobbulus.json",
+      "bossUnits": [
+        "sod-naxx-grobbulus"
+      ],
+      "encounterId": 201111,
+      "rawEncounterId": 1111,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-heigan",
+      "boss": "Heigan the Unclean",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-heigan.json",
+      "bossUnits": [
+        "sod-naxx-heigan"
+      ],
+      "encounterId": 201112,
+      "rawEncounterId": 1112,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-kelthuzad",
+      "boss": "Kel'Thuzad",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-kelthuzad.json",
+      "bossUnits": [
+        "sod-naxx-kelthuzad"
+      ],
+      "encounterId": 201114,
+      "rawEncounterId": 1114,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-loatheb",
+      "boss": "Loatheb",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-loatheb.json",
+      "bossUnits": [
+        "sod-naxx-loatheb"
+      ],
+      "encounterId": 201115,
+      "rawEncounterId": 1115,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-maexxna",
+      "boss": "Maexxna",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-maexxna.json",
+      "bossUnits": [
+        "sod-naxx-maexxna"
+      ],
+      "encounterId": 201116,
+      "rawEncounterId": 1116,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-noth",
+      "boss": "Noth the Plaguebringer",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-noth.json",
+      "bossUnits": [
+        "sod-naxx-noth"
+      ],
+      "encounterId": 201117,
+      "rawEncounterId": 1117,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-patchwerk",
+      "boss": "Patchwerk",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-patchwerk.json",
+      "bossUnits": [
+        "sod-naxx-patchwerk"
+      ],
+      "encounterId": 201118,
+      "rawEncounterId": 1118,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-razuvious",
+      "boss": "Instructor Razuvious",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-razuvious.json",
+      "bossUnits": [
+        "sod-naxx-razuvious"
+      ],
+      "encounterId": 201113,
+      "rawEncounterId": 1113,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-sapphiron",
+      "boss": "Sapphiron",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-sapphiron.json",
+      "bossUnits": [
+        "sod-naxx-sapphiron"
+      ],
+      "encounterId": 201119,
+      "rawEncounterId": 1119,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-naxx-thaddius",
+      "boss": "Thaddius",
+      "raid": "Naxxramas",
+      "path": "sod/sod-naxx-thaddius.json",
+      "bossUnits": [
+        "sod-naxx-thaddius"
+      ],
+      "encounterId": 201120,
+      "rawEncounterId": 1120,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "V1yL8CDp2GfbHwPt",
+      "eventAvailability": "acquired-not-inspected"
+    },
+    {
+      "unitId": "sod-onyxia",
+      "boss": "Onyxia",
+      "raid": "Onyxia’s Lair",
+      "path": "sod/sod-onyxia.json",
+      "bossUnits": [
+        "sod-onyxia"
+      ],
+      "encounterId": 151084,
+      "rawEncounterId": 1084,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "zZaycN9xBn2CK4vA",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-scarlet-balnazzar",
+      "boss": "Balnazzar",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-balnazzar.json",
+      "bossUnits": [
+        "sod-scarlet-balnazzar"
+      ],
+      "encounterId": 3185,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 10,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-beastmaster",
+      "boss": "Alexei the Beastlord and Sir Dornel",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-beastmaster.json",
+      "bossUnits": [
+        "sod-scarlet-beastmaster"
+      ],
+      "encounterId": 3196,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-beatrix",
+      "boss": "High Commander Beatrix",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-beatrix.json",
+      "bossUnits": [
+        "sod-scarlet-beatrix"
+      ],
+      "encounterId": 3187,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 11,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-caldoran",
+      "boss": "Grand Crusader Caldoran",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-caldoran.json",
+      "bossUnits": [
+        "sod-scarlet-caldoran"
+      ],
+      "encounterId": 3189,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-lilian-voss",
+      "boss": "Lilian Voss",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-lilian-voss.json",
+      "bossUnits": [
+        "sod-scarlet-lilian-voss"
+      ],
+      "encounterId": 3190,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-mason",
+      "boss": "Mason the Echo",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-mason.json",
+      "bossUnits": [
+        "sod-scarlet-mason"
+      ],
+      "encounterId": 3197,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-reborn-council",
+      "boss": "Reborn Council",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-reborn-council.json",
+      "bossUnits": [
+        "sod-scarlet-reborn-council"
+      ],
+      "encounterId": 3188,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 10,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-scarlet-solistrasza",
+      "boss": "Solistrasza",
+      "raid": "Scarlet Enclave",
+      "path": "sod/sod-scarlet-solistrasza.json",
+      "bossUnits": [
+        "sod-scarlet-solistrasza"
+      ],
+      "encounterId": 3186,
+      "rawEncounterId": null,
+      "retainedCombatEventsAvailable": true,
+      "mechanicCount": 9,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-retained-report"
+    },
+    {
+      "unitId": "sod-sunken-temple-atalai-defenders",
+      "boss": "Atal'ai Defenders",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-atalai-defenders.json",
+      "bossUnits": [
+        "sod-sunken-temple-atalai-defenders"
+      ],
+      "encounterId": 2954,
+      "rawEncounterId": 2954,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-atalalarion",
+      "boss": "Atal'alarion",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-atalalarion.json",
+      "bossUnits": [
+        "sod-sunken-temple-atalalarion"
+      ],
+      "encounterId": 2952,
+      "rawEncounterId": 2952,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 3,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-avatar-hakkar",
+      "boss": "Avatar of Hakkar",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-avatar-hakkar.json",
+      "bossUnits": [
+        "sod-sunken-temple-avatar-hakkar"
+      ],
+      "encounterId": 2956,
+      "rawEncounterId": 2956,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-dreamscythe-weaver",
+      "boss": "Dreamscythe and Weaver",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-dreamscythe-weaver.json",
+      "bossUnits": [
+        "sod-sunken-temple-dreamscythe-weaver"
+      ],
+      "encounterId": 2955,
+      "rawEncounterId": 2955,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 4,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-festering-rotslime",
+      "boss": "Festering Rotslime",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-festering-rotslime.json",
+      "bossUnits": [
+        "sod-sunken-temple-festering-rotslime"
+      ],
+      "encounterId": 2953,
+      "rawEncounterId": 2953,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-jammalan-ogom",
+      "boss": "Jammal'an and Ogom",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-jammalan-ogom.json",
+      "bossUnits": [
+        "sod-sunken-temple-jammalan-ogom"
+      ],
+      "encounterId": 2957,
+      "rawEncounterId": 2957,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-morphaz-hazzas",
+      "boss": "Morphaz and Hazzas",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-morphaz-hazzas.json",
+      "bossUnits": [
+        "sod-sunken-temple-morphaz-hazzas"
+      ],
+      "encounterId": 2958,
+      "rawEncounterId": 2958,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-sunken-temple-shade-eranikus",
+      "boss": "Shade of Eranikus",
+      "raid": "Sunken Temple",
+      "path": "sod/sod-sunken-temple-shade-eranikus.json",
+      "bossUnits": [
+        "sod-sunken-temple-shade-eranikus"
+      ],
+      "encounterId": 2959,
+      "rawEncounterId": 2959,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "MrXpNgqw3f4KnQhD",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-arlokk",
+      "boss": "High Priestess Arlokk",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-arlokk.json",
+      "bossUnits": [
+        "sod-zg-arlokk"
+      ],
+      "encounterId": 100791,
+      "rawEncounterId": 791,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-edge-of-madness",
+      "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-edge-of-madness.json",
+      "bossUnits": [
+        "sod-zg-edge-of-madness"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 788,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "variants": [
+        "Gri'lek",
+        "Hazza'rah",
+        "Renataki",
+        "Wushoolay"
+      ],
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "sod-zg-gahzranka",
+      "boss": "Gahz'ranka",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-gahzranka.json",
+      "bossUnits": [
+        "sod-zg-gahzranka"
+      ],
+      "encounterId": null,
+      "rawEncounterId": 790,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 5,
+      "verification": "unverified",
+      "providerMappingStatus": "unresolved"
+    },
+    {
+      "unitId": "sod-zg-hakkar",
+      "boss": "Hakkar the Soulflayer",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-hakkar.json",
+      "bossUnits": [
+        "sod-zg-hakkar"
+      ],
+      "encounterId": 100793,
+      "rawEncounterId": 793,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 8,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-jeklik",
+      "boss": "High Priestess Jeklik",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-jeklik.json",
+      "bossUnits": [
+        "sod-zg-jeklik"
+      ],
+      "encounterId": 100785,
+      "rawEncounterId": 785,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-jindo",
+      "boss": "Jin'do the Hexxer",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-jindo.json",
+      "bossUnits": [
+        "sod-zg-jindo"
+      ],
+      "encounterId": 100792,
+      "rawEncounterId": 792,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-mandokir",
+      "boss": "Bloodlord Mandokir",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-mandokir.json",
+      "bossUnits": [
+        "sod-zg-mandokir"
+      ],
+      "encounterId": 100787,
+      "rawEncounterId": 787,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 6,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-marli",
+      "boss": "High Priestess Mar'li",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-marli.json",
+      "bossUnits": [
+        "sod-zg-marli"
+      ],
+      "encounterId": 100786,
+      "rawEncounterId": 786,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-thekal",
+      "boss": "High Priest Thekal",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-thekal.json",
+      "bossUnits": [
+        "sod-zg-thekal"
+      ],
+      "encounterId": 100789,
+      "rawEncounterId": 789,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    },
+    {
+      "unitId": "sod-zg-venoxis",
+      "boss": "High Priest Venoxis",
+      "raid": "Zul'Gurub",
+      "path": "sod/sod-zg-venoxis.json",
+      "bossUnits": [
+        "sod-zg-venoxis"
+      ],
+      "encounterId": 100784,
+      "rawEncounterId": 784,
+      "retainedCombatEventsAvailable": false,
+      "mechanicCount": 7,
+      "verification": "unverified",
+      "providerMappingStatus": "mapped-from-report-metadata",
+      "metadataReportCode": "pm8aZFJGxCjqDh9k",
+      "eventAvailability": "archived-inaccessible"
+    }
+  ],
+  "units": [
+    {
+      "unitId": "sod-aq20-ayamiss",
+      "boss": "Ayamiss the Hunter",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-ayamiss.json",
+      "canonicalUnitId": "sod-aq20-ayamiss"
+    },
+    {
+      "unitId": "sod-aq20-buru",
+      "boss": "Buru the Gorger",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-buru.json",
+      "canonicalUnitId": "sod-aq20-buru"
+    },
+    {
+      "unitId": "sod-aq20-kurinnaxx",
+      "boss": "Kurinnaxx",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-kurinnaxx.json",
+      "canonicalUnitId": "sod-aq20-kurinnaxx"
+    },
+    {
+      "unitId": "sod-aq20-moam",
+      "boss": "Moam",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-moam.json",
+      "canonicalUnitId": "sod-aq20-moam"
+    },
+    {
+      "unitId": "sod-aq20-ossirian",
+      "boss": "Ossirian the Unscarred",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-ossirian.json",
+      "canonicalUnitId": "sod-aq20-ossirian"
+    },
+    {
+      "unitId": "sod-aq20-rajaxx",
+      "boss": "General Rajaxx and wave commanders",
+      "raid": "Ruins of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq20-rajaxx.json",
+      "canonicalUnitId": "sod-aq20-rajaxx"
+    },
+    {
+      "unitId": "sod-aq40-cthun",
+      "boss": "C'Thun",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-cthun.json",
+      "canonicalUnitId": "sod-aq40-cthun"
+    },
+    {
+      "unitId": "sod-aq40-fankriss",
+      "boss": "Fankriss the Unyielding",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-fankriss.json",
+      "canonicalUnitId": "sod-aq40-fankriss"
+    },
+    {
+      "unitId": "sod-aq40-huhuran",
+      "boss": "Princess Huhuran",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-huhuran.json",
+      "canonicalUnitId": "sod-aq40-huhuran"
+    },
+    {
+      "unitId": "sod-aq40-ouro",
+      "boss": "Ouro",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-ouro.json",
+      "canonicalUnitId": "sod-aq40-ouro"
+    },
+    {
+      "unitId": "sod-aq40-sartura",
+      "boss": "Battleguard Sartura",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-sartura.json",
+      "canonicalUnitId": "sod-aq40-sartura"
+    },
+    {
+      "unitId": "sod-aq40-silithid-royalty",
+      "boss": "Silithid Royalty",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-silithid-royalty.json",
+      "canonicalUnitId": "sod-aq40-silithid-royalty"
+    },
+    {
+      "unitId": "sod-aq40-skeram",
+      "boss": "The Prophet Skeram",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-skeram.json",
+      "canonicalUnitId": "sod-aq40-skeram"
+    },
+    {
+      "unitId": "sod-aq40-twin-emperors",
+      "boss": "Twin Emperors",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-twin-emperors.json",
+      "canonicalUnitId": "sod-aq40-twin-emperors"
+    },
+    {
+      "unitId": "sod-aq40-viscidus",
+      "boss": "Viscidus",
+      "raid": "Temple of Ahn'Qiraj",
+      "encounterFile": "sod/sod-aq40-viscidus.json",
+      "canonicalUnitId": "sod-aq40-viscidus"
+    },
+    {
+      "unitId": "sod-bfd-akumai",
+      "boss": "Aku'mai",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-akumai.json",
+      "canonicalUnitId": "sod-bfd-akumai"
+    },
+    {
+      "unitId": "sod-bfd-baron-aquanis",
+      "boss": "Baron Aquanis",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-baron-aquanis.json",
+      "canonicalUnitId": "sod-bfd-baron-aquanis"
+    },
+    {
+      "unitId": "sod-bfd-gelihast",
+      "boss": "Gelihast",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-gelihast.json",
+      "canonicalUnitId": "sod-bfd-gelihast"
+    },
+    {
+      "unitId": "sod-bfd-ghamoo-ra",
+      "boss": "Ghamoo-ra",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-ghamoo-ra.json",
+      "canonicalUnitId": "sod-bfd-ghamoo-ra"
+    },
+    {
+      "unitId": "sod-bfd-lady-sarevess",
+      "boss": "Lady Sarevess",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-lady-sarevess.json",
+      "canonicalUnitId": "sod-bfd-lady-sarevess"
+    },
+    {
+      "unitId": "sod-bfd-lorgus-jett",
+      "boss": "Lorgus Jett",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-lorgus-jett.json",
+      "canonicalUnitId": "sod-bfd-lorgus-jett"
+    },
+    {
+      "unitId": "sod-bfd-twilight-lord-kelris",
+      "boss": "Twilight Lord Kelris",
+      "raid": "Blackfathom Deeps",
+      "encounterFile": "sod/sod-bfd-twilight-lord-kelris.json",
+      "canonicalUnitId": "sod-bfd-twilight-lord-kelris"
+    },
+    {
+      "unitId": "sod-bwl-broodlord",
+      "boss": "Broodlord Lashlayer",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-broodlord.json",
+      "canonicalUnitId": "sod-bwl-broodlord"
+    },
+    {
+      "unitId": "sod-bwl-chromaggus",
+      "boss": "Chromaggus",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-chromaggus.json",
+      "canonicalUnitId": "sod-bwl-chromaggus"
+    },
+    {
+      "unitId": "sod-bwl-ebonroc",
+      "boss": "Ebonroc",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-ebonroc-and-flamegor.json",
+      "canonicalUnitId": "sod-bwl-ebonroc-and-flamegor"
+    },
+    {
+      "unitId": "sod-bwl-flamegor",
+      "boss": "Flamegor",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-ebonroc-and-flamegor.json",
+      "canonicalUnitId": "sod-bwl-ebonroc-and-flamegor"
+    },
+    {
+      "unitId": "sod-bwl-firemaw",
+      "boss": "Firemaw",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-firemaw.json",
+      "canonicalUnitId": "sod-bwl-firemaw"
+    },
+    {
+      "unitId": "sod-bwl-nefarian",
+      "boss": "Nefarian",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-nefarian.json",
+      "canonicalUnitId": "sod-bwl-nefarian"
+    },
+    {
+      "unitId": "sod-bwl-razorgore",
+      "boss": "Razorgore the Untamed",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-razorgore.json",
+      "canonicalUnitId": "sod-bwl-razorgore"
+    },
+    {
+      "unitId": "sod-bwl-vaelastrasz",
+      "boss": "Vaelastrasz the Corrupt",
+      "raid": "Blackwing Lair",
+      "encounterFile": "sod/sod-bwl-vaelastrasz.json",
+      "canonicalUnitId": "sod-bwl-vaelastrasz"
+    },
+    {
+      "unitId": "sod-gnomeregan-crowd-pummeler",
+      "boss": "Crowd Pummeler 9-60",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-crowd-pummeler.json",
+      "canonicalUnitId": "sod-gnomeregan-crowd-pummeler"
+    },
+    {
+      "unitId": "sod-gnomeregan-electrocutioner",
+      "boss": "Electrocutioner 6000",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-electrocutioner.json",
+      "canonicalUnitId": "sod-gnomeregan-electrocutioner"
+    },
+    {
+      "unitId": "sod-gnomeregan-grubbis",
+      "boss": "Grubbis",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-grubbis.json",
+      "canonicalUnitId": "sod-gnomeregan-grubbis"
+    },
+    {
+      "unitId": "sod-gnomeregan-mechanical-menagerie",
+      "boss": "Mechanical Menagerie",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-mechanical-menagerie.json",
+      "canonicalUnitId": "sod-gnomeregan-mechanical-menagerie"
+    },
+    {
+      "unitId": "sod-gnomeregan-mekgineer-thermaplugg",
+      "boss": "Mekgineer Thermaplugg",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-mekgineer-thermaplugg.json",
+      "canonicalUnitId": "sod-gnomeregan-mekgineer-thermaplugg"
+    },
+    {
+      "unitId": "sod-gnomeregan-viscous-fallout",
+      "boss": "Viscous Fallout",
+      "raid": "Gnomeregan",
+      "encounterFile": "sod/sod-gnomeregan-viscous-fallout.json",
+      "canonicalUnitId": "sod-gnomeregan-viscous-fallout"
+    },
+    {
+      "unitId": "sod-mc-baron-geddon",
+      "boss": "Baron Geddon",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-baron-geddon.json",
+      "canonicalUnitId": "sod-mc-baron-geddon"
+    },
+    {
+      "unitId": "sod-mc-garr",
+      "boss": "Garr",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-garr.json",
+      "canonicalUnitId": "sod-mc-garr"
+    },
+    {
+      "unitId": "sod-mc-gehennas",
+      "boss": "Gehennas",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-gehennas.json",
+      "canonicalUnitId": "sod-mc-gehennas"
+    },
+    {
+      "unitId": "sod-mc-golemagg",
+      "boss": "Golemagg the Incinerator",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-golemagg.json",
+      "canonicalUnitId": "sod-mc-golemagg"
+    },
+    {
+      "unitId": "sod-mc-lucifron",
+      "boss": "Lucifron",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-lucifron.json",
+      "canonicalUnitId": "sod-mc-lucifron"
+    },
+    {
+      "unitId": "sod-mc-magmadar",
+      "boss": "Magmadar",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-magmadar.json",
+      "canonicalUnitId": "sod-mc-magmadar"
+    },
+    {
+      "unitId": "sod-mc-majordomo-executus",
+      "boss": "Majordomo Executus",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-majordomo-executus.json",
+      "canonicalUnitId": "sod-mc-majordomo-executus"
+    },
+    {
+      "unitId": "sod-mc-ragnaros",
+      "boss": "Ragnaros",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-ragnaros.json",
+      "canonicalUnitId": "sod-mc-ragnaros"
+    },
+    {
+      "unitId": "sod-mc-shazzrah",
+      "boss": "Shazzrah",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-shazzrah.json",
+      "canonicalUnitId": "sod-mc-shazzrah"
+    },
+    {
+      "unitId": "sod-mc-sulfuron-harbinger",
+      "boss": "Sulfuron Harbinger",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-sulfuron-harbinger.json",
+      "canonicalUnitId": "sod-mc-sulfuron-harbinger"
+    },
+    {
+      "unitId": "sod-mc-the-molten-core",
+      "boss": "The Molten Core",
+      "raid": "Molten Core",
+      "encounterFile": "sod/sod-mc-the-molten-core.json",
+      "canonicalUnitId": "sod-mc-the-molten-core"
+    },
+    {
+      "unitId": "sod-naxx-anub-rekhan",
+      "boss": "Anub'Rekhan",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-anub-rekhan.json",
+      "canonicalUnitId": "sod-naxx-anub-rekhan"
+    },
+    {
+      "unitId": "sod-naxx-four-horsemen",
+      "boss": "The Four Horsemen",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-four-horsemen.json",
+      "canonicalUnitId": "sod-naxx-four-horsemen"
+    },
+    {
+      "unitId": "sod-naxx-gluth",
+      "boss": "Gluth",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-gluth.json",
+      "canonicalUnitId": "sod-naxx-gluth"
+    },
+    {
+      "unitId": "sod-naxx-gothik",
+      "boss": "Gothik the Harvester",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-gothik.json",
+      "canonicalUnitId": "sod-naxx-gothik"
+    },
+    {
+      "unitId": "sod-naxx-grand-widow-faerlina",
+      "boss": "Grand Widow Faerlina",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-grand-widow-faerlina.json",
+      "canonicalUnitId": "sod-naxx-grand-widow-faerlina"
+    },
+    {
+      "unitId": "sod-naxx-grobbulus",
+      "boss": "Grobbulus",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-grobbulus.json",
+      "canonicalUnitId": "sod-naxx-grobbulus"
+    },
+    {
+      "unitId": "sod-naxx-heigan",
+      "boss": "Heigan the Unclean",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-heigan.json",
+      "canonicalUnitId": "sod-naxx-heigan"
+    },
+    {
+      "unitId": "sod-naxx-kelthuzad",
+      "boss": "Kel'Thuzad",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-kelthuzad.json",
+      "canonicalUnitId": "sod-naxx-kelthuzad"
+    },
+    {
+      "unitId": "sod-naxx-loatheb",
+      "boss": "Loatheb",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-loatheb.json",
+      "canonicalUnitId": "sod-naxx-loatheb"
+    },
+    {
+      "unitId": "sod-naxx-maexxna",
+      "boss": "Maexxna",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-maexxna.json",
+      "canonicalUnitId": "sod-naxx-maexxna"
+    },
+    {
+      "unitId": "sod-naxx-noth",
+      "boss": "Noth the Plaguebringer",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-noth.json",
+      "canonicalUnitId": "sod-naxx-noth"
+    },
+    {
+      "unitId": "sod-naxx-patchwerk",
+      "boss": "Patchwerk",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-patchwerk.json",
+      "canonicalUnitId": "sod-naxx-patchwerk"
+    },
+    {
+      "unitId": "sod-naxx-razuvious",
+      "boss": "Instructor Razuvious",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-razuvious.json",
+      "canonicalUnitId": "sod-naxx-razuvious"
+    },
+    {
+      "unitId": "sod-naxx-sapphiron",
+      "boss": "Sapphiron",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-sapphiron.json",
+      "canonicalUnitId": "sod-naxx-sapphiron"
+    },
+    {
+      "unitId": "sod-naxx-thaddius",
+      "boss": "Thaddius",
+      "raid": "Naxxramas",
+      "encounterFile": "sod/sod-naxx-thaddius.json",
+      "canonicalUnitId": "sod-naxx-thaddius"
+    },
+    {
+      "unitId": "sod-onyxia",
+      "boss": "Onyxia",
+      "raid": "Onyxia’s Lair",
+      "encounterFile": "sod/sod-onyxia.json",
+      "canonicalUnitId": "sod-onyxia"
+    },
+    {
+      "unitId": "sod-scarlet-balnazzar",
+      "boss": "Balnazzar",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-balnazzar.json",
+      "canonicalUnitId": "sod-scarlet-balnazzar"
+    },
+    {
+      "unitId": "sod-scarlet-beastmaster",
+      "boss": "Alexei the Beastlord and Sir Dornel",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-beastmaster.json",
+      "canonicalUnitId": "sod-scarlet-beastmaster"
+    },
+    {
+      "unitId": "sod-scarlet-beatrix",
+      "boss": "High Commander Beatrix",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-beatrix.json",
+      "canonicalUnitId": "sod-scarlet-beatrix"
+    },
+    {
+      "unitId": "sod-scarlet-caldoran",
+      "boss": "Grand Crusader Caldoran",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-caldoran.json",
+      "canonicalUnitId": "sod-scarlet-caldoran"
+    },
+    {
+      "unitId": "sod-scarlet-lilian-voss",
+      "boss": "Lilian Voss",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-lilian-voss.json",
+      "canonicalUnitId": "sod-scarlet-lilian-voss"
+    },
+    {
+      "unitId": "sod-scarlet-mason",
+      "boss": "Mason the Echo",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-mason.json",
+      "canonicalUnitId": "sod-scarlet-mason"
+    },
+    {
+      "unitId": "sod-scarlet-reborn-council",
+      "boss": "Reborn Council",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-reborn-council.json",
+      "canonicalUnitId": "sod-scarlet-reborn-council"
+    },
+    {
+      "unitId": "sod-scarlet-solistrasza",
+      "boss": "Solistrasza",
+      "raid": "Scarlet Enclave",
+      "encounterFile": "sod/sod-scarlet-solistrasza.json",
+      "canonicalUnitId": "sod-scarlet-solistrasza"
+    },
+    {
+      "unitId": "sod-sunken-temple-atalai-defenders",
+      "boss": "Atal'ai Defenders",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-atalai-defenders.json",
+      "canonicalUnitId": "sod-sunken-temple-atalai-defenders"
+    },
+    {
+      "unitId": "sod-sunken-temple-atalalarion",
+      "boss": "Atal'alarion",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-atalalarion.json",
+      "canonicalUnitId": "sod-sunken-temple-atalalarion"
+    },
+    {
+      "unitId": "sod-sunken-temple-avatar-hakkar",
+      "boss": "Avatar of Hakkar",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-avatar-hakkar.json",
+      "canonicalUnitId": "sod-sunken-temple-avatar-hakkar"
+    },
+    {
+      "unitId": "sod-sunken-temple-dreamscythe-weaver",
+      "boss": "Dreamscythe and Weaver",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-dreamscythe-weaver.json",
+      "canonicalUnitId": "sod-sunken-temple-dreamscythe-weaver"
+    },
+    {
+      "unitId": "sod-sunken-temple-festering-rotslime",
+      "boss": "Festering Rotslime",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-festering-rotslime.json",
+      "canonicalUnitId": "sod-sunken-temple-festering-rotslime"
+    },
+    {
+      "unitId": "sod-sunken-temple-jammalan-ogom",
+      "boss": "Jammal'an and Ogom",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-jammalan-ogom.json",
+      "canonicalUnitId": "sod-sunken-temple-jammalan-ogom"
+    },
+    {
+      "unitId": "sod-sunken-temple-morphaz-hazzas",
+      "boss": "Morphaz and Hazzas",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-morphaz-hazzas.json",
+      "canonicalUnitId": "sod-sunken-temple-morphaz-hazzas"
+    },
+    {
+      "unitId": "sod-sunken-temple-shade-eranikus",
+      "boss": "Shade of Eranikus",
+      "raid": "Sunken Temple",
+      "encounterFile": "sod/sod-sunken-temple-shade-eranikus.json",
+      "canonicalUnitId": "sod-sunken-temple-shade-eranikus"
+    },
+    {
+      "unitId": "sod-zg-arlokk",
+      "boss": "High Priestess Arlokk",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-arlokk.json",
+      "canonicalUnitId": "sod-zg-arlokk"
+    },
+    {
+      "unitId": "sod-zg-edge-of-madness",
+      "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-edge-of-madness.json",
+      "canonicalUnitId": "sod-zg-edge-of-madness"
+    },
+    {
+      "unitId": "sod-zg-gahzranka",
+      "boss": "Gahz'ranka",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-gahzranka.json",
+      "canonicalUnitId": "sod-zg-gahzranka"
+    },
+    {
+      "unitId": "sod-zg-hakkar",
+      "boss": "Hakkar the Soulflayer",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-hakkar.json",
+      "canonicalUnitId": "sod-zg-hakkar"
+    },
+    {
+      "unitId": "sod-zg-jeklik",
+      "boss": "High Priestess Jeklik",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-jeklik.json",
+      "canonicalUnitId": "sod-zg-jeklik"
+    },
+    {
+      "unitId": "sod-zg-jindo",
+      "boss": "Jin'do the Hexxer",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-jindo.json",
+      "canonicalUnitId": "sod-zg-jindo"
+    },
+    {
+      "unitId": "sod-zg-mandokir",
+      "boss": "Bloodlord Mandokir",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-mandokir.json",
+      "canonicalUnitId": "sod-zg-mandokir"
+    },
+    {
+      "unitId": "sod-zg-marli",
+      "boss": "High Priestess Mar'li",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-marli.json",
+      "canonicalUnitId": "sod-zg-marli"
+    },
+    {
+      "unitId": "sod-zg-thekal",
+      "boss": "High Priest Thekal",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-thekal.json",
+      "canonicalUnitId": "sod-zg-thekal"
+    },
+    {
+      "unitId": "sod-zg-venoxis",
+      "boss": "High Priest Venoxis",
+      "raid": "Zul'Gurub",
+      "encounterFile": "sod/sod-zg-venoxis.json",
+      "canonicalUnitId": "sod-zg-venoxis"
+    }
+  ]
+}

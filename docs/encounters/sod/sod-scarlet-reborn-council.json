@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-reborn-council",
+  "ruleset": "sod",
+  "boss": "Reborn Council",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3188,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-reborn-council"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/reborn-council-scarlet-enclave-strategy",
+      "quality": "authored SoD guide",
+      "date": "2025-04-21",
+      "caveat": "Berserk timer stale; no pixel parity",
+      "id": "source-01"
+    },
+    {
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss6.html",
+      "quality": "authored SoD guide",
+      "date": "2025-05-09",
+      "caveat": "WIP; orbit rate and precise geometry unmeasured",
+      "id": "source-02"
+    },
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24179333/hotfixes-april-28-2025",
+      "quality": "primary official",
+      "scope": "Blast Wave vertical arc hotfix",
+      "id": "source-03"
+    },
+    {
+      "quality": "primary current-client visual records",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-04",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "primary retained combat log",
+      "fight": 13,
+      "id": "source-05",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Molten Basin",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231282 completion and1231133 self application",
+      "state": "Doan activates Molten Basin. Its observed aura controls each active window; the basin persists after Doan dies.",
+      "lifecycle": "99.855-149.783s;173.686s-end",
+      "placement": "NPC242660 lower room XY;Z unknown",
+      "animation": "visual160325 kit229492, preserved offsets0/0/-4",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C01",
+      "acceptanceCriteria": "C01",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Volcanic Unrest",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1236152 on NPC244819 pair",
+      "state": "Primordial Flame actors have Basin-linked activity. Researched opposite clockwise motion does not establish an exact orbit.",
+      "lifecycle": "Basin-linked windows;derived end required",
+      "placement": "upper orbit;start XY logged, exact path unknown",
+      "animation": "visual162234 kit232422",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C02",
+      "acceptanceCriteria": "C02",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Herod after death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "168 death;171 self aura1236306",
+      "state": "A separate Divine Avatar host continues Herod’s mechanic after the living Herod dies.",
+      "lifecycle": "68.846-186.015s",
+      "placement": "secondary NPC242828 distinct from dead240795",
+      "animation": "channel kit232474 LoopAnimID125",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C03",
+      "acceptanceCriteria": "C03",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Divine Strike",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231383 or1236306;1231493 impacts",
+      "state": "Divine Strike has a ground warning and later impact. Damage recipients do not establish the warning destination.",
+      "lifecycle": "warning precedes impacts;unmeasured warning duration",
+      "placement": "Area destination absent",
+      "animation": "visual162280 kit232472",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C04",
+      "acceptanceCriteria": "C04",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Vishas live",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231389/1231384/1231387/1231095",
+      "state": "Vishas uses Vanish, Stalk, Garrote and Peeled Secrets. Each cast or aura has its own owner and terminal evidence.",
+      "lifecycle": "cast interrupts;logged aura removal",
+      "placement": "recorded targets and discontinuities",
+      "animation": "authored Vanish procedures1/6/14 incomplete",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C05",
+      "acceptanceCriteria": "C05",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Herod live",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231264/1231312/1231314/1231383",
+      "state": "Herod uses Blades of Light, Whirlwind, Radiant Divide and Divine Avatar while alive.",
+      "lifecycle": "cast/aura windows",
+      "placement": "boss-centered whirlwind and frontal facing",
+      "animation": "authored host animations",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C06",
+      "acceptanceCriteria": "C06",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C07",
+      "mechanic": "Doan live",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231200/1231538/1230996/1236220/1228010",
+      "state": "Doan uses Fireball, Blast Wave, Imbued Assault, Slow and Teleport. Resolved positions and recipients remain independent.",
+      "lifecycle": "cast-impact/removal/death",
+      "placement": "teleport position and actual damage timing",
+      "animation": "current authored graph",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C07",
+      "acceptanceCriteria": "C07",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C08",
+      "mechanic": "Reborn Inspiration",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1231227/1231230/1231231",
+      "state": "Reborn Inspiration effects have actual owners and recipients. Proximity alone does not create an unrecorded aura.",
+      "lifecycle": "recorded aura applications/refresh/removal",
+      "placement": "correct aura recipient",
+      "animation": "no synthetic ground hazards",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C08",
+      "acceptanceCriteria": "C08",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C09",
+      "mechanic": "Veil of Darkness",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "1236265 at186.014s",
+      "state": "Veil of Darkness is a researched room effect. Its exact visual and end-state relationship remain unresolved.",
+      "lifecycle": "encounter boundary",
+      "placement": "room-wide;exact visual unknown",
+      "animation": "no declared current-client visual",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C09",
+      "acceptanceCriteria": "C09",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "C10",
+      "mechanic": "seek and boundaries",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "seek/end/wipe",
+      "state": "Actor presence, recipient state and effect age reconstruct consistently at the same seek time.",
+      "lifecycle": "clear or reconstruct state",
+      "placement": "same active actors on repeated seek",
+      "animation": "absolute effect age not in contract",
+      "acceptanceCheck": "sod-scarlet-reborn-council/C10",
+      "acceptanceCriteria": "C10",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Basin anchor Z and any server-controlled vertical motion;prior blank room captures do not pass",
+    "Exact fill/drain curve or GameObject/liquid object identity",
+    "Flame orbit center/radius/rate/height and movement source",
+    "Holy ground warning destinations/radius/delay",
+    "Molten Remnant identity in retained fight",
+    "Vishas death event missing;Veil cast at186.014s does not independently prove exact death timestamp",
+    "Native endpoint permanent-effect cleanup and seek FX age"
+  ]
+}

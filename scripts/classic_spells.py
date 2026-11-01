@@ -287,6 +287,14 @@ def procedure(row):
     return result
 
 
+def freeze_procedure_compatible(proc):
+    """Only the observed four-zero animation-rate instruction has traced body semantics."""
+    values = proc.get('values')
+    return (type(proc.get('type')) is int and proc['type'] == 11 and proc.get('rendererCompatible') is not False
+            and isinstance(values, list) and len(values) == 4
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and v == 0 for v in values))
+
+
 def trail_procedure_compatible(proc):
     values = proc.get('values', [])
     return (proc.get('type') == 8 and len(values) == 4

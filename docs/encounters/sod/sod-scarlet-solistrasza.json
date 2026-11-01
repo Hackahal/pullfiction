@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-solistrasza",
+  "ruleset": "sod",
+  "boss": "Solistrasza",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3186,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-solistrasza"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/solistrasza-scarlet-enclave-strategy",
+      "quality": "authored exactSoD guide",
+      "limitation": "Generic3-orb description is incomplete for observed phase scaling"
+    },
+    {
+      "id": "S2",
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-scarlet-enclave",
+      "date": "2025-05-01",
+      "quality": "authored exactSoD guide"
+    },
+    {
+      "id": "S3",
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss3.html",
+      "date": "2025-05-09",
+      "quality": "original authored encounter account",
+      "claims": [
+        "red/yellow/plagued forms",
+        "Cremation1/3/5",
+        "Flare marker lacks bar debuff"
+      ]
+    },
+    {
+      "id": "S4",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24179333/hotfixes-april-28-2025",
+      "quality": "official primary hotfix"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Lightforge and form",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded full heal and stack1/2",
+      "state": "Recorded full heal and stack1/2",
+      "lifecycle": "Same boss instance survives two transitions, final kill separate",
+      "placement": "Preserve actor position/scale; phase form needs sourced display linkage",
+      "animation": "Transition knockback and form change separate from death",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-FORMS",
+      "acceptanceCriteria": "SOL-FORMS",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Tarnished Breath",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast and tank debuff",
+      "state": "Recorded cast and tank debuff",
+      "lifecycle": "Stack/contact damage and removal",
+      "placement": "Tank target; do not assume a traditional cone",
+      "animation": "Actual cast/aura kit",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-TANK",
+      "acceptanceCriteria": "SOL-TANK",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Cremation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded casts and individual projectile/stalker results",
+      "state": "Recorded casts and individual projectile/stalker results",
+      "lifecycle": "Launch, travel, land, temporary fire, cleanup",
+      "placement": "Frozen ranged destination per launch, not moving victim",
+      "animation": "Yellow orb/impact/fire source assets",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-CREMATION",
+      "acceptanceCriteria": "SOL-CREMATION",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Radiant Light",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded impact and sourced warnings",
+      "state": "Recorded impact and sourced warnings",
+      "lifecycle": "Telegraph/fall/impact, then stop",
+      "placement": "Independent ground destinations, unknown until evidence",
+      "animation": "Falling light distinct from body aura",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-RADIANT",
+      "acceptanceCriteria": "SOL-RADIANT",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Hallowed Dive",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded activation and impact state",
+      "state": "Recorded activation and impact state",
+      "lifecycle": "Takeoff, warning, move/fall, ground impact, recovery",
+      "placement": "Source/destination XY and altitude distinct",
+      "animation": "Authored server/AnimKit transition, not static ground casting",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-DIVE",
+      "acceptanceCriteria": "SOL-DIVE",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Whelps",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Dive-related recorded actors",
+      "state": "Dive-related recorded actors",
+      "lifecycle": "Three instances per wave; individual death/explosion or timed expiry",
+      "placement": "Individual instances, never combine trash lookalikes",
+      "animation": "Growing/bloating and detonation need actual record",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-WHELPS",
+      "acceptanceCriteria": "SOL-WHELPS",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Crimson Flare",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Visible targeted warning, freeze, breath",
+      "state": "Visible targeted warning, freeze, breath",
+      "lifecycle": "Marker follows then freezes; channel/line fire then persistent endpoint",
+      "placement": "Target/destination provenance and line facing",
+      "animation": "Beam and terrain fire independent",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-FLARE",
+      "acceptanceCriteria": "SOL-FLARE",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Blistering Vent",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded raid debuff/damage",
+      "state": "Recorded raid debuff/damage",
+      "lifecycle": "Raid pulse duration and removal",
+      "placement": "Affected actors; no invented world hazard",
+      "animation": "Actual aura kit only",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-VENT",
+      "acceptanceCriteria": "SOL-VENT",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Kill/wipe/seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Explicit HP/lifecycle/end",
+      "state": "Explicit HP/lifecycle/end",
+      "lifecycle": "Preserve reset boss, cancel final effects; rebuild original age on seek",
+      "placement": "Ground areas independent of actor presence",
+      "animation": "No replayed impact on seek, no invented revival schedule",
+      "acceptanceCheck": "sod-scarlet-solistrasza/SOL-END-SEEK",
+      "acceptanceCriteria": "SOL-END-SEEK",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    {
+      "id": "SOL-G1",
+      "finding": "Form route unresolved: static126697 display packet and Lightforge kits without procedures do not establish absence of texture/body change",
+      "evidence": "visual159429 kits228121/228122:cast attachment1722 scale2,animations54/52,no proceduralEffects; full spell-effect aura/client script semantics absent",
+      "required": "Resolve exact form linkage and visible behavior before selecting display, texture or body mechanism"
+    },
+    "Form display/texture identities",
+    "Actual flight height/path",
+    "Area centers/radii/lifetimes",
+    "Cremation projectile linkage absent from observed1228044 graph",
+    "CrimsonFlare and BlisteringVent unobserved, no scheduling allowed",
+    "Timed-whelp expiry and wipe unobserved",
+    "Final corpse/despawn duration",
+    "Current client postdates retained log"
+  ]
+}

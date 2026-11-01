@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-grand-widow-faerlina",
+  "ruleset": "sod",
+  "boss": "Grand Widow Faerlina",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201110,
+  "rawEncounterId": 1110,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        12
+      ],
+      "selectedFightNames": [
+        "Grand Widow Faerlina"
+      ],
+      "matchedNpcTemplateIds": [
+        15953,
+        16505,
+        16506
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-grand-widow-faerlina"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Faerlina.lua",
+      "quality": "Primary addon author source for map533; shared Classic modules are not independently SoD timing proof. Use explicit ruleset branches where present; no retained event/server execution credit",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Grand_Widow_Faerlina_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; quarter and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "naxx-live-notes",
+      "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-phase-7-patch-notes/2052277",
+      "quality": "Primary January28 2025 live patch notes: five-player pylon channel, quarter mechanics and global difficulty; Sanctified/Seal capped benefit"
+    },
+    {
+      "id": "naxx-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "quality": "Authored exact SoD overview February26 2025; quarter effects useful, Seal ranks8-10 section superseded by March10 cap"
+    },
+    {
+      "id": "seal-cap",
+      "url": "https://www.bluetracker.gg/wow/topic/us-en/2074031-seal-of-the-dawn-capped-march-10/",
+      "quality": "Kaivax March10 2025 official statement mirrored verbatim by BlueTracker; Seal capped at7"
+    },
+    {
+      "id": "construct-primary",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Trash.lua",
+      "quality": "Explicit SoD-only primary addon registers Overcharged1219235 application/removal across Construct bosses"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Widow's Embrace and frenzy cancellation",
+      "spellIds": [
+        28732,
+        28798
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Embrace on15953 and actual Frenzy application/removal",
+      "state": "Actual Embrace on15953 and actual Frenzy application/removal",
+      "lifecycle": "Sacrificed Worshipper dies independently; suppression/removal is not guaranteed by arbitrary nearby add death",
+      "placement": "Actual Embrace source and boss recipient; range unknown without exact record",
+      "animation": "Boss aura, Worshipper sacrifice and frenzy body state separate",
+      "acceptanceCheck": "sod-naxx-grand-widow-faerlina/NAX-FAER-EMBRACE",
+      "acceptanceCriteria": "NAX-FAER-EMBRACE: exact recipient and order prevent phantom frenzy; direct seek across sacrifice/removal deterministic",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Follower and Worshipper state",
+      "spellIds": [
+        30225
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual six add identities and source Silence",
+      "state": "Actual six add identities and source Silence",
+      "lifecycle": "Keep species, ownership, control if observed and life state independent; no automatic mind control",
+      "placement": "Actual source/target movement; no fixed add formation",
+      "animation": "Controlled actor allegiance separate from particles and corpse",
+      "acceptanceCheck": "sod-naxx-grand-widow-faerlina/NAX-FAER-ADDS",
+      "acceptanceCriteria": "NAX-FAER-ADDS: follower death cannot stand in for Worshipper sacrifice; control only from actual evidence",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Rain and poison volley",
+      "spellIds": [
+        28794,
+        28796
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual contact area/damage and volley recipients",
+      "state": "Actual contact area/damage and volley recipients",
+      "lifecycle": "Persistent rain independent of target contact; poison application/removal per recipient",
+      "placement": "Actual patch/destination; no target-centered radius guess",
+      "animation": "Rain world effect separate from poison body aura",
+      "acceptanceCheck": "sod-naxx-grand-widow-faerlina/NAX-FAER-RAIN",
+      "acceptanceCriteria": "NAX-FAER-RAIN: overlapping rain areas retain original age, poison dispel cannot erase rain",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life/end event",
+      "state": "Actual life/end event",
+      "lifecycle": "Cancel owned casts and proven areas; retain unclosed target continuation for audit",
+      "placement": "No lastSeen cleanup",
+      "animation": "Boss/add death separate",
+      "acceptanceCheck": "sod-naxx-grand-widow-faerlina/NAX-FAER-END",
+      "acceptanceCriteria": "NAX-FAER-END: no stale frenzy, poison or unowned egg cleanup after seek/reset",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "SoD empowered Arachnid eggs",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded egg creation/explosion when Arachnid empowered",
+      "state": "Egg objects and spawned allied spiders distinct from normal hostile boss adds",
+      "lifecycle": "Spawn, explosion/knockback and spider continuation individually bounded by evidence",
+      "placement": "Actual object anchors and affected players; no random schedule or guessed spawn ring",
+      "animation": "Egg/hatch and knockback route unresolved; unique-name client candidate1218198 is not an observed trigger",
+      "acceptanceCheck": "sod-naxx-grand-widow-faerlina/SOD-EGGS",
+      "acceptanceCriteria": "SOD-EGGS: preserve allied-spider ownership and target; no eggs in unempowered control pull",
+      "sourceRefs": [
+        "naxx-live-notes",
+        "naxx-overview"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Current SoD sacrifice activation route: controlled spell versus automatic death not established",
+    "Rain footprint/lifetime and exact silence recipients",
+    "Any SoD tuning beyond shared quarter mechanic; no genericWrath parity claimed",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "15953, 16505, 16506",
+    "empowermentContext": "Per-encounter quarter state and Seal of Dawn effect required; no default empowerment or HP multiplier assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

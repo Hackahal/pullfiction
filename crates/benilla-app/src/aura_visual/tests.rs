@@ -830,6 +830,64 @@ fn app_with_freeze() -> App {
     app
 }
 
+#[test]
+fn modern_zero_rate_import_freezes_and_restores_the_actual_animation_clocks() {
+    const WEB_WRAP: u32 = 28622;
+    let mut app = app_with_freeze();
+    let data = serde_json::json!({"schema":1,"effects":{},
+        "kits":{"3378":{"effects":[],"animations":[],"proceduralEffects":[
+            {"id":356922,"type":11,"values":[0,0,0,0]}]}},
+        "visuals":{"4325":{"events":[{"start":"Aura Start","target":"Target","kit":3378}],"missiles":[]}}});
+    let mut visuals =
+        benilla_formats::SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    visuals
+        .merge_modern_json(&serde_json::to_vec(&data).unwrap())
+        .unwrap();
+    app.insert_resource(SpellVisuals(visuals));
+    app.insert_resource(crate::ui_action::Spells {
+        catalog: benilla_formats::SpellCatalog::from_displays(HashMap::from([(
+            WEB_WRAP,
+            benilla_formats::SpellDisplay {
+                visual: 4325,
+                ..Default::default()
+            },
+        )])),
+        ..crate::ui_action::Spells::empty_for_tests()
+    });
+    let unit = app
+        .world_mut()
+        .spawn((
+            crate::net::ObjectStore(
+                ObjectFields::from_pairs(&[(47, WEB_WRAP), (95, 0x0E)])
+                    .into_created(benilla_protocol::messages::ObjectType::Unit),
+            ),
+            rig_playing(&[(4, 1.35), (54, 1.)]),
+        ))
+        .id();
+    app.update();
+    app.update();
+    assert_eq!(
+        app.world()
+            .entity(unit)
+            .get::<AuraNodes>()
+            .unwrap()
+            .head_anim_rate(),
+        Some(0.)
+    );
+    assert_eq!(clip(&app, unit, 4), (true, 1.35));
+    assert_eq!(clip(&app, unit, 54), (true, 1.));
+    crate::net::apply_fields_for_test(
+        app.world_mut(),
+        unit,
+        ObjectFields::from_pairs(&[(95, 0)])
+            .into_created(benilla_protocol::messages::ObjectType::Unit),
+    );
+    app.update();
+    assert_eq!(clip(&app, unit, 4), (false, 1.35));
+    assert_eq!(clip(&app, unit, 54), (false, 1.));
+    assert!(app.world().entity(unit).get::<AnimRateFreeze>().is_none());
+}
+
 fn rig_playing(speeds: &[(u32, f32)]) -> AnimationPlayer {
     let mut player = AnimationPlayer::default();
     for (node, speed) in speeds {

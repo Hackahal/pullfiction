@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-kelthuzad",
+  "ruleset": "vanilla",
+  "boss": "Kel'Thuzad",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51114,
+  "rawEncounterId": 1114,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-kelthuzad"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/FrostwyrmLair/Kel'Thuzad.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/kelthuzad-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-14",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/npc=16441",
+      "urls": [
+        "https://www.wowhead.com/classic/npc=16427/soldier-of-the-frozen-wastes",
+        "https://www.wowhead.com/classic/npc=16428/unstoppable-abomination",
+        "https://www.wowhead.com/classic/npc=16429/soul-weaver",
+        "https://www.wowhead.com/classic/spell=25646/mortal-wound",
+        "https://www.wowhead.com/classic/spell=28457/dark-blast",
+        "https://www.wowhead.com/classic/spell=28459/wail-of-souls",
+        "https://www.wowhead.com/classic/spell=10836/shackle-shatter",
+        "https://www.wowhead.com/classic/spell=28470/blood-tap",
+        "https://www.wowhead.com/classic/spell=10955/shackle-undead"
+      ],
+      "quality": "Resolved Classic guide identities. Guard count/threshold are expectations, not fabricated summons; no Wrath/SoD resurrection phase."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Recorded phase1 portal prelude",
+      "spellIds": [
+        25646,
+        28457,
+        28459
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual raw encounterstart and phase1 NPC activity",
+      "state": "Soldiers16427, Abominations16428 and Weavers16429 independent from boss",
+      "lifecycle": "Actual deaths and transitions; no timer-generated waves or fixed5minute phase",
+      "placement": "Actual portal/spawn/walk anchors; no guessed radial paths",
+      "animation": "Summon, approach, explosion/knockback and death separate",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Interruptible bolt and instant volley",
+      "spellIds": [
+        28478,
+        28479
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual begin/cast/interrupt and results",
+      "state": "Single tank bolt differs from raid volley",
+      "lifecycle": "Recorded completion, interrupt/death/new cast cap pending action",
+      "placement": "Actual recipients and projectile path anchors",
+      "animation": "Precast, launch and impact preserve timing",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Chains and controlled players",
+      "spellIds": [
+        28410
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual control application and removal",
+      "state": "Player identity retained during hostile actions, boss buffs and heals",
+      "lifecycle": "Actual CC/control end; no automatic tank threat regeneration",
+      "placement": "Observed player path only; no scripted rampage",
+      "animation": "Possession aura, cast ownership and allegiance separate",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Shadow Fissure warning and explosion",
+      "spellIds": [
+        27810
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual warning/area and later hit evidence",
+      "state": "Ground hazard independent from selected player",
+      "lifecycle": "No automatic3second explosion or victim-centered area",
+      "placement": "Actual area destination/host and footprint required",
+      "animation": "Warning age, eruption and cleanup separate",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Detonate Mana and Frost Blast",
+      "spellIds": [
+        27819,
+        27808
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual applications and later results",
+      "state": "Bomb target, nearby explosion victims and frozen players separate",
+      "lifecycle": "Observed aura/impact/removal; no synthesized5second damage",
+      "placement": "Sampled anchors; no inferred complete radius or frozen mesh",
+      "animation": "Host aura, explosion and frozen hold retain effect age",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Classic Guardians and Shackle control",
+      "spellIds": [
+        28470,
+        10955,
+        10836
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Guardian16441 activity, BloodTap and control evidence",
+      "state": "Actual stacks, source/target ownership and surviving adds",
+      "lifecycle": "No five generated Guardians, shatter from count alone or assumed despawn",
+      "placement": "Recorded kite positions; growth/scale not proven by client record",
+      "animation": "Scale procedure, shackle release and animation need native evidence",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M06-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Classic defeat without seasonal resurrection",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death and encounterend",
+      "state": "Independent pending player casts and adds remain evidence-scoped",
+      "lifecycle": "No SoD Mythic death/resurrection or extra seasonal phase",
+      "placement": "No forced postkill NPC placement",
+      "animation": "Corpse and roleplay animation retain only observed state",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M07-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-kelthuzad/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested.",
+    "Primary July21 2026 timer comment gives229.2–231s prelude. Baseline guide describes transition after portal mobs; neither description manufactures the actual transition.",
+    "Guide Abomination MortalWound25646 differs from observed28467 in this Classic cache; no alias."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15990,
+      16427,
+      16428,
+      16429,
+      16441
+    ]
+  }
+}

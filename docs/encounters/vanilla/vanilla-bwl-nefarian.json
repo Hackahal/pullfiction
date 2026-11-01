@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-bwl-nefarian",
+  "ruleset": "vanilla",
+  "boss": "Nefarian",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 50617,
+  "rawEncounterId": 617,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-bwl-nefarian"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Nefarian.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/nefarian-blackwing-lair-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-03-12",
+      "author": "Neryssa",
+      "patch": "Page patch1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/npc=10162/lord-victor-nefarius",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=26350/cleave",
+        "https://www.wowhead.com/classic/spell=23398/involuntary-transformation",
+        "https://www.wowhead.com/classic/spell=23603/wild-polymorph",
+        "https://www.wowhead.com/classic/spell=23415/improved-blessing-of-protection",
+        "https://www.wowhead.com/classic/spell=23418/siphon-blessing",
+        "https://www.wowhead.com/classic/spell=23401/corrupted-healing",
+        "https://www.wowhead.com/classic/spell=23425/corrupted-totems",
+        "https://www.wowhead.com/classic/spell=23397/berserk",
+        "https://www.wowhead.com/classic/npc=14668/corrupted-infernal",
+        "https://www.wowhead.com/classic/npc=14605/bone-construct"
+      ],
+      "quality": "Resolved baseline source identities. Class-call child/player effects are not aliases of the boss call; Hunter durability and Rogue relocation lack a verified spell mapping here."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID6, cachedRevision10001, liveRevision10001; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Victor and Drakonid prelude",
+      "spellIds": [
+        22667
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual dialogue/control and phase1 Drakonid activity",
+      "state": "Victor10162, dragon11583 and six add templates distinct",
+      "lifecycle": "No42kill-generated transition; actual boundary/landing evidence",
+      "placement": "Two doorway spawn anchors and actual paths; no prescribed radial movement",
+      "animation": "Humanoid control, dragon transformation and add deaths separate",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Landing and Shadow Flame",
+      "spellIds": [
+        22539
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded arrival/breath and actual protected recipients",
+      "state": "Raidwide landing attack and later frontal breath remain separate occurrences",
+      "lifecycle": "No automatic cloak immunity or guessed landing timer",
+      "placement": "Landing Z/flight curve unknown; no global height lift",
+      "animation": "Airborne/landing/breath animations require native evidence",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Fear, Veil and dragon melee",
+      "spellIds": [
+        22686,
+        22687,
+        26350
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual casts, curse/removal and melee impacts",
+      "state": "Fear victims, healing-reduction victim and cleave recipients distinct",
+      "lifecycle": "Actual dispel/interrupt/death; no threat-table simulation",
+      "placement": "Measured facing and positions; no full cone/LOS inferred",
+      "animation": "Cast hold, fear motion, curse and melee arcs separate",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Classic player class-call effects",
+      "spellIds": [
+        23398,
+        23603,
+        23415,
+        23418,
+        23401,
+        23425,
+        23397
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual call/unit cue and class-specific player/NPC results",
+      "state": "Druid form, Mage polymorph, Paladin protection, Priest corruption, Shaman totems, Warrior stance preserve owners",
+      "lifecycle": "No30second generated call or forced class effects; actual aura terminals",
+      "placement": "Actual transformed/player positions; no Rogue teleport smoothing",
+      "animation": "Form/equipment/host animation distinct from generic aura",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Hunter, Rogue and Warlock units",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual equipment break, relocation/root or hostile Infernal14668 activity",
+      "state": "Hunter weapon state, Rogue identity and new adds independent",
+      "lifecycle": "No inferred item durability or two generated Infernals per Warlock",
+      "placement": "Observed teleport endpoints and add anchors only",
+      "animation": "Weapons, root, model and summon/death checked separately",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Bone Construct resurrection phase",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual phase/death/corpse and new14605 activity",
+      "state": "Dead phase1 bodies do not become revived by count alone",
+      "lifecycle": "No20percent automatic resurrect or cleanup without source evidence",
+      "placement": "Actual corpse/new-spawn anchor association must be established",
+      "animation": "Skeleton model and original Drakonid corpse separate",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M06-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-bwl-nefarian/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Only nine Classic classes expected; primary multi-version DK/DH call handlers and SoD trials excluded.",
+    "One report does not establish every Drakonid color pair or class-call variant; spell-less unit/equipment state remains unresolved.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5seconds before and10000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      11583,
+      10162,
+      14264,
+      14263,
+      14261,
+      14265,
+      14262,
+      14302,
+      14605,
+      14668
+    ]
+  }
+}

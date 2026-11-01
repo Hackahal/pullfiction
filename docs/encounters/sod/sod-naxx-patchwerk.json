@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-patchwerk",
+  "ruleset": "sod",
+  "boss": "Patchwerk",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201118,
+  "rawEncounterId": 1118,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        21
+      ],
+      "selectedFightNames": [
+        "Patchwerk"
+      ],
+      "matchedNpcTemplateIds": [
+        16028
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-patchwerk"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Patchwerk.lua",
+      "quality": "Primary addon author source for map533; shared Classic modules are not independently SoD timing proof. Use explicit ruleset branches where present; no retained event/server execution credit",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Patchwerk_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; quarter and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "naxx-live-notes",
+      "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-phase-7-patch-notes/2052277",
+      "quality": "Primary January28 2025 live patch notes: five-player pylon channel, quarter mechanics and global difficulty; Sanctified/Seal capped benefit"
+    },
+    {
+      "id": "naxx-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "quality": "Authored exact SoD overview February26 2025; quarter effects useful, Seal ranks8-10 section superseded by March10 cap"
+    },
+    {
+      "id": "seal-cap",
+      "url": "https://www.bluetracker.gg/wow/topic/us-en/2074031-seal-of-the-dawn-capped-march-10/",
+      "quality": "Kaivax March10 2025 official statement mirrored verbatim by BlueTracker; Seal capped at7"
+    },
+    {
+      "id": "construct-primary",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Trash.lua",
+      "quality": "Explicit SoD-only primary addon registers Overcharged1219235 application/removal across Construct bosses"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Hateful Strike recipient versus melee target",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual special-strike event and damage recipient",
+      "state": "Actual special-strike event and damage recipient",
+      "lifecycle": "Separate main melee and Hateful recipient; actual HP/threat at event not simulated from guide",
+      "placement": "Actual melee range, source facing and tank anchors; special recipient does not imply boss rotated",
+      "animation": "Use actual strike animation/impact; no repeated random facing from target changes",
+      "acceptanceCheck": "sod-naxx-patchwerk/NAX-PATCH-HATEFUL",
+      "acceptanceCriteria": "NAX-PATCH-HATEFUL: correct off-tank impact without redirecting every swing or inventing selector; Seal HP snapshots preserved",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Low-health enrage and timed berserk",
+      "spellIds": [
+        28131
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Enrage aura; Berserk only when recorded",
+      "state": "Actual Enrage aura; Berserk only when recorded",
+      "lifecycle": "Low-HP buff distinct from timed berserk; never synthesize aura or lethal Slime Bolts at addon420seconds",
+      "placement": "Boss actual transform and recipients",
+      "animation": "Body aura/attack-rate metadata distinct from real swing cadence",
+      "acceptanceCheck": "sod-naxx-patchwerk/NAX-PATCH-ENRAGE",
+      "acceptanceCriteria": "NAX-PATCH-ENRAGE: exact aura onset/removal and death cancellation; no timer-generated attack",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss/player life/end events",
+      "state": "Actual boss/player life/end events",
+      "lifecycle": "Cancel dead-source actions only with proven boundary; Overcharged player aura independent",
+      "placement": "No lastSeen despawn",
+      "animation": "Corpse and reset separate",
+      "acceptanceCheck": "sod-naxx-patchwerk/NAX-PATCH-END",
+      "acceptanceCriteria": "NAX-PATCH-END: seek across kill and repeated pull has no stale enrage or lightning",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "SoD empowered Construct Overcharged",
+      "spellIds": [
+        1219235
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual recipient Overcharged application/removal when Construct empowered",
+      "state": "Recipient haste and nearby-ally damage distinct from boss/add buffs",
+      "lifecycle": "Per-player lifetime; addon30-second timer never replaces actual removal",
+      "placement": "Actual recipient and affected allies; no guessed radius",
+      "animation": "Energizing lightning and body state use exact authored kit after validation",
+      "acceptanceCheck": "sod-naxx-patchwerk/SOD-OVERCHARGED",
+      "acceptanceCriteria": "SOD-OVERCHARGED: recipient/source and nearby-ally impacts exact; target-only removal closes only matching aura",
+      "sourceRefs": [
+        "construct-primary",
+        "naxx-overview"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD Hateful strike/primer IDs and target-selection semantics",
+    "Timed Berserk/Slime Bolt IDs and current timings",
+    "Overcharged target-linked visual behavior and exact nearby-ally radius",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "16028",
+    "empowermentContext": "Per-encounter quarter state and Seal of Dawn effect required; no default empowerment or HP multiplier assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-mc-lucifron",
+  "ruleset": "vanilla",
+  "boss": "Lucifron",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 50663,
+  "rawEncounterId": 663,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-mc-lucifron"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Lucifron.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/lucifron-molten-core-strategy-wow-classic",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Doom and Curse",
+      "spellIds": [
+        19702,
+        19703
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast and recipient application/removal",
+      "state": "Delayed Doom and cost-increasing Curse remain distinct",
+      "lifecycle": "Actual dispel/removal ends aura; delayed damage requires observed result",
+      "placement": "Actual recipients; no inferred raid-wide coverage",
+      "animation": "Exact spell impact/aura routes; no seasonal substitutions",
+      "acceptanceCheck": "vanilla-mc-lucifron/V-MC-LUCI-AURAS",
+      "acceptanceCriteria": "V-MC-LUCI-AURAS: a dispelled Doom never gains a fabricated expiry hit; source-free removals affect exact spell",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Protector mind control",
+      "spellIds": [
+        20604
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Protector cast start and actual recipient control aura",
+      "state": "Player temporarily controlled; visual and allegiance are separate",
+      "lifecycle": "Control ends on actual removal; death is not universal aura cleanup",
+      "placement": "Correct Protector-instance controller and actual player recipient",
+      "animation": "Control body effect separate from friendly/hostile and marker state",
+      "acceptanceCheck": "vanilla-mc-lucifron/V-MC-LUCI-MC",
+      "acceptanceCriteria": "V-MC-LUCI-MC: actual application/removal bounds controlled target; logged markers remain independent",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Two Protectors and frontal attacks",
+      "spellIds": [
+        20605,
+        19460
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline two guards and observed attacks",
+      "state": "Independent boss/guard identity and facing",
+      "lifecycle": "Each guard dies independently; no linked seasonal revival",
+      "placement": "Recorded anchors and facing; do not simulate a cone from guide range",
+      "animation": "Cleave/Shadow Shock use actual source and hit recipients",
+      "acceptanceCheck": "vanilla-mc-lucifron/V-MC-LUCI-GUARDS",
+      "acceptanceCriteria": "V-MC-LUCI-GUARDS: preserve two baseline Protectors and independent deaths; never spawn SoM four/SoD three",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-mc-lucifron/V-MC-LUCI-END",
+      "acceptanceCriteria": "V-MC-LUCI-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No actual casting, action-bar control, camera or allegiance rendering acceptance.",
+    "Known positions do not certify frontal cleave geometry or original-game animation.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      12118,
+      12119
+    ],
+    "baselineScope": "Baseline Classic guides specify two Flamewaker Protectors. Season of Mastery four-add and SoD linked-revival/heat variants are excluded. Addon timings are not replay schedules."
+  }
+}

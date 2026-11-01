@@ -165,3 +165,72 @@ test("successive out-of-order chunks preserve deaths, resurrection, aura stacks,
     check(cache, input);
   }
 });
+
+test("source-free victim aura removal rebuilds its targeted channel caster while unrelated actors stay reused", () => {
+  const cache = new IncrementalReplayNormalizer();
+  const channelSpells = { 10: { channel: true, durationMs: 10000 } };
+  const events = [
+    event(1000, 1, "cast"),
+    {
+      timestamp: 1100,
+      type: "applydebuff",
+      sourceID: 1,
+      targetID: 3,
+      abilityGameID: 10,
+    },
+  ];
+  const initial = raw(events);
+  const first = cache.normalize(initial, models, items, channelSpells);
+  const caster = first.actors.find((a) => a.key === "1:1")!;
+  const untouched = first.actors.find((a) => a.key === "2:1")!;
+  const channel = caster.casts.find((c) => c.channel)!;
+  assert.equal(channel.end, 11000);
+  const before = JSON.stringify(first);
+
+  const appended = raw([
+    ...events,
+    {
+      timestamp: 2000,
+      type: "removedebuff",
+      targetID: 3,
+      abilityGameID: 10,
+    },
+  ]);
+  const actual = cache.normalize(appended, models, items, channelSpells);
+  const expected = enrichCombat(
+    normalizeReplay(appended, models),
+    items,
+    channelSpells,
+  );
+  assert.deepEqual(actual, expected);
+  const rebuilt = actual.actors.find((a) => a.key === "1:1")!;
+  assert.notEqual(rebuilt, caster);
+  assert.equal(rebuilt.casts.find((c) => c.channel)!.end, 2000);
+  assert.equal(
+    actual.actors.find((a) => a.key === "2:1"),
+    untouched,
+  );
+  assert.equal(
+    JSON.stringify(first),
+    before,
+    "prior snapshot remains immutable",
+  );
+  for (const at of [1999, 2000, 1000, 11000, 1999]) {
+    assert.deepEqual(
+      combatStateAt(rebuilt, at),
+      combatStateAt(
+        expected.actors.find((a) => a.key === "1:1")!,
+        at,
+      ),
+    );
+  }
+  const repeated = cache.normalize(appended, models, items, channelSpells);
+  assert.equal(
+    repeated.actors.find((a) => a.key === "1:1"),
+    rebuilt,
+  );
+  assert.equal(
+    repeated.actors.find((a) => a.key === "2:1"),
+    untouched,
+  );
+});

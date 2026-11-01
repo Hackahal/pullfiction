@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { BrowserLogs, browserQuery } from "./wcl-browser";
 import { collectEvents } from "../../planner/wcl-report.mjs";
+import { normalizeReplay } from "../../planner/replay.mjs";
 
 const code = "bZX7VqdwpcmyrGzN";
 const fight = (
@@ -467,6 +468,8 @@ test("buffered ranges preserve pagination and resources while sparse state filte
   assert.match(calls[0].query, /includeResources:true/);
   assert.match(calls[0].variables.filter, /applybuff/);
   assert.match(calls[0].variables.filter, /zonechange/);
+  assert.match(calls[0].variables.filter, /encounterstart/);
+  assert.match(calls[0].variables.filter, /encounterend/);
   assert.doesNotMatch(calls[0].variables.filter, /damage|heal/);
 });
 test("changed report revisions block adding new sections to a saved run", async () => {
@@ -482,4 +485,253 @@ test("changed report revisions block adding new sections to a saved run", async 
     } as any),
     /report has changed/,
   );
+});
+
+const ktStart = 6456709,
+  ktReported = 6686778,
+  ktEnd = 6865121;
+const boundaryFilter = "type = 'encounterstart' OR type = 'encounterend'";
+function ktFixture() {
+  // Recorded boundary identity and timestamps; synthetic minimal actor/event
+  // payloads let this exercise the actual import and normalization consumers.
+  const gameZone = { id: 533, name: "Naxxramas" };
+  const report = {
+    title: "Prelude fixture",
+    revision: 1,
+    segments: 34,
+    startTime: 1786218022635,
+    endTime: 1786218022635 + ktEnd,
+    masterData: {
+      actors: [
+        { id: 1, name: "Player", type: "Player", subType: "Mage" },
+        { id: 2, name: "Prelude player", type: "Player", subType: "Mage" },
+        { id: 257, name: "Prelude add", type: "NPC", gameID: 12345 },
+      ],
+    },
+    fights: [
+      {
+        id: 41,
+        name: "Kel'Thuzad",
+        encounterID: 0,
+        startTime: ktStart,
+        endTime: 6686208,
+        gameZone,
+        friendlyPlayers: [2],
+        enemyNPCs: [{ id: 257 }],
+      },
+      {
+        id: 42,
+        name: "Kel'Thuzad",
+        encounterID: 201114,
+        startTime: ktReported,
+        endTime: ktEnd,
+        kill: true,
+        gameZone,
+        friendlyPlayers: [1],
+        enemyNPCs: [],
+      },
+    ],
+  };
+  const edges = [
+    {
+      timestamp: ktStart,
+      type: "encounterstart",
+      encounterID: 1114,
+      fight: 41,
+    },
+    { timestamp: ktEnd, type: "encounterend", encounterID: 1114, fight: 42 },
+  ];
+  const events = [
+    edges[0],
+    {
+      timestamp: ktStart + 1,
+      fight: 41,
+      type: "cast",
+      sourceID: 257,
+      abilityGameID: 123,
+      sourceResources: { x: 100, y: 200 },
+    },
+    edges[1],
+  ];
+  return { report, edges, events };
+}
+
+test("recorded KT prelude survives buffered and monolithic imports and normalization", async () => {
+  const f = ktFixture(),
+    calls: { query: string; variables: any }[] = [];
+  const logs = new BrowserLogs(async (query, variables) => {
+    calls.push({ query, variables });
+    if (query.includes("visibility revision")) return structuredClone(f.report);
+    if (query.includes("events(")) {
+      assert.doesNotMatch(query, /fightIDs/);
+      if (variables.filter === boundaryFilter) {
+        assert.equal(
+          variables.end,
+          ktEnd,
+          "wall-clock roots become report-relative duration",
+        );
+        return {
+          events:
+            variables.start === 0
+              ? { data: [f.edges[0]], nextPageTimestamp: ktStart + 1 }
+              : { data: [f.edges[1]], nextPageTimestamp: null },
+        };
+      }
+      assert.equal(variables.start, ktStart);
+      assert.equal(variables.end, ktEnd);
+      return {
+        events: {
+          data: [...f.events, { timestamp: ktStart - 1 }],
+          nextPageTimestamp: null,
+        },
+      };
+    }
+    assert.deepEqual(
+      variables.fights,
+      [41, 42],
+      "both actual rosters are requested",
+    );
+    return {
+      masterData: { ...f.report.masterData, abilities: [] },
+      playerDetails: {},
+    };
+  });
+  const header = await logs.replayHeader(code, 42, "sod");
+  assert.equal(header.fight.startTime, ktStart);
+  assert.deepEqual(header.fight.reportedBounds, {
+    startTime: ktReported,
+    endTime: ktEnd,
+  });
+  assert.deepEqual(header.fight.friendlyPlayers, [1, 2]);
+  assert.ok(normalizeReplay(header).actors.some((a: any) => a.id === 257));
+  header.events = await logs.replayRange(header, 0, ktEnd - ktStart, true);
+  assert.deepEqual(header.events, f.events);
+  const normalized = normalizeReplay(header);
+  assert.equal(normalized.duration, ktEnd - ktStart);
+  assert.equal(normalized.actors.find((a: any) => a.id === 257)?.firstSeen, 1);
+  const mono = await logs.replay(code, 42, "sod");
+  assert.deepEqual(mono.events, f.events);
+  assert.deepEqual(mono.fight, header.fight);
+  assert.deepEqual(
+    normalizeReplay(mono).actors.map((a: any) => a.key),
+    normalized.actors.map((a: any) => a.key),
+  );
+  assert.equal(
+    calls.filter((c) => c.variables.filter === boundaryFilter).length,
+    2,
+    "both boundary pages are cached across import modes",
+  );
+});
+
+test("boundary cache isolates report, ruleset, revision, segment and root-bound changes", async () => {
+  const f = ktFixture();
+  let boundaryCalls = 0;
+  const logs = new BrowserLogs(async (query, variables) => {
+    if (query.includes("visibility revision")) return structuredClone(f.report);
+    if (variables.filter === boundaryFilter) {
+      boundaryCalls++;
+      return { events: { data: f.edges, nextPageTimestamp: null } };
+    }
+    return { masterData: f.report.masterData };
+  });
+  await logs.replayHeader(code, 42, "sod");
+  await logs.replayHeader(code, 42, "sod");
+  assert.equal(boundaryCalls, 1);
+  await logs.replayHeader("V1yL8CDp2GfbHwPt", 42, "sod");
+  await logs.replayHeader(code, 42, "vanilla");
+  f.report.revision++;
+  await logs.replayHeader(code, 42, "sod");
+  f.report.segments++;
+  await logs.replayHeader(code, 42, "sod");
+  f.report.endTime++;
+  await logs.replayHeader(code, 42, "sod");
+  assert.equal(boundaryCalls, 6);
+});
+
+test("aborted, failed and incomplete boundary downloads cannot populate the cache", async () => {
+  const f = ktFixture(),
+    controller = new AbortController();
+  let mode = "abort",
+    boundaryCalls = 0;
+  const logs = new BrowserLogs(async (query, variables, _version, signal) => {
+    if (query.includes("visibility revision")) return structuredClone(f.report);
+    if (variables.filter === boundaryFilter) {
+      boundaryCalls++;
+      if (mode === "failure") throw new Error("boundary network failure");
+      if (mode === "stall")
+        return {
+          events: { data: f.edges, nextPageTimestamp: variables.start },
+        };
+      if (mode === "abort") {
+        assert.equal(signal, controller.signal);
+        controller.abort();
+        return {
+          events: { data: [f.edges[0]], nextPageTimestamp: ktStart + 1 },
+        };
+      }
+      return { events: { data: f.edges, nextPageTimestamp: null } };
+    }
+    return { masterData: f.report.masterData };
+  });
+  await assert.rejects(
+    logs.replayHeader(code, 42, "sod", undefined, {
+      signal: controller.signal,
+    }),
+    /abort/i,
+  );
+  mode = "failure";
+  await assert.rejects(logs.replayHeader(code, 42, "sod"), /boundary network/);
+  mode = "stall";
+  await assert.rejects(logs.replayHeader(code, 42, "sod"), /did not advance/);
+  mode = "complete";
+  assert.equal(
+    (await logs.replayHeader(code, 42, "sod")).fight.startTime,
+    ktStart,
+  );
+  assert.equal(boundaryCalls, 4);
+});
+
+test("missing or unsafe boundaries retain the ordinary fight-ID scope", async () => {
+  for (const unsafe of ["missing", "foreign", "ambiguous"]) {
+    const f = ktFixture();
+    if (unsafe === "missing") f.edges.pop();
+    if (unsafe === "ambiguous") f.edges.push({ ...f.edges[0] });
+    if (unsafe === "foreign")
+      f.report.fights[0].gameZone = { id: 469, name: "Blackwing Lair" };
+    const logs = new BrowserLogs(async (query, variables) => {
+      if (query.includes("visibility revision")) return f.report;
+      if (variables.filter === boundaryFilter)
+        return { events: { data: f.edges, nextPageTimestamp: null } };
+      if (query.includes("events(")) {
+        assert.match(query, /fightIDs:\[\$fight\]/);
+        assert.equal(variables.fight, 42);
+        assert.equal(variables.start, ktReported);
+        return { events: { data: [], nextPageTimestamp: null } };
+      }
+      assert.deepEqual(variables.fights, [42]);
+      return { masterData: f.report.masterData };
+    });
+    const raw = await logs.replay(code, 42, "sod");
+    assert.equal(raw.fight.startTime, ktReported);
+    assert.equal(raw.fight.recordedPrelude, undefined);
+    await logs.replayRange(raw, 0, 1, true);
+  }
+});
+
+test("full-run imports keep chapters and never query or apply boundary expansion", async () => {
+  const f = ktFixture();
+  f.report.fights[1].kill = true;
+  const logs = new BrowserLogs(async (query, variables) => {
+    if (query.includes("visibility revision")) return f.report;
+    assert.notEqual(variables.filter, boundaryFilter);
+    if (query.includes("events(")) {
+      assert.doesNotMatch(query, /fightIDs/);
+      return { events: { data: f.events, nextPageTimestamp: null } };
+    }
+    return { masterData: f.report.masterData };
+  });
+  const raw = await logs.replay(code, "run", "sod", 533);
+  assert.equal(raw.fight.startTime, ktStart);
+  assert.equal(raw.fight.recordedPrelude, undefined);
+  assert.deepEqual(raw.fight.chapters, f.report.fights);
 });

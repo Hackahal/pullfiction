@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bwl-razorgore",
+  "ruleset": "sod",
+  "boss": "Razorgore the Untamed",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 100610,
+  "rawEncounterId": 610,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 469,
+      "selectedFightIds": [
+        103
+      ],
+      "selectedFightNames": [
+        "Razorgore the Untamed"
+      ],
+      "matchedNpcTemplateIds": [
+        12435
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bwl-razorgore"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Razorgore.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/razorgore-the-untamed-blackwing-lair-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "trials-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/SoDTrials.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD trial event code"
+    },
+    {
+      "id": "trials-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackwing-lair-dragonflight-trials-hard-modes-overview",
+      "date": "2024-10-10",
+      "quality": "authored live SoD guide, distinct from September PTR"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24143779/nerub-ar-palace-raid-finder-wing-3-and-season-of-discovery-phase-5-are-now-live-october-trading-post-and-mor",
+      "date": "2024-09-27",
+      "quality": "official phase5:20-player tuning/up to40, selectable dragonflight effects"
+    },
+    {
+      "id": "official-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24134803/hotfixes-october-16-2024",
+      "quality": "official September2024 archived mechanics fixes referenced in sourceFindings"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "R01",
+      "mechanic": "Orb control and eggs",
+      "spellIds": [
+        19873,
+        19872,
+        23958,
+        23040
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual orb ownership/control and Destroy Egg casts",
+      "state": "30 baseline eggs; controller separate from possessed boss; phase2 triggered by23040",
+      "lifecycle": "release at actual final egg/ownership loss, exhaustion aura expires by removal",
+      "placement": "orb object177808 platform; each egg actual position, not boss-following",
+      "animation": "control/egg destruction require object and model evidence",
+      "acceptanceCheck": "sod-bwl-razorgore/R01-acceptance",
+      "acceptanceCriteria": "control released early and after last egg; random rewind restores ownership and each egg; player-sourced mechanism must survive NPC-only filters",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R02",
+      "mechanic": "Add wave lifecycle",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual summon/appearance/target-only events",
+      "state": "independent Dragonspawn/Mage/Legionnaire hosts; flee transition distinct from death",
+      "lifecycle": "do not create fixed47s waves or kill surviving adds on boss transition",
+      "placement": "measured platform ascent/descent; no inferred Z or orbit",
+      "animation": "measured combat/model clips only",
+      "acceptanceCheck": "sod-bwl-razorgore/R02-acceptance",
+      "acceptanceCriteria": "phase1 death is wipe, phase2 death can kill; surviving adds flee/despawn only with evidence",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "R03",
+      "mechanic": "Volley and Conflagration",
+      "spellIds": [
+        22425,
+        23023
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual casts, hits and recipient aura",
+      "state": "hostile volley and disorient threat switch",
+      "lifecycle": "actual10s baseline debuff/removal, resist/cancel preserved",
+      "placement": "pillar LOS and actual facing; receiver not self-caster",
+      "animation": "client precast/impact/target aura routes",
+      "acceptanceCheck": "sod-bwl-razorgore/R03-acceptance",
+      "acceptanceCriteria": "resisted volley, LoS victim exclusion, target switch during disorient and early removal",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "R04",
+      "mechanic": "Black-trial chromatic add",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "observed black selection and egg/add spawn",
+      "state": "unstable drake and elemental hazards",
+      "lifecycle": "source timing disagreement10 eggs versus90s/120s; no scheduled spawn",
+      "placement": "center egg375545; linked drake185320 provider identity unverified; actual moving cloud and stationary areas",
+      "animation": "ice/control-break, fire, sleep and haste need exact IDs",
+      "acceptanceCheck": "sod-bwl-razorgore/R04-acceptance",
+      "acceptanceCriteria": "record add creation and each hazard, sleep breaks control; no firstSeen-based future add at pull",
+      "sourceRefs": [
+        "trials-guide",
+        "primary",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "TRIAL",
+      "mechanic": "Observed trial selection and cross-chapter trial effects",
+      "spellIds": [
+        466357,
+        466435,
+        466448,
+        466071,
+        466261,
+        466277,
+        466416,
+        467047
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual selection aura, recipient aura/pulse and pool creation; never infer from WCL difficulty label alone",
+      "state": "blue soak, green placement, bronze rate changes, red injury damage and black encounter modifier independently active",
+      "lifecycle": "actual enable/remove/reset; primary says blue/green loops span boss/trash, with week3 unsynchronized timing; do not synthesize47.36s schedule",
+      "placement": "blue on actual recipient; green pool at creation destination, not moving aura victim; missing Z unknown",
+      "animation": "current authored route only; global aura has no invented cosmetic equivalent",
+      "acceptanceCheck": "sod-bwl-razorgore/trial-cross-chapter-seek",
+      "acceptanceCriteria": "record blue/green same and different recipients across boss/trash, independently timed bombs, disabled trial and soft reset; seek twice/randomly with exact age; no synthetic events",
+      "sourceRefs": [
+        "trials-primary",
+        "trials-guide",
+        "client",
+        "official"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Raw610 is a primary addon ID; it is not yet a verified SoD report encounter ID. Primary warns ENCOUNTER_END invalid for this boss; phase1 death is a wipe.",
+    "Black-trial addon says90s or10 eggs, with other sources120s. Preserve the disagreement until observed spawn markers resolve it.",
+    "Official September2024 hotfix says Victor Nefriendius despawns during Razorgore; add its actual world-object/actor cleanup as a future check.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted"
+  ],
+  "researchContext": {
+    "npcIds": [
+      12435
+    ],
+    "sourceFindings": [
+      "Raw610 is a primary addon ID; it is not yet a verified SoD report encounter ID. Primary warns ENCOUNTER_END invalid for this boss; phase1 death is a wipe.",
+      "Black-trial addon says90s or10 eggs, with other sources120s. Preserve the disagreement until observed spawn markers resolve it.",
+      "Official September2024 hotfix says Victor Nefriendius despawns during Razorgore; add its actual world-object/actor cleanup as a future check."
+    ],
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "Retained SoD pull unavailable; ruleset-unknown older BWL cache excluded. No observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-ragnaros",
+  "ruleset": "sod",
+  "boss": "Ragnaros",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100672,
+  "rawEncounterId": 672,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Selected Discovery Molten Core report names fights32/33 Ragnaros and identifies provider encounter100672. Matched NPC12143 is Son of Flame and corroborates encounter participation only; this receipt does not establish an exact Ragnaros boss-template match. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        32,
+        33
+      ],
+      "selectedFightNames": [
+        "Ragnaros"
+      ],
+      "matchedNpcTemplateIds": [
+        12143
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-ragnaros"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Ragnaros.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Ragnaros_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "heat1-submerge-hotfix",
+      "url": "https://us.forums.blizzard.com/en/wow/t/mc-tuning-coming-later-in-the-day-on-tuesday/1906064",
+      "quality": "Primary Kaivax July30 2024: no second submerge on heat1"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Summon roleplay and Executus death",
+      "spellIds": [
+        19774,
+        19773
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded Summon Ragnaros start/success, Elemental Fire and actual Executus life events",
+      "state": "Recorded Summon Ragnaros start/success, Elemental Fire and actual Executus life events",
+      "lifecycle": "Warmup, appearance, roleplay death and combat activation separate; addon86/10-second bars are not replay timers",
+      "placement": "Actual Ragnaros lava anchor and Executus transform; no global height offset",
+      "animation": "Authoritative emerge/body/weapon animation needs exact script/reference",
+      "acceptanceCheck": "sod-mc-ragnaros/MC-RAG-RP",
+      "acceptanceCriteria": "MC-RAG-RP: encounter window truncation cannot fabricate initial visibility or kill Executus early",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Submerge and emerge",
+      "spellIds": [
+        20567,
+        458841
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual20567 success, unit-cast/yell evidence and later reappearance/combat",
+      "state": "Actual20567 success, unit-cast/yell evidence and later reappearance/combat",
+      "lifecycle": "Submerged is unavailable/hidden state, not dead; actual emerge overrides addon90-second estimate",
+      "placement": "Keep verified anchored boss; exact vertical/model transition unknown",
+      "animation": "Inspect authored submerge kit/animation before inventing sinking trajectory",
+      "acceptanceCheck": "sod-mc-ragnaros/MC-RAG-SUBMERGE",
+      "acceptanceCriteria": "MC-RAG-SUBMERGE: direct seek into submerged interval does not render an attackable standing boss; no second heat1 transition fabricated",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Sons and persistent death pools",
+      "spellIds": [
+        461062,
+        461812
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Son actor/combat/death and pool contact/damage",
+      "state": "Actual Son actor/combat/death and pool contact/damage",
+      "lifecycle": "Independent Sons; primary addon documents absent SUMMON events and discovers Sons from damage. Community heat3 death pulls leave ground fire",
+      "placement": "Observed Son death anchor, actual pool shape and displaced recipients; no guessed pull route",
+      "animation": "Separate death blast, pull and lingering area",
+      "acceptanceCheck": "sod-mc-ragnaros/MC-RAG-SONS",
+      "acceptanceCriteria": "MC-RAG-SONS: first damage is evidence of presence, not exact spawn; Banish not death; pool survives its source corpse where verified",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Wrath and combat targeting",
+      "spellIds": [
+        20566
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Wrath success and per-recipient impacts",
+      "state": "Actual Wrath success and per-recipient impacts",
+      "lifecycle": "Knockback/actual threat changes independent from cast visuals",
+      "placement": "Observed recipients, facing and next anchors; missing height remains unknown",
+      "animation": "Actual weapon/body cast and launch, no fake25-yard displacement",
+      "acceptanceCheck": "sod-mc-ragnaros/MC-RAG-WRATH",
+      "acceptanceCriteria": "MC-RAG-WRATH: impact alignment and movement boundary exact; pets retained when logged",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, reset and next encounter",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded Ragnaros death and actual The Molten Core activation",
+      "state": "Recorded Ragnaros death and actual The Molten Core activation",
+      "lifecycle": "Close only Ragnaros-owned state; next encounter is a new boss identity, not Ragnaros revival",
+      "placement": "Retain actual shared lava location with independent actor instance",
+      "animation": "Death/submerge/next-boss appearance must remain distinct",
+      "acceptanceCheck": "sod-mc-ragnaros/MC-RAG-END",
+      "acceptanceCriteria": "MC-RAG-END: full-run seek across death and heat3 continuation never merges bosses or leaks Sons/pools",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "First50%-submerge heat scope: primary module versus community heat3 wording",
+    "Exact emerge event, boss unavailable interval and body animation/height",
+    "Son pool creation/pull IDs, radius/lifetime and boss-death continuation",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "11502, -- Ragnaros\n12143, -- Son of Flame\n12018, -- Majordomo Executus",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned",
+    "enableMobScope": "Complete retained declarations from the pinned shared addon module; not an exhaustive enable-mob list or confirmed SoD spawn identities. The truncated Retail entry was omitted."
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

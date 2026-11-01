@@ -206,11 +206,26 @@ impl SpellVisualCatalog {
             self.modern_attachments.insert(key, paths);
             let mut procs = Vec::new();
             let mut trails = Vec::new();
+            let mut freeze = None;
             for proc in row["proceduralEffects"].as_array().into_iter().flatten() {
                 if proc["rendererCompatible"] == false {
                     continue;
                 }
                 let ty = id(&proc["type"]) as i32;
+                // Observed Web Wrap/Spray, Icebolt and Frost Blast kits use
+                // exactly this zero-rate instruction. Other rates or extra
+                // parameters have not been mapped to legacy body semantics.
+                if ty == char_proc_type::ANIM_RATE
+                    && proc["values"].as_array().is_some_and(|values| {
+                        values.len() == 4 && values.iter().all(|v| v.as_f64() == Some(0.0))
+                    })
+                {
+                    freeze = Some(CharProc {
+                        ty,
+                        params: [0.; 4],
+                    });
+                    continue;
+                }
                 if ty == char_proc_type::WEAPON_TRAIL {
                     let values = std::array::from_fn(|i| proc["values"][i].as_f64());
                     // Mirror the converter's exact subset: RGB and alpha are
@@ -282,6 +297,7 @@ impl SpellVisualCatalog {
                 VisualKit {
                     modern_id: key,
                     anim_id: anim,
+                    char_proc_slots: [freeze, None, None, None],
                     ..Default::default()
                 },
             );
@@ -310,6 +326,7 @@ impl SpellVisualCatalog {
                     &mut stages.impact_not_caster,
                 ),
                 ("Aura Start", "Target", &mut stages.state),
+                ("Aura Start", "Self", &mut stages.state_self),
                 ("Channel Start", "Caster", &mut stages.channel),
             ] {
                 // Modern channel-hold kits also arrive as Target events. The native
@@ -324,11 +341,13 @@ impl SpellVisualCatalog {
                 } else {
                     target
                 };
-                let ids: Vec<u32> = events
+                let mut ids: Vec<u32> = events
                     .iter()
                     .filter(|e| {
                         e["start"] == start
                             && (e["target"] == target
+                                || target == "Self"
+                                    && (e["target"] == "Target" || e["target"] == "Caster")
                                 || (target == "Target"
                                     && start != "Impact"
                                     && start != "Cast"
@@ -337,6 +356,19 @@ impl SpellVisualCatalog {
                     .map(|e| id(&e["kit"]))
                     .filter(|i| self.kits.contains_key(i))
                     .collect();
+                if target == "Self" {
+                    // Caster and Target can name the same kit on a self aura.
+                    // Preserve order without spawning its attachments twice.
+                    let mut seen = Vec::new();
+                    ids.retain(|id| {
+                        if seen.contains(id) {
+                            false
+                        } else {
+                            seen.push(*id);
+                            true
+                        }
+                    });
+                }
                 if ids.len() == 1 {
                     *slot = ids[0];
                 } else if !ids.is_empty() {
@@ -377,11 +409,20 @@ impl SpellVisualCatalog {
                     let anim_id = ids
                         .iter()
                         .find_map(|i| self.kits.get(i).and_then(|k| k.anim_id));
+                    // Every imported body instruction currently has identical
+                    // freeze semantics. Collapse duplicates rather than impose
+                    // the legacy four-slot limit on a combined modern stage.
+                    let freeze = ids
+                        .iter()
+                        .filter_map(|id| self.kits.get(id))
+                        .flat_map(VisualKit::char_procs)
+                        .find(|p| p.ty == char_proc_type::ANIM_RATE && p.params == [0.; 4]);
                     self.kits.insert(
                         synthetic,
                         VisualKit {
                             modern_id: synthetic,
                             anim_id,
+                            char_proc_slots: [freeze, None, None, None],
                             ..Default::default()
                         },
                     );
@@ -424,6 +465,81 @@ impl SpellVisualCatalog {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn modern_exact_zero_rate_freezes_survive_combined_aura_kits() {
+        let freeze = serde_json::json!({"type":11,"values":[0,0,0,0]});
+        let data = serde_json::json!({"schema":1,"effects":{},
+            "kits":{
+                "3378":{"effects":[],"animations":[],"proceduralEffects":[freeze.clone()]},
+                "22":{"effects":[],"animations":[],"proceduralEffects":vec![freeze;6]},
+                "23":{"effects":[],"animations":[],"proceduralEffects":[
+                    {"type":11,"values":[0,2,0,0]},
+                    {"type":11,"values":[1,0,0,0]},
+                    {"type":11,"values":[0,0,0]},
+                    {"type":11,"values":[0,0,0,null]},
+                    {"type":11,"values":[0,0,0,0],"rendererCompatible":false},
+                    {"type":14,"values":[0,0,0,0]}]}},
+            "visuals":{"50":{"missiles":[],"events":[
+                {"start":"Aura Start","target":"Caster","kit":3378},
+                {"start":"Aura Start","target":"Target","kit":22}]}}});
+        let mut catalog = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        catalog
+            .merge_modern_json(&serde_json::to_vec(&data).unwrap())
+            .unwrap();
+        let expected = [CharProc {
+            ty: char_proc_type::ANIM_RATE,
+            params: [0.; 4],
+        }];
+        assert_eq!(
+            catalog.kit(3378).unwrap().char_procs().collect::<Vec<_>>(),
+            expected
+        );
+        assert!(
+            catalog.kit(23).unwrap().char_procs().next().is_none(),
+            "untraced rates, flags, missing values and other proc types stay unsupported"
+        );
+        let kit = *catalog.kit(catalog.stages(50).unwrap().state_self).unwrap();
+        assert_eq!(
+            kit.char_procs().collect::<Vec<_>>(),
+            expected,
+            "identical freeze instructions have one semantic node, with no four-slot truncation"
+        );
+    }
+    #[test]
+    fn modern_self_aura_combines_owners_without_duplicating_or_including_not_caster() {
+        let data = serde_json::json!({"schema":1,"effects":{},
+            "kits":{"10":{"effects":[],"animations":[{"LoopAnimID":124}]},
+                    "11":{"effects":[],"animations":[{"LoopAnimID":125}]},
+                    "12":{"effects":[],"animations":[{"LoopAnimID":126}]}},
+            "visuals":{
+                "50":{"events":[{"start":"Aura Start","target":"Caster","kit":10}],"missiles":[]},
+                "51":{"events":[{"start":"Aura Start","target":"Target","kit":10},
+                                    {"start":"Aura Start","target":"Caster","kit":10}],"missiles":[]},
+                "52":{"events":[{"start":"Aura Start","target":"Target","kit":10},
+                                    {"start":"Aura Start","target":"Caster","kit":11},
+                                    {"start":"Aura Start","target":"Target (Not Caster)","kit":12}],"missiles":[]}}});
+        let mut cat = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+        cat.merge_modern_json(&serde_json::to_vec(&data).unwrap())
+            .unwrap();
+        assert_eq!(
+            cat.stages(50).unwrap().state,
+            0,
+            "unknown/nonself never takes the Caster route"
+        );
+        assert_eq!(cat.stages(50).unwrap().state_self, 10);
+        assert_eq!(
+            cat.stages(51).unwrap().state_self,
+            10,
+            "same kit is not doubled"
+        );
+        let combined = cat.kit(cat.stages(52).unwrap().state_self).unwrap();
+        assert_eq!(combined.anim_id, Some(124));
+        // Distinct Caster and Target kits are combined, excluding Not Caster.
+        assert_ne!(
+            cat.stages(52).unwrap().state_self,
+            cat.stages(52).unwrap().state
+        );
+    }
     #[test]
     fn modern_attachment_animation_override_keeps_explicit_stand_zero() {
         let data = serde_json::json!({"schema":1,"effects":{"1":{"type":0,"fileDataID":100}},

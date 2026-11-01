@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-the-molten-core",
+  "ruleset": "sod",
+  "boss": "The Molten Core",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": null,
+  "rawEncounterId": 3018,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "Raw addon or game identity does not establish a provider encounter ID. Map against an actual report before audit use."
+  },
+  "bossUnits": [
+    "sod-mc-the-molten-core"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/TheMoltenCore.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/molten-core-boss-11-strategy",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "energy-guide",
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-the-molten-core",
+      "quality": "Exact SoD authored guide August2 2024; energy progression; older meteor count disagrees with primary module"
+    },
+    {
+      "id": "activation-community",
+      "url": "https://warcraft.wiki.gg/wiki/The_Molten_Core_%28boss%29",
+      "quality": "SoD community reference: Hydraxis activation and rock-to-fireball appearance; needs original-game verification"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Heat3 activation and boss body",
+      "spellIds": [
+        458843
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Hydraxis activation/Firefighter arrival after heat3 clear",
+      "state": "Actual Hydraxis activation/Firefighter arrival after heat3 clear",
+      "lifecycle": "Rock appearance, opened living fireball and combat activation separate states",
+      "placement": "Actual lava-pool transform; no giant-sphere scale or lift guessed",
+      "animation": "Resolve original model and scripted appearance; no display replacement inferred from guide wording",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-START",
+      "acceptanceCriteria": "MC-CORE-START: no active boss before activation; full-run seek preserves separate Ragnaros and Core identity",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Firefighter channel, energy and Doomsday",
+      "spellIds": [
+        460899,
+        460885
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Frigid Current from NPC228820 to boss227939, Firefighter deaths and actual energy/cast",
+      "state": "Frigid Current from NPC228820 to boss227939, Firefighter deaths and actual energy/cast",
+      "lifecycle": "Each ally/channel independent; loss of ally changes only observed energy progression; actual Doomsday finish/cancel",
+      "placement": "Actual Firefighter positions and source-to-boss beam endpoints",
+      "animation": "Current graph has caster aura plus target channel; verify owner and beam orientation",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-ENERGY",
+      "acceptanceCriteria": "MC-CORE-ENERGY: death closes correct beam; never hardcode addon77700HP or20-second wipe bar as server state",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Primal Flame Elementals and fixate",
+      "spellIds": [
+        462619
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Conjure Flame and NPC228816 instances; observed attacks/taunts",
+      "state": "Actual Conjure Flame and NPC228816 instances; observed attacks/taunts",
+      "lifecycle": "Separate four guide-described adds, fixate and temporary taunt/control; no fixed31-second spawn scheduler",
+      "placement": "Actual Firefighter/taunter targets and path anchors",
+      "animation": "Summon, locomotion and attack state need exact reference",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-ADDS",
+      "acceptanceCriteria": "MC-CORE-ADDS: friendly ally is valid attack recipient; taunt switches actual target without changing NPC allegiance",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Escalating Meteors",
+      "spellIds": [
+        460883,
+        462778,
+        462779,
+        462780
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual1/2/3/4-Meteor cast variant",
+      "state": "Actual1/2/3/4-Meteor cast variant",
+      "lifecycle": "Each projectile landing and delayed explosion distinct; simultaneous rocks retain own lifetime",
+      "placement": "Real destination/height and landing footprint; no player-position or ballistic guess",
+      "animation": "Authored meteor and impact/ground telegraph independently aged",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-METEORS",
+      "acceptanceCriteria": "MC-CORE-METEORS: preserve four-projectile variant when observed; seek between landing and explosion keeps correct rocks",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Paired Hearts and asymmetric removal",
+      "spellIds": [
+        460898,
+        460895
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Ash/Cinder recipient application and pair evidence",
+      "state": "Actual Ash/Cinder recipient application and pair evidence",
+      "lifecycle": "Contact removes paired debuffs in guide; primary addon warns sometimes only one removal is present, e.g. death. Keep pair termination separate from unproven other aura removal",
+      "placement": "Actual paired players and contact position; no nearest-player guess",
+      "animation": "Neither exact spell has visuals in fresh graph; hidden/linked child spell route unresolved, no cosmetic alias",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-HEARTS",
+      "acceptanceCriteria": "MC-CORE-HEARTS: multiple pairs never cross-link; one endpoint death/removal cannot leave orphan tether or fabricate unrelated aura removals",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Tremor, armor and pulsing damage",
+      "spellIds": [
+        460887,
+        462560,
+        462563,
+        464558,
+        460890,
+        462482
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual three Tremor variants, Flame Burst, Melt Armor dose and Flare impacts",
+      "state": "Actual three Tremor variants, Flame Burst, Melt Armor dose and Flare impacts",
+      "lifecycle": "Preserve sequence and exact actor/recipient; no energy-derived pulse schedule",
+      "placement": "Actual tank/add positioning; shared tank advice is not geometry",
+      "animation": "Tremor kit differences retained rather than collapsed to first ability",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-PULSES",
+      "acceptanceCriteria": "MC-CORE-PULSES: cast-to-impact and per-target armor stacks survive direct seeks",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Death, wipe and friendly survivors",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss/ally life and encounter-end events",
+      "state": "Actual boss/ally life and encounter-end events",
+      "lifecycle": "Close only proven owned meteors, channels, Hearts and adds; firefighter survivors remain alive if observed",
+      "placement": "No lastSeen despawn or forced synchronized death",
+      "animation": "Original boss death/reset and ally continuation unresolved",
+      "acceptanceCheck": "sod-mc-the-molten-core/MC-CORE-END",
+      "acceptanceCriteria": "MC-CORE-END: no orphan beam/projectile after proven cleanup; normal allies are not turned into hostile bosses",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Boss body/display and rock-to-fireball procedure, true scale and altitude",
+    "Heart pair identifier and child spell effects; aura graph has no direct visuals",
+    "Meteor original trajectories, destinations and delayed explosion IDs",
+    "Exact energy units/rate, friendly ally healing and wipe-reset cleanup",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "227939, 228820",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  }
+}

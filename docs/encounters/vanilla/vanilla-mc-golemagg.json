@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-mc-golemagg",
+  "ruleset": "vanilla",
+  "boss": "Golemagg the Incinerator",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 50670,
+  "rawEncounterId": 670,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-mc-golemagg"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Golemagg.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/golemagg-the-incinerator-molten-core-strategy-wow-classic",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Magma Splash",
+      "spellIds": [
+        13880
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual stack/application/removal and damage",
+      "state": "Per-recipient stacking state",
+      "lifecycle": "Refresh/stack/remove stay exact; tank swap is observed behavior only",
+      "placement": "Actual melee recipients, no radius-based application",
+      "animation": "Exact aura rendering independent from armor simulation",
+      "acceptanceCheck": "vanilla-mc-golemagg/V-MC-GOLEM-SPLASH",
+      "acceptanceCriteria": "V-MC-GOLEM-SPLASH: stacks survive seeks and decay/removal correctly",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Pyroblast",
+      "spellIds": [
+        20228
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual targeted hit/aura/ticks",
+      "state": "Direct fire hit and DoT",
+      "lifecycle": "Exact actual removals; no seasonal expiry explosion",
+      "placement": "True recipient/anchors",
+      "animation": "Baseline20228 route, no460858/465155 substitution",
+      "acceptanceCheck": "vanilla-mc-golemagg/V-MC-GOLEM-PYRO",
+      "acceptanceCriteria": "V-MC-GOLEM-PYRO: preserve actual hit and DoT; never create SoD explosion",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Two Core Ragers and Trust",
+      "spellIds": [
+        20553,
+        19820
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Rager identities, Trust aura and Mangle",
+      "state": "Independent Ragers; low-health survival/heal must be evidenced",
+      "lifecycle": "Guide describes survival while boss alive but later-death wording conflicts with comments; actual life events decide",
+      "placement": "Actual proximity/anchors; no computed Trust threshold from rough guide",
+      "animation": "Body red/enlarged expectation requires authored route validation, no arbitrary scale",
+      "acceptanceCheck": "vanilla-mc-golemagg/V-MC-GOLEM-RAGERS",
+      "acceptanceCriteria": "V-MC-GOLEM-RAGERS: correct two actors and actual life/heal state; no copied SoD229057 or auto-death assumption",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Execute Earthquake",
+      "spellIds": [
+        19798
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual late-phase cast/result",
+      "state": "End-stage ground damage separate from life state",
+      "lifecycle": "Source10percent expectation is not a scheduler",
+      "placement": "Actual victims and caster anchor, missing vertical motion unknown",
+      "animation": "Exact authored Earthquake animation/effects",
+      "acceptanceCheck": "vanilla-mc-golemagg/V-MC-GOLEM-QUAKE",
+      "acceptanceCriteria": "V-MC-GOLEM-QUAKE: preserve real pulse times, no periodic synthetic casts",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-mc-golemagg/V-MC-GOLEM-END",
+      "acceptanceCriteria": "V-MC-GOLEM-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Actual Rager auto-death/despawn after boss, Trust proximity/tint/scale and low-health heal-to-full are not observed.",
+    "Execute-phase Earthquake and Pyroblast remain source expectations without observed acceptance.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      11988,
+      11672
+    ],
+    "baselineScope": "Baseline two Core Ragers, Magma Splash and late Earthquake. SoD Falling Rocks, Crushing Stone and Pyroblast expiry explosion are excluded. Guide links directly verify Trust20553, Mangle19820 and Earthquake19798; later Rager-death wording remains source-qualified."
+  }
+}

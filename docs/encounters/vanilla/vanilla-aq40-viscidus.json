@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq40-viscidus",
+  "ruleset": "vanilla",
+  "boss": "Viscidus",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 50713,
+  "rawEncounterId": 713,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-aq40-viscidus"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/DeadlyBossMods/DBM-Vanilla/blob/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ40/Viscidus.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/viscidus-temple-of-ahnqiraj-strategy",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Frost slow and freeze",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual frost hits plus explicit phase emote/aura evidence",
+      "state": "Slow, freezing and frozen are distinct living states",
+      "lifecycle": "Source100/150/200hit expectations do not certify counts in incomplete cache; no forced freeze clock",
+      "placement": "Observed boss anchor, no arbitrary size/height",
+      "animation": "Authored body/freeze procedure required; no generic ice mesh alias",
+      "acceptanceCheck": "vanilla-aq40-viscidus/V-AQ-VISC-FREEZE",
+      "acceptanceCriteria": "V-AQ-VISC-FREEZE: exact proven frozen window and seek state; player-source frost events retained",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Shatter and globs",
+      "spellIds": [
+        25896
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual shatter and Glob actor/rejoin evidence",
+      "state": "Boss unavailable/reduced form separate from glob actors",
+      "lifecycle": "Actual glob death/rejoin; nominal16.5second addon bar is not lifecycle",
+      "placement": "Observed globs movement and boss anchor; no circle spawn coordinates inferred",
+      "animation": "Actual split/reform/body visibility, no static scale proportional to HP",
+      "acceptanceCheck": "vanilla-aq40-viscidus/V-AQ-VISC-GLOBS",
+      "acceptanceCriteria": "V-AQ-VISC-GLOBS: independent glob lifetimes, real rejoin, no full boss visible during proven split",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Poison Volley and Toxin",
+      "spellIds": [
+        25991,
+        25989
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast, recipient poison and cloud contact",
+      "state": "Player debuff separate from persistent world toxin",
+      "lifecycle": "Exact cure/removal and actual area owner end; no nominal11.3second casts",
+      "placement": "Real area source/anchor, victim contact not exact center",
+      "animation": "Exact poison effects and cloud route, no alias to Kri cloud",
+      "acceptanceCheck": "vanilla-aq40-viscidus/V-AQ-VISC-POISON",
+      "acceptanceCriteria": "V-AQ-VISC-POISON: independent cures, area ownership and phase-aware real casts",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Player attacks and snapshots",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded frost, physical, weapon proc and snapshot state",
+      "state": "Attack evidence separate from server hit-count simulation",
+      "lifecycle": "No inferred shatter from incomplete tally; preserve zero/absorbed records and source attribution",
+      "placement": "Real source/target anchors",
+      "animation": "Actual spell/proc graph routes, no fake phase damage",
+      "acceptanceCheck": "vanilla-aq40-viscidus/V-AQ-VISC-PLAYER",
+      "acceptanceCriteria": "V-AQ-VISC-PLAYER: snapshot aura IDs/known provenance retained; Sapper and frost procs are player-owned",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-aq40-viscidus/V-AQ-VISC-END",
+      "acceptanceCriteria": "V-AQ-VISC-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No certified frost/physical hit counts or actual freeze/shatter timing in incomplete cache.",
+    "No exact toxin center, Glob split/rejoin appearance, body scale or real-game visual acceptance.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15299
+    ],
+    "baselineScope": "Baseline freezing via frost-hit accumulation and physical shatter, then observed Globs. No SoD modified thresholds, fixed damage multipliers, unverified freeze duration or new mechanics. DBM warns freeze failure timing varies."
+  }
+}

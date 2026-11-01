@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bfd-gelihast",
+  "ruleset": "sod",
+  "boss": "Gelihast",
+  "raid": "Blackfathom Deeps",
+  "mapId": 48,
+  "encounterId": 2704,
+  "rawEncounterId": 2704,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "reportRevision": 1,
+      "reportResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "provenanceResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "providerZoneId": 2007,
+      "discoveryPartitions": [
+        "Discovery P1",
+        "Discovery P2+"
+      ],
+      "selectedMapId": 48,
+      "selectedFightIds": [
+        10
+      ],
+      "selectedFightNames": [
+        "Gelihast"
+      ],
+      "matchedNpcTemplateIds": [
+        204921
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "d2d9b25b956c25ce468c37a0b2bf736dc2d40a17c5ff9bd61962f93cbbea6802"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bfd-gelihast"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackfathom-deeps-raid/gelihast-strategy",
+      "author": "Joardee",
+      "updated": "2023-12-05",
+      "quality": "authored exact SoD BFD strategy; not gameplay frames, retained events or exact server script"
+    },
+    {
+      "id": "current-client",
+      "quality": "current production converter graph; record existence only, not occurrence or supported pixels",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "march-link",
+      "url": "https://www.wowhead.com/classic/spell=412466/march-of-the-murlocs",
+      "quality": "guide-linked record; distinct aura variants in fresh graph"
+    },
+    {
+      "id": "rupture-link",
+      "url": "https://www.wowhead.com/classic/spell=412528/ground-rupture",
+      "quality": "guide-linked record; no graph visual"
+    },
+    {
+      "id": "official-2023-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24030413/hotfixes-january-8-2024",
+      "quality": "Official Blizzard indexed search content; direct fetch403, no gameplay/runtime credit",
+      "supports": "December12 SoD hotfix reduced Gelihast Shadow resistance75 to25."
+    },
+    {
+      "id": "pinned-dbmsod",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_BFD/Gelihast.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "Primary addon explicitly gated IsSeasonal SeasonOfDiscovery; SetEncounterID is raw encounter ID, not WCL offset",
+      "lines": "1-10"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Combat cycles and altar recovery",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Two low-health returns to altar, then final combat",
+      "state": "Combat cycles and altar recovery",
+      "lifecycle": "Observed recovery/invulnerability boundaries",
+      "placement": "Actual altar route; no teleport shortcut",
+      "animation": "Native caster recovery only if evidenced",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-PHASE",
+      "acceptanceCriteria": "GELIHAST-PHASE: correct three combat cycles and seek state",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "March of the Murlocs",
+      "spellIds": [
+        412466
+      ],
+      "clientCandidateSpellIds": [
+        412270,
+        412272,
+        412427,
+        412456
+      ],
+      "trigger": "Recovery emits shadow murlocs",
+      "state": "March of the Murlocs",
+      "lifecycle": "Each wave born, traverses and retires",
+      "placement": "Straight paths require sampled or primary script evidence",
+      "animation": "Native ghost murloc bodies",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-MARCH",
+      "acceptanceCriteria": "GELIHAST-MARCH: visible wave gaps/paths and lifecycle",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          412466
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Shadow Crash",
+      "spellIds": [
+        411990
+      ],
+      "clientCandidateSpellIds": [
+        411991,
+        411995,
+        412009,
+        412040
+      ],
+      "trigger": "Target reticle then arcing impact",
+      "state": "Shadow Crash",
+      "lifecycle": "Independent field/phase behavior",
+      "placement": "Fixed actual impact center",
+      "animation": "Native reticle/missile/ground field",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-CRASH",
+      "acceptanceCriteria": "GELIHAST-CRASH: landing and field do not follow target",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          411990
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Tank and raid debuffs",
+      "spellIds": [
+        412072,
+        411973,
+        411959
+      ],
+      "clientCandidateSpellIds": [
+        412079,
+        412080,
+        411956,
+        411978
+      ],
+      "trigger": "Shadow Strike stacks, curse and Fear",
+      "state": "Tank and raid debuffs",
+      "lifecycle": "Recorded stacks, decurse and fear removal",
+      "placement": "Actual affected actors",
+      "animation": "Native debuffs; no generated flee path",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-DEBUFFS",
+      "acceptanceCriteria": "GELIHAST-DEBUFFS: correct states across seek",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          412072,
+          411973,
+          411959
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Ground Rupture and tendrils",
+      "spellIds": [
+        412528
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Final combat spawns tendrils",
+      "state": "Ground Rupture and tendrils",
+      "lifecycle": "Each add born, channels, dies",
+      "placement": "Independent ground anchors",
+      "animation": "Native tendril and MindFlay after IDs verified",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-TENDRILS",
+      "acceptanceCriteria": "GELIHAST-TENDRILS: correct owners and cancellation",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          412528
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Final death/wipe",
+      "state": "Death and reset",
+      "lifecycle": "Clear waves/tendrils/fields/recovery",
+      "placement": "No recovery loop after final death",
+      "animation": "Recorded corpse only",
+      "acceptanceCheck": "sod-bfd-gelihast/GELIHAST-END",
+      "acceptanceCriteria": "GELIHAST-END: phase seek and cleanup",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    412270,
+    412272,
+    412427,
+    412456,
+    411991,
+    411995,
+    412009,
+    412040,
+    412079,
+    412080,
+    411956,
+    411978
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Actual10percent transition trigger and healing/recovery intervals",
+    "Murloc NPC instances/spawn counts/speed/straight paths",
+    "Phase-dependent Crash field and tendril timing; guide comment is not primary proof",
+    "Actual retained phase/actor/spell IDs and source ownership",
+    "Missing log Z and stacked/water geometry",
+    "Original gameplay frame comparison and native visual acceptance",
+    "Retained pull date must select pre/post resistance and DreamEater fix behavior; no stat or death simulation from present client alone."
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "bossNpcId": 204921
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

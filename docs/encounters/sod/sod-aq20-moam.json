@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-moam",
+  "ruleset": "sod",
+  "boss": "Moam",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100720,
+  "rawEncounterId": 720,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        46,
+        86
+      ],
+      "selectedFightNames": [
+        "Moam"
+      ],
+      "matchedNpcTemplateIds": [
+        15340
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-moam"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Moam.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/moam-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Moam.lua",
+      "quality": "Pinned primary aura lifecycle and full-mana timing uncertainty; local complete source"
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/Moam_%28Season_of_Discovery%29",
+      "quality": "Indexed exact SoD Despair carryover and stone account; direct403 and source conflict recorded"
+    },
+    {
+      "id": "official-health-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "date": "2024-12-13",
+      "quality": "Indexed official Moam/Ayamiss health reduction; need pull date before selecting version"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Mana drain and eruption",
+      "spellIds": [
+        25672
+      ],
+      "clientCandidateSpellIds": [
+        25671,
+        25676
+      ],
+      "trigger": "Official mana-stealing encounter; baseline full mana eruption",
+      "state": "Mana drain and eruption",
+      "lifecycle": "Actual resource samples, casts and damage/knockup; no mana simulation",
+      "placement": "Real drained victims and actual airborne paths",
+      "animation": "Native drain and eruption",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-MANA",
+      "acceptanceCriteria": "MOAM-MANA: no fabricated fullmana cast",
+      "sourceRefs": [
+        "official-sod-p6",
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25672
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            35
+          ],
+          "BigWigs-source.lua": []
+        },
+        "addonSourceLines": [
+          35
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Energize stone mode",
+      "spellIds": [
+        25685
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons Energize apply/remove",
+      "state": "Energize stone mode",
+      "lifecycle": "Actual aura edges; client7day duration and addon90s prediction not authoritative expiry",
+      "placement": "Actual immobilized body and phase transitions",
+      "animation": "Native stone appearance/idle if evidence supports",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-STONE",
+      "acceptanceCriteria": "MOAM-STONE: actual early end and repeated mode seek",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25685
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            28,
+            29,
+            36,
+            38,
+            39,
+            46,
+            53
+          ],
+          "BigWigs-source.lua": [
+            16,
+            21,
+            22,
+            26,
+            27
+          ]
+        },
+        "addonSourceLines": [
+          28,
+          29,
+          36,
+          38,
+          39,
+          46,
+          53
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Mana Fiends",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        25681,
+        25682,
+        25683,
+        25684
+      ],
+      "trigger": "Baseline fiends summoned at stone phase; client summon candidates",
+      "state": "Mana Fiends",
+      "lifecycle": "Independent actual births/CC/deaths and channel ends",
+      "placement": "Separate real fiends and positions",
+      "animation": "Native fiend bodies and actual spells",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-FIENDS",
+      "acceptanceCriteria": "MOAM-FIENDS: no fixed3spawn recipe without events",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Trample and fiend spells",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline melee Trample and fiend ArcaneExplosion/Counterspell",
+      "state": "Trample and fiend spells",
+      "lifecycle": "Actual source-sensitive damage/control",
+      "placement": "Moam versus fiend target ownership",
+      "animation": "Native actual strike and spell paths",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-SOURCE",
+      "acceptanceCriteria": "MOAM-SOURCE: no boss/fiend explosion conflation",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "SoD Despair and carryover",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213256,
+        1214956
+      ],
+      "trigger": "SoD wiki periodic shadow curse, persists through later bosses",
+      "state": "SoD Despair and carryover",
+      "lifecycle": "Mode marker versus10s damage aura; real applications/removals and crosschapter continuation",
+      "placement": "Actual player aura recipients",
+      "animation": "No cosmetic field substitute for visual-less aura",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-DESPAIR",
+      "acceptanceCriteria": "MOAM-DESPAIR: carryover retained without timer synthesis",
+      "sourceRefs": [
+        "sod-wiki",
+        "client",
+        "official-sod-p6"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Death, checkpoint and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual death/wipe and third-boss checkpoint",
+      "state": "Death, checkpoint and reset",
+      "lifecycle": "Independent add/stone cleanup; persistent curse not blindly ended on death",
+      "placement": "Actual objects/actors, no chapterwide respawn",
+      "animation": "Native death/reset state",
+      "acceptanceCheck": "sod-aq20-moam/MOAM-END",
+      "acceptanceCriteria": "MOAM-END: no stale stone and correct carryover",
+      "sourceRefs": [
+        "official-sod-p6",
+        "sod-wiki",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    25671,
+    25676,
+    25681,
+    25682,
+    25683,
+    25684,
+    1213256,
+    1214956
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD stone end condition, mana samples and native stone body semantics",
+    "AQ20 curse IDs and player-self-source applications",
+    "Fiend NPC and source-sensitive spell identities",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 720,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15340",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15340"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

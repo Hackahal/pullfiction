@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-onyxia",
+  "ruleset": "vanilla",
+  "boss": "Onyxia",
+  "raid": "Onyxia's Lair",
+  "mapId": 249,
+  "encounterId": null,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-onyxia"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://github.com/DeadlyBossMods/DBM-Vanilla/blob/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaOnyxia/Onyxia.lua",
+      "quality": "Pinned primary addon, baseline registrations; exclude explicit Discovery branch and commented Wrath spells"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/onyxia-onyxias-lair-strategy-wow-classic",
+      "quality": "Retrieved authored Classic guide; phase/mechanic expectation, not pixel parity"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Ground attacks and facing",
+      "spellIds": [
+        18435,
+        18500,
+        15847,
+        19633
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual casts, tail results and knock-away success",
+      "state": "Frontal breath, wing knockback and rear tail attacks distinct",
+      "lifecycle": "Real cast/result/removal and phase bounds",
+      "placement": "Observed facing and recipients; no synthetic cone from tank strategy",
+      "animation": "Exact authored casts/body attacks; no invented scale",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-GROUND",
+      "acceptanceCriteria": "V-ONY-GROUND: correct facing/source/results and movement boundaries; missing Z remains unknown",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Takeoff, flight and landing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Source65percent takeoff/40percent landing, actual phase yells/observations required",
+      "state": "Walking to takeoff, airborne, landing and grounded are separate",
+      "lifecycle": "DBM70/45percent are prewarnings, not transition triggers; no flight schedule",
+      "placement": "Actual XY/Z/rotation; phase alone cannot establish height or eight waypoint coordinates",
+      "animation": "Walk/takeoff/fly/land clips and flags require state evidence",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-PHASE",
+      "acceptanceCriteria": "V-ONY-PHASE: direct seek restores known airborne state and true animation age; no ground lock or arbitrary height lift",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Airborne Fireball target",
+      "spellIds": [
+        18392
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual target-bearing cast and hit; addon target scan is advisory",
+      "state": "Target warning separate from actual launch/impact",
+      "lifecycle": "Exact recorded windup/hit and interruption, no automatic3second marker",
+      "placement": "Actual target and known destination; splash victims not invented",
+      "animation": "Exact missile/impact route; no synthetic warning bubble",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-FIREBALL",
+      "acceptanceCriteria": "V-ONY-FIREBALL: correct recipient despite target scan delay; logged marks distinct from addon mark8",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Directional Deep Breath",
+      "spellIds": [
+        17086,
+        18351,
+        18564,
+        18576,
+        18584,
+        18596,
+        18609,
+        18617
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual breath start/emote and directional variant",
+      "state": "Warning, travelling breath and ground damage distinct",
+      "lifecycle": "No fixed first29.1second breath; that branch is SoD only",
+      "placement": "Actual source/facing/travel path and footprint; variant-to-direction mapping remains unknown",
+      "animation": "Authored variants retained, no cosmetic alias or guessed ground line",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-BREATH",
+      "acceptanceCriteria": "V-ONY-BREATH: eight distinct IDs preserve actual timing/direction/area; interrupted cast emits no invented damage",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Whelps and eggs",
+      "spellIds": [
+        17646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual NPC spawn/combat and egg interaction evidence",
+      "state": "Independent Whelp instances; name alone is not spawn",
+      "lifecycle": "Actual creation/death/despawn; no commented105second spawn bar",
+      "placement": "Actual hatchery/actor anchors; no fixed wave count or copied layout",
+      "animation": "Exact Whelp display/summon; no Wrath guards or69004/68959",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-WHELPS",
+      "acceptanceCriteria": "V-ONY-WHELPS: preserve each actual instance and continuation without fixed waves",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Landing fear and lava cracks",
+      "spellIds": [
+        18431
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Bellowing Roar cast/recipient fear and ground pulse evidence",
+      "state": "Per-target fear separate from persistent map lava",
+      "lifecycle": "Exact removals and crack pulse lifetime, not cooldown schedule",
+      "placement": "Observed fleeing anchors and world crack footprint; no random path",
+      "animation": "Fear body state, locomotion and ground eruption separate",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-FEAR",
+      "acceptanceCriteria": "V-ONY-FEAR: fear recipients/source ownership exact; ground fire survives contact exit only when evidenced",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-onyxia/V-ONY-END",
+      "acceptanceCriteria": "V-ONY-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "dbm",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No confirmed Vanilla retained Onyxia dataset or provider/raw encounter mapping. Addon1084 is source identity only.",
+    "Exact phase yell timing, takeoff/landing duration, flight height, directional breath mapping and ground footprint are unknown.",
+    "Exact Cleave/lava-crack spell IDs are not assigned from name alone.",
+    "No actual whelp spawn count/layout, egg trigger, marker ownership, death/wipe continuation or original-game visual acceptance.",
+    "Static display8570 and full kits do not establish form, authored animation, template scale or native rendering."
+  ],
+  "researchContext": {
+    "npcId": 10184,
+    "addonEncounterId": 1084,
+    "baselineScope": "Baseline three phases65/40percent; addon70/45 are prewarnings. Exclude SoD first fixed breath29.1s and Wrath Lair Guards/Blast Nova variants. No confirmed Vanilla Onyxia retained pull."
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-gahzranka",
+  "ruleset": "sod",
+  "boss": "Gahz'ranka",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": null,
+  "rawEncounterId": 790,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "Raw addon or game identity does not establish a provider encounter ID. Map against an actual report before audit use."
+  },
+  "bossUnits": [
+    "sod-zg-gahzranka"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Gahzranka.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/gahzranka-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=4387s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "1:13:07",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Lure and emergence",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline lure summons optional hydra",
+      "state": "Lure and emergence",
+      "lifecycle": "Actual birth/activation, no assumed pre-pull body",
+      "placement": "PaglePointe water position and actual emergence",
+      "animation": "Native hydra and emergence only if evidenced",
+      "acceptanceCheck": "sod-zg-gahzranka/GAHZ-BIRTH",
+      "acceptanceCriteria": "GAHZ-BIRTH: no first-sample backfill before birth",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Frost Breath",
+      "spellIds": [
+        16099
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM 2s breath cast",
+      "state": "Frost Breath",
+      "lifecycle": "Actual completion/interruption then 10s target slow/mana results",
+      "placement": "Caster facing and actual cone victims",
+      "animation": "Native caster 2610 breath and impact 68",
+      "acceptanceCheck": "sod-zg-gahzranka/GAHZ-BREATH",
+      "acceptanceCriteria": "GAHZ-BREATH: correct facing and actual targets",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          16099
+        ],
+        "addonSourceLines": [
+          31,
+          34,
+          38
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Slam",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        24326
+      ],
+      "trigger": "Baseline slam; exact guide-linked name/client record",
+      "state": "Slam",
+      "lifecycle": "Actual hit and displacement interval",
+      "placement": "Observed victim knockback, missingZ unknown",
+      "animation": "Native strike/knockback",
+      "acceptanceCheck": "sod-zg-gahzranka/GAHZ-SLAM",
+      "acceptanceCriteria": "GAHZ-SLAM: no damage-as-position inference",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Massive Geyser",
+      "spellIds": [
+        22421
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM 1.5s cast",
+      "state": "Massive Geyser",
+      "lifecycle": "Actual impact, launch, landing and threat continuation",
+      "placement": "Real airborneZ and water landing; no fixed jump parabola",
+      "animation": "Native area impact 152390 and actual motion",
+      "acceptanceCheck": "sod-zg-gahzranka/GAHZ-GEYSER",
+      "acceptanceCriteria": "GAHZ-GEYSER: source/hazard center and airborne interval correct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          22421
+        ],
+        "addonSourceLines": [
+          31,
+          35,
+          40
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded hydra death or wipe",
+      "state": "Death and reset",
+      "lifecycle": "Actual corpse/despawn and reused summon instance",
+      "placement": "No snapped river-floor return",
+      "animation": "Native death/water state",
+      "acceptanceCheck": "sod-zg-gahzranka/GAHZ-END",
+      "acceptanceCriteria": "GAHZ-END: no lingering geyser or pre-resummon hydra",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    24326
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD lure/emergence and Slam spell occurrence",
+    "Airborne paths, water level and real fall outcome",
+    "Threat reset and death/wipe water behavior",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "15114"
+  }
+}

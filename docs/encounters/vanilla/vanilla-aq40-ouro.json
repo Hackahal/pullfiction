@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq40-ouro",
+  "ruleset": "vanilla",
+  "boss": "Ouro",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 50716,
+  "rawEncounterId": 716,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-aq40-ouro"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/DeadlyBossMods/DBM-Vanilla/blob/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ40/Ouro.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/ouro-temple-of-ahnqiraj-strategy",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Submerge and emerge",
+      "spellIds": [
+        26058,
+        26586
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss submerge26058/emerge26586 success records",
+      "state": "Above/below ground body state distinct from living/dead",
+      "lifecycle": "Observed transitions only; do not schedule184.6/30.1second addon bars",
+      "placement": "Observed anchor when emerging; no negativeZ or route from guide",
+      "animation": "Burrow/emerge body animation and targetability require explicit presentation state",
+      "acceptanceCheck": "vanilla-aq40-ouro/V-AQ-OURO-PHASE",
+      "acceptanceCriteria": "V-AQ-OURO-PHASE: seeks across actual transition replay body visibility and retain life correctly",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Sand Blast and Sweep",
+      "spellIds": [
+        26102,
+        26103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual begin/success/interrupt/result and recipient aura",
+      "state": "Sand Blast cone/stun/threat loss distinct from Sweep knockback",
+      "lifecycle": "Actual5second stun ends/removals; casts/interrupts independent",
+      "placement": "Observed facing/targets; never generate hit cone victims or infer threat table",
+      "animation": "Source cast animation and target impact without channel substitution",
+      "acceptanceCheck": "vanilla-aq40-ouro/V-AQ-OURO-CAST",
+      "acceptanceCriteria": "V-AQ-OURO-CAST: correct cast endpoint, stun owner, no invented victims/forced knockback path",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Quake, Ground Rupture and Scarabs",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual hazard/summon/NPC/result evidence",
+      "state": "Independent quake areas, emerge burst and scarab lifetimes",
+      "lifecycle": "Explicit spawn/death/continuation bounds; no fixed eruption schedule",
+      "placement": "Actual independent anchors required; affected players not ground-center proof",
+      "animation": "Inspect authored Area routes/body hazards/add kits separately",
+      "acceptanceCheck": "vanilla-aq40-ouro/V-AQ-OURO-GROUND",
+      "acceptanceCriteria": "V-AQ-OURO-GROUND: source-linked owned hazards and NPCs persist through seek/end correctly",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Berserk",
+      "spellIds": [
+        26615
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual hostile boss aura",
+      "state": "Final enrage distinct from submerge; guide20percent versus addon25percent prewarning",
+      "lifecycle": "Actual aura/end records; no threshold-only production transition",
+      "placement": "Boss body ownership, no scale or vertical offset guess",
+      "animation": "Exact authored effects/procedures; no invented attack animation rate",
+      "acceptanceCheck": "vanilla-aq40-ouro/V-AQ-OURO-ENRAGE",
+      "acceptanceCriteria": "V-AQ-OURO-ENRAGE: actual aura at exact application and removal; no underground body forced by Quake alone",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-aq40-ouro/V-AQ-OURO-END",
+      "acceptanceCriteria": "V-AQ-OURO-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No observed burrow/emerge interval; source expectation remains unaccepted as a whole. Need real transition evidence for body state implementation.",
+    "GroundRupture has no graphvisual; a missing visual route cannot be fabricated as a specific effect or body transform.",
+    "No Quake/Scarabs/wipe/end continuation retained in thispull; cached completeness remains unverified.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15517
+    ],
+    "baselineScope": "Baseline guide and pinned primary26058/26586/26615. Exclude SoD-only BlindingAdmiration1215744/1215745 and1213261. Advisory prewarning25percent is not the20percent phase boundary."
+  }
+}

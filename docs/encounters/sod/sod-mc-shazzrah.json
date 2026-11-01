@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-shazzrah",
+  "ruleset": "sod",
+  "boss": "Shazzrah",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100667,
+  "rawEncounterId": 667,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        20
+      ],
+      "selectedFightNames": [
+        "Shazzrah"
+      ],
+      "matchedNpcTemplateIds": [
+        228434
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-shazzrah"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Shazzrah.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Shazzrah_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "clone-hotfix",
+      "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-hotfixes-june-25/1788040/701",
+      "quality": "Primary Blizzard October1 2024 hotfix"
+    },
+    {
+      "id": "clone-original-report",
+      "url": "https://us.forums.blizzard.com/en/wow/t/seasons-of-discovery-molten-core-heat-3-shazzrah-spawning-two-clones-on-teleport/1967886",
+      "quality": "Original player report September24 2024; historical bug evidence, not intended script"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Gate teleport and images",
+      "spellIds": [
+        23138
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Gate success and independently created Image actor",
+      "state": "Actual Gate success and independently created Image actor",
+      "lifecycle": "Teleport discontinuity separate from lingering image; image casts remain source-owned until actual end",
+      "placement": "Observed departure and next anchor; no invented20-yard route or destination",
+      "animation": "Departure/arrival FX separate from duplicated body; exact opacity/display unresolved",
+      "acceptanceCheck": "sod-mc-shazzrah/MC-SHAZ-GATE",
+      "acceptanceCriteria": "MC-SHAZ-GATE: before/exact/after blink seeks match; below35-yard jump not smoothed; clone stays at actual departure",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Reflect and Magic Grounding",
+      "spellIds": [
+        460856,
+        19714
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss aura application/removal and dispel",
+      "state": "Actual boss aura application/removal and dispel",
+      "lifecycle": "Keep reflection and damage reduction separate; true removal overrides nominal5-second addon bar",
+      "placement": "Self aura owned by boss",
+      "animation": "Body tint/shield route needs actual kit semantics; no mesh substitution",
+      "acceptanceCheck": "sod-mc-shazzrah/MC-SHAZ-REFLECT",
+      "acceptanceCriteria": "MC-SHAZ-REFLECT: aura termination exact and reflected recipient/source roles preserved",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Curse and Counterspell",
+      "spellIds": [
+        19713,
+        461343,
+        19715
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual curse targets and directional Counterspell",
+      "state": "Actual curse targets and directional Counterspell",
+      "lifecycle": "Recipient curse/removal and interrupted school state distinct",
+      "placement": "Actual facing and affected actors; no radius-based guessed recipients",
+      "animation": "Cast and interruption presentation independently verified",
+      "acceptanceCheck": "sod-mc-shazzrah/MC-SHAZ-CURSE",
+      "acceptanceCriteria": "MC-SHAZ-CURSE: heat-specific ID preserved; player or pet removal scoped correctly",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Clone and boss cleanup",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Verified encounter end/reset",
+      "state": "Verified encounter end/reset",
+      "lifecycle": "Close each image and pending explosion independently; boss death must not be confused with image death",
+      "placement": "Actual actor-instance ownership; no lastSeen timeout",
+      "animation": "Image death/despawn behavior unresolved",
+      "acceptanceCheck": "sod-mc-shazzrah/MC-SHAZ-END",
+      "acceptanceCriteria": "MC-SHAZ-END: no orphan clone cast after actual cleanup; repeated pulls never merge instances",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Image template and summon/explosion spell IDs, real lifetime and post-boss cleanup",
+    "Reflect availability at heat2 versus heat3: source comments and engagement logic differ",
+    "Gate destination and threat reset evidence; exact image visual route",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "12264, 228434",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

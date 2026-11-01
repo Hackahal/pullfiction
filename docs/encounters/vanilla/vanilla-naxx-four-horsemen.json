@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-four-horsemen",
+  "ruleset": "vanilla",
+  "boss": "The Four Horsemen",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51121,
+  "rawEncounterId": 1121,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-four-horsemen"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/MilitaryQuarter/Horsemen.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/four-horsemen-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-12",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=28928/summon-spirit-of-mograine",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=28932/summon-spirit-of-korthazz",
+        "https://www.wowhead.com/classic/spell=28931/summon-spirit-of-blaumeux",
+        "https://www.wowhead.com/classic/spell=28934/summon-spirit-of-zeliek",
+        "https://www.wowhead.com/classic/spell=28882/righteous-fire"
+      ],
+      "quality": "Resolved Classic guide links. Primary roster is Mograine16062/Zeliek16063/Korthazz16064/Blaumeux16065; Wrath replacement30549 explicitly excluded."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Four independent Classic bosses and marks",
+      "spellIds": [
+        28832,
+        28833,
+        28834,
+        28835
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual per-boss mark casts and recipient stacks",
+      "state": "Mograine, Zeliek, Korthazz and Blaumeux keep distinct lives/sources",
+      "lifecycle": "Actual refresh/removal; no automatic mark timer or stack-generated damage",
+      "placement": "Actual corner paths; no fixed formation or guessed60yard footprint",
+      "animation": "Each host/recipient aura retains owner and age",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Death spirits continue marks",
+      "spellIds": [
+        28928,
+        28932,
+        28931,
+        28934
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual horseman death plus independent spirit activity",
+      "state": "Corpse and spirit are separate roles; no Wrath boss swap",
+      "lifecycle": "Do not delete mark source at first boss death or invent spirits from every death",
+      "placement": "Corpse anchor only with evidence; spirit models/height unknown",
+      "animation": "Spirit appearance and dead-body animation distinct",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Meteor and Righteous Fire",
+      "spellIds": [
+        28884,
+        28882
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Korthazz meteor and Mograine hit/debuff",
+      "state": "Meteor damage recipients differ from launch target; Mograine proc separate",
+      "lifecycle": "Actual impacts and DoT removal",
+      "placement": "Ground impact anchor not all victim positions; split geometry unverified",
+      "animation": "Projectile impact versus melee proc/DoT",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Void Zone and Holy Wrath",
+      "spellIds": [
+        28863,
+        28883
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Blaumeux cast and Zeliek chain results",
+      "state": "Persistent ground object versus actual chain recipients",
+      "lifecycle": "No guessed90second area or inferred chain topology",
+      "placement": "Actual destination required; target aura not floor location",
+      "animation": "Area route and chain jumps separately checked",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Independent Shield Wall and completion",
+      "spellIds": [
+        29061
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual per-boss shield aura and individual deaths",
+      "state": "Individual50/20percent thresholds are researched, not simulated",
+      "lifecycle": "Actual aura removal and all4 deaths; no early aggregate cleanup",
+      "placement": "Actual host facing/positions",
+      "animation": "Shield body visual, corpse and spirit age separate",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-four-horsemen/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      16062,
+      16063,
+      16064,
+      16065
+    ]
+  }
+}

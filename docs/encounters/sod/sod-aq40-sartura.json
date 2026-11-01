@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-sartura",
+  "ruleset": "sod",
+  "boss": "Battleguard Sartura",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100711,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-sartura"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556/",
+      "date": "2024-12-06",
+      "quality": "Official primary SoD scope"
+    },
+    {
+      "id": "S2",
+      "url": "https://warcraft.wiki.gg/wiki/Battleguard_Sartura_%28Season_of_Discovery%29",
+      "quality": "Secondary SoD-specific mechanic record"
+    },
+    {
+      "id": "S3",
+      "url": "https://www.icy-veins.com/wow-classic/battleguard-sartura-guide-strategy-abilities-loot",
+      "date": "2024-11-18",
+      "quality": "Authored mixed SoD and baseline guide"
+    },
+    {
+      "id": "S4",
+      "url": "https://www.thecomfywizard.com/sod-rogue-dps-compendium-p6",
+      "quality": "Original SoD player account"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Boss Whirlwind",
+      "spellIds": [
+        26083,
+        26084
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual self-aura/cast and hits",
+      "state": "Actual self-aura/cast and hits",
+      "lifecycle": "Sustain to recorded removal, death cancels",
+      "placement": "Moving boss footprint, no guessed fixed circle",
+      "animation": "Authored126 and actual trails/bodyFX; preserve age",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-BOSS-SPIN",
+      "acceptanceCriteria": "SAR-BOSS-SPIN",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "26083 aura;26084 pulse",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Guard Whirlwind",
+      "spellIds": [
+        26038,
+        26686
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual guard self-aura/cast",
+      "state": "Individual guard self-aura/cast",
+      "lifecycle": "Independent8second spans or early death/removal",
+      "placement": "Each guard's observed motion",
+      "animation": "Guard route may differ; do not substitute boss spell",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-GUARD-SPIN",
+      "acceptanceCriteria": "SAR-GUARD-SPIN",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "26038 aura;26686 damage",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Threat/target switches",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Source-specific actions and movement",
+      "state": "Source-specific actions and movement",
+      "lifecycle": "Preserve target changes without inventing threat values",
+      "placement": "No homing to most recent AoE recipient",
+      "animation": "Facing/motion and spin separate",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-TARGETS",
+      "acceptanceCriteria": "SAR-TARGETS",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "Recorded melee1 and ability targets; no explicit threat spell",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Guard Knockback",
+      "spellIds": [
+        26027
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded casts and affected players",
+      "state": "Recorded casts and affected players",
+      "lifecycle": "Impact and movement response, then recovery",
+      "placement": "Victim-specific observedXY; missingZ unknown",
+      "animation": "Actual impact/airborne evidence required",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-KNOCKBACK",
+      "acceptanceCriteria": "SAR-KNOCKBACK",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "26027",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Sundering Cleave",
+      "spellIds": [
+        25174
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cast/result and debuff applications",
+      "state": "Cast/result and debuff applications",
+      "lifecycle": "Contact damage and armor stacks/removal",
+      "placement": "Actual recipients; no fabricated cone",
+      "animation": "Exact cast/impact/trail",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-CLEAVE",
+      "acceptanceCriteria": "SAR-CLEAVE",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "25174",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Stun/taunt control",
+      "spellIds": [
+        355,
+        1161,
+        8643,
+        16922,
+        20615,
+        427746
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Successful apply versus missed/immune result",
+      "state": "Successful apply versus missed/immune result",
+      "lifecycle": "Actual aura interval; retain spin independent where observed",
+      "placement": "Stop/continue motion according to samples, not guide rule",
+      "animation": "Stun and Whirlwind ordering needs native acceptance",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-CONTROL",
+      "acceptanceCriteria": "SAR-CONTROL",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "Player spell IDs derived from actual target events",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Enrage",
+      "spellIds": [
+        8269
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual lowhealth cast/application",
+      "state": "Actual lowhealth cast/application",
+      "lifecycle": "Buff to removal/death",
+      "placement": "Boss body and melee cadence, no global scale",
+      "animation": "Authored persistent procedure must resolve",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-ENRAGE",
+      "acceptanceCriteria": "SAR-ENRAGE",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "8269 observed;longberserk unobserved",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Optional SoD curse",
+      "spellIds": [
+        1214956
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded player applications/ticks",
+      "state": "Recorded player applications/ticks",
+      "lifecycle": "Individual10second spans, laterboss continuation possible",
+      "placement": "Victim-owned body effects, no invented area",
+      "animation": "Actual aura appearance and stacks",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-DESPAIR",
+      "acceptanceCriteria": "SAR-DESPAIR",
+      "sourceRefs": [
+        "S1",
+        "S2"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "1214956",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Guards/death/reset/seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Three pre-existing guards, realboss death",
+      "state": "Three pre-existing guards, realboss death",
+      "lifecycle": "Individual deaths; wipe fixture needed",
+      "placement": "Keep identities and positions",
+      "animation": "Restore spin age; no repeated impact on seek",
+      "acceptanceCheck": "sod-aq40-sartura/SAR-END-SEEK",
+      "acceptanceCriteria": "SAR-END-SEEK",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "spellMappingNotes": "Actor/lifecycle events",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    {
+      "id": "SAR-G2",
+      "finding": "Enrage kit668 persistent state unsupported by modern importer; exact modern-to-legacy compatibility is unproven because params1/2 are nonzero",
+      "proof": "Raw [16716055,2,2,0]; existing native Tint consumes only params0; no authoritative legacy row or modern dispatcher equivalence inspected"
+    },
+    "Moving boss spin: state pin is filtered during movement but repeated pulse cast animations may drive actual spin; native visual acceptance needed",
+    "Guard continuous spin linkage: 26038 has no Aura Start kit; do not substitute 26083",
+    "Exact threat table and chase timing absent",
+    "Knockback ballistic height and floor unverified",
+    "Final curse removals incomplete; optional curse may continue between encounters",
+    "Wipe and long berserk variants unobserved"
+  ]
+}

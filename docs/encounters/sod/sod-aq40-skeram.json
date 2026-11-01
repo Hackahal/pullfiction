@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-skeram",
+  "ruleset": "sod",
+  "boss": "The Prophet Skeram",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100709,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-skeram"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556/",
+      "date": "2024-12-06",
+      "quality": "official primary SoD scope"
+    },
+    {
+      "id": "S2",
+      "url": "https://warcraft.wiki.gg/wiki/The_Prophet_Skeram_%28Season_of_Discovery%29",
+      "quality": "secondary SoD-specific mechanics"
+    },
+    {
+      "id": "S3",
+      "url": "https://www.icy-veins.com/wow-classic/the-prophet-skeram-guide-strategy-abilities-loot",
+      "date": "2024-11-18",
+      "quality": "authored mixedSoD/baseline guide"
+    },
+    {
+      "id": "S4",
+      "url": "https://www.wowhead.com/classic/guide/the-prophet-skeram-temple-of-ahnqiraj-strategy",
+      "quality": "authored baseline,corroborate againstSoD log"
+    },
+    {
+      "id": "S5",
+      "url": "https://www.thecomfywizard.com/sod-rogue-dps-compendium-p6",
+      "quality": "original SoD player guide"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Summon Images",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded split cast/summon near75/50/25%",
+      "state": "Recorded split cast/summon near75/50/25%",
+      "lifecycle": "Two independent images per split, death/despawn separate",
+      "placement": "Source initialization and platform destination evidence",
+      "animation": "Exact clone model/appearance, no guessed colors",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-IMAGES",
+      "acceptanceCriteria": "SKE-IMAGES",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Teleport",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded teleport/linked transition",
+      "state": "Recorded teleport/linked transition",
+      "lifecycle": "Instant discontinuity; preserve pre/post anchors",
+      "placement": "Actor-specific landing on platform, missingZ unknown",
+      "animation": "Departure/arrival kits separate",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-TELEPORT",
+      "acceptanceCriteria": "SKE-TELEPORT",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "True Fulfillment",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast and target aura",
+      "state": "Recorded cast and target aura",
+      "lifecycle": "Control lasts observed span, CC independent, removal restores",
+      "placement": "Preserve player identity; separate allegiance and source",
+      "animation": "Visible empowerment/scale route needs client semantics",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-CONTROL",
+      "acceptanceCriteria": "SKE-CONTROL",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Arcane Explosion",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded caster-instance start/end",
+      "state": "Recorded caster-instance start/end",
+      "lifecycle": "Interrupt/death cancels, completed cast impacts",
+      "placement": "Caster centered area, footprint sourced",
+      "animation": "Actual client kit, no fixed AoE overlay",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-EXPLOSION",
+      "acceptanceCriteria": "SKE-EXPLOSION",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Earth Shock",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded source/target result",
+      "state": "Recorded source/target result",
+      "lifecycle": "Direct impact and interrupt behavior",
+      "placement": "Actual target, not nearest raid member",
+      "animation": "Exact spell missile/impact semantics",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-SHOCK",
+      "acceptanceCriteria": "SKE-SHOCK",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "SoD Illusionary Shatter",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Optional observed selection/birth actors",
+      "state": "Optional observed selection/birth actors",
+      "lifecycle": "Individual transient illusion, shatter, cleanup",
+      "placement": "Spawn/player-linked position, exact motion unknown",
+      "animation": "Ghost appearance requires clone/body linkage",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-SHATTER",
+      "acceptanceCriteria": "SKE-SHATTER",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S5"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Image and real identity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Original and copy actor/template keys",
+      "state": "Original and copy actor/template keys",
+      "lifecycle": "Do not merge health/targets/markers",
+      "placement": "Instance-specific position/facing and resource records",
+      "animation": "Same base appearance allowed; source player metadata separate",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-IDENTITY",
+      "acceptanceCriteria": "SKE-IDENTITY",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Death/wipe/seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Explicit boss/image life and encounter end",
+      "state": "Explicit boss/image life and encounter end",
+      "lifecycle": "Despawn images on sourced terminal state; preserve persistent player buffs",
+      "placement": "Seek restores actual phase and original effect age",
+      "animation": "No repeated summons/impact on seek",
+      "acceptanceCheck": "sod-aq40-skeram/SKE-END-SEEK",
+      "acceptanceCriteria": "SKE-END-SEEK",
+      "sourceRefs": [
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Mindcontrolbodygrowth mechanism and correctmultiplier;graphlacksfullauraeffects",
+    "Ghost/player-copy/texturelinkage;staticdisplaydoesnotproveabsence",
+    "AreaarrivalTeleportkitrouteanddestination",
+    "Illusionterminaldespawnlifetimeunknown",
+    "Finalcontrolremovalmissing",
+    "Survivingimagecleanupandwipevariantunobserved",
+    "PlatformZ/scalegeometrynotverified"
+  ]
+}

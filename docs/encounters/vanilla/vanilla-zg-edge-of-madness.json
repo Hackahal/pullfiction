@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-edge-of-madness",
+  "ruleset": "vanilla",
+  "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": null,
+  "rawEncounterId": 788,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-zg-edge-of-madness"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/EdgeOfMadness.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/edge-of-madness-zul-gurub-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Selection and summons",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline brazier/potion activation and actual selected variant",
+      "state": "Four distinct rotating baseline bosses; no replay calendar or generated selection",
+      "lifecycle": "Actual summon/appearance, death and reset, not a synthetic two-week schedule",
+      "placement": "Actual altar spawn",
+      "animation": "Native chosen actor only",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-SELECT",
+      "acceptanceCriteria": "EOM-SELECT: four variants never merged",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Gri'lek Avatar",
+      "spellIds": [
+        24646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon Avatar success; baseline pursuit",
+      "state": "Gri'lek Avatar",
+      "lifecycle": "Actual 15s buff or true end; size/speed/target state",
+      "placement": "Real slow pursuit, no generated random target",
+      "animation": "Native body enlargement requires server-scale evidence",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-GRILEK",
+      "acceptanceCriteria": "EOM-GRILEK: scale/pursuit/removal seek correctly",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Renataki Vanish",
+      "spellIds": [
+        24699
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon vanish; baseline reappearance/ambush",
+      "state": "Renataki Vanish",
+      "lifecycle": "Visibility interval and actual break/attack",
+      "placement": "Real hidden trajectory remains unknown",
+      "animation": "Native stealth representation and ambush",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-RENATAKI",
+      "acceptanceCriteria": "EOM-RENATAKI: vanish is not corpse; earlier break ends it",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Hazza'rah sleep and chain burn",
+      "spellIds": [
+        24664,
+        24684
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon sleep/burn",
+      "state": "Hazza'rah sleep and chain burn",
+      "lifecycle": "Actual sleep breaks and real chain hits",
+      "placement": "Real targets; no mana-driven cast generator",
+      "animation": "Native sleep and shadow chain",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-HAZZA",
+      "acceptanceCriteria": "EOM-HAZZA: break-on-damage and targets stable",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Hazza'rah illusions",
+      "spellIds": [
+        24728
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon summon NightmareIllusions",
+      "state": "Hazza'rah illusions",
+      "lifecycle": "Actual births/contact/deaths independent of summon flash",
+      "placement": "Actual illusion routes",
+      "animation": "Native independent illusion models",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-ILLUSION",
+      "acceptanceCriteria": "EOM-ILLUSION: no assumed three spawns absent events",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Wushoolay lightning and cleanup",
+      "spellIds": [
+        24683,
+        23106
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon cloud and baseline frontal lightning",
+      "state": "Wushoolay lightning and cleanup",
+      "lifecycle": "Actual field/channel/end; each variant death/reset",
+      "placement": "Independent cloud center and recorded frontal facing",
+      "animation": "Native lightning/cloud",
+      "acceptanceCheck": "vanilla-zg-edge-of-madness/EOM-WUSH",
+      "acceptanceCriteria": "EOM-WUSH: no cross-variant cloud or stale body state",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID 2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15082,
+      15083,
+      15084,
+      15085
+    ]
+  },
+  "variants": [
+    {
+      "id": "grilek",
+      "boss": "Gri'lek",
+      "npcId": 15082,
+      "contracts": [
+        "C02"
+      ],
+      "name": "Gri'lek",
+      "verification": "unverified"
+    },
+    {
+      "id": "renataki",
+      "boss": "Renataki",
+      "npcId": 15084,
+      "contracts": [
+        "C03"
+      ],
+      "name": "Renataki",
+      "verification": "unverified"
+    },
+    {
+      "id": "hazzarah",
+      "boss": "Hazza'rah",
+      "npcId": 15083,
+      "illusionNpcId": 15163,
+      "contracts": [
+        "C04",
+        "C05"
+      ],
+      "name": "Hazza'rah",
+      "verification": "unverified"
+    },
+    {
+      "id": "wushoolay",
+      "boss": "Wushoolay",
+      "npcId": 15085,
+      "contracts": [
+        "C06"
+      ],
+      "name": "Wushoolay",
+      "verification": "unverified"
+    }
+  ]
+}

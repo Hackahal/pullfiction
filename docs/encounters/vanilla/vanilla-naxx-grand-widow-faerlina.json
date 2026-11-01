@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-grand-widow-faerlina",
+  "ruleset": "vanilla",
+  "boss": "Grand Widow Faerlina",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51110,
+  "rawEncounterId": 1110,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-grand-widow-faerlina"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Faerlina.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/grand-widow-faerlina-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-07",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=25821/charge",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=10912/mind-control"
+      ],
+      "quality": "Resolved baseline guide links; contents robot-blocked, identity only"
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Widow sacrifice and control",
+      "spellIds": [
+        28732,
+        10912
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed priest control and Worshipper Embrace",
+      "state": "Control owner and sacrificed NPC remain actual instances",
+      "lifecycle": "Actual control end, death and boss suppression; no timed sacrifice",
+      "placement": "Actual controlled add position near boss; no fabricated transfer",
+      "animation": "Priest channel, possessed model and death separate",
+      "acceptanceCheck": "vanilla-naxx-grand-widow-faerlina/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Enrage suppression",
+      "spellIds": [
+        28798
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss aura and removal",
+      "state": "Enrage and Embrace distinguish actual host and source",
+      "lifecycle": "Removal ends aura; timer is not recorded application",
+      "placement": "Boss anchor; suppressor range requires evidence",
+      "animation": "Body state age retained",
+      "acceptanceCheck": "vanilla-naxx-grand-widow-faerlina/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Rain of Fire",
+      "spellIds": [
+        28794
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed cast and periodic damage",
+      "state": "Ground hazard distinct from recipients",
+      "lifecycle": "Creation and terminal unknown without object/area evidence",
+      "placement": "Victim samples do not locate circle center",
+      "animation": "Ground authored routes need actual host/age",
+      "acceptanceCheck": "vanilla-naxx-grand-widow-faerlina/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Volley and follower control",
+      "spellIds": [
+        28796,
+        30225,
+        25821
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual casts and aura recipients",
+      "state": "Poison, Silence and Charge separate owners",
+      "lifecycle": "Dispels, removals and actual impacts",
+      "placement": "Observed charge anchors; no invented trajectory",
+      "animation": "Projectile, cone and target aura separate",
+      "acceptanceCheck": "vanilla-naxx-grand-widow-faerlina/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-grand-widow-faerlina/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15953,
+      16505,
+      16506
+    ]
+  }
+}

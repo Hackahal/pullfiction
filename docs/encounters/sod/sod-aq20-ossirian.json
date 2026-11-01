@@ -1,0 +1,468 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-ossirian",
+  "ruleset": "sod",
+  "boss": "Ossirian the Unscarred",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100723,
+  "rawEncounterId": 723,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        67,
+        102
+      ],
+      "selectedFightNames": [
+        "Ossirian the Unscarred"
+      ],
+      "matchedNpcTemplateIds": [
+        15339
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-ossirian"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Ossirian.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/ossirian-the-unscarred-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Ossirian.lua",
+      "quality": "Pinned primary weaknesses apply/remove, stomp25188 and strength25176; local source"
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/Ossirian_the_Unscarred_%28Season_of_Discovery%29",
+      "quality": "Indexed exact SoD vortex/control/Decay9percent/Despair carryover; direct403"
+    },
+    {
+      "id": "hardmode-guide",
+      "url": "https://www.wowhead.com/classic-ptr/guide/season-of-discovery/raids/ahnqiraj-hardmodes-overview",
+      "quality": "Passion2024-12-16 versioned authored mode/checkpoint reference; precise AQ20 IDs not given"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Supreme strength",
+      "spellIds": [
+        25176
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both addons Strength aura; official crystal weakness mechanic",
+      "state": "Supreme strength",
+      "lifecycle": "Actual strength apply/remove/reapply; not45s predicted state",
+      "placement": "Boss body state and actual attacks",
+      "animation": "Native aura6446 and actual scale/speed only",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-STRENGTH",
+      "acceptanceCriteria": "OSSIRIAN-STRENGTH: weakness and strength independent observed states",
+      "sourceRefs": [
+        "official-sod-p6",
+        "dbm",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25176
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            33,
+            62
+          ],
+          "BigWigs-source.lua": [
+            23,
+            45,
+            53,
+            85
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          33,
+          62
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Crystals and school weaknesses",
+      "spellIds": [
+        25177,
+        25178,
+        25180,
+        25181,
+        25183
+      ],
+      "clientCandidateSpellIds": [
+        25192,
+        25193
+      ],
+      "trigger": "Official interact crystals; primary five school debuffs",
+      "state": "Crystals and school weaknesses",
+      "lifecycle": "Actual crystal birth/click/despawn and weakness removal; refresh45s not generator",
+      "placement": "Actual object anchors and boss proximity; no random point generation",
+      "animation": "Native crystal assets and corresponding weakness effects",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-CRYSTAL",
+      "acceptanceCriteria": "OSSIRIAN-CRYSTAL: actor/object source and consumed state seek",
+      "sourceRefs": [
+        "official-sod-p6",
+        "dbm",
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25177,
+          25178,
+          25180,
+          25181,
+          25183
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            35,
+            36,
+            37,
+            38,
+            39,
+            43,
+            44,
+            45,
+            46,
+            47,
+            67,
+            70,
+            73,
+            76,
+            79
+          ],
+          "BigWigs-source.lua": [
+            25,
+            26,
+            27,
+            28,
+            29,
+            32,
+            48,
+            49
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          35,
+          36,
+          37,
+          38,
+          39,
+          43,
+          44,
+          45,
+          46,
+          47,
+          67,
+          70,
+          73,
+          76,
+          79
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Enveloping Winds",
+      "spellIds": [
+        25189
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons player wind aura",
+      "state": "Enveloping Winds",
+      "lifecycle": "Actual10s/early break and target control; threat preserved per SoD account",
+      "placement": "Player-held wind distinct from roaming tornado",
+      "animation": "Native aura861 and real motion",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-WIND",
+      "acceptanceCriteria": "OSSIRIAN-WIND: early damage break and target restore",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25189
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            30,
+            34,
+            42,
+            64,
+            86
+          ],
+          "BigWigs-source.lua": [
+            20,
+            31,
+            41,
+            42
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          30,
+          34,
+          42,
+          64,
+          86
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Sand vortex actors",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "SoD account tornadoes activate and roam",
+      "state": "Sand vortex actors",
+      "lifecycle": "Actual active span, contacts and reset",
+      "placement": "Independent NPC routes, height and contact center",
+      "animation": "Native sand vortex assets; no player Cyclone substitute",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-VORTEX",
+      "acceptanceCriteria": "OSSIRIAN-VORTEX: preserve roaming source identity",
+      "sourceRefs": [
+        "sod-wiki",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Tongues and War Stomp",
+      "spellIds": [
+        25195,
+        25188
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM curse and BigWigs stomp success",
+      "state": "Tongues and War Stomp",
+      "lifecycle": "Actual recipients/decurse and displacement",
+      "placement": "Boss facing/area versus actual target motion",
+      "animation": "Native curse502 and stomp",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-STOMP",
+      "acceptanceCriteria": "OSSIRIAN-STOMP: real cast-impact-target relationships",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25195,
+          25188
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            28,
+            40,
+            48,
+            55
+          ],
+          "BigWigs-source.lua": [
+            21,
+            22,
+            34,
+            35,
+            43,
+            44
+          ]
+        },
+        "addonSourceLines": [
+          28,
+          40,
+          48,
+          55
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "SoD Decay and inherited Despair",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213259,
+        1214956
+      ],
+      "trigger": "SoD health-reduction mode plus Moam curse",
+      "state": "SoD Decay and inherited Despair",
+      "lifecycle": "Actual stat aura/periodic applications; no global9or10percent simulated stat rewrite",
+      "placement": "Actual player aura recipients",
+      "animation": "Native exact records; no cosmetic body-size substitute",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-MADNESS",
+      "acceptanceCriteria": "OSSIRIAN-MADNESS: mode/carryover and effect IDs remain qualified",
+      "sourceRefs": [
+        "sod-wiki",
+        "official-sod-p6",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Final checkpoint and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and sixth-boss checkpoint",
+      "state": "Final checkpoint and reset",
+      "lifecycle": "Real vortex/crystal/curse cleanup with reset and raid-end distinctions",
+      "placement": "Actual spawn/return position; do not assume Vanilla stair anchor",
+      "animation": "Native death/object states",
+      "acceptanceCheck": "sod-aq20-ossirian/OSSIRIAN-END",
+      "acceptanceCriteria": "OSSIRIAN-END: repeated pull no stale strength/objects",
+      "sourceRefs": [
+        "official-sod-p6",
+        "guide",
+        "sod-wiki"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    25192,
+    25193,
+    1213259,
+    1214956
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD starting location, crystal object IDs and roaming vortex instances",
+    "Actual weakness/Strength transitions, early control break and source ownership",
+    "Health-reduction amount and curse termination at raid end",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 723,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15339",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15339"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}
