@@ -172,7 +172,9 @@ fn present_canonical_motion(
     observed_facing: f32,
     playing: bool,
     hold: bool,
+    ready: bool,
 ) -> CanonicalMotion {
+    let hold = hold || !ready;
     CanonicalMotion {
         position: pose.position,
         facing: if !hold && pose.planar_speed > 0.03 {
@@ -222,13 +224,13 @@ mod canonical_presentation_tests {
     #[test]
     fn endpoint_holds_keep_canonical_xyz_but_stop_motion_and_use_stationary_facing() {
         let pose = pose();
-        let held = present_canonical_motion(&pose, 1.57, true, true);
+        let held = present_canonical_motion(&pose, 1.57, true, true, true);
         assert_eq!(held.position, [1., 2., 3.]);
         assert_eq!(held.facing, 1.57);
         assert_eq!(held.speed, 0.);
         assert_eq!(held.vertical_speed, 0.);
         assert!(!held.airborne);
-        let active = present_canonical_motion(&pose, 1.57, true, false);
+        let active = present_canonical_motion(&pose, 1.57, true, false, true);
         assert_eq!(active.speed, 7.);
         assert_eq!(active.facing, 0.);
     }
@@ -239,12 +241,107 @@ mod canonical_presentation_tests {
         pose.vertical_velocity = -10.;
         pose.airborne_seconds = 2.;
         pose.fall_distance = 5.;
-        let active = present_canonical_motion(&pose, 1.57, true, false);
+        let active = present_canonical_motion(&pose, 1.57, true, false, true);
         assert!(active.airborne && active.falling_far);
-        let held = present_canonical_motion(&pose, 1.57, true, true);
+        let held = present_canonical_motion(&pose, 1.57, true, true, true);
         assert_eq!(held.position, pose.position);
         assert_eq!(held.vertical_speed, 0.);
         assert!(!held.airborne && !held.falling_far);
+    }
+    #[test]
+    fn pending_cached_airborne_pose_is_held_while_ready_flight_keeps_its_motion() {
+        use avian3d::prelude::{Collider, PhysicsPlugins, RigidBody};
+        let mut app = App::new();
+        app.init_resource::<benilla_world::collision::MoverTraceExclusions>()
+            .init_resource::<benilla_world::collision::ColliderEpoch>()
+            .add_plugins((
+                MinimalPlugins,
+                bevy::transform::TransformPlugin,
+                bevy::asset::AssetPlugin::default(),
+                bevy::scene::ScenePlugin,
+                PhysicsPlugins::new(bevy::app::PostUpdate),
+            ));
+        app.init_asset::<Mesh>();
+        app.world_mut().spawn((
+            RigidBody::Static,
+            Collider::cuboid(200., 1., 20.),
+            Transform::from_xyz(0., -0.5, 0.),
+        ));
+        app.update();
+        crate::planner_trajectory::install(&mut app);
+        app.world_mut()
+            .insert_resource(benilla_world::world_map::CurrentMap(1));
+        let input = crate::planner_trajectory::NativeComponentInput {
+            source: "s".into(),
+            actor: "p".into(),
+            component: "c".into(),
+            content: "v".into(),
+            map: 1,
+            samples: (0..31)
+                .map(|t| (t as f64 * 1000., t as f32 * 0.1, 0., Some(0.)))
+                .collect(),
+            initial_heights: vec![],
+            coverage_complete: true,
+            profiles: vec![],
+            slow_fall: vec![],
+            transfers: vec![],
+            hover_launches: vec![],
+            unresolved_transfers: vec![],
+        };
+        app.world_mut()
+            .resource_mut::<crate::planner_trajectory::CanonicalTrajectories>()
+            .submit(input)
+            .unwrap();
+        app.world()
+            .resource::<crate::planner_trajectory::CanonicalTrajectories>()
+            .query("s", "p", "c", "v", 5000.);
+        // The static collision fixture is already synchronized; run the real
+        // planner without advancing an unrelated physics simulation schedule.
+        app.world_mut().run_schedule(Update);
+        let plans = app
+            .world()
+            .resource::<crate::planner_trajectory::CanonicalTrajectories>();
+        assert_eq!(
+            plans.query("s", "p", "c", "v", 5000.),
+            crate::planner_trajectory::Query::Pending
+        );
+        let mut flight = pose();
+        flight.support = crate::planner_trajectory_probe::Support::Falling;
+        flight.vertical_velocity = -10.;
+        flight.airborne_seconds = 2.;
+        flight.fall_distance = 5.;
+        let mut presentation = CanonicalPresentation::default();
+        presentation.synchronize_world(plans.validation_epoch());
+        presentation.holds.insert(
+            ("p".into(), "s".into(), "c".into(), "v".into()),
+            flight.clone(),
+        );
+        let reference = ReplayTrajectoryReference {
+            source: "s".into(),
+            component: "c".into(),
+            content: "v".into(),
+            at: None,
+            hold: false,
+        };
+        let (fallback, ready) = presentation.resolve(
+            plans,
+            &reference,
+            "p",
+            5000.,
+            &mut Default::default(),
+            &mut vec![],
+        );
+        assert!(!ready);
+        let held = present_canonical_motion(&fallback.unwrap(), 1.57, true, reference.hold, ready);
+        assert_eq!(held.position, flight.position);
+        assert_eq!(held.speed, 0.);
+        assert_eq!(held.vertical_speed, 0.);
+        assert!(!held.airborne && !held.falling_far);
+        let active = present_canonical_motion(&flight, 1.57, true, false, true);
+        assert_eq!(active.position, flight.position);
+        assert_eq!(active.vertical_speed, -10.);
+        assert_eq!(active.speed, 7.);
+        assert!(active.airborne && active.falling_far);
     }
     #[test]
     fn changed_validation_world_discards_presentation_fallback_before_a_pending_query() {
@@ -844,7 +941,7 @@ pub(crate) fn apply(
             let mut canonical_motion = None;
             if let Some(reference) = unit.trajectory.as_ref().filter(|_| trajectory_owned) {
                 routes.remove(&unit.key);
-                let (pose, _) = canonical.resolve(
+                let (pose, ready) = canonical.resolve(
                     &plans,
                     reference,
                     &unit.key,
@@ -858,6 +955,7 @@ pub(crate) fn apply(
                         unit.facing,
                         control.playing,
                         reference.hold,
+                        ready,
                     );
                     pos = Some(wow_to_bevy(motion.position) + Vec3::Y * 0.05);
                     facing = motion.facing;
