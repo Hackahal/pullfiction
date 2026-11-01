@@ -1,6 +1,7 @@
 //! Pull Fiction renderer using browser-local client assets.
 #![cfg(target_arch = "wasm32")]
 mod annotations;
+mod command_queue;
 #[cfg(feature = "renderer-lab")]
 mod renderer_diagnostics;
 #[cfg(feature = "renderer-lab")]

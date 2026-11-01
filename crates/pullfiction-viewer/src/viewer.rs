@@ -343,12 +343,23 @@ thread_local! {
 }
 
 fn enqueue(command: Command) {
-    COMMANDS.with(|q| {
-        let mut q = q.borrow_mut();
-        if q.len() < 1024 {
-            q.push(command);
-        }
-    });
+    let rejected =
+        COMMANDS.with(|q| crate::command_queue::enqueue(&mut q.borrow_mut(), command).err());
+    if let Some(command) = rejected {
+        reject_marker_request(command);
+    }
+}
+
+fn reject_marker_request(command: Command) {
+    if let Command::AnnotationHover(pixel, true, Some(request)) = command {
+        // Use the ordinary missing-ground completion after releasing the queue
+        // borrow: the callback can synchronously enqueue editor commands.
+        report(
+            "plan-hover",
+            &serde_json::json!({"request": request, "pixel": pixel.to_array(), "point": null})
+                .to_string(),
+        );
+    }
 }
 
 #[wasm_bindgen]
@@ -542,6 +553,9 @@ fn commands(
     };
     let batch = COMMANDS.with(|q| std::mem::take(&mut *q.borrow_mut()));
     let Ok((camera, global)) = cameras.single() else {
+        for command in batch {
+            reject_marker_request(command);
+        }
         return;
     };
     for command in batch {

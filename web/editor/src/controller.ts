@@ -1378,12 +1378,13 @@ export class EditorController {
           mode: project.mode,
         };
         this.patch({ sourceStatus: "cached" });
-      } else if (project.source) {
+      } else {
         this.clockTime = project.time;
         this.patch({ time: project.time });
-        this.notify(
-          "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
-        );
+        if (project.source)
+          this.notify(
+            "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
+          );
       }
       this.setWorkspaceMode(project.mode);
       return true;
@@ -1474,7 +1475,14 @@ export class EditorController {
   }
   async projectShareSnapshot(id?: string): Promise<SharedSnapshot> {
     this.finishDrawing();
-    if (this.pendingPicks)
+    if (
+      this.pendingPicks ||
+      this.pendingMarkerClicks.some(
+        (click) =>
+          click.epoch === this.pickEpoch &&
+          click.projectEpoch === this.projectEpoch,
+      )
+    )
       throw new Error("Wait for the drawing to finish before sharing");
     // Current edits remain shareable even when local persistence has failed.
     const project =
@@ -3087,15 +3095,25 @@ export class EditorController {
         click.projectEpoch === this.projectEpoch,
     );
     this.markerRequest = (this.markerRequest + 1) >>> 0;
-    this.pendingMarkerClicks.push({
+    const click = {
       x,
       y,
       epoch: this.pickEpoch,
       projectEpoch: this.projectEpoch,
       request: this.markerRequest,
       selectedActor: selected,
-    });
-    this.engine.hover_annotation(x, y, true, this.markerRequest);
+    };
+    this.pendingMarkerClicks.push(click);
+    try {
+      this.engine.hover_annotation(x, y, true, click.request);
+    } catch (error) {
+      // A request that was never dispatched cannot produce a completion.
+      // Keep other requests and their existing epoch invalidation intact.
+      this.pendingMarkerClicks = this.pendingMarkerClicks.filter(
+        (pending) => pending !== click,
+      );
+      throw error;
+    }
   }
   selectSceneAt(x: number, y: number, toggle = false) {
     this.pendingSceneSelect = { x, y, toggle };

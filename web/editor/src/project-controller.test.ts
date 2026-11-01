@@ -493,3 +493,243 @@ test("share imports preserve WCL reference and create independent projects/sourc
     f.controller.stop();
   }
 });
+
+for (const input of [
+  "saved project",
+  "project backup",
+  "shared snapshot",
+] as const) {
+  test(`source-less ${input} keeps nonzero time through open and save`, async () => {
+    const f = setup();
+    try {
+      await f.controller.initializeLibrary();
+      const project = { ...newProject(emptyPlan(409)), time: 42000 };
+      let id: string;
+      if (input === "saved project") {
+        await f.store.put(project);
+        id = project.id;
+      } else if (input === "project backup") {
+        const file = new File(
+          [
+            JSON.stringify({
+              format: "pullfiction.project",
+              version: 1,
+              project,
+              replay: null,
+            }),
+          ],
+          "source-less.json",
+        );
+        id = (await f.controller.importProject(file))!;
+        assert.ok(id);
+      } else {
+        id = await f.controller.importSharedSnapshot({
+          version: 1,
+          plan: project.plan,
+          source: null,
+          time: project.time,
+          mode: project.mode,
+          kind: project.kind,
+        });
+      }
+      assert.equal(await f.controller.openProject(id), true);
+      assert.equal(f.controller.getSnapshot().sourceStatus, "none");
+      assert.equal(f.controller.getSnapshot().time, project.time);
+      f.controller.updateStep({ notes: "Edited after opening" });
+      await f.controller.saveProject();
+      assert.equal((await f.store.get(id))!.time, project.time);
+      assert.equal(
+        (await f.controller.projectShareSnapshot(id)).time,
+        project.time,
+      );
+      assert.equal(await f.controller.openProject(id), true);
+      assert.equal(f.controller.getSnapshot().time, project.time);
+    } finally {
+      f.controller.stop();
+    }
+  });
+}
+
+function markerShareSetup() {
+  const f = setup();
+  const requests: number[] = [];
+  const engine = {
+    set_annotations() {},
+    set_replay_frame() {},
+    replay_events() {},
+    set_typing() {},
+    load_raid() {},
+    hover_annotation(
+      _x: number,
+      _y: number,
+      placing: boolean,
+      request?: number,
+    ) {
+      if (placing && request !== undefined) requests.push(request);
+    },
+  };
+  f.controller.attachEngine(engine as unknown as Engine);
+  f.controller.setTool("marker");
+  return { ...f, requests, engine };
+}
+
+test("sharing waits for the deferred native marker response and then includes the last marker", async () => {
+  const f = markerShareSetup();
+  try {
+    f.controller.placeSceneMarkerAt(30, 40);
+    assert.equal(f.requests.length, 1);
+    await assert.rejects(
+      f.controller.projectShareSnapshot(),
+      /Wait for the drawing/,
+    );
+    f.controller.receive(
+      "plan-hover",
+      JSON.stringify({ pixel: [30, 40], point: [1, 2, 3] }),
+    );
+    await assert.rejects(
+      f.controller.projectShareSnapshot(),
+      /Wait for the drawing/,
+      "unrelated hover cannot release the pending marker",
+    );
+    f.controller.receive(
+      "plan-hover",
+      JSON.stringify({
+        request: f.requests[0],
+        pixel: [30, 40],
+        point: [9, 8, 7],
+      }),
+    );
+    const snapshot = await f.controller.projectShareSnapshot();
+    assert.deepEqual(
+      snapshot.plan.steps
+        .flatMap((step) => step.annotations)
+        .map((mark) => mark.points),
+      [[[9, 8, 7]]],
+    );
+  } finally {
+    f.controller.stop();
+  }
+});
+
+for (const outcome of [
+  "cancel",
+  "tool change",
+  "page epoch",
+  "project reset",
+  "native UI",
+  "missing ground",
+] as const) {
+  test(`marker sharing guard releases after ${outcome} without accepting the old response`, async () => {
+    const f = markerShareSetup();
+    try {
+      f.controller.placeSceneMarkerAt(30, 40);
+      await assert.rejects(
+        f.controller.projectShareSnapshot(),
+        /Wait for the drawing/,
+      );
+      if (outcome === "cancel") f.controller.cancelDrawing();
+      else if (outcome === "tool change") f.controller.setTool("explore");
+      else if (outcome === "page epoch")
+        f.controller.setActiveStep(f.controller.getSnapshot().activeStep);
+      else if (outcome === "project reset")
+        assert.equal(
+          await f.controller.createProject(409, "vanilla", "New project"),
+          true,
+        );
+      else
+        f.controller.receive(
+          "plan-hover",
+          JSON.stringify({
+            request: f.requests[0],
+            pixel: [30, 40],
+            ...(outcome === "native UI"
+              ? { nativeUI: true, point: [9, 8, 7] }
+              : { point: null }),
+          }),
+        );
+      const snapshot = await f.controller.projectShareSnapshot();
+      assert.equal(
+        snapshot.plan.steps.flatMap((step) => step.annotations).length,
+        0,
+      );
+      f.controller.receive(
+        "plan-hover",
+        JSON.stringify({
+          request: f.requests[0],
+          pixel: [30, 40],
+          point: [9, 8, 7],
+        }),
+      );
+      assert.deepEqual(
+        (await f.controller.projectShareSnapshot()).plan,
+        snapshot.plan,
+      );
+    } finally {
+      f.controller.stop();
+    }
+  });
+}
+
+test("failed native dispatch releases only that marker request and preserves earlier pending work", async () => {
+  const f = markerShareSetup();
+  try {
+    f.controller.placeSceneMarkerAt(30, 40);
+    f.engine.hover_annotation = (_x, _y, placing) => {
+      if (placing) throw new Error("Native dispatch failed");
+    };
+    assert.throws(
+      () => f.controller.placeSceneMarkerAt(50, 60),
+      /Native dispatch failed/,
+    );
+    await assert.rejects(
+      f.controller.projectShareSnapshot(),
+      /Wait for the drawing/,
+    );
+    f.controller.receive(
+      "plan-hover",
+      JSON.stringify({
+        request: f.requests[0],
+        pixel: [30, 40],
+        point: [9, 8, 7],
+      }),
+    );
+    const snapshot = await f.controller.projectShareSnapshot();
+    assert.equal(
+      snapshot.plan.steps.flatMap((step) => step.annotations).length,
+      1,
+    );
+    assert.throws(
+      () => f.controller.placeSceneMarkerAt(50, 60),
+      /Native dispatch failed/,
+    );
+    assert.deepEqual(
+      (await f.controller.projectShareSnapshot()).plan,
+      snapshot.plan,
+    );
+  } finally {
+    f.controller.stop();
+  }
+});
+
+test("synchronous native rejection completion releases a marker that cannot be queued or picked", async () => {
+  const f = markerShareSetup();
+  try {
+    f.engine.hover_annotation = (x, y, placing, request) => {
+      if (placing)
+        f.controller.receive(
+          "plan-hover",
+          JSON.stringify({ request, pixel: [x, y], point: null }),
+        );
+    };
+    f.controller.placeSceneMarkerAt(30, 40);
+    assert.match(f.controller.getSnapshot().notice, /No loaded ground/);
+    assert.equal(
+      (await f.controller.projectShareSnapshot()).plan.steps.flatMap(
+        (step) => step.annotations,
+      ).length,
+      0,
+    );
+  } finally {
+    f.controller.stop();
+  }
+});
