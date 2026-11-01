@@ -408,6 +408,13 @@ pub struct CanonicalTrajectories {
     pub elapsed_processing_ms: f64,
 }
 impl CanonicalTrajectories {
+    /// Start a complete presentation demand set; queries below renew its members.
+    /// Keep cached checkpoints and pending cursors so a later seek can resume them.
+    pub fn clear_demands(&self) {
+        for entry in &self.entries {
+            entry.demand_frame.store(0, Ordering::Relaxed);
+        }
+    }
     pub fn cache_bytes(&self) -> usize {
         self.bytes()
     }
@@ -1237,6 +1244,12 @@ fn prepare_repair(
     })
 }
 impl Entry {
+    fn needs_visible_pose(&self) -> bool {
+        self.needs_work()
+            && !self.ticks.last().is_some_and(|tick| {
+                tick.time >= f64::from_bits(self.demand_time.load(Ordering::Relaxed))
+            })
+    }
     fn needs_work(&self) -> bool {
         if self.demand_frame.load(Ordering::Relaxed) == 0
             || matches!(
@@ -1569,6 +1582,13 @@ fn drive(
     } else {
         FRAME_STEPS
     });
+    // Spend the same bounded budget on missing visible poses before speculative
+    // lookahead for actors that can already be rendered. Fairness is retained
+    // within the foreground class; prefetch resumes on a subsequent frame.
+    let foreground = plans
+        .entries
+        .iter()
+        .any(|e| e.input.map == current_map.unwrap_or(u32::MAX) && e.needs_visible_pose());
     let mut idle = 0;
     let mut transitions = 0;
     while ready
@@ -1580,6 +1600,7 @@ fn drive(
         let index = plans.turn % plans.entries.len();
         plans.turn = plans.turn.wrapping_add(1);
         if !plans.entries[index].needs_work()
+            || (foreground && !plans.entries[index].needs_visible_pose())
             || plans.entries[index].input.map != current_map.unwrap()
         {
             idle += 1;
@@ -2263,6 +2284,173 @@ mod tests {
                 assert!(e.planning.waiting.is_empty());
             })
             .unwrap();
+    }
+    #[test]
+    fn presentation_demand_cancellation_pauses_old_work_and_resumes_the_same_prefix() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        install(&mut app);
+        app.world_mut()
+            .insert_resource(benilla_world::world_map::CurrentMap(0));
+        let mut old = input();
+        old.actor = "old".into();
+        old.samples = (0..61)
+            .map(|t| (t as f64 * 1000., 0., 1. - t as f32, None))
+            .collect();
+        let mut current = old.clone();
+        current.actor = "current".into();
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(old.clone())
+            .unwrap();
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(current.clone())
+            .unwrap();
+        let mut driver = IntoSystem::into_system(drive);
+        driver.initialize(app.world_mut());
+        for _ in 0..100 {
+            let p = app.world().resource::<CanonicalTrajectories>();
+            p.query(
+                &old.source,
+                &old.actor,
+                &old.component,
+                &old.content,
+                30000.,
+            );
+            app.world_mut()
+                .resource_mut::<physics::PhysicsBudget>()
+                .remaining = FRAME_STEPS;
+            driver.run((), app.world_mut()).unwrap();
+            if !app.world().resource::<CanonicalTrajectories>().entries[0]
+                .ticks
+                .is_empty()
+            {
+                break;
+            }
+        }
+        let p = app.world().resource::<CanonicalTrajectories>();
+        assert!(!p.entries[0].ticks.is_empty());
+        let before = p.entries[0].planning.work;
+        let prefix = p.entries[0].ticks.clone();
+        p.clear_demands();
+        p.query(
+            &current.source,
+            &current.actor,
+            &current.component,
+            &current.content,
+            1000.,
+        );
+        for _ in 0..3 {
+            app.world_mut()
+                .resource_mut::<physics::PhysicsBudget>()
+                .remaining = FRAME_STEPS;
+            driver.run((), app.world_mut()).unwrap();
+        }
+        let p = app.world().resource::<CanonicalTrajectories>();
+        assert_eq!(
+            p.entries[0].planning.work, before,
+            "a seek away must pause old work"
+        );
+        assert!(p.entries[1].planning.work > 0);
+        assert_eq!(p.entries[0].ticks.len(), prefix.len());
+        for (a, b) in p.entries[0].ticks.iter().zip(&prefix) {
+            assert!(Arc::ptr_eq(a, b));
+        }
+        p.clear_demands();
+        p.query(
+            &old.source,
+            &old.actor,
+            &old.component,
+            &old.content,
+            30000.,
+        );
+        app.world_mut()
+            .resource_mut::<physics::PhysicsBudget>()
+            .remaining = FRAME_STEPS;
+        driver.run((), app.world_mut()).unwrap();
+        let p = app.world().resource::<CanonicalTrajectories>();
+        assert!(p.entries[0].planning.work > before);
+        for (a, b) in p.entries[0].ticks.iter().zip(&prefix) {
+            assert!(Arc::ptr_eq(a, b));
+        }
+    }
+    #[test]
+    fn visible_pending_pose_gets_work_before_ready_pose_prefetch() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        install(&mut app);
+        app.world_mut()
+            .insert_resource(benilla_world::world_map::CurrentMap(0));
+        let mut ready = input();
+        ready.actor = "ready".into();
+        ready.samples = (0..61)
+            .map(|t| (t as f64 * 1000., 0., 1. - t as f32, None))
+            .collect();
+        let mut pending = ready.clone();
+        pending.actor = "pending".into();
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(ready.clone())
+            .unwrap();
+        let mut driver = IntoSystem::into_system(drive);
+        driver.initialize(app.world_mut());
+        for _ in 0..100 {
+            let p = app.world().resource::<CanonicalTrajectories>();
+            p.query(
+                &ready.source,
+                &ready.actor,
+                &ready.component,
+                &ready.content,
+                0.,
+            );
+            app.world_mut()
+                .resource_mut::<physics::PhysicsBudget>()
+                .remaining = FRAME_STEPS;
+            driver.run((), app.world_mut()).unwrap();
+            if !app.world().resource::<CanonicalTrajectories>().entries[0]
+                .ticks
+                .is_empty()
+            {
+                break;
+            }
+        }
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(pending.clone())
+            .unwrap();
+        let p = app.world().resource::<CanonicalTrajectories>();
+        assert!(matches!(
+            p.query(
+                &ready.source,
+                &ready.actor,
+                &ready.component,
+                &ready.content,
+                1000.
+            ),
+            Query::Ready(_)
+        ));
+        p.query(
+            &pending.source,
+            &pending.actor,
+            &pending.component,
+            &pending.content,
+            1000.,
+        );
+        assert!(
+            p.entries[0].needs_work(),
+            "ready entry still has prefetch demand"
+        );
+        let before = p.entries[0].planning.work;
+        app.world_mut()
+            .resource_mut::<physics::PhysicsBudget>()
+            .remaining = FRAME_STEPS;
+        driver.run((), app.world_mut()).unwrap();
+        let p = app.world().resource::<CanonicalTrajectories>();
+        assert_eq!(
+            p.entries[0].planning.work, before,
+            "foreground must precede speculative prefetch"
+        );
+        assert!(p.entries[1].planning.work > 0);
+        assert!(p.steps_last_frame <= FRAME_STEPS);
     }
     #[test]
     fn actual_driver_queues_before_map_ready_and_shares_fair_bounded_work() {
