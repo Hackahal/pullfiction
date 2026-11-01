@@ -13,7 +13,6 @@ import type {
 } from "./speedrun-world-record";
 import { actorNameplateEnabled } from "./nameplate-model";
 import {
-  createClientFolderAccess,
   type ClientFolderAccess,
   type ClientDirectory,
   type ClientSelection,
@@ -23,11 +22,7 @@ import {
   rangeCircles,
   type RangeSettings,
 } from "./range-check";
-import {
-  createClientAssetCache,
-  type ClientAssetCache,
-  type PreparedClient,
-} from "./client-cache";
+import { type ClientAssetCache, type PreparedClient } from "./client-cache";
 import {
   loadNpcIndex,
   resolveNpcModels,
@@ -52,6 +47,7 @@ import {
   referenceSpawnNotice,
 } from "./spawn-model";
 import { resolveAssetRoot } from "./asset-source";
+import { openHostedClient } from "./hosted-assets";
 import { parseBrowserPlates } from "./browser-plates";
 import { BROWSER_ASSETS } from "./browser-mode";
 import {
@@ -69,7 +65,6 @@ import { localSpellReplay } from "./local-spell-assets";
 import { setLocalTalentsProvider, type TalentCatalog } from "./local-talents";
 import {
   assetBridge,
-  openClientFiles,
   installAssetBridge,
   removeAssetBridge,
   progressText,
@@ -600,14 +595,14 @@ export class EditorController {
       rendererLab?: boolean;
     } = {},
   ) {
-    this.clientFolders =
-      runtime.clientFolders === undefined
-        ? createClientFolderAccess()
-        : runtime.clientFolders;
-    this.clientCache =
-      runtime.clientCache === undefined
-        ? createClientAssetCache()
-        : runtime.clientCache;
+    // Production always downloads prepared assets. Folder/cache source injection is
+    // retained only for isolated reader tests and development tooling.
+    this.clientFolders = runtime.openClient
+      ? (runtime.clientFolders ?? null)
+      : null;
+    this.clientCache = runtime.openClient
+      ? (runtime.clientCache ?? null)
+      : null;
     this.projectStore =
       runtime.projectStore === undefined
         ? typeof indexedDB === "undefined"
@@ -657,7 +652,7 @@ export class EditorController {
       browserPlates: [],
       browserAssets,
       clientStatus: "select",
-      clientProgress: "Select your World of Warcraft folder",
+      clientProgress: "Loading game assets",
       clientCanRemember: !!this.clientFolders?.supported,
       clientFolderName: null,
       clientRemembered: false,
@@ -677,9 +672,7 @@ export class EditorController {
       sceneReady: false,
       error: null,
       notice,
-      status: browserAssets
-        ? "Select your local Classic client"
-        : "Loading Molten Core",
+      status: browserAssets ? "Loading game assets" : "Loading Molten Core",
       busy: false,
       plan,
       dirty: false,
@@ -1593,9 +1586,7 @@ export class EditorController {
   async reloadProjectSource(id: string) {
     if (this.state.busy) return false;
     if (this.state.browserAssets && this.state.clientStatus !== "ready") {
-      this.notify(
-        "Select your local client before reloading the source replay",
-      );
+      this.notify("Wait for game assets before reloading the source replay");
       return false;
     }
     if (this.state.projectId !== id && !(await this.openProject(id)))
@@ -4430,9 +4421,7 @@ export class EditorController {
   private loadCatalogs() {
     if (this.state.browserAssets) {
       if (!this.browserBridge)
-        return Promise.reject(
-          new Error("Select your local Classic client first."),
-        );
+        return Promise.reject(new Error("Game assets are still loading."));
       return (this.catalogs ??= this.loadBrowserCatalogs().catch((error) => {
         this.catalogs = null;
         throw error;
@@ -4564,9 +4553,7 @@ export class EditorController {
           const returnTo = await session.finish(callback);
           history.replaceState(null, "", returnTo);
           this.patch({ wclConnected: true });
-          this.notify(
-            "Warcraft Logs connected. Select your local client to continue.",
-          );
+          this.notify("Warcraft Logs connected. Loading game assets.");
         } finally {
           // Authorization codes and state never remain in the address bar.
           if (isWclCallback(new URL(location.href)))
@@ -5268,7 +5255,7 @@ export class EditorController {
       : !this.engine?.request_actor_inspection
         ? this.state.ready
           ? "The loaded renderer does not support character inspection. Reload the preview."
-          : "Choose your local client to view the character model."
+          : "Loading character assets."
         : !unit
           ? "The character appearance is not ready yet."
           : null;
@@ -5680,6 +5667,10 @@ export class EditorController {
   private async restoreClientFolder() {
     if (this.clientRestoreStarted || this.engine) return;
     this.clientRestoreStarted = true;
+    if (!this.runtime.openClient) {
+      await this.openClient([], false);
+      return;
+    }
     const epoch = ++this.clientAccessEpoch;
     if (this.clientCache) {
       try {
@@ -5889,7 +5880,7 @@ export class EditorController {
     });
     let source: ClientReader | null = null;
     try {
-      source = await (this.runtime.openClient ?? openClientFiles)(
+      source = await (this.runtime.openClient ?? openHostedClient)(
         files,
         (value) => {
           if (!abort.signal.aborted)
@@ -5926,6 +5917,8 @@ export class EditorController {
     remember = true,
     restored?: PreparedClient,
   ) {
+    if (!this.runtime.openClient && (!Array.isArray(files) || files.length))
+      throw new Error("Game assets are supplied by Pull Fiction");
     if (
       !restored &&
       this.preparedClient &&
@@ -5943,7 +5936,7 @@ export class EditorController {
       clientStatus: "opening",
       clientProgress: restored
         ? "Opening saved game assets"
-        : "Opening local Classic storage",
+        : "Downloading game assets",
       error: null,
       clientNeedsFiles: false,
       clientPromptHidden: false,
@@ -5957,7 +5950,7 @@ export class EditorController {
     try {
       reader =
         restored ??
-        (await (this.runtime.openClient ?? openClientFiles)(
+        (await (this.runtime.openClient ?? openHostedClient)(
           files,
           (value) => {
             if (!abort.signal.aborted)
@@ -5991,12 +5984,12 @@ export class EditorController {
       this.catalogs = null;
       installAssetBridge(bridge);
       this.patch({
-        clientProgress: "Preparing local creature, item and spell catalogs",
+        clientProgress: "Loading creature, item and spell data",
       });
       await this.loadCatalogs();
       abort.signal.throwIfAborted();
       this.patch({
-        clientProgress: "Preparing original client startup assets",
+        clientProgress: "Loading scene assets",
       });
       const localFiles = originalClientFiles(bridge);
       preparedFiles = localFiles;
@@ -6058,7 +6051,7 @@ export class EditorController {
         clientStatus: "ready",
         clientReconnect: false,
         clientBuild: reader.build.version,
-        clientProgress: "Local client ready",
+        clientProgress: "Game assets ready",
       });
       await this.boot();
       abort.signal.throwIfAborted();
@@ -6108,7 +6101,7 @@ export class EditorController {
         clientReconnect: !!this.rememberedClientFolder,
         error: abort.signal.aborted ? null : message(error),
         clientProgress: abort.signal.aborted
-          ? "Select your World of Warcraft folder"
+          ? "Game asset download cancelled"
           : message(error),
       });
     }

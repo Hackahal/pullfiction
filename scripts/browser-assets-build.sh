@@ -27,5 +27,5 @@ em++ web/archive/casc.cpp "$build_dir/libcasc.a" -I "$source_dir/src" \
   -sEXPORTED_RUNTIME_METHODS=FS,WORKERFS,NODEFS,ccall,HEAPU8 \
   -lworkerfs.js -lnodefs.js -o "$output/casc.mjs"
 cp "$source_dir/LICENSE" "$output/CascLib-LICENSE.txt"
-cp web/archive/{policy,worker,client,cache,converter}.mjs "$output/"
+cp web/archive/{policy,worker,client,cache,converter,hosted-appearance}.mjs "$output/"
 python3 scripts/browser-converter-build.py "$output"

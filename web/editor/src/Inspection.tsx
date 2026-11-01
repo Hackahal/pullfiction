@@ -151,7 +151,7 @@ export function Inspection({
                 {preview?.error ??
                   (state.ready
                     ? "Preparing character…"
-                    : "Choose your local client to view the character image.")}
+                    : "Loading character assets.")}
               </span>
               {preview?.error && (
                 <button
