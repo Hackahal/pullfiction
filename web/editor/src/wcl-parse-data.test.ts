@@ -153,29 +153,45 @@ test("large populations load bounded pages across distribution rather than treat
   assert.ok(calls.some((c) => c.v.page === 500));
   assert.equal(calls.length, 6);
 });
-test("invalid categories, populations and partial pages fail explicitly", async () => {
-  for (const alter of [
-    (d: any) => {
+test("invalid report ranking category rejects explicitly", async () => {
+  const { loader } = fixture({
+    alter(d) {
       if (d.rankings) d.rankings.data[0].encounter.id = 123;
     },
-    (d: any) => {
-      const p = d.worldData?.encounter?.characterRankings;
-      if (p?.rankings.length) p.rankings[0].class = "Mage";
+  });
+  await assert.rejects(loader.load(code, encounter, "sod", options), {
+    message: "WCL returned a different or unsupported ranking category.",
+  });
+});
+test("malformed leaderboard rows resolve with a category note and no curve", async () => {
+  const { loader } = fixture({
+    alter(d) {
+      const page = d.worldData?.encounter?.characterRankings;
+      if (page?.rankings.length) page.rankings[0].class = "Mage";
     },
-    (d: any) => {
-      const p = d.worldData?.encounter?.characterRankings;
-      if (p?.rankings.length) p.count = -1;
+  });
+  const result = await loader.load(code, encounter, "sod", options);
+  assert.equal(result.references.length, 1);
+  assert.equal(result.references[0].curve, null);
+  assert.equal(
+    result.references[0].note,
+    "WCL returned a different ranking category.",
+  );
+});
+test("incomplete leaderboard pages resolve with a page note and no curve", async () => {
+  const { loader } = fixture({
+    alter(d) {
+      const page = d.worldData?.encounter?.characterRankings;
+      if (page?.rankings.length) page.count = -1;
     },
-  ]) {
-    const { loader } = fixture({ alter });
-    try {
-      const r = await loader.load(code, encounter, "sod", options);
-      assert.equal(r.references[0].curve, null);
-      assert.match(r.references[0].note!, /category|page/);
-    } catch (e) {
-      assert.match((e as Error).message, /category/);
-    }
-  }
+  });
+  const result = await loader.load(code, encounter, "sod", options);
+  assert.equal(result.references.length, 1);
+  assert.equal(result.references[0].curve, null);
+  assert.equal(
+    result.references[0].note,
+    "WCL returned an incomplete ranking page.",
+  );
 });
 test("empty fight results, healer roles and aborts never manufacture damage percentiles", async () => {
   const empty = new WclParseData(async () => ({ rankings: { data: [] } }));
