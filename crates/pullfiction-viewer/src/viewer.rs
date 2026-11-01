@@ -286,6 +286,7 @@ struct Raid {
 struct ActiveRaid {
     raid: Raid,
     changed_at: f32,
+    playback_scene: benilla_app::planner_replay::PlaybackPreparation,
 }
 fn raids() -> Vec<Raid> {
     serde_json::from_str(include_str!("../../../web/planner/raids.json"))
@@ -477,6 +478,7 @@ pub fn start() {
     app.insert_resource(ActiveRaid {
         raid: raids().into_iter().find(|r| r.map == 409).unwrap(),
         changed_at: 0.0,
+        playback_scene: default(),
     });
     app.add_plugins(boot::tuned_default_plugins(Window {
         title: "Pull Fiction".into(),
@@ -557,6 +559,8 @@ fn commands(
                 replay.reset = true;
                 sandbox.orbit_player = None;
                 progress.scene_ready = false;
+                progress.complete = false;
+                active.playback_scene.reset();
                 active.raid = raid;
                 active.changed_at = time.elapsed_secs();
             }
@@ -600,7 +604,7 @@ fn commands(
                 }
             }
             Command::PreparePlayback(token) => {
-                replay.playback_preparation_request = (token != 0).then_some(token);
+                active.playback_scene.begin(token);
             }
             Command::MovementDiagnostics(token) => {
                 replay.movement_diagnostics_request = Some(token);
@@ -856,14 +860,17 @@ fn actor_labels(
     mut trajectory: ResMut<benilla_app::planner_trajectory_probe::Control>,
     mut last_trajectory: Local<Option<benilla_app::planner_replay::ReplayTrajectoryStatus>>,
     mut last_missing: Local<Vec<benilla_app::planner_replay::ReplayTrajectoryMissing>>,
+    progress: Res<benilla_world::terrain_stream::WorldLoadProgress>,
+    mut active: ResMut<ActiveRaid>,
 ) {
-    if replay.trajectory_status.pending == 0 {
-        if let Some(token) = replay.playback_preparation_request.take() {
-            report(
-                "playbackPrepared",
-                &serde_json::json!({"token":token}).to_string(),
-            );
-        }
+    if let Some(token) = active
+        .playback_scene
+        .take_ready(progress.presentable(), replay.trajectory_status.pending)
+    {
+        report(
+            "playbackPrepared",
+            &serde_json::json!({"token":token}).to_string(),
+        );
     }
     if last_trajectory.as_ref() != Some(&replay.trajectory_status) {
         report(

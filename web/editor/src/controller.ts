@@ -3887,7 +3887,7 @@ export class EditorController {
     if (!raid) throw new Error("Unsupported raid map for this game version");
     if (this.state.plan.mapId === map && this.state.gameVersion === version)
       return;
-    if (clearReplay) this.cancelPlayPreparation();
+    this.cancelPlayPreparation();
     if (
       this.projectStore &&
       !this.restoringProject &&
@@ -4167,7 +4167,8 @@ export class EditorController {
     ) {
       const token = ++this.playPreparationToken;
       this.encounterWarmer.cancel();
-      this.patch({ playPreparing: true });
+      this.patch({ playPreparing: true, error: null });
+      if (!this.state.sceneReady) this.waitForScene();
       this.render();
       if (
         !this.state.playPreparing ||
@@ -6206,6 +6207,7 @@ export class EditorController {
   }
   fail(error: string) {
     clearTimeout(this.sceneTimer);
+    this.cancelPlayPreparation();
     this.patch({ error, playing: false });
   }
   start() {

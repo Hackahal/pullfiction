@@ -17,6 +17,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 #[path = "planner_replay_readiness.rs"]
 mod readiness;
+pub use readiness::PlaybackPreparation;
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ReplayTrajectoryReference {
@@ -530,7 +531,6 @@ pub struct ReplaySpellDiagnostic {
 #[derive(Default, Resource)]
 pub struct ReplayControl {
     pub movement_diagnostics_request: Option<u32>,
-    pub playback_preparation_request: Option<u32>,
     pub movement_diagnostics_response: Option<(u32, Vec<serde_json::Value>)>,
     pub trajectory_status: ReplayTrajectoryStatus,
     pub trajectory_missing: Vec<ReplayTrajectoryMissing>,

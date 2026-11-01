@@ -2,6 +2,41 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ReplayFrameTransport } from "./replay-frame-transport";
 
+test("an actor returning under the same source is sent as a complete row", () => {
+  const encoder = new ReplayFrameTransport();
+  let rows = new Map<string, Record<string, unknown>>();
+  const packets: any[] = [];
+  const publish = (json: string) => {
+    const packet = JSON.parse(json);
+    packets.push(packet);
+    if (packet.reset) rows.clear();
+    for (const row of packet.updates)
+      rows.set(row.key, { ...rows.get(row.key), ...row });
+    rows = new Map(packet.order.map((key: string) => [key, rows.get(key)!]));
+  };
+  const mage = { key: "a", name: "Mage", player: true };
+  const boss = {
+    key: "b",
+    name: "Boss",
+    position: [4, 5, 6],
+    floor_hint: 6,
+    trajectory: { content: "two", source: "source", component: "route" },
+    gear: [{ slot: 1, display: 42 }],
+    auras: [{ spell: 123, stacks: 2 }],
+  };
+  // Reuse the actor and all its fields; absence alone must discard its baseline.
+  for (const frame of [[mage, boss], [mage], [mage, boss]]) {
+    encoder.send("source", frame, publish);
+    assert.deepEqual([...rows.values()], frame);
+  }
+  assert.deepEqual(packets[1].order, ["a"]);
+  assert.deepEqual(packets[1].updates, []);
+  assert.equal(packets[2].reset, false);
+  assert.deepEqual(packets[2].updates, [boss]);
+  encoder.send("source", [mage, boss], publish);
+  assert.deepEqual(packets[3].updates, []);
+});
+
 test("field deltas reconstruct complete frames across changes, removals, reordering and source replacement", () => {
   const encoder = new ReplayFrameTransport();
   let rows = new Map<string, Record<string, unknown>>();

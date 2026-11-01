@@ -1,5 +1,34 @@
 //! Native readiness retries retain the latest replay input without cloning gear, auras or events.
 
+/// Initial scene readiness belongs to a raid load, not to each later camera window.
+#[derive(Default)]
+pub struct PlaybackPreparation {
+    presented: bool,
+    request: Option<u32>,
+}
+impl PlaybackPreparation {
+    /// Every raid load command resets readiness and requests, including same-map re-entry.
+    pub fn reset(&mut self) {
+        self.presented = false;
+        self.request = None;
+    }
+
+    /// Latest request wins; zero cancels without forgetting a healthy loaded scene.
+    pub fn begin(&mut self, token: u32) {
+        self.request = (token != 0).then_some(token);
+    }
+
+    /// Later camera streaming cannot stall prepared, retained canonical movement.
+    pub fn take_ready(&mut self, presentable: bool, pending_trajectories: usize) -> Option<u32> {
+        self.presented |= presentable;
+        if self.presented && pending_trajectories == 0 {
+            self.request.take()
+        } else {
+            None
+        }
+    }
+}
+
 pub(crate) struct RetainedFrame<T> {
     source: Option<(u32, u64)>,
     frame: Option<T>,
@@ -104,7 +133,56 @@ mod grounding;
 
 #[cfg(test)]
 mod tests {
-    use super::{grounding::GroundMemo, NativeReadiness, RetainedFrame};
+    use super::{grounding::GroundMemo, NativeReadiness, PlaybackPreparation, RetainedFrame};
+
+    #[test]
+    fn playback_waits_for_initial_scene_even_without_trajectory_references() {
+        let mut scene = PlaybackPreparation::default();
+        scene.begin(1);
+        assert_eq!(scene.take_ready(false, 0), None);
+        assert_eq!(scene.take_ready(false, 0), None);
+        assert_eq!(scene.take_ready(true, 0), Some(1));
+        assert_eq!(scene.take_ready(true, 0), None);
+        // A detached camera may stream unrelated tiles after the initial scene loaded.
+        scene.begin(2);
+        assert_eq!(scene.take_ready(false, 0), Some(2));
+        // The existing canonical collision/route gate remains required.
+        scene.begin(3);
+        assert_eq!(scene.take_ready(false, 1), None);
+        assert_eq!(scene.take_ready(false, 0), Some(3));
+    }
+
+    #[test]
+    fn every_raid_load_rearms_initial_scene_readiness_including_same_map_reload() {
+        let mut scene = PlaybackPreparation::default();
+        for _ in 0..3 {
+            scene.begin(1);
+            scene.reset();
+            assert_eq!(scene.take_ready(false, 0), None);
+            scene.begin(2);
+            assert_eq!(scene.take_ready(false, 0), None);
+            assert_eq!(scene.take_ready(true, 1), None);
+            assert_eq!(scene.take_ready(false, 0), Some(2));
+        }
+    }
+
+    #[test]
+    fn cancelled_and_superseded_requests_cannot_acknowledge_a_later_request() {
+        let mut scene = PlaybackPreparation::default();
+        scene.begin(7);
+        scene.begin(0);
+        assert_eq!(scene.take_ready(true, 0), None);
+        scene.begin(8);
+        assert_eq!(scene.take_ready(false, 1), None);
+        scene.begin(9);
+        assert_eq!(scene.take_ready(false, 0), Some(9));
+        scene.begin(10);
+        scene.reset();
+        assert_eq!(scene.take_ready(false, 0), None);
+        assert_eq!(scene.take_ready(true, 0), None);
+        scene.begin(11);
+        assert_eq!(scene.take_ready(false, 0), Some(11));
+    }
 
     #[test]
     fn a_missing_floor_recovers_while_paused_when_wmo_geometry_arrives() {

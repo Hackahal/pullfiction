@@ -4863,8 +4863,66 @@ test("speculative asset warming cannot block native playback preparation", () =>
   assert.equal(f.c.getSnapshot().playing, true);
 });
 
+test("initial scene deadline cancels playback preparation and a healthy retry can complete", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  assert.equal(f.c.getSnapshot().sceneReady, false);
+  f.c.toggle();
+  const expired = requests.at(-1)!;
+  t.mock.timers.tick(89999);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  assert.equal(f.c.getSnapshot().playing, false);
+  t.mock.timers.tick(1);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.match(f.c.getSnapshot().error!, /did not finish loading/);
+  assert.equal(requests.at(-1), 0);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: expired }));
+  assert.equal(f.c.getSnapshot().playing, false);
+
+  f.c.toggle();
+  const retry = requests.at(-1)!;
+  assert.notEqual(retry, expired);
+  assert.equal(f.c.getSnapshot().error, null);
+  t.mock.timers.tick(89999);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: expired }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.receive("scene", "409");
+  f.c.receive("playbackPrepared", JSON.stringify({ token: retry }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  t.mock.timers.tick(100000);
+  assert.equal(f.c.getSnapshot().error, null);
+  assert.equal(f.c.getSnapshot().playing, true);
+  f.c.stop();
+});
+
+test("scene failure cancels native preparation and invalidates late readiness", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  const token = requests.at(-1)!;
+  f.c.fail("Required scene load failed");
+  assert.equal(requests.at(-1), 0);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.receive("playbackPrepared", JSON.stringify({ token }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.stop();
+});
+
 test("playback target changes invalidate pending native acknowledgements", () => {
-  for (const change of ["plan", "reset", "raid", "pending-switch"] as const) {
+  for (const change of [
+    "plan",
+    "reset",
+    "raid",
+    "retained-replay-raid",
+    "pending-switch",
+  ] as const) {
     const f = fixture();
     const requests: number[] = [];
     f.engine.prepare_replay_playback = (token) => requests.push(token);
@@ -4879,7 +4937,7 @@ test("playback target changes invalidate pending native acknowledgements", () =>
         (f.c as any).activeProject = { id: "pending" };
         (f.c as any).flushProject = () => new Promise<void>(() => {});
       }
-      f.c.selectRaid(469, true);
+      f.c.selectRaid(469, change !== "retained-replay-raid");
     }
     assert.equal(f.c.getSnapshot().playPreparing, false, change);
     assert.equal(requests.at(-1), 0, change);
