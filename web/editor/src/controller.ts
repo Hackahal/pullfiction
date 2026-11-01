@@ -4012,6 +4012,7 @@ export class EditorController {
     clearTimeout(this.sceneTimer);
     const map = this.state.plan.mapId;
     this.sceneTimer = setTimeout(() => {
+      this.sceneTimer = undefined;
       if (this.state.plan.mapId === map && !this.state.sceneReady)
         this.fail(`${raidByMap(map)?.name ?? "Raid"} did not finish loading`);
     }, 90000);
@@ -4168,7 +4169,7 @@ export class EditorController {
       const token = ++this.playPreparationToken;
       this.encounterWarmer.cancel();
       this.patch({ playPreparing: true, error: null });
-      if (!this.state.sceneReady) this.waitForScene();
+      if (!this.state.sceneReady && !this.sceneTimer) this.waitForScene();
       this.render();
       if (
         !this.state.playPreparing ||
@@ -5519,6 +5520,7 @@ export class EditorController {
       )
         return;
       clearTimeout(this.sceneTimer);
+      this.sceneTimer = undefined;
       const first = !this.state.sceneReady;
       this.patch({
         sceneReady: true,
@@ -6207,6 +6209,7 @@ export class EditorController {
   }
   fail(error: string) {
     clearTimeout(this.sceneTimer);
+    this.sceneTimer = undefined;
     this.cancelPlayPreparation();
     this.patch({ error, playing: false });
   }
@@ -6286,6 +6289,7 @@ export class EditorController {
     this.previousTick = 0;
     clearTimeout(this.noticeTimer);
     clearTimeout(this.sceneTimer);
+    this.sceneTimer = undefined;
   }
   advance(delta: number) {
     if (!this.state.playing) return;

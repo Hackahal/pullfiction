@@ -4915,6 +4915,31 @@ test("scene failure cancels native preparation and invalidates late readiness", 
   f.c.stop();
 });
 
+test("Play preserves an existing boot or raid-load scene deadline", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  for (const load of ["boot", "raid"] as const) {
+    const f = fixture();
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    if (load === "boot")
+      (f.c as unknown as { waitForScene: () => void }).waitForScene();
+    else f.c.selectRaid(469, false);
+    t.mock.timers.tick(89000);
+    f.c.toggle();
+    const token = requests.at(-1)!;
+    t.mock.timers.tick(999);
+    assert.equal(f.c.getSnapshot().playPreparing, true, load);
+    t.mock.timers.tick(1);
+    assert.equal(f.c.getSnapshot().playPreparing, false, load);
+    assert.equal(f.c.getSnapshot().playing, false, load);
+    assert.match(f.c.getSnapshot().error!, /did not finish loading/);
+    assert.equal(requests.at(-1), 0, load);
+    f.c.receive("playbackPrepared", JSON.stringify({ token }));
+    assert.equal(f.c.getSnapshot().playing, false, load);
+    f.c.stop();
+  }
+});
+
 test("playback target changes invalidate pending native acknowledgements", () => {
   for (const change of [
     "plan",
