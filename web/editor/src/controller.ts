@@ -303,6 +303,15 @@ export class EditorController {
   private trajectoryEngine: Engine | null = null;
   private trajectorySent = new Set<string>();
   private trajectoryRejected = new Set<string>();
+  private trajectoryDemands = new Set<string>();
+  private trajectoryRetries = new Map<
+    string,
+    { failures: number; due: number | null }
+  >();
+  private trajectoryRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private trajectoryRetryEpoch = 0;
+  private trajectoryRetryTicket = 0;
+  private trajectoryRetryStopped = false;
   private trajectoryCoverageBlocked = false;
   private trajectoryCoverage: {
     source: string;
@@ -3943,6 +3952,7 @@ export class EditorController {
   }
   seek(time: number) {
     if (!Number.isFinite(time)) return;
+    this.clearTrajectoryRetries();
     if (this.state.downloadingReplay) this.cancelReplayDownload();
     this.trajectoryCoverageBlocked = false;
     this.clockTime = Math.max(0, Math.min(this.duration(), time));
@@ -4812,6 +4822,7 @@ export class EditorController {
     prepared?: { replay: Replay; models: Record<string, unknown> },
     buffer?: ReplayBuffer,
   ) {
+    this.clearTrajectoryRetries();
     this.trajectoryEpoch++;
     this.trajectoryCoverageBlocked = false;
     if (this.state.cameraMode === "orbit") this.setCameraMode("free");
@@ -4941,6 +4952,9 @@ export class EditorController {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   attachEngine(engine: Engine) {
+    this.clearTrajectoryRetries();
+    this.trajectoryEpoch++; // Late notifications from a previous installation are stale.
+    this.trajectoryRetryStopped = false;
     this.engine = engine;
     try {
       const stored = JSON.parse(
@@ -5270,6 +5284,7 @@ export class EditorController {
         /* Ignore malformed optional renderer status. */
       }
     } else if (kind === "trajectoryMissing") {
+      if (this.trajectoryRetryStopped) return;
       try {
         const rows = JSON.parse(value);
         if (!Array.isArray(rows) || rows.length > 256) return;
@@ -5288,18 +5303,31 @@ export class EditorController {
             row.component,
             row.content,
           );
-          if (!this.trajectoryRejected.has(key)) {
+          if (
+            this.trajectoryDemands.has(key) &&
+            !this.trajectoryRejected.has(key)
+          ) {
             this.trajectorySent.delete(key);
-            // A transient capacity error may already have cleared this marker.
-            // The renderer's changed missing set supplies the next-frame retry.
             resend = true;
           }
         }
-        if (resend) queueMicrotask(() => this.sendPositions());
+        if (resend) {
+          const epoch = this.trajectoryRetryEpoch;
+          const engine = this.engine;
+          queueMicrotask(() => {
+            if (
+              !this.trajectoryRetryStopped &&
+              epoch === this.trajectoryRetryEpoch &&
+              engine === this.engine
+            )
+              this.sendPositions();
+          });
+        }
       } catch {
         /* A missing optional cache entry is retried on the next source update. */
       }
     } else if (kind === "trajectoryError") {
+      if (this.trajectoryRetryStopped) return;
       try {
         const row = JSON.parse(value);
         if (
@@ -5316,8 +5344,10 @@ export class EditorController {
           row.content,
         );
         if (row.message === "Canonical active cache capacity exceeded") {
-          this.trajectorySent.delete(key);
+          this.retryTrajectoryCapacity(key);
         } else if (!this.trajectoryRejected.has(key)) {
+          this.trajectoryRetries.delete(key);
+          this.armTrajectoryRetry();
           this.trajectoryRejected.add(key);
           this.notify(
             `Movement could not be prepared: ${String(row.message).slice(0, 240)}`,
@@ -5892,6 +5922,7 @@ export class EditorController {
     this.patch({ error, playing: false });
   }
   start() {
+    this.trajectoryRetryStopped = false;
     if (this.raf) return;
     const tick = (now: number) => {
       if (this.previousTick) {
@@ -5925,6 +5956,8 @@ export class EditorController {
     this.raf = requestAnimationFrame(tick);
   }
   stop() {
+    this.clearTrajectoryRetries();
+    this.trajectoryRetryStopped = true;
     this.prefetchAbort?.abort();
     ++this.clientAccessEpoch;
     this.clientAttachAbort?.abort();
@@ -6159,6 +6192,65 @@ export class EditorController {
   ) {
     return JSON.stringify([source, actor, component, content]);
   }
+  private clearTrajectoryRetries() {
+    if (this.trajectoryRetryTimer !== null)
+      clearTimeout(this.trajectoryRetryTimer);
+    this.trajectoryRetryTimer = null;
+    this.trajectoryRetryEpoch++;
+    this.trajectoryRetries.clear();
+    this.trajectoryDemands.clear();
+  }
+  private retryTrajectoryCapacity(key: string) {
+    if (
+      this.trajectoryRetryStopped ||
+      !this.trajectoryDemands.has(key) ||
+      this.trajectoryRejected.has(key)
+    )
+      return;
+    this.trajectorySent.delete(key);
+    const retry = this.trajectoryRetries.get(key) ?? { failures: 0, due: null };
+    if (retry.due !== null) return; // Duplicate failure while already waiting.
+    retry.failures++;
+    if (retry.failures >= 8) {
+      retry.due = Infinity;
+      this.notify("Movement could not be prepared yet. Seek again to retry.");
+    } else
+      retry.due =
+        performance.now() + Math.min(2000, 100 * 2 ** (retry.failures - 1));
+    this.trajectoryRetries.set(key, retry);
+    this.armTrajectoryRetry();
+  }
+  private armTrajectoryRetry() {
+    if (this.trajectoryRetryTimer !== null)
+      clearTimeout(this.trajectoryRetryTimer);
+    this.trajectoryRetryTimer = null;
+    const ticket = ++this.trajectoryRetryTicket;
+    if (this.trajectoryRetryStopped) return;
+    let due = Infinity;
+    for (const [key, retry] of this.trajectoryRetries) {
+      if (this.trajectoryDemands.has(key) && retry.due !== null)
+        due = Math.min(due, retry.due);
+    }
+    if (!Number.isFinite(due)) return;
+    const epoch = this.trajectoryRetryEpoch,
+      source = this.trajectorySource,
+      engine = this.engine;
+    this.trajectoryRetryTimer = setTimeout(
+      () => {
+        if (
+          !this.trajectoryRetryStopped &&
+          ticket === this.trajectoryRetryTicket &&
+          epoch === this.trajectoryRetryEpoch &&
+          source === this.trajectorySource &&
+          engine === this.engine
+        ) {
+          this.trajectoryRetryTimer = null;
+          this.sendPositions();
+        }
+      },
+      Math.max(1, Math.ceil(due - performance.now())),
+    );
+  }
   private activateTrajectorySource() {
     const engine = this.engine;
     const replay = this.state.replay;
@@ -6170,6 +6262,7 @@ export class EditorController {
         : "";
     if (source === this.trajectorySource && engine === this.trajectoryEngine)
       return;
+    this.clearTrajectoryRetries();
     this.trajectorySource = source;
     this.trajectoryEngine = engine;
     this.trajectorySent.clear();
@@ -6320,19 +6413,24 @@ export class EditorController {
           id,
           packet.content,
         );
+        this.trajectoryDemands.add(key);
+        const retry = this.trajectoryRetries.get(key);
         if (
           packet.coverage_complete &&
+          (retry?.due == null || retry.due <= performance.now()) &&
           !this.trajectorySent.has(key) &&
           !this.trajectoryRejected.has(key)
         ) {
           this.trajectorySent.add(key);
+          if (retry) retry.due = null;
           try {
             this.engine!.submit_replay_trajectory!(JSON.stringify(packet));
           } catch (error) {
             const text = message(error);
             if (text === "Too many queued trajectory components") {
-              this.trajectorySent.delete(key);
+              this.retryTrajectoryCapacity(key);
             } else {
+              this.trajectoryRetries.delete(key);
               this.trajectoryRejected.add(key);
               this.notify(`Movement could not be prepared: ${text}`);
             }
@@ -6434,6 +6532,7 @@ export class EditorController {
     if (this.runtime.rendererLab) return;
     if (!this.engine) return;
     this.activateTrajectorySource();
+    this.trajectoryDemands.clear();
     if (!this.state.replay) {
       const actors = this.state.options.actors
         ? this.sceneActors().flatMap((actor) => {
@@ -6659,6 +6758,10 @@ export class EditorController {
         JSON.stringify(frame.filter((a) => a.player || a.position)),
       );
     });
+    for (const key of this.trajectoryRetries.keys()) {
+      if (!this.trajectoryDemands.has(key)) this.trajectoryRetries.delete(key);
+    }
+    this.armTrajectoryRetry();
   }
 }
 function message(e: unknown) {

@@ -1,5 +1,5 @@
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { EditorController } from "./controller";
@@ -3742,7 +3742,219 @@ function canonicalTransportFixture(
   return { f, actor, packets, sources, player };
 }
 
-test("transient native queue pressure recovers on the renderer missing notification while paused", async () => {
+function trajectoryRetryTimers(t: TestContext) {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  t.mock.method(performance, "now", () => Date.now());
+}
+
+test("paused Missing then resend then capacity error retries without another Missing", async (t) => {
+  trajectoryRetryTimers(t);
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+  ]);
+  f.c.seek(500);
+  const identity = { ...player().trajectory!, actor: actor.key };
+  f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+  await Promise.resolve();
+  assert.equal(packets.length, 2);
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...identity,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  t.mock.timers.tick(99);
+  assert.equal(packets.length, 2);
+  t.mock.timers.tick(1);
+  assert.equal(
+    packets.length,
+    3,
+    "capacity can recover without a changed missing set",
+  );
+  assert.deepEqual(packets[2], packets[0]);
+  t.mock.timers.tick(10000);
+  assert.equal(packets.length, 3, "success stops retries");
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.stop();
+});
+
+test("trajectory capacity retries coalesce and stop at a bounded failure budget", (t) => {
+  trajectoryRetryTimers(t);
+  const { f, actor, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+  ]);
+  let attempts = 0;
+  f.engine.submit_replay_trajectory = () => {
+    attempts++;
+    throw new Error("Too many queued trajectory components");
+  };
+  f.c.seek(500);
+  const identity = { ...player().trajectory!, actor: actor.key };
+  for (let i = 0; i < 10; i++)
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({
+        ...identity,
+        message: "Canonical active cache capacity exceeded",
+      }),
+    );
+  t.mock.timers.tick(99);
+  assert.equal(attempts, 1);
+  t.mock.timers.tick(1);
+  assert.equal(attempts, 2);
+  t.mock.timers.tick(199);
+  assert.equal(attempts, 2);
+  t.mock.timers.tick(1);
+  assert.equal(attempts, 3);
+  for (let i = 0; i < 15; i++) t.mock.timers.tick(2000);
+  assert.equal(attempts, 8);
+  t.mock.timers.tick(100000);
+  assert.equal(attempts, 8);
+  f.engine.submit_replay_trajectory = () => {
+    attempts++;
+  };
+  f.c.seek(600);
+  assert.equal(
+    attempts,
+    9,
+    "explicit seek can recover exhausted transient input",
+  );
+  t.mock.timers.tick(10000);
+  f.c.seek(650);
+  assert.equal(attempts, 9, "successful recovery stays deduplicated");
+  f.c.stop();
+});
+
+test("trajectory retry timers cancel on seek, source replacement, engine replacement and stop", (t) => {
+  trajectoryRetryTimers(t);
+  for (const action of ["seek", "source", "engine", "hide", "stop"]) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({
+        ...identity,
+        message: "Canonical active cache capacity exceeded",
+      }),
+    );
+    if (action === "seek") f.c.seek(600);
+    if (action === "source") f.c.installReplay(raw);
+    if (action === "engine") f.c.attachEngine({ ...f.engine });
+    if (action === "hide") f.c.setOption("actors", false);
+    if (action === "stop") f.c.stop();
+    const before = packets.length;
+    t.mock.timers.tick(10000);
+    assert.equal(packets.length, before, action + " must cancel old timer");
+    f.c.stop();
+  }
+});
+
+test("late capacity errors for prior seek and engine demands do not restart retries", (t) => {
+  trajectoryRetryTimers(t);
+  const { f, actor, packets, player, sources } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+    [10000, 10, -1, 0],
+    [11000, 12, -1, null],
+  ]);
+  f.c.seek(500);
+  const old = { ...player().trajectory!, actor: actor.key };
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...old,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  f.c.seek(10500);
+  assert.notEqual(player().trajectory!.component, old.component);
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...old,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  const before = packets.length;
+  t.mock.timers.tick(10000);
+  assert.equal(packets.length, before);
+  const current = { ...player().trajectory!, actor: actor.key };
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...current,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  f.c.attachEngine({ ...f.engine });
+  assert.notEqual(sources.at(-1), current.source);
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...current,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  const replaced = packets.length;
+  t.mock.timers.tick(10000);
+  assert.equal(packets.length, replaced);
+  f.c.stop();
+});
+
+test("queued missing recovery is cancelled before a seek changes demand", async (t) => {
+  trajectoryRetryTimers(t);
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+    [10000, 10, -1, 0],
+    [11000, 12, -1, null],
+  ]);
+  f.c.seek(500);
+  const old = { ...player().trajectory!, actor: actor.key };
+  f.c.receive("trajectoryMissing", JSON.stringify([old]));
+  f.c.seek(10500);
+  const before = packets.length;
+  await Promise.resolve();
+  t.mock.timers.tick(10000);
+  assert.equal(packets.length, before);
+  assert.equal(packets.at(-1)!.component, player().trajectory!.component);
+  f.c.stop();
+});
+
+test("permanent validation rejection cancels an already queued capacity retry", (t) => {
+  trajectoryRetryTimers(t);
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+  ]);
+  f.c.seek(500);
+  const identity = { ...player().trajectory!, actor: actor.key };
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({
+      ...identity,
+      message: "Canonical active cache capacity exceeded",
+    }),
+  );
+  f.c.receive(
+    "trajectoryError",
+    JSON.stringify({ ...identity, message: "Invalid canonical sample" }),
+  );
+  t.mock.timers.tick(10000);
+  f.c.seek(600);
+  assert.equal(packets.length, 1);
+  f.c.stop();
+});
+
+test("transient native queue pressure recovers on the renderer missing notification while paused", async (t) => {
+  trajectoryRetryTimers(t);
   const { f, actor, packets, player } = canonicalTransportFixture([
     [0, 2, -1, 0],
     [1000, 8, -1, null],
@@ -3760,6 +3972,12 @@ test("transient native queue pressure recovers on the renderer missing notificat
   const identity = { ...player().trajectory!, actor: actor.key };
   f.c.receive("trajectoryMissing", JSON.stringify([identity]));
   await Promise.resolve();
+  assert.equal(
+    attempts,
+    1,
+    "missing notification cannot bypass capacity backoff",
+  );
+  t.mock.timers.tick(100);
   assert.equal(attempts, 2);
   assert.equal(packets.length, 1);
   assert.equal(f.c.getSnapshot().playing, false);
@@ -3768,7 +3986,8 @@ test("transient native queue pressure recovers on the renderer missing notificat
   f.c.stop();
 });
 
-test("transient active-cache pressure recovers when an already-unsent missing key is reported", async () => {
+test("transient active-cache pressure recovers when an already-unsent missing key is reported", async (t) => {
+  trajectoryRetryTimers(t);
   const { f, actor, packets, player } = canonicalTransportFixture([
     [0, 2, -1, 0],
     [1000, 8, -1, null],
@@ -3784,6 +4003,8 @@ test("transient active-cache pressure recovers when an already-unsent missing ke
   );
   f.c.receive("trajectoryMissing", JSON.stringify([identity]));
   await Promise.resolve();
+  assert.equal(packets.length, 1, "missing notification respects backoff");
+  t.mock.timers.tick(100);
   assert.equal(packets.length, 2, "retry after capacity becomes available");
   assert.deepEqual(
     packets[1],
