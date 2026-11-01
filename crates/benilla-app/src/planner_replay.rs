@@ -723,6 +723,7 @@ pub(crate) fn apply(
     }
     let reset = std::mem::take(&mut control.reset);
     if reset {
+        plans.begin_seek();
         ground_cache.clear();
         routes.clear();
         control.generation += 1;

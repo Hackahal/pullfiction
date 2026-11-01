@@ -411,6 +411,8 @@ pub struct CanonicalTrajectories {
     last_reset: Option<ValidationReset>,
     terrain_request_key: Option<u64>,
     terrain_owner_key: Option<u64>,
+    terrain_seek_generation: AtomicU64,
+    terrain_requests_extended: bool,
     terrain_requested_tiles: usize,
     terrain_capacity_exceeded: bool,
     revision: u64,
@@ -464,6 +466,11 @@ pub struct CacheDiagnostics {
     pub elapsed_processing_ms: f64,
 }
 impl CanonicalTrajectories {
+    /// A navigation reset replaces terrain ownership without discarding canonical checkpoints.
+    /// Ordinary frame demand renewal must not call this: discovered repair tiles stay pinned.
+    pub fn begin_seek(&self) {
+        self.terrain_seek_generation.fetch_add(1, Ordering::Relaxed);
+    }
     /// Start a complete presentation demand set; queries below renew its members.
     /// Keep cached checkpoints and pending cursors so a later seek can resume them.
     pub fn clear_demands(&self) {
@@ -777,8 +784,11 @@ impl CanonicalTrajectories {
         };
         let mut ownership = std::collections::hash_map::DefaultHasher::new();
         map.hash(&mut ownership);
+        let seek = self.terrain_seek_generation.load(Ordering::Relaxed);
+        seek.hash(&mut ownership);
         let mut signature = std::collections::hash_map::DefaultHasher::new();
         map.hash(&mut signature);
+        seek.hash(&mut signature);
         self.validation_epoch.hash(&mut signature);
         for e in self.entries.iter().filter(|e| active(e)) {
             e.input.key().hash(&mut signature);
@@ -806,7 +816,8 @@ impl CanonicalTrajectories {
         // Keep discovered repair/cursor dependencies while the same component
         // demand set owns them. Dropping one would invalidate the certified prefix
         // and repeat the same load/restart loop at that frontier.
-        if self.terrain_owner_key == Some(owner_key) && requests.map == map {
+        let retain_discovered = self.terrain_owner_key == Some(owner_key) && requests.map == map;
+        if retain_discovered {
             for &tile in &requests.tiles {
                 coverage.insert_tile(tile);
             }
@@ -818,7 +829,25 @@ impl CanonicalTrajectories {
             for pair in rows.windows(2) {
                 coverage.segment([pair[0].1, pair[0].2], [pair[1].1, pair[1].2]);
             }
+            // A seek may drop stale discovered tiles, but a certified detour is still
+            // part of the required prefix. Rebuild it only when ownership changes.
+            if !retain_discovered {
+                coverage.path(
+                    e.ticks
+                        .iter()
+                        .take_while(|tick| tick.time <= rows.last().unwrap().0)
+                        .map(|tick| [tick.pose.position[0], tick.pose.position[1]]),
+                );
+            }
             e.visit_terrain_cursors(|cursor| {
+                if !retain_discovered {
+                    coverage.path(
+                        std::iter::successors(cursor.ticks.0.as_deref(), |node| {
+                            node.previous.0.as_deref()
+                        })
+                        .map(|node| [node.tick.pose.position[0], node.tick.pose.position[1]]),
+                    );
+                }
                 let p = bevy_to_wow(cursor.state.center);
                 coverage.point([p[0], p[1]]);
                 if let Some((_, path)) = &cursor.guidance {
@@ -854,7 +883,14 @@ impl CanonicalTrajectories {
             }
         }
         self.terrain_request_key = Some(key);
-        self.terrain_owner_key = Some(owner_key);
+        if !overflow {
+            self.terrain_owner_key = Some(owner_key);
+        }
+        self.terrain_requests_extended = requests.map != previous_map
+            || requests
+                .tiles
+                .iter()
+                .any(|tile| !previous_tiles.contains(tile));
         requests.map != previous_map || requests.tiles != previous_tiles
     }
     #[cfg(test)]
@@ -1912,15 +1948,14 @@ fn drive(
             .map(|l| (l.memberships.0, l.filters.0))
             .hash(&mut signature);
     }
-    // Publish collision dependencies before interpreting readiness. A fresh set
-    // must receive the streamer's own readiness acknowledgement, even if the
-    // preceding frame's camera/trajectory tiles were complete.
+    // New dependencies need a fresh streamer acknowledgement. A subset of the
+    // already acknowledged set cannot make its remaining collision less ready.
     let requests_changed = terrain_requests
         .as_deref_mut()
         .is_some_and(|requests| plans.prepare_terrain(current_map, requests));
     let ready = current_map.is_some()
         && progress.as_deref().is_none_or(|p| {
-            !requests_changed
+            !(requests_changed && plans.terrain_requests_extended)
                 && p.scene_ready
                 && (terrain_requests
                     .as_deref()
@@ -2117,6 +2152,247 @@ mod tests {
         assert!(requests.tiles.is_empty());
     }
     #[test]
+    fn same_component_seeks_replace_old_terrain_ownership_without_false_capacity() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        app.world_mut()
+            .run_system_once(|world: WorldCollision| {
+                let capsule =
+                    Collider::capsule(CAPSULE_RADIUS, CAPSULE_HEIGHT - 2. * CAPSULE_RADIUS);
+                let mut i = input();
+                i.samples = (0..80)
+                    .map(|n| (n as f64 * 1000., n as f32 * 100., 1., Some(0.)))
+                    .collect();
+                let mut plans = CanonicalTrajectories::default();
+                plans.submit(i.clone()).unwrap();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 60000.);
+                let mut requests =
+                    benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
+                plans.prepare_terrain(Some(0), &mut requests);
+                let forward = requests.tiles.clone();
+                assert!(!plans.terrain_capacity_exceeded);
+
+                let mut candidate = initial(&i, 0, &world, &capsule).unwrap().unwrap();
+                let checkpoint = Arc::new(candidate.cursor.clone());
+                candidate.checkpoints.push(checkpoint.clone());
+                candidate.cursor.guidance = Some((
+                    0,
+                    Arc::new(vec![
+                        wow_to_bevy([0., 1., 0.]),
+                        wow_to_bevy([0., 12000., 0.]),
+                    ]),
+                ));
+                let mut fresh = CanonicalTrajectories::default();
+                fresh.submit(i.clone()).unwrap();
+                fresh.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+                let fresh_before = fresh.entries[0].accounted_bytes;
+                fresh.entries[0]
+                    .planning
+                    .waiting
+                    .push_back(candidate.clone());
+                fresh.entries[0].refresh_bytes();
+                fresh.accounted_bytes =
+                    fresh.accounted_bytes - fresh_before + fresh.entries[0].accounted_bytes;
+                let mut bounded =
+                    benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
+                fresh.prepare_terrain(Some(0), &mut bounded);
+                assert!(
+                    !fresh.terrain_capacity_exceeded,
+                    "the new prefix/cursors alone fit"
+                );
+                assert!(
+                    forward
+                        .iter()
+                        .chain(&bounded.tiles)
+                        .copied()
+                        .collect::<std::collections::HashSet<_>>()
+                        .len()
+                        > benilla_world::terrain_stream::MAX_TRAJECTORY_TERRAIN_TILES
+                );
+
+                let before = plans.entries[0].accounted_bytes;
+                plans.entries[0].planning.waiting.push_back(candidate);
+                plans.entries[0].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+                plans.clear_demands();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+                plans.begin_seek();
+                plans.entries[0].planning.waiting[0].cursor.guidance = Some((
+                    0,
+                    Arc::new(vec![
+                        wow_to_bevy([0., 1., 0.]),
+                        wow_to_bevy([0., 20000., 0.]),
+                    ]),
+                ));
+                plans.prepare_terrain(Some(0), &mut requests);
+                assert!(
+                    plans.terrain_capacity_exceeded,
+                    "genuinely oversized new coverage remains a conflict"
+                );
+                assert_eq!(
+                    requests.tiles, forward,
+                    "overflow leaves the previous bounded set resident"
+                );
+                plans.entries[0].planning.waiting[0].cursor.guidance = Some((
+                    0,
+                    Arc::new(vec![
+                        wow_to_bevy([0., 1., 0.]),
+                        wow_to_bevy([0., 12000., 0.]),
+                    ]),
+                ));
+                plans.prepare_terrain(Some(0), &mut requests);
+                assert!(
+                    !plans.terrain_capacity_exceeded,
+                    "a backward seek must release the old frontier's retained tiles"
+                );
+                assert_eq!(requests.tiles, bounded.tiles);
+                assert!(!matches!(
+                    plans.entries[0].result,
+                    Query::Conflict(TERRAIN_CAPACITY)
+                ));
+                assert!(Arc::ptr_eq(
+                    plans.entries[0].planning.waiting[0]
+                        .checkpoints
+                        .last()
+                        .unwrap(),
+                    &checkpoint
+                ));
+                assert_accounting(&plans);
+
+                // A completed detour no longer owns this path at the next forward seek.
+                let before = plans.entries[0].accounted_bytes;
+                plans.entries[0].planning.waiting[0].cursor.guidance = None;
+                plans.entries[0].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+                plans.clear_demands();
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 60000.);
+                plans.begin_seek();
+                plans.prepare_terrain(Some(0), &mut requests);
+                assert!(
+                    !plans.terrain_capacity_exceeded,
+                    "a forward seek must release the old detour's retained tiles"
+                );
+                assert_eq!(requests.tiles, forward);
+                assert!(Arc::ptr_eq(
+                    plans.entries[0].planning.waiting[0]
+                        .checkpoints
+                        .last()
+                        .unwrap(),
+                    &checkpoint
+                ));
+                assert_accounting(&plans);
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn seek_terrain_preserves_certified_and_active_history_without_steady_frame_churn() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        app.world_mut()
+            .run_system_once(|world: WorldCollision| {
+                let capsule =
+                    Collider::capsule(CAPSULE_RADIUS, CAPSULE_HEIGHT - 2. * CAPSULE_RADIUS);
+                let mut i = input();
+                i.samples = (0..=40)
+                    .map(|n| (n as f64 * 1000., 0., 1., Some(0.)))
+                    .collect();
+                let mut candidate = initial(&i, 0, &world, &capsule).unwrap().unwrap();
+                let tick = candidate.cursor.ticks.rows()[0].clone();
+                let detour = |time, y| {
+                    let mut value = (*tick).clone();
+                    value.time = time;
+                    value.pose.position = [0., y, 0.];
+                    Arc::new(value)
+                };
+                candidate.cursor.ticks.push(detour(1000., -1500.));
+                candidate.cursor.ticks.push(detour(2000., 1.));
+                let mut fallback = candidate.clone();
+                fallback.cursor.guidance = Some((
+                    0,
+                    Arc::new(vec![
+                        wow_to_bevy([0., 1., 0.]),
+                        wow_to_bevy([0., 3000., 0.]),
+                    ]),
+                ));
+                candidate.walking_fallback = Some(Box::new(fallback));
+                let mut failed = candidate.cursor.clone();
+                failed.ticks.push(detour(3000., -3000.));
+                let probe = WorldProbe::new(&world);
+                let from = candidate.cursor.state.center - Vec3::Y * (CAPSULE_HEIGHT * 0.5);
+                let goal = from + Vec3::X;
+                let mut plans = CanonicalTrajectories::default();
+                plans.submit(i.clone()).unwrap();
+                let before = plans.entries[0].accounted_bytes;
+                plans.entries[0].ticks = vec![
+                    tick.clone(),
+                    detour(1000., 1500.),
+                    detour(2000., 1.),
+                    detour(40000., 12000.),
+                ];
+                plans.entries[0].planning.repair = Some(Repair {
+                    candidate,
+                    failed,
+                    search: Search::new(&probe, from, goal).unwrap(),
+                    goal,
+                });
+                plans.entries[0].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+                plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+                plans.begin_seek();
+                let mut requests =
+                    benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
+                assert!(plans.prepare_terrain(Some(0), &mut requests));
+                for y in [1500., -1500., 3000., -3000.] {
+                    assert!(
+                        requests.tiles.contains(&terrain::tile([0., y])),
+                        "lost required detour {y}"
+                    );
+                }
+                assert!(
+                    !requests.tiles.contains(&terrain::tile([0., 12000.])),
+                    "a backward seek does not need a future certified prefix"
+                );
+                let discovered = requests.tiles.clone();
+                let before = plans.entries[0].accounted_bytes;
+                plans.entries[0].planning = Planning::default();
+                plans.entries[0].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+                for _ in 0..20 {
+                    plans.frame += 1;
+                    plans.clear_demands();
+                    plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+                    assert!(!plans.prepare_terrain(Some(0), &mut requests));
+                    assert_eq!(
+                        requests.tiles, discovered,
+                        "normal playback retains discovered dependencies"
+                    );
+                }
+                plans.begin_seek();
+                assert!(plans.prepare_terrain(Some(0), &mut requests));
+                assert!(
+                    requests.tiles.contains(&terrain::tile([0., 1500.])),
+                    "the required certified detour survives seek"
+                );
+                assert!(
+                    !requests.tiles.contains(&terrain::tile([0., -3000.])),
+                    "a new seek releases completed cursor work"
+                );
+                let current = requests.tiles.clone();
+                plans.begin_seek();
+                assert!(
+                    !plans.prepare_terrain(Some(0), &mut requests),
+                    "identical seek coverage does not churn residency"
+                );
+                assert_eq!(requests.tiles, current);
+                assert_accounting(&plans);
+            })
+            .unwrap();
+    }
+
+    #[test]
     fn terrain_dependency_capacity_is_explicit_and_smaller_seek_restores_prior_status() {
         let mut plans = CanonicalTrajectories::default();
         let mut i = input();
@@ -2149,6 +2425,98 @@ mod tests {
         assert!(plans.entries[0].needs_work());
         assert_accounting(&plans);
     }
+    #[test]
+    fn seek_subset_keeps_ready_checkpoints_through_the_production_drive() {
+        use benilla_world::terrain_stream::{
+            TerrainResidency, TrajectoryTerrainRequests, WorldLoadProgress,
+        };
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        install(&mut app);
+        app.world_mut()
+            .insert_resource(benilla_world::world_map::CurrentMap(0));
+        app.world_mut().insert_resource(TerrainResidency::default());
+        app.world_mut().insert_resource(WorldLoadProgress {
+            scene_ready: true,
+            trajectory_ready: true,
+            ..Default::default()
+        });
+        let mut i = input();
+        i.samples = (0..80)
+            .map(|n| (n as f64 * 1000., n as f32 * 100., 1., Some(0.)))
+            .collect();
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(i.clone())
+            .unwrap();
+        app.world().resource::<CanonicalTrajectories>().query(
+            &i.source,
+            &i.actor,
+            &i.component,
+            &i.content,
+            60000.,
+        );
+        let mut driver = IntoSystem::into_system(drive);
+        driver.initialize(app.world_mut());
+        app.world_mut()
+            .resource_mut::<physics::PhysicsBudget>()
+            .remaining = 0;
+        driver.run((), app.world_mut()).unwrap();
+        let previous = app
+            .world()
+            .resource::<TrajectoryTerrainRequests>()
+            .tiles
+            .clone();
+        app.world_mut()
+            .insert_resource(TerrainResidency::with_tiles(previous.clone()));
+        driver.run((), app.world_mut()).unwrap();
+        let (candidate, tick) = app
+            .world_mut()
+            .run_system_once(move |world: WorldCollision| {
+                let capsule =
+                    Collider::capsule(CAPSULE_RADIUS, CAPSULE_HEIGHT - 2. * CAPSULE_RADIUS);
+                let candidate = initial(&i, 0, &world, &capsule).unwrap().unwrap();
+                let tick = candidate.cursor.ticks.rows()[0].clone();
+                (candidate, tick)
+            })
+            .unwrap();
+        let checkpoint = candidate.checkpoints.last().unwrap().clone();
+        let epoch;
+        {
+            let mut plans = app.world_mut().resource_mut::<CanonicalTrajectories>();
+            assert!(plans.world_ready);
+            let before = plans.entries[0].accounted_bytes;
+            plans.entries[0].ticks.push(tick.clone());
+            plans.entries[0].planning.waiting.push_back(candidate);
+            plans.entries[0].refresh_bytes();
+            plans.accounted_bytes =
+                plans.accounted_bytes - before + plans.entries[0].accounted_bytes;
+            let i = plans.entries[0].input.clone();
+            plans.clear_demands();
+            plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+            plans.begin_seek();
+            epoch = plans.validation_epoch;
+        }
+        driver.run((), app.world_mut()).unwrap();
+        let current = &app.world().resource::<TrajectoryTerrainRequests>().tiles;
+        assert!(current.len() < previous.len());
+        assert!(current.iter().all(|tile| previous.contains(tile)));
+        let plans = app.world().resource::<CanonicalTrajectories>();
+        assert!(plans.world_ready);
+        assert_eq!(
+            plans.validation_epoch, epoch,
+            "a dependency-only shrink does not invalidate the world"
+        );
+        assert!(Arc::ptr_eq(&plans.entries[0].ticks[0], &tick));
+        assert!(Arc::ptr_eq(
+            plans.entries[0].planning.waiting[0]
+                .checkpoints
+                .last()
+                .unwrap(),
+            &checkpoint
+        ));
+        assert_accounting(plans);
+    }
+
     #[test]
     fn terrain_requests_are_published_before_world_ready_and_physics_waits_for_their_collisions() {
         use benilla_world::terrain_stream::{

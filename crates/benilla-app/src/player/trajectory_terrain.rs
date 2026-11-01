@@ -13,6 +13,17 @@ impl Default for Coverage {
     }
 }
 impl Coverage {
+    pub fn path(&mut self, points: impl IntoIterator<Item = [f32; 2]>) {
+        let mut previous = None;
+        for point in points {
+            match previous {
+                Some(prior) if point_key(prior) != point_key(point) => self.segment(prior, point),
+                None => self.point(point),
+                _ => {}
+            }
+            previous = Some(point);
+        }
+    }
     pub fn insert_tile(&mut self, (x, y): (i32, i32)) {
         if (0..64).contains(&x) && (0..64).contains(&y) {
             self.rows[y as usize] |= 1u64 << x;
@@ -71,6 +82,31 @@ pub(super) fn tile(p: [f32; 2]) -> (i32, i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn history_paths_match_full_segments_in_both_time_orders() {
+        let points = [
+            [0., 1.],
+            [2., 2.],
+            [64., 62.],
+            [600., 800.],
+            [550., 830.],
+            [-300., -200.],
+        ];
+        let mut expected = Coverage::default();
+        expected.point(points[0]);
+        for pair in points.windows(2) {
+            expected.segment(pair[0], pair[1]);
+        }
+        let mut forward = Coverage::default();
+        forward.path(points);
+        assert_eq!(forward.tiles(), expected.tiles());
+        let mut backward = Coverage::default();
+        backward.path(points.into_iter().rev());
+        assert_eq!(backward.tiles(), expected.tiles());
+        let mut empty = Coverage::default();
+        empty.path([]);
+        assert_eq!(empty.count(), 0);
+    }
     #[test]
     fn scarlet_origin_is_requested_independently_of_camera() {
         let origin = [2948.06, -6027.62];
