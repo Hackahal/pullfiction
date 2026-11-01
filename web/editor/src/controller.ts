@@ -1,4 +1,8 @@
 import { resetLocalMaps } from "./local-map";
+import {
+  recordedTransferEvidence,
+  type TransferEvidence,
+} from "./replay-trajectory-modes";
 import type {
   WclSpeedCategory,
   WclSpeedSelection,
@@ -84,7 +88,18 @@ import {
   analysisAvailable,
   streamComplete,
   REPLAY_CHUNK,
+  replayIdentity,
 } from "./replay-buffer";
+import {
+  buildTrajectorySource,
+  lookupTrajectorySource,
+  type TrajectorySourceIndex,
+  type TrajectoryComponent,
+} from "./replay-trajectory-source";
+import {
+  buildTrajectoryPacket,
+  type TrajectoryComponentPacket,
+} from "./replay-trajectory-packets";
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import { movementFloorCandidates } from "./replay-movement-floors";
@@ -142,6 +157,7 @@ import type {
   Replay,
   Actor,
   NativeFrame,
+  NativeTrajectoryReference,
   Appearance,
   Options,
   PlanStep,
@@ -281,6 +297,34 @@ export class EditorController {
   } | null = null;
   private lastFrame = -Infinity;
   private movementDiagnostics: unknown = null;
+  private trajectoryDiagnostics: unknown = null;
+  private trajectoryEpoch = 0;
+  private trajectorySource = "";
+  private trajectoryEngine: Engine | null = null;
+  private trajectorySent = new Set<string>();
+  private trajectoryRejected = new Set<string>();
+  private trajectoryCoverageBlocked = false;
+  private trajectoryCoverage: {
+    source: string;
+    start: number;
+    end: number;
+  } | null = null;
+  private trajectoryInputs = new WeakMap<
+    Actor,
+    {
+      replay: Replay;
+      source: string;
+      geometry?: ReplayFloorGeometry;
+      models: object;
+      index: TrajectorySourceIndex;
+      components: Map<string, TrajectoryComponent>;
+      packets: Map<string, TrajectoryComponentPacket>;
+    }
+  >();
+  private trajectoryTransfers = new WeakMap<
+    Replay,
+    ReadonlyMap<string, TransferEvidence>
+  >();
   private renderedInputs: {
     state: Snapshot;
     time: number;
@@ -3892,6 +3936,7 @@ export class EditorController {
     if (!this.state.replay && this.state.workspaceMode !== "plan") return;
     if (this.clockTime >= this.duration())
       this.clockTime = this.state.loop?.[0] ?? 0;
+    if (!this.state.playing) this.trajectoryCoverageBlocked = false;
     this.patch({ playing: !this.state.playing });
     this.render();
     if (this.activeProject && !this.state.playing) this.scheduleAutosave();
@@ -3899,6 +3944,7 @@ export class EditorController {
   seek(time: number) {
     if (!Number.isFinite(time)) return;
     if (this.state.downloadingReplay) this.cancelReplayDownload();
+    this.trajectoryCoverageBlocked = false;
     this.clockTime = Math.max(0, Math.min(this.duration(), time));
     this.resetEvents = true;
     this.patch({ playing: false, time: this.clockTime });
@@ -4548,11 +4594,14 @@ export class EditorController {
       )
         this.patch({ bufferError: message(error) });
     } finally {
-      if (this.replayBuffer === buffer && download === this.downloadEpoch)
+      if (this.replayBuffer === buffer && download === this.downloadEpoch) {
         this.patch({ downloadingReplay: false });
+        this.render();
+      }
     }
   }
   cancelReplayDownload() {
+    this.trajectoryCoverageBlocked = true;
     this.downloadEpoch++;
     this.patch({ downloadingReplay: false });
     this.replayBuffer?.cancel();
@@ -4763,6 +4812,8 @@ export class EditorController {
     prepared?: { replay: Replay; models: Record<string, unknown> },
     buffer?: ReplayBuffer,
   ) {
+    this.trajectoryEpoch++;
+    this.trajectoryCoverageBlocked = false;
     if (this.state.cameraMode === "orbit") this.setCameraMode("free");
     const { replay, models } = prepared ?? this.replayForInstall(raw);
     // Project switching clears replay before install; selection identity must survive it.
@@ -5198,6 +5249,82 @@ export class EditorController {
         this.movementDiagnostics = JSON.parse(value);
       } catch {
         this.movementDiagnostics = null;
+      }
+    } else if (kind === "movementPreparation") {
+      try {
+        const status = JSON.parse(value);
+        if (
+          ![status.ready, status.pending, status.conflict].every(
+            (count) => Number.isInteger(count) && count >= 0 && count <= 8192,
+          )
+        )
+          return;
+        const movementPreparing = status.pending > 0;
+        const movementConflicted = status.conflict > 0;
+        if (
+          movementPreparing !== !!this.state.movementPreparing ||
+          movementConflicted !== !!this.state.movementConflicted
+        )
+          this.patch({ movementPreparing, movementConflicted });
+      } catch {
+        /* Ignore malformed optional renderer status. */
+      }
+    } else if (kind === "trajectoryMissing") {
+      try {
+        const rows = JSON.parse(value);
+        if (!Array.isArray(rows) || rows.length > 256) return;
+        let resend = false;
+        for (const row of rows) {
+          if (
+            row.source !== this.trajectorySource ||
+            ![row.source, row.actor, row.component, row.content].every(
+              (part) => typeof part === "string" && part.length <= 512,
+            )
+          )
+            continue;
+          const key = this.trajectoryPacketKey(
+            row.source,
+            row.actor,
+            row.component,
+            row.content,
+          );
+          if (!this.trajectoryRejected.has(key))
+            resend = this.trajectorySent.delete(key) || resend;
+        }
+        if (resend) queueMicrotask(() => this.sendPositions());
+      } catch {
+        /* A missing optional cache entry is retried on the next source update. */
+      }
+    } else if (kind === "trajectoryError") {
+      try {
+        const row = JSON.parse(value);
+        if (
+          row.source !== this.trajectorySource ||
+          ![row.source, row.actor, row.component, row.content].every(
+            (part) => typeof part === "string",
+          )
+        )
+          return;
+        const key = this.trajectoryPacketKey(
+          row.source,
+          row.actor,
+          row.component,
+          row.content,
+        );
+        if (!this.trajectoryRejected.has(key)) {
+          this.trajectoryRejected.add(key);
+          this.notify(
+            `Movement could not be prepared: ${String(row.message).slice(0, 240)}`,
+          );
+        }
+      } catch {
+        /* Optional diagnostics cannot interrupt playback. */
+      }
+    } else if (kind === "trajectoryProbe") {
+      try {
+        this.trajectoryDiagnostics = JSON.parse(value);
+      } catch {
+        this.trajectoryDiagnostics = null;
       }
     } else if (kind === "notice") this.notify(value);
     else if (kind === "actors") {
@@ -6018,9 +6145,284 @@ export class EditorController {
     this.previousEventTime = this.clockTime;
     this.resetEvents = false;
   }
+  private trajectoryPacketKey(
+    source: string,
+    actor: string,
+    component: string,
+    content: string,
+  ) {
+    return JSON.stringify([source, actor, component, content]);
+  }
+  private activateTrajectorySource() {
+    const engine = this.engine;
+    const replay = this.state.replay;
+    const source =
+      replay &&
+      engine?.submit_replay_trajectory &&
+      engine.set_replay_trajectory_source
+        ? `${replayIdentity(replay)}:installation-${this.trajectoryEpoch}`
+        : "";
+    if (source === this.trajectorySource && engine === this.trajectoryEngine)
+      return;
+    this.trajectorySource = source;
+    this.trajectoryEngine = engine;
+    this.trajectorySent.clear();
+    this.trajectoryRejected.clear();
+    engine?.set_replay_trajectory_source?.(source);
+  }
+  private requestTrajectoryCoverage(start: number, end: number) {
+    if (
+      !this.replayBuffer ||
+      this.trajectoryCoverageBlocked ||
+      this.state.bufferError
+    )
+      return;
+    end = Math.max(end, start + 1);
+    const queued = this.trajectoryCoverage;
+    this.trajectoryCoverage =
+      queued?.source === this.trajectorySource
+        ? {
+            source: queued.source,
+            start: Math.min(start, queued.start),
+            end: Math.max(end, queued.end),
+          }
+        : { source: this.trajectorySource, start, end };
+    if (queued) return;
+    queueMicrotask(() => {
+      const range = this.trajectoryCoverage;
+      this.trajectoryCoverage = null;
+      if (
+        !range ||
+        range.source !== this.trajectorySource ||
+        this.trajectoryCoverageBlocked ||
+        this.state.downloadingReplay ||
+        this.state.buffering ||
+        this.replayBuffer?.active
+      )
+        return;
+      void this.loadReplayRange(range.start, range.end);
+    });
+  }
+  private trajectoryBinding(
+    actor: Actor | undefined,
+    pose: Pick<
+      NonNullable<ReturnType<typeof poseAt>>,
+      "pos" | "dead" | "movement"
+    > | null,
+  ): {
+    trajectory?: NativeTrajectoryReference;
+    trajectory_bridge?: {
+      from: NativeTrajectoryReference;
+      to: NativeTrajectoryReference;
+    };
+  } {
+    const replay = this.state.replay;
+    if (
+      !this.trajectorySource ||
+      !replay ||
+      !actor ||
+      actor.type !== "Player" ||
+      !pose ||
+      pose.dead ||
+      !actor.samples.length ||
+      (this.state.workspaceMode === "plan" && this.displaySnapshot())
+    )
+      return {};
+    const geometry = this.loadedFloors.get(replay.map);
+    let transferMap = this.trajectoryTransfers.get(replay);
+    if (!transferMap) {
+      transferMap = recordedTransferEvidence(replay.actors, replay.combat);
+      this.trajectoryTransfers.set(replay, transferMap);
+    }
+    const transferEvidence = transferMap.get(actor.key);
+    const transfers = transferEvidence?.complete ?? [];
+    const unresolvedTransfers = transferEvidence?.unresolved ?? [];
+    let cached = this.trajectoryInputs.get(actor);
+    if (
+      !cached ||
+      cached.replay !== replay ||
+      cached.source !== this.trajectorySource ||
+      cached.geometry !== geometry ||
+      cached.models !== this.models
+    ) {
+      const index = buildTrajectorySource(actor);
+      cached = {
+        replay,
+        source: this.trajectorySource,
+        geometry,
+        models: this.models,
+        index,
+        components: new Map(
+          index.components.map((component) => [component.id, component]),
+        ),
+        packets: new Map(),
+      };
+      this.trajectoryInputs.set(actor, cached);
+    }
+    const lookup = lookupTrajectorySource(cached.index, this.clockTime);
+    if (!lookup) return {};
+    const reference = (
+      id: string,
+      at?: number,
+      hold = false,
+    ): NativeTrajectoryReference => {
+      const component = cached!.components.get(id)!;
+      let packet = cached!.packets.get(id);
+      if (!packet) {
+        const first = actor.samples[component.firstSampleIndex];
+        let heights: number[] = [];
+        if (first[3] === null && geometry) {
+          // Context belongs to the source origin, never the currently sought room.
+          const context =
+            replayFloorHints(
+              replay,
+              component.firstTime,
+              geometry.contextCatalog(replay.map, this.models),
+            ).get(actor.key) ??
+            raidByMap(replay.map)?.spawn[2] ??
+            0;
+          const primary = geometry.height(first[1], first[2], context, true);
+          if (primary !== undefined) {
+            // These are alternative origins, not a permitted vertical movement.
+            // Widely stacked rooms may be farther apart than a local drop budget.
+            const candidates = [
+              ...geometry.heightCandidates(first[1], first[2]),
+            ].sort(
+              (a, b) => Math.abs(a - primary) - Math.abs(b - primary) || a - b,
+            );
+            heights = [primary, ...candidates];
+          }
+        }
+        packet =
+          buildTrajectoryPacket({
+            source: this.trajectorySource,
+            map: replay.map,
+            actor,
+            index: cached!.index,
+            component,
+            initialHeights: heights,
+            transfers,
+            unresolvedTransfers,
+            coverageEnd: replay.duration,
+          }) ?? undefined;
+        if (packet) cached!.packets.set(id, packet);
+      }
+      if (packet) {
+        const key = this.trajectoryPacketKey(
+          packet.source,
+          actor.key,
+          id,
+          packet.content,
+        );
+        if (
+          packet.coverage_complete &&
+          !this.trajectorySent.has(key) &&
+          !this.trajectoryRejected.has(key)
+        ) {
+          this.trajectorySent.add(key);
+          try {
+            this.engine!.submit_replay_trajectory!(JSON.stringify(packet));
+          } catch (error) {
+            this.trajectoryRejected.add(key);
+            this.notify(`Movement could not be prepared: ${message(error)}`);
+          }
+        }
+      }
+      if (packet?.unresolved_transfers?.length) {
+        const horizon =
+          component.firstTime +
+          Math.max(
+            1,
+            Math.ceil(
+              Math.max(0, (at ?? this.clockTime) - component.firstTime) / 8000,
+            ),
+          ) *
+            8000 +
+          2000;
+        for (const [start, loaded] of packet.unresolved_transfers) {
+          if (!loaded && start <= horizon)
+            this.requestTrajectoryCoverage(
+              component.firstTime,
+              Math.min(replay.duration, start + 6000),
+            );
+        }
+      }
+      if (packet && component.missingCoverage.length) {
+        const commit =
+          component.firstTime +
+          Math.max(
+            1,
+            Math.ceil(
+              Math.max(0, (at ?? this.clockTime) - component.firstTime) / 8000,
+            ),
+          ) *
+            8000;
+        let target = Math.min(component.lastTime, commit + 2000);
+        const crossing = transfers.find(
+          ([start, end]) => start < commit && commit < end,
+        );
+        if (crossing)
+          target = Math.min(component.lastTime, Math.max(target, crossing[1]));
+        let left = component.firstSampleIndex,
+          right = component.lastSampleIndex;
+        while (left < right) {
+          const mid = (left + right) >>> 1;
+          if (actor.samples[mid][0] < target) left = mid + 1;
+          else right = mid;
+        }
+        const through = actor.samples[left][0];
+        if (!packet.coverage_complete || packet.samples.at(-1)![0] < through) {
+          this.requestTrajectoryCoverage(component.firstTime, through);
+          return {
+            source: this.trajectorySource,
+            component: id,
+            content: "coverage-pending",
+            ...(at === undefined ? {} : { at }),
+            ...(hold ? { hold: true } : {}),
+          };
+        }
+      }
+      return {
+        source: this.trajectorySource,
+        component: id,
+        content: packet?.content ?? "geometry-pending",
+        ...(at === undefined ? {} : { at }),
+        ...(hold ? { hold: true } : {}),
+      };
+    };
+    const interval = lookup.interval;
+    if (interval && interval.fromComponentId !== interval.toComponentId) {
+      const from = actor.samples[interval.fromIndex],
+        to = actor.samples[interval.toIndex];
+      // Long wisp travel is an estimate between observations. Its bounded
+      // ground route must not wait for reconstruction of a previous fight.
+      if (pose.movement?.unrestricted) return {};
+      // Blink uses its recorded completion; life/zone/cutoff holds retain poseAt's endpoint choice.
+      const atDestination =
+        interval.boundaries.some(
+          (boundary) =>
+            boundary.kind === "blink" && boundary.time <= this.clockTime,
+        ) ||
+        (Math.hypot(pose.pos[0] - to[1], pose.pos[1] - to[2]) < 0.00001 &&
+          Math.hypot(pose.pos[0] - from[1], pose.pos[1] - from[2]) >= 0.00001);
+      return {
+        trajectory: atDestination
+          ? reference(interval.toComponentId, to[0], true)
+          : reference(interval.fromComponentId, from[0], true),
+      };
+    }
+    return {
+      trajectory: reference(
+        lookup.observation.componentId,
+        interval ? undefined : lookup.observation.raw[0],
+        !interval,
+      ),
+    };
+  }
   private sendPositions() {
     if (this.runtime.rendererLab) return;
     if (!this.engine) return;
+    this.activateTrajectorySource();
     if (!this.state.replay) {
       const actors = this.state.options.actors
         ? this.sceneActors().flatMap((actor) => {
@@ -6081,6 +6483,7 @@ export class EditorController {
     withReplayPoses((lookupPose) => {
       const floorHints = this.replayFloors(replay, lookupPose);
       const actors = new Map(this.sceneActors().map((a) => [a.key, a]));
+      const loggedActors = new Map(replay.actors.map((a) => [a.key, a]));
       const frame = this.frame.map((unit, i) => {
         const actor = actors.get(unit.key);
         const pose =
@@ -6139,8 +6542,13 @@ export class EditorController {
             : null;
         // Unknown route endpoints are not permission to draw a line through walls.
         const holding = !!movement && !nativeMovement;
+        const trajectory = this.trajectoryBinding(
+          loggedActors.get(unit.key),
+          pose,
+        );
         return {
           ...unit,
+          ...trajectory,
           position:
             pose && !pose.dead
               ? holding

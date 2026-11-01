@@ -259,6 +259,18 @@ a {
 .scene-loading button {
   pointer-events: auto;
 }
+.scene-movement-status {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  border-radius: 3px;
+  color: #c8c0ae;
+  background: #101214dc;
+  font-size: 12px;
+  pointer-events: none;
+}
 .resize-handle {
   background: #24262a;
   flex-shrink: 0;

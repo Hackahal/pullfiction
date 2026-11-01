@@ -3715,3 +3715,693 @@ test("Appearance edits prepare before publishing and merge pending fields withou
   assert.equal(f.frame.find((row) => row.key === actor.key)?.race, 2);
   assert.equal(f.frame.find((row) => row.key === actor.key)?.sex, 1);
 });
+
+// Opt in only these tests to canonical transport; the shared fixture stays legacy.
+function canonicalTransportFixture(
+  samples: import("./types").Actor["samples"],
+) {
+  const f = fixture();
+  const actor = f.c.getSnapshot().replay!.actors.find((a) => a.key === "1:1")!;
+  actor.samples = samples;
+  actor.deaths = [];
+  actor.casts = [];
+  const packets: import("./replay-trajectory-packets").TrajectoryComponentPacket[] =
+    [];
+  const sources: string[] = [];
+  f.engine.submit_replay_trajectory = (json) => packets.push(JSON.parse(json));
+  f.engine.set_replay_trajectory_source = (source) => sources.push(source);
+  const player = () =>
+    f.frame.find((unit) => unit.key === actor.key) as NativeFrame & {
+      movement?: { unrestricted?: boolean };
+      trajectory?: import("./types").NativeTrajectoryReference;
+      trajectory_bridge?: {
+        from: import("./types").NativeTrajectoryReference;
+        to: import("./types").NativeTrajectoryReference;
+      };
+    };
+  return { f, actor, packets, sources, player };
+}
+
+test("canonical transport sends one immutable dense packet across forward, backward and repeated seeks", () => {
+  const { f, actor, packets, sources, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+    [2000, 9, -1, -10],
+  ]);
+  const rawSamples = structuredClone(actor.samples);
+  const bindings = [];
+  for (const time of [500, 1500, 100, 1500, 500]) {
+    f.c.seek(time);
+    bindings.push(player().trajectory);
+  }
+  assert.equal(packets.length, 1);
+  assert.equal(sources.length, 1);
+  assert.deepEqual(packets[0].samples, rawSamples);
+  assert.deepEqual(packets[0].initial_heights, [0]);
+  assert.deepEqual(actor.samples, rawSamples);
+  for (const binding of bindings) {
+    assert.ok(binding);
+    assert.equal(binding.source, sources[0]);
+    assert.equal(binding.component, packets[0].component);
+    assert.equal(binding.content, packets[0].content);
+    assert.equal(binding.at, undefined);
+  }
+  f.c.seek(2000);
+  assert.equal(player().trajectory?.at, 2000);
+  assert.equal(packets.length, 1);
+  f.c.stop();
+});
+
+test("canonical source installation namespace changes on reinstall, while seek generation does not", () => {
+  const { f, packets, sources } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, 0],
+  ]);
+  f.c.seek(500);
+  const original = sources[0];
+  f.c.seek(100);
+  f.c.seek(900);
+  assert.deepEqual(sources, [original]);
+  const replay = f.c.getSnapshot().replay!;
+  f.c.installReplay(replay.raw, { replay, models: {} });
+  f.c.seek(500);
+  assert.equal(sources.length, 2);
+  assert.notEqual(sources[1], original);
+  assert.equal(packets.length, 2);
+  assert.equal(packets[0].content, packets[1].content);
+  assert.equal(packets[0].component, packets[1].component);
+  f.c.stop();
+});
+
+test("authored snapshots opt out of canonical transport while unedited Plan playback remains bound", () => {
+  const { f, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, 0],
+  ]);
+  f.c.seek(500);
+  f.c.setWorkspaceMode("plan");
+  assert.ok(player().trajectory);
+  const count = packets.length;
+  f.c.planFromMoment();
+  assert.ok(f.c.displaySnapshot());
+  assert.equal(player().trajectory, undefined);
+  assert.equal(player().trajectory_bridge, undefined);
+  f.c.seek(700);
+  assert.equal(packets.length, count);
+  assert.equal(player().trajectory, undefined);
+  f.c.stop();
+});
+
+test("long sparse wisps use collision navigation without requiring historical canonical endpoints", () => {
+  const { f, packets, sources, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [7000, 10, -1, 5],
+    [8000, 12, -1, 5],
+  ]);
+  for (const time of [1000, 4000, 2500, 1000]) {
+    f.c.seek(time);
+    assert.equal(player().trajectory, undefined);
+    assert.equal(player().trajectory_bridge, undefined);
+    assert.equal(player().movement?.unrestricted, true);
+  }
+  assert.equal(packets.length, 0);
+  assert.equal(sources.length, 1);
+  f.c.stop();
+});
+
+test("zero-distance Blink chooses its component at recorded completion rather than observed displacement", () => {
+  const { f, actor, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 2, -1, 10],
+    [2000, 3, -1, 10],
+  ]);
+  actor.casts = [
+    { spell: 1953, end: 500, outcome: "completed", timingSource: "recorded" },
+  ] as import("./types").Actor["casts"];
+  (
+    actor as unknown as {
+      movement: { profile: number[][]; blinks: number[][] };
+    }
+  ).movement = { profile: [[0, 1, 0]], blinks: [[500]] };
+  f.c.seek(499);
+  const before = player().trajectory!;
+  assert.equal(before.at, 0);
+  assert.equal(before.hold, true);
+  f.c.seek(500);
+  const after = player().trajectory!;
+  assert.equal(after.at, 1000);
+  assert.equal(after.hold, true);
+  assert.notEqual(after.component, before.component);
+  f.c.seek(750);
+  assert.deepEqual(player().trajectory, after);
+  f.c.seek(499);
+  assert.deepEqual(player().trajectory, before);
+  assert.equal(packets.length, 2);
+  f.c.stop();
+});
+
+test("coverage updates preserve canonical source/origin/seeds and coalesce missing-prefix requests", async () => {
+  const { f, actor, packets, sources, player } = canonicalTransportFixture([
+    [0, 2, -1, null],
+    [1000, 8, -1, null],
+  ]);
+  actor.bufferedRanges = [
+    [0, 400],
+    [600, 1000],
+  ];
+  const calls: number[][] = [];
+  const internals = f.c as unknown as {
+    replayBuffer: { active: boolean; close(): void };
+    loadedFloors: Map<number, ReplayFloorGeometry>;
+    patch(update: { replay: import("./types").Replay }): void;
+  };
+  internals.loadedFloors.set(
+    f.c.getSnapshot().replay!.map,
+    new ReplayFloorGeometry([
+      {
+        area: "test-room",
+        interior: true,
+        vertices: [
+          [0, -5, 20],
+          [20, -5, 20],
+          [20, 5, 20],
+          [0, 5, 20],
+        ],
+        indices: [0, 1, 2, 0, 2, 3],
+      },
+    ]),
+  );
+  internals.replayBuffer = { active: false, close() {} };
+  f.c.loadReplayRange = async (start, end) => {
+    calls.push([start, end]);
+  };
+  f.c.seek(200);
+  f.c.render();
+  f.c.render();
+  await Promise.resolve();
+  assert.deepEqual(calls, [[0, 1000]]);
+  assert.equal(
+    packets.length,
+    0,
+    "incomplete coverage is never submitted to physics",
+  );
+  const previous = player().trajectory!;
+  assert.ok(previous);
+  const replay = f.c.getSnapshot().replay!;
+  // refreshBuffered installs a new normalized replay object without reinstalling source.
+  internals.patch({
+    replay: {
+      ...replay,
+      actors: replay.actors.map((a) =>
+        a.key === actor.key ? { ...a, bufferedRanges: [[0, 1000]] } : a,
+      ),
+    },
+  });
+  f.c.seek(700);
+  assert.equal(sources.length, 1);
+  assert.equal(packets.length, 1);
+  assert.equal(packets[0].coverage_complete, true);
+  assert.equal(packets[0].component, previous.component);
+  assert.equal(packets[0].source, previous.source);
+  assert.deepEqual(packets[0].initial_heights, [20]);
+  assert.deepEqual(packets[0].samples, actor.samples);
+  assert.equal(player().trajectory?.component, previous.component);
+  f.c.stop();
+});
+
+test("native Missing retries only its reported component without activating a new source", async () => {
+  const { f, packets, sources, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 3, -1, 0],
+    [8000, 10, -1, 5],
+    [9000, 12, -1, 5],
+  ]);
+  f.c.seek(500);
+  f.c.seek(8500);
+  assert.ok(player().trajectory);
+  assert.equal(packets.length, 2);
+  const missing = packets[1];
+  f.c.receive(
+    "trajectoryMissing",
+    JSON.stringify([
+      {
+        source: missing.source,
+        actor: missing.actor,
+        component: missing.component,
+        content: missing.content,
+      },
+    ]),
+  );
+  await Promise.resolve();
+  assert.equal(packets.length, 3);
+  assert.deepEqual(packets[2], missing);
+  assert.equal(sources.length, 1);
+  f.c.receive(
+    "trajectoryMissing",
+    JSON.stringify([{ ...missing, source: "old-source" }]),
+  );
+  await Promise.resolve();
+  assert.equal(packets.length, 3);
+  f.c.stop();
+});
+
+test("malformed native preparation status is ignored and unchanged status does not republish state", () => {
+  const f = fixture();
+  let updates = 0;
+  const unsubscribe = f.c.subscribe(() => updates++);
+  const pending = JSON.stringify({ ready: 0, pending: 2, conflict: 0 });
+  f.c.receive("movementPreparation", pending);
+  assert.equal(f.c.getSnapshot().movementPreparing, true);
+  assert.equal(f.c.getSnapshot().movementConflicted, false);
+  const changed = updates;
+  assert.ok(changed > 0);
+  f.c.receive("movementPreparation", pending);
+  f.c.receive(
+    "movementPreparation",
+    JSON.stringify({ ready: 3, pending: 1, conflict: 0 }),
+  );
+  for (const bad of [
+    "{",
+    "null",
+    "[]",
+    '{"ready":0,"pending":-1,"conflict":0}',
+    '{"ready":0,"pending":1.5,"conflict":0}',
+    '{"ready":0,"pending":0,"conflict":8193}',
+  ])
+    f.c.receive("movementPreparation", bad);
+  assert.equal(updates, changed);
+  assert.equal(f.c.getSnapshot().movementPreparing, true);
+  f.c.receive(
+    "movementPreparation",
+    JSON.stringify({ ready: 1, pending: 0, conflict: 1 }),
+  );
+  assert.equal(updates, changed + 1);
+  assert.equal(f.c.getSnapshot().movementPreparing, false);
+  assert.equal(f.c.getSnapshot().movementConflicted, true);
+  unsubscribe();
+  f.c.stop();
+});
+
+test("late loaded chunks request their missing chronological prefix instead of submitting a fresh physical origin", async () => {
+  const { f, actor, packets, sources, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 3, -1, null],
+    [10000, 12, -1, null],
+    [11000, 13, -1, null],
+  ]);
+  actor.bufferedRanges = [
+    [0, 1000],
+    [10000, 11000],
+  ];
+  const requests: number[][] = [];
+  const internals = f.c as unknown as {
+    replayBuffer: { active: boolean; close(): void };
+  };
+  internals.replayBuffer = { active: false, close() {} };
+  f.c.loadReplayRange = async (start, end) => {
+    requests.push([start, end]);
+  };
+  f.c.seek(10500);
+  const late = player().trajectory!;
+  assert.ok(late);
+  assert.equal(player().trajectory_bridge, undefined);
+  f.c.seek(500);
+  assert.equal(player().trajectory?.component, late.component);
+  f.c.seek(10500);
+  await Promise.resolve();
+  assert.equal(
+    packets.length,
+    0,
+    "no independently seeded late-component packet",
+  );
+  assert.equal(sources.length, 1);
+  assert.deepEqual(requests, [[0, 11000]]);
+  f.c.stop();
+});
+
+test("canonical post-last-sample references hold the recorded endpoint and stationary facing", () => {
+  const { f, actor, player } = canonicalTransportFixture([
+    [0, 0, 0, 0],
+    [1000, 7, 0, 0],
+  ]);
+  actor.facings = [[1500, 1.57]];
+  f.c.seek(2000);
+  const frame = player();
+  assert.equal(frame.trajectory?.at, 1000);
+  assert.equal(frame.trajectory?.hold, true);
+  assert.equal(frame.facing, 1.57);
+  assert.equal(frame.speed, 0);
+  f.c.stop();
+});
+
+test("recorded life and zone discontinuities hold endpoint references", () => {
+  for (const kind of ["life", "zone"] as const) {
+    const { f, actor, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, 10],
+    ]);
+    if (kind === "life")
+      actor.deaths = [
+        [-100, true],
+        [500, false],
+      ];
+    else
+      (
+        actor as import("./types").Actor & { positionBreaks: number[] }
+      ).positionBreaks = [500];
+    f.c.seek(600);
+    assert.equal(player().trajectory?.at, 0, kind);
+    assert.equal(player().trajectory?.hold, true, kind);
+    assert.equal(player().trajectory_bridge, undefined, kind);
+    f.c.stop();
+  }
+});
+
+test("short sparse playback keeps one canonical reference across the shared endpoint", () => {
+  const { f, packets, player } = canonicalTransportFixture([
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+    [3068, 24, -1, null],
+  ]);
+  const refs = [];
+  for (const time of [999, 1000, 1001, 2500, 1000]) {
+    f.c.seek(time);
+    assert.equal(player().trajectory_bridge, undefined);
+    refs.push(player().trajectory);
+  }
+  assert.ok(refs[0]);
+  for (const ref of refs) assert.deepEqual(ref, refs[0]);
+  assert.equal(packets.length, 1);
+  assert.deepEqual(packets[0].samples, [
+    [0, 2, -1, 0],
+    [1000, 8, -1, null],
+    [3068, 24, -1, null],
+  ]);
+  assert.equal(packets[0].profiles[1].unrestricted, true);
+  f.c.stop();
+});
+
+test("unloaded future context does not block a covered source window or request unrelated future chunks", async () => {
+  const samples: import("./types").Actor["samples"] = [
+    ...Array.from(
+      { length: 13 },
+      (_, n) =>
+        [n * 1000, n * 3, 0, n === 0 ? 0 : null] as [
+          number,
+          number,
+          number,
+          number | null,
+        ],
+    ),
+    [20000, 50, 0, null],
+  ];
+  const { f, actor, packets, player } = canonicalTransportFixture(samples);
+  actor.bufferedRanges = [
+    [0, 12000],
+    [20000, 20000],
+  ];
+  const internals = f.c as unknown as { replayBuffer: unknown };
+  internals.replayBuffer = { active: false, close() {} };
+  const requests: number[][] = [];
+  f.c.loadReplayRange = async (start, end) => {
+    requests.push([start, end]);
+  };
+  // Avoid a separate foreground buffer operation; exercise the movement request itself.
+  const clock = f.c as unknown as { clockTime: number };
+  clock.clockTime = 1000;
+  f.c.render();
+  await Promise.resolve();
+  assert.equal(packets.length, 1);
+  assert.equal(packets[0].coverage_complete, true);
+  assert.equal(packets[0].samples.at(-1)![0], 12000);
+  assert.deepEqual(requests, []);
+  const reference = player().trajectory!;
+  assert.ok(reference);
+  assert.notEqual(reference.content, "coverage-pending");
+  clock.clockTime = 8000;
+  f.c.render();
+  await Promise.resolve();
+  assert.notEqual(player().trajectory?.content, "coverage-pending");
+  assert.deepEqual(requests, []);
+  clock.clockTime = 11000;
+  f.c.render();
+  await Promise.resolve();
+  assert.equal(player().trajectory?.content, "coverage-pending");
+  assert.deepEqual(requests, [[0, 20000]]);
+  assert.equal(packets.length, 1);
+  f.c.stop();
+});
+
+test(
+  "finishing a download resumes paused movement coverage requested while that download was active",
+  { timeout: 2000 },
+  async () => {
+    const { f, actor, packets } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    actor.bufferedRanges = [
+      [0, 400],
+      [600, 1000],
+    ];
+    f.c.seek(200);
+    const internals = f.c as unknown as {
+      replayBuffer: unknown;
+      refreshBuffered(buffer: unknown): Promise<void>;
+      patch(update: { replay: import("./types").Replay }): void;
+    };
+    let ensures = 0;
+    internals.replayBuffer = {
+      active: false,
+      duration: 1000,
+      ensure: async () => {
+        ensures++;
+      },
+      flush: async () => {},
+      close() {},
+    };
+    internals.refreshBuffered = async () => {
+      if (ensures >= 2) {
+        const replay = f.c.getSnapshot().replay!;
+        internals.patch({
+          replay: {
+            ...replay,
+            actors: replay.actors.map((a) =>
+              a.key === actor.key ? { ...a, bufferedRanges: [[0, 1000]] } : a,
+            ),
+          },
+        });
+      }
+      f.c.render();
+    };
+    const original = f.c.loadReplayRange.bind(f.c),
+      requests: number[][] = [];
+    let done!: () => void;
+    const resumed = new Promise<void>((resolve) => {
+      done = resolve;
+    });
+    f.c.loadReplayRange = async (start, end) => {
+      requests.push([start, end]);
+      await original(start, end);
+      if (requests.length >= 2) done();
+    };
+    await f.c.loadReplayRange(0, 400);
+    await resumed;
+    assert.deepEqual(requests, [
+      [0, 400],
+      [0, 1000],
+    ]);
+    assert.equal(packets.length, 1);
+    assert.equal(packets[0].coverage_complete, true);
+    f.c.stop();
+  },
+);
+
+test("canonical transport includes recorded feather fall and evidence-derived paired transfers", () => {
+  const { f, actor, packets } = canonicalTransportFixture([
+    [0, 0, 0, 0],
+    [1000, 0, 0, null],
+    [2000, 30, 0, null],
+    [3000, 60, 0, null],
+    [4000, 70, 0, null],
+    [5000, 77, 0, null],
+  ]);
+  actor.auras = [
+    [500, { spell: 1706, remove: false }],
+  ] as import("./types").Actor["auras"];
+  const replay = f.c.getSnapshot().replay!,
+    npc = replay.actors.find((a) => a.type === "NPC")!;
+  const peer = {
+    ...actor,
+    id: 3,
+    key: "3:1",
+    auras: [],
+    samples: actor.samples.map(
+      (s) =>
+        [s[0], 60 - s[1], s[2], s[3]] as [
+          number,
+          number,
+          number,
+          number | null,
+        ],
+    ),
+  };
+  const cast = (spell: number) => ({
+    id: spell,
+    spell,
+    gameID: spell,
+    name: "Transfer",
+    start: 1000,
+    end: 1000,
+    instant: true,
+    target: null,
+    timingSource: "recorded" as const,
+    outcome: "completed" as const,
+  });
+  const casters = [
+    { ...npc, casts: [cast(28338)] },
+    { ...npc, id: 4, key: "4:1", casts: [cast(28339)] },
+  ];
+  const damage = (source: string, target: string, id: number) => ({
+    ...replay.combat[0],
+    id,
+    t: 900,
+    kind: "damage" as const,
+    source,
+    target,
+    spell: 1,
+    melee: true,
+  });
+  (
+    f.c as unknown as {
+      patch(update: { replay: import("./types").Replay }): void;
+    }
+  ).patch({
+    replay: {
+      ...replay,
+      actors: [actor, peer, ...casters],
+      combat: [damage(npc.key, actor.key, 901), damage("4:1", "3:1", 902)],
+    },
+  });
+  f.c.seek(1500);
+  const p = packets.find((p) => p.actor === actor.key)!;
+  assert.ok(p);
+  assert.deepEqual(p.transfers, [[1000, 3000]]);
+  assert.deepEqual(p.slow_fall, [
+    [0, false],
+    [500, true],
+  ]);
+  assert.deepEqual(p.hover_launches, [500]);
+  assert.deepEqual(p.samples, actor.samples);
+  f.c.stop();
+});
+
+test("buffering a known transfer holds its ordinary interpretation until completion evidence arrives", async () => {
+  const prefix: import("./types").Actor["samples"] = [
+    [0, 0, 0, 0],
+    [1000, 0, 0, null],
+    [2000, 30, 0, null],
+  ];
+  const { f, actor, packets } = canonicalTransportFixture(prefix);
+  actor.bufferedRanges = [[0, 2000]];
+  const replay = f.c.getSnapshot().replay!,
+    npc = replay.actors.find((a) => a.type === "NPC")!;
+  const peer = {
+    ...actor,
+    id: 3,
+    key: "3:1",
+    samples: prefix.map(
+      (s) =>
+        [s[0], 60 - s[1], 0, s[3]] as [number, number, number, number | null],
+    ),
+  };
+  const cast = (spell: number) => ({
+    id: spell,
+    spell,
+    gameID: spell,
+    name: "Transfer",
+    start: 1000,
+    end: 1000,
+    instant: true,
+    target: null,
+    timingSource: "recorded" as const,
+    outcome: "completed" as const,
+  });
+  const casters = [
+    { ...npc, casts: [cast(28338)] },
+    { ...npc, id: 4, key: "4:1", casts: [cast(28339)] },
+  ];
+  const damage = (source: string, target: string, id: number) => ({
+    ...replay.combat[0],
+    id,
+    t: 900,
+    kind: "damage" as const,
+    source,
+    target,
+    spell: 1,
+    melee: true,
+  });
+  const internals = f.c as unknown as {
+    clockTime: number;
+    replayBuffer: unknown;
+    patch(update: { replay: import("./types").Replay }): void;
+  };
+  internals.patch({
+    replay: {
+      ...replay,
+      actors: [actor, peer, ...casters],
+      combat: [damage(npc.key, actor.key, 901), damage("4:1", "3:1", 902)],
+    },
+  });
+  internals.replayBuffer = { active: false, close() {} };
+  const requests: number[][] = [];
+  f.c.loadReplayRange = async (start, end) => {
+    requests.push([start, end]);
+  };
+  internals.clockTime = 1500;
+  f.c.render();
+  await Promise.resolve();
+  const before = packets.filter((p) => p.actor === actor.key).at(-1)!;
+  assert.deepEqual(before.unresolved_transfers, [[1000, false]]);
+  assert.equal(before.transfers, undefined);
+  assert.deepEqual(requests, [[0, 7000]]);
+  const full: import("./types").Actor["samples"] = [
+    ...prefix,
+    [3000, 60, 0, null],
+    [4000, 67, 0, null],
+  ];
+  const current = f.c.getSnapshot().replay!;
+  internals.patch({
+    replay: {
+      ...current,
+      actors: current.actors.map((a) =>
+        a.key === actor.key
+          ? { ...a, samples: full, bufferedRanges: [[0, 7000]] }
+          : a.key === peer.key
+            ? {
+                ...a,
+                samples: full.map(
+                  (s) =>
+                    [s[0], 60 - s[1], 0, s[3]] as [
+                      number,
+                      number,
+                      number,
+                      number | null,
+                    ],
+                ),
+                bufferedRanges: [[0, 7000]],
+              }
+            : a,
+      ),
+    },
+  });
+  f.c.render();
+  await Promise.resolve();
+  const after = packets.filter((p) => p.actor === actor.key).at(-1)!;
+  assert.deepEqual(after.transfers, [[1000, 3000]]);
+  assert.equal(after.unresolved_transfers, undefined);
+  assert.equal(after.component, before.component);
+  assert.equal(after.source, before.source);
+  assert.notEqual(after.content, before.content);
+  f.c.stop();
+});

@@ -320,8 +320,19 @@ export interface NativeFrame {
   channel_target?: string | null;
   auras: number[];
 }
+export interface NativeTrajectoryReference {
+  source: string;
+  component: string;
+  content: string;
+  /** A recorded endpoint time for a discontinuity/bridge, otherwise replay time. */
+  at?: number;
+  hold?: boolean;
+}
 export interface Engine {
+  set_replay_trajectory_source?(source: string): void;
+  submit_replay_trajectory?(json: string): void;
   request_movement_diagnostics?(token: number): void;
+  request_trajectory_probe?(json: string): void;
   request_actor_inspection?(json: string): void;
   close_actor_inspection?(): void;
   default(): Promise<void>;
@@ -400,6 +411,8 @@ export interface Snapshot {
   sourceStatus: "none" | "saving" | "cached" | "missing";
   buffering?: boolean;
   bufferError?: string | null;
+  movementPreparing?: boolean;
+  movementConflicted?: boolean;
   downloadingReplay?: boolean;
   browserPlates: import("./browser-plates").BrowserPlate[];
   browserAssets: boolean;

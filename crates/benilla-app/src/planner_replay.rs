@@ -15,6 +15,271 @@ use std::collections::{HashMap, HashSet, VecDeque};
 #[path = "planner_replay_readiness.rs"]
 mod readiness;
 
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct ReplayTrajectoryReference {
+    pub source: String,
+    pub component: String,
+    pub content: String,
+    pub at: Option<f64>,
+    #[serde(default)]
+    pub hold: bool,
+}
+#[derive(Clone, serde::Deserialize)]
+pub struct ReplayTrajectoryBridge {
+    pub from: ReplayTrajectoryReference,
+    pub to: ReplayTrajectoryReference,
+}
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct ReplayTrajectoryMissing {
+    pub source: String,
+    pub actor: String,
+    pub component: String,
+    pub content: String,
+}
+#[derive(Clone, Copy, Default, PartialEq, serde::Serialize)]
+pub struct ReplayTrajectoryStatus {
+    pub ready: usize,
+    pub pending: usize,
+    pub conflict: usize,
+}
+#[derive(Clone)]
+struct CanonicalDiagnostic {
+    reference: ReplayTrajectoryReference,
+    status: &'static str,
+    reason: Option<&'static str>,
+    pose: Option<crate::planner_trajectory::Pose>,
+    bridge: bool,
+}
+#[derive(Default)]
+pub(crate) struct CanonicalPresentation {
+    revision: u64,
+    validation_epoch: u64,
+    holds: HashMap<(String, String, String, String), crate::planner_trajectory::Pose>,
+    diagnostics: HashMap<String, CanonicalDiagnostic>,
+}
+impl CanonicalPresentation {
+    fn synchronize_world(&mut self, epoch: u64) -> bool {
+        if self.validation_epoch == epoch {
+            return false;
+        }
+        self.validation_epoch = epoch;
+        self.holds.clear();
+        self.diagnostics.clear();
+        true
+    }
+    fn resolve(
+        &mut self,
+        plans: &crate::planner_trajectory::CanonicalTrajectories,
+        reference: &ReplayTrajectoryReference,
+        actor: &str,
+        time: f64,
+        status: &mut ReplayTrajectoryStatus,
+        missing: &mut Vec<ReplayTrajectoryMissing>,
+    ) -> (Option<crate::planner_trajectory::Pose>, bool) {
+        use crate::planner_trajectory::Query;
+        let at = reference.at.unwrap_or(time);
+        let result = plans.query(
+            &reference.source,
+            actor,
+            &reference.component,
+            &reference.content,
+            at,
+        );
+        let (ready, label, reason) = match &result {
+            Query::Ready(_) => {
+                status.ready += 1;
+                (true, "ready", None)
+            }
+            Query::Conflict(reason) => {
+                status.conflict += 1;
+                (false, "conflict", Some(*reason))
+            }
+            Query::MissingCoverage => {
+                status.pending += 1;
+                (false, "missingCoverage", None)
+            }
+            Query::NotReady => {
+                status.pending += 1;
+                (false, "notReady", None)
+            }
+            Query::Pending => {
+                status.pending += 1;
+                (false, "pending", None)
+            }
+            Query::Missing => {
+                status.pending += 1;
+                if reference.content != "geometry-pending" {
+                    missing.push(ReplayTrajectoryMissing {
+                        source: reference.source.clone(),
+                        actor: actor.into(),
+                        component: reference.component.clone(),
+                        content: reference.content.clone(),
+                    });
+                }
+                (false, "missing", None)
+            }
+        };
+        let key = (
+            actor.to_owned(),
+            reference.source.clone(),
+            reference.component.clone(),
+            reference.content.clone(),
+        );
+        let mut pose = match result {
+            Query::Ready(pose) => {
+                self.holds.insert(key.clone(), pose.clone());
+                Some(pose)
+            }
+            Query::Conflict(_) => plans.hold(
+                &reference.source,
+                actor,
+                &reference.component,
+                &reference.content,
+                at,
+            ),
+            _ => self.holds.get(&key).cloned(),
+        };
+        if !ready {
+            if let Some(pose) = &mut pose {
+                pose.planar_speed = 0.;
+            }
+        }
+        self.diagnostics.insert(
+            actor.into(),
+            CanonicalDiagnostic {
+                reference: reference.clone(),
+                status: label,
+                reason,
+                pose: pose.clone(),
+                bridge: false,
+            },
+        );
+        (pose, ready)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+struct CanonicalMotion {
+    position: [f32; 3],
+    facing: f32,
+    speed: f32,
+    vertical_speed: f32,
+    airborne: bool,
+    falling_far: bool,
+}
+fn present_canonical_motion(
+    pose: &crate::planner_trajectory::Pose,
+    observed_facing: f32,
+    playing: bool,
+    hold: bool,
+) -> CanonicalMotion {
+    CanonicalMotion {
+        position: pose.position,
+        facing: if !hold && pose.planar_speed > 0.03 {
+            pose.heading
+        } else {
+            observed_facing
+        },
+        speed: if playing && !hold {
+            pose.planar_speed
+        } else {
+            0.
+        },
+        vertical_speed: if hold { 0. } else { pose.vertical_velocity },
+        airborne: !hold && pose.support == crate::planner_trajectory_probe::Support::Falling,
+        falling_far: !hold && pose.falling_far(),
+    }
+}
+
+#[cfg(test)]
+mod canonical_presentation_tests {
+    use super::*;
+    fn pose() -> crate::planner_trajectory::Pose {
+        let mut plans = crate::planner_trajectory::CanonicalTrajectories::default();
+        plans.retain_source("s");
+        plans
+            .submit(crate::planner_trajectory::NativeComponentInput {
+                source: "s".into(),
+                actor: "p".into(),
+                component: "c".into(),
+                content: "v".into(),
+                map: 1,
+                samples: vec![(0., 1., 2., Some(3.))],
+                initial_heights: vec![],
+                coverage_complete: true,
+                profiles: vec![],
+                slow_fall: vec![],
+                transfers: vec![],
+                hover_launches: vec![],
+                unresolved_transfers: vec![],
+            })
+            .unwrap();
+        let mut pose = plans.hold("s", "p", "c", "v", 0.).unwrap();
+        pose.heading = 0.;
+        pose.planar_speed = 7.;
+        pose
+    }
+    #[test]
+    fn endpoint_holds_keep_canonical_xyz_but_stop_motion_and_use_stationary_facing() {
+        let pose = pose();
+        let held = present_canonical_motion(&pose, 1.57, true, true);
+        assert_eq!(held.position, [1., 2., 3.]);
+        assert_eq!(held.facing, 1.57);
+        assert_eq!(held.speed, 0.);
+        assert_eq!(held.vertical_speed, 0.);
+        assert!(!held.airborne);
+        let active = present_canonical_motion(&pose, 1.57, true, false);
+        assert_eq!(active.speed, 7.);
+        assert_eq!(active.facing, 0.);
+    }
+    #[test]
+    fn historical_airborne_endpoint_does_not_animate_a_fall_during_a_hold() {
+        let mut pose = pose();
+        pose.support = crate::planner_trajectory_probe::Support::Falling;
+        pose.vertical_velocity = -10.;
+        pose.airborne_seconds = 2.;
+        pose.fall_distance = 5.;
+        let active = present_canonical_motion(&pose, 1.57, true, false);
+        assert!(active.airborne && active.falling_far);
+        let held = present_canonical_motion(&pose, 1.57, true, true);
+        assert_eq!(held.position, pose.position);
+        assert_eq!(held.vertical_speed, 0.);
+        assert!(!held.airborne && !held.falling_far);
+    }
+    #[test]
+    fn changed_validation_world_discards_presentation_fallback_before_a_pending_query() {
+        let mut presentation = CanonicalPresentation::default();
+        assert!(presentation.synchronize_world(1));
+        presentation
+            .holds
+            .insert(("p".into(), "s".into(), "c".into(), "v".into()), pose());
+        assert!(!presentation.synchronize_world(1));
+        assert_eq!(presentation.holds.len(), 1);
+        assert!(presentation.synchronize_world(2));
+        let plans = crate::planner_trajectory::CanonicalTrajectories::default();
+        let reference = ReplayTrajectoryReference {
+            source: "s".into(),
+            component: "c".into(),
+            content: "v".into(),
+            at: None,
+            hold: false,
+        };
+        let (pose, ready) = presentation.resolve(
+            &plans,
+            &reference,
+            "p",
+            0.,
+            &mut Default::default(),
+            &mut vec![],
+        );
+        assert!(pose.is_none() && !ready);
+        assert!(presentation.holds.is_empty());
+    }
+}
+
+#[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ReplayApply;
+
 #[derive(Clone, serde::Deserialize)]
 pub struct ReplayGear {
     pub id: u32,
@@ -72,6 +337,10 @@ pub struct ReplayUnit {
         deserialize_with = "crate::planner_movement::deserialize_optional"
     )]
     pub movement: Option<crate::planner_movement::Segment>,
+    #[serde(default)]
+    pub trajectory: Option<ReplayTrajectoryReference>,
+    #[serde(default)]
+    pub trajectory_bridge: Option<ReplayTrajectoryBridge>,
     pub dead: bool,
     #[serde(default)]
     pub friendly: bool,
@@ -159,8 +428,9 @@ pub struct ReplaySpellDiagnostic {
 #[derive(Default, Resource)]
 pub struct ReplayControl {
     pub movement_diagnostics_request: Option<u32>,
-    pub movement_diagnostics_response:
-        Option<(u32, Vec<crate::planner_movement::MovementDiagnostic>)>,
+    pub movement_diagnostics_response: Option<(u32, Vec<serde_json::Value>)>,
+    pub trajectory_status: ReplayTrajectoryStatus,
+    pub trajectory_missing: Vec<ReplayTrajectoryMissing>,
     pub portrait_requests: Vec<ReplayPortrait>,
     pub pending: Option<Vec<ReplayUnit>>,
     pub focus: Option<[f32; 3]>,
@@ -234,10 +504,18 @@ pub fn install(app: &mut App) {
     #[cfg(feature = "renderer-lab")]
     crate::renderer_actor_diagnostics::install(app);
     app.init_resource::<ReplayControl>();
+    crate::planner_trajectory_probe::install(app);
+    crate::planner_trajectory::install(app);
     crate::planner_camera::install(app);
     crate::planner_nameplates::install(app);
     crate::planner_raid::install(app);
-    app.add_systems(Update, apply.in_set(WorldStage::Input));
+    app.add_systems(
+        Update,
+        apply
+            .in_set(WorldStage::Input)
+            .in_set(ReplayApply)
+            .after(crate::planner_trajectory::TrajectoryDrive),
+    );
     app.add_systems(
         Update,
         crate::planner_cues::update
@@ -259,9 +537,11 @@ pub(crate) fn apply(
     mut names: ResMut<NameCache>,
     mut index: ResMut<net::GuidIndex>,
     mut serial: Local<u64>,
-    (mut ground_cache, mut routes): (
+    (mut ground_cache, mut routes, plans, mut canonical): (
         Local<HashMap<String, crate::planner_grounding::GroundMemo>>,
         Local<crate::planner_movement::Routes>,
+        Res<crate::planner_trajectory::CanonicalTrajectories>,
+        Local<CanonicalPresentation>,
     ),
     collider_epoch: Res<benilla_world::collision::ColliderEpoch>,
     mut units: Local<HashMap<String, (Entity, u64)>>,
@@ -394,6 +674,11 @@ pub(crate) fn apply(
     if routes.deferred() {
         floor_context.7.retry_after_spawn();
     }
+    let validation_changed = canonical.synchronize_world(plans.validation_epoch());
+    if validation_changed || canonical.revision != plans.revision() {
+        canonical.revision = plans.revision();
+        floor_context.7.retry_after_spawn();
+    }
     // Retain the owned input, not a cloned actor graph. Native assets may finish after JS settles.
     if let Some(batch) = floor_context.7.ready(readiness_revision, control.playing) {
         let mut spawned = false;
@@ -415,6 +700,34 @@ pub(crate) fn apply(
             .collect();
         let keep: HashSet<_> = batch.iter().map(|u| u.key.as_str()).collect();
         ground_cache.retain(|key, _| keep.contains(key.as_str()));
+        canonical
+            .diagnostics
+            .retain(|key, _| keep.contains(key.as_str()));
+        let active_references: HashSet<_> = batch
+            .iter()
+            .flat_map(|unit| {
+                unit.trajectory
+                    .iter()
+                    .chain(
+                        unit.trajectory_bridge
+                            .iter()
+                            .flat_map(|bridge| [&bridge.from, &bridge.to]),
+                    )
+                    .map(move |reference| {
+                        (
+                            unit.key.clone(),
+                            reference.source.clone(),
+                            reference.component.clone(),
+                            reference.content.clone(),
+                        )
+                    })
+            })
+            .collect();
+        canonical
+            .holds
+            .retain(|key, _| active_references.contains(key));
+        let mut trajectory_status = ReplayTrajectoryStatus::default();
+        let mut trajectory_missing = Vec::new();
         // A paused retry can reflect newly ready floor assets/placements without
         // a collider epoch change. Its route misses must be retried as well.
         routes.begin(readiness_revision);
@@ -465,8 +778,18 @@ pub(crate) fn apply(
             } else {
                 native_display
             };
-            let mut pos = unit.position.map(wow_to_bevy);
-            if unit.ground {
+            let trajectory_owned = unit.player
+                && !unit.dead
+                && (unit.trajectory.is_some() || unit.trajectory_bridge.is_some());
+            if !trajectory_owned {
+                canonical.diagnostics.remove(&unit.key);
+            }
+            let mut pos = if trajectory_owned {
+                None
+            } else {
+                unit.position.map(wow_to_bevy)
+            };
+            if unit.ground && !trajectory_owned {
                 if let Some(mut request) = pos {
                     // Missing log Z is not a real zero-height observation.
                     request.y = unit
@@ -515,7 +838,79 @@ pub(crate) fn apply(
 
             let mut facing = unit.facing;
             let mut speed = unit.speed;
-            if unit.player && !unit.dead && unit.position.is_some() {
+            let mut canonical_motion = None;
+            if let Some(reference) = unit.trajectory.as_ref().filter(|_| trajectory_owned) {
+                routes.remove(&unit.key);
+                let (pose, _) = canonical.resolve(
+                    &plans,
+                    reference,
+                    &unit.key,
+                    control.time,
+                    &mut trajectory_status,
+                    &mut trajectory_missing,
+                );
+                if let Some(pose) = pose {
+                    let motion = present_canonical_motion(
+                        &pose,
+                        unit.facing,
+                        control.playing,
+                        reference.hold,
+                    );
+                    pos = Some(wow_to_bevy(motion.position) + Vec3::Y * 0.05);
+                    facing = motion.facing;
+                    speed = motion.speed;
+                    canonical_motion = Some(motion);
+                }
+            } else if let Some(bridge) =
+                unit.trajectory_bridge.as_ref().filter(|_| trajectory_owned)
+            {
+                let (from, from_ready) = canonical.resolve(
+                    &plans,
+                    &bridge.from,
+                    &unit.key,
+                    control.time,
+                    &mut trajectory_status,
+                    &mut trajectory_missing,
+                );
+                let (to, to_ready) = canonical.resolve(
+                    &plans,
+                    &bridge.to,
+                    &unit.key,
+                    control.time,
+                    &mut trajectory_status,
+                    &mut trajectory_missing,
+                );
+                if let Some(diagnostic) = canonical.diagnostics.get_mut(&unit.key) {
+                    diagnostic.bridge = true;
+                }
+                if let Some(from) = from {
+                    pos = Some(wow_to_bevy(from.position) + Vec3::Y * 0.05);
+                    speed = 0.;
+                    if from_ready && to_ready {
+                        if let (Some(to), Some(mut segment)) = (to, unit.movement.clone()) {
+                            segment.from = from.position;
+                            segment.to = to.position;
+                            // Preserve missing-Z provenance for a swept sparse drop,
+                            // but never offer replacement canonical endpoint heights.
+                            segment.floor_candidates.clear();
+                            if let Some((point, heading, velocity)) =
+                                routes.pose(&unit.key, &segment, &route_probe)
+                            {
+                                pos = Some(point + Vec3::Y * 0.05);
+                                if velocity > 0.03 {
+                                    facing = heading;
+                                }
+                                speed = if control.playing { velocity } else { 0. };
+                            }
+                        }
+                    } else {
+                        routes.remove(&unit.key);
+                    }
+                } else {
+                    routes.remove(&unit.key);
+                }
+            } else if unit.player && !unit.dead && unit.position.is_some() {
+                canonical.diagnostics.remove(&unit.key);
                 if let Some(segment) = &unit.movement {
                     if let Some((point, heading, velocity)) =
                         routes.pose(&unit.key, segment, &route_probe)
@@ -540,11 +935,20 @@ pub(crate) fn apply(
             } else {
                 speed
             };
-            let motion = MovementState {
+            let mut motion = MovementState {
                 speed: gait_speed.min(30.),
                 flags: if speed > 0.1 { 1 } else { 0 },
                 ..default()
             };
+            if let Some(pose) = canonical_motion {
+                motion.vertical_speed = pose.vertical_speed;
+                if pose.airborne {
+                    motion.flags |= crate::creature_anim::move_flags::FALLING;
+                    if pose.falling_far {
+                        motion.flags |= crate::creature_anim::move_flags::FALLING_FAR;
+                    }
+                }
+            }
             let visibility = if pos.is_some() {
                 Visibility::Inherited
             } else {
@@ -883,21 +1287,85 @@ pub(crate) fn apply(
             });
         }
         floor_context.7.applied(readiness_revision);
+        if canonical.diagnostics.values().any(|row| row.bridge) {
+            for row in routes.diagnostics() {
+                if canonical
+                    .diagnostics
+                    .get(&row.key)
+                    .is_some_and(|row| row.bridge)
+                {
+                    match row.status {
+                        crate::planner_movement::RouteStatus::Pending
+                        | crate::planner_movement::RouteStatus::Deferred => {
+                            trajectory_status.pending += 1
+                        }
+                        crate::planner_movement::RouteStatus::Held => {
+                            trajectory_status.conflict += 1
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        trajectory_missing.sort_by(|a, b| {
+            (&a.source, &a.actor, &a.component, &a.content).cmp(&(
+                &b.source,
+                &b.actor,
+                &b.component,
+                &b.content,
+            ))
+        });
+        trajectory_missing.dedup();
+        control.trajectory_status = trajectory_status;
+        control.trajectory_missing = trajectory_missing;
         if spawned {
             // The cast transition above needs the deferred ReplayBody to be queryable first.
             floor_context.7.retry_after_spawn();
         }
     }
     if let Some(token) = control.movement_diagnostics_request.take() {
-        let mut rows = routes.diagnostics();
+        let mut rows: Vec<serde_json::Value> = routes
+            .diagnostics()
+            .into_iter()
+            .map(|row| serde_json::to_value(row).unwrap_or_default())
+            .collect();
+        for (key, diagnostic) in &canonical.diagnostics {
+            let extra = serde_json::json!({
+                "key": key, "canonical": !diagnostic.bridge, "canonicalBridge": diagnostic.bridge,
+                "canonicalStatus": diagnostic.status, "canonicalReason": diagnostic.reason,
+                "component": diagnostic.reference.component, "content": diagnostic.reference.content,
+                "verticalVelocity": diagnostic.pose.as_ref().map(|pose| pose.vertical_velocity),
+                "support": diagnostic.pose.as_ref().map(|pose| pose.support),
+                "inferredJumps": diagnostic.pose.as_ref().map(|pose| pose.inferred_jumps),
+                "jumpArc": diagnostic.pose.as_ref().map(|pose| pose.jump_arc),
+                "featherFall": diagnostic.pose.as_ref().map(|pose| pose.feather_fall),
+                "controlledAir": diagnostic.pose.as_ref().map(|pose| pose.controlled_air),
+            });
+            if let Some(row) = rows
+                .iter_mut()
+                .find(|row| row["key"].as_str() == Some(key.as_str()))
+            {
+                row.as_object_mut()
+                    .unwrap()
+                    .extend(extra.as_object().unwrap().clone());
+            } else {
+                let mut row = extra;
+                row["status"] = serde_json::json!(diagnostic.status);
+                rows.push(row);
+            }
+        }
         // Report actual rendered transforms, including the presentation floor lift.
         for row in &mut rows {
-            if let Some((entity, _)) = units.get(&row.key) {
+            if let Some((entity, _)) = row["key"].as_str().and_then(|key| units.get(key)) {
                 if let Ok((xf, _, _, _, _)) = query.get(*entity) {
-                    row.rendered_position = benilla_assets::coords::bevy_to_wow(xf.translation);
+                    row["renderedPosition"] =
+                        serde_json::json!(benilla_assets::coords::bevy_to_wow(xf.translation));
+                    row["renderedFacing"] =
+                        serde_json::json!(xf.rotation.to_euler(EulerRot::YXZ).0);
                 }
             }
         }
+        rows.sort_by(|a, b| a["key"].as_str().cmp(&b["key"].as_str()));
         control.movement_diagnostics_response = Some((token, rows));
     }
     control.entities = units.values().map(|u| u.0).collect();

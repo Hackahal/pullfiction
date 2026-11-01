@@ -103,6 +103,10 @@ pub mod planner_ui_bootstrap;
 #[cfg(any(target_arch = "wasm32", test))]
 mod planner_unit_colors;
 mod player;
+#[cfg(any(target_arch = "wasm32", test))]
+pub use player::trajectory as planner_trajectory;
+#[cfg(any(target_arch = "wasm32", test))]
+pub use player::trajectory_probe as planner_trajectory_probe;
 mod player_commands;
 mod poi_marker;
 mod portrait;

@@ -26,6 +26,10 @@ use benilla_world::schedule::WorldStage;
 mod approach;
 mod arc;
 mod net;
+#[cfg(any(target_arch = "wasm32", test))]
+pub mod trajectory;
+#[cfg(any(target_arch = "wasm32", test))]
+pub mod trajectory_probe;
 // Writes the frame onto the body we drive: pose, `MovementState`, the counter-twist gap.
 mod body_pose;
 pub(crate) mod camera;

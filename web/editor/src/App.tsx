@@ -1855,6 +1855,17 @@ function Viewport({
             )}
           </div>
         ) : null}
+        {!map &&
+          state.replay &&
+          state.sceneReady &&
+          !(state.workspaceMode === "plan" && controller.displaySnapshot()) &&
+          (state.movementPreparing || state.movementConflicted) && (
+            <div className="scene-movement-status" role="status">
+              {state.movementPreparing
+                ? "Preparing movement…"
+                : "Some movement could not be reconstructed."}
+            </div>
+          )}
         {focus && state.workspaceMode === "analyse" && (
           <Focus
             state={state}
