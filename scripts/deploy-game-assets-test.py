@@ -196,4 +196,59 @@ class DeploymentTests(unittest.TestCase):
         self.assert_not_uploaded(result)
         self.assertIn('Another asset deployment',result.stderr)
 
+
+    def test_staging_failures_and_interrupts_cleanup_only_before_journal_ownership(self):
+        for phase in ('copy','snapshot','sync','journal_before','journal_after'):
+            for error_type in (OSError,KeyboardInterrupt):
+                with self.subTest(phase=phase,error=error_type.__name__):
+                    case = DeploymentTests();case.setUp()
+                    try:
+                        case.pack(case.retained,b'old fixture bytes')
+                        failure = error_type('Injected staging failure')
+                        env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
+                        env['WRANGLER_CAPTURE'] = str(case.capture)
+                        original = deployment.write_pending
+                        def journal(state,transaction):
+                            if phase == 'journal_after': original(state,transaction)
+                            raise failure
+                        if phase == 'copy':
+                            target,attribute,effect = deployment.shutil,'copy2',failure
+                        elif phase == 'snapshot':
+                            target,attribute,effect = deployment,'snapshot',failure
+                        elif phase == 'sync':
+                            target,attribute,effect = deployment,'durable_generation',failure
+                        else:
+                            target,attribute,effect = deployment,'write_pending',journal
+                        with patch.dict(os.environ,env,clear=True), patch.object(target,attribute,side_effect=effect):
+                            with self.assertRaises(error_type) as caught: deployment.deploy(case.root,case.release)
+                        self.assertIs(caught.exception,failure)
+                        self.assertFalse(case.capture.exists())
+                        stages = list(case.retained.parent.glob('upload.*'))
+                        pending = case.retained.parent/'pending.json'
+                        if phase == 'journal_after':
+                            self.assertTrue(pending.exists())
+                            self.assertEqual(len(stages),1)
+                            transaction = json.loads(pending.read_bytes())
+                            deployment.verify_snapshot(stages[0],transaction)
+                            self.assertNotEqual(case.run_script().returncode,0)
+                            self.assertEqual(case.run_script(recover=True).returncode,0)
+                            self.assertFalse(case.capture.exists())
+                            self.assertEqual(len(list((case.retained/'chunks').iterdir())),2)
+                        else:
+                            self.assertFalse(pending.exists())
+                            self.assertEqual(stages,[])
+                            self.assertEqual(audit(case.retained)['status'],'verified')
+                    finally: case.doCleanups()
+
+    def test_cleanup_failure_does_not_mask_the_original_staging_error(self):
+        self.pack(self.retained,b'old fixture bytes')
+        failure = OSError('Original copy failure')
+        env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
+        env['WRANGLER_CAPTURE'] = str(self.capture)
+        with patch.dict(os.environ,env,clear=True), patch.object(deployment.shutil,'copy2',side_effect=failure), patch.object(deployment.shutil,'rmtree',side_effect=OSError('Cleanup failed')):
+            with self.assertRaises(OSError) as caught: deployment.deploy(self.root,self.release)
+        self.assertIs(caught.exception,failure)
+        self.assertFalse(self.capture.exists())
+        self.assertFalse((self.retained.parent/'pending.json').exists())
+
 if __name__ == '__main__': unittest.main()

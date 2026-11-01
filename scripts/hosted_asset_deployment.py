@@ -142,19 +142,30 @@ def deploy(root, release=None, *, recover=False):
         if retained.exists():
             audit(retained)
         stage = Path(tempfile.mkdtemp(prefix='upload.',dir=state))
-        (stage/'chunks').mkdir()
-        for source in ([retained] if retained.exists() else []) + [release]:
-            for chunk in (source/'chunks').iterdir():
-                shutil.copy2(chunk,stage/'chunks'/chunk.name)
-        shutil.copy2(release/'manifest.json',stage/'manifest.json')
-        shutil.copy2(root/'cloudflare/game-asset-headers',stage/'_headers')
-        transaction = {'schema':1, 'stage':stage.name, 'backup':'previous.'+uuid.uuid4().hex,
-                       **snapshot(stage)}
-        # Complete and sync the entire union, then persist its exact inventory
-        # before invoking Wrangler. Any uncertain upload/finalization failure
-        # leaves a journal that blocks future uploads until local recovery.
-        durable_generation(stage)
-        write_pending(state, transaction)
+        try:
+            (stage/'chunks').mkdir()
+            for source in ([retained] if retained.exists() else []) + [release]:
+                for chunk in (source/'chunks').iterdir():
+                    shutil.copy2(chunk,stage/'chunks'/chunk.name)
+            shutil.copy2(release/'manifest.json',stage/'manifest.json')
+            shutil.copy2(root/'cloudflare/game-asset-headers',stage/'_headers')
+            transaction = {'schema':1, 'stage':stage.name, 'backup':'previous.'+uuid.uuid4().hex,
+                           **snapshot(stage)}
+            # Complete and sync the entire union, then persist its exact inventory
+            # before invoking Wrangler. Any uncertain upload/finalization failure
+            # leaves a journal that blocks future uploads until local recovery.
+            durable_generation(stage)
+            write_pending(state, transaction)
+        except BaseException:
+            # The journal, even if its final fsync failed, owns recovery bytes.
+            # Before that boundary, discard only this invocation's temporary
+            # stage. Cleanup must never replace the original failure/interrupt.
+            try:
+                if not pending.exists() and not pending.is_symlink():
+                    shutil.rmtree(stage)
+            except BaseException:
+                pass
+            raise
         env = {**os.environ,'WRANGLER_SEND_METRICS':'false'}
         subprocess.run([str(root/'tools/release/node_modules/.bin/wrangler'),'deploy',
                         '--config','wrangler.game-assets.jsonc','--assets',str(stage)],

@@ -47,6 +47,18 @@ bash scripts/deploy-game-assets.sh --recover
 
 Recovery verifies the saved manifest, headers and complete chunk inventory, then finishes the local retention transaction. It never contacts Cloudflare. If recovery reports missing or altered bytes, restore those bytes from the saved generation or a backup before retrying. Do not delete `pending.json` to bypass recovery. After an uncertain upload, check the actual Cloudflare version separately; local recovery preserves chunks for both possible outcomes. Keep previous manifests locally. Cloudflare deployment rollback restores the previous asset version.
 
+## Prune local recovery copies manually
+
+Each successful deployment keeps a complete `previous.<uuid>` directory. These recovery copies can be large. Keep at least the most recent verified previous generation; older copies can be removed manually after the following checks. The deployer never prunes them automatically.
+
+1. Confirm that the current Cloudflare generation is healthy and that its manifest revision matches local `deployed/manifest.json`. Keep a verified backup of the complete `deployed` directory on separate storage, plus the manifests and headers needed for any rollback you still support.
+2. Stop deployment work for the maintenance window. Hold the same POSIX lock for the entire inspection and removal operation, using `hosted_asset_deployment.locked(state)` with `state` set to `.agent/work/hosted-assets`. Do not delete `deployment.lock` to bypass a busy lock. If `pending.json` exists, preserve the state directory and complete recovery first; do not prune any generation or staging directory.
+3. Audit `deployed` and each candidate backup with `python3 scripts/prepare-hosted-assets.py audit DIRECTORY`. Compare the full sets of chunk filenames, including extra retained chunks: every chunk in the candidate must also exist in audited `deployed`. Both audits verify that chunk names match their content hashes. Comparing only the current manifest's chunk list does not establish that older sessions' chunks remain available.
+4. Identify the most recent known-good previous generation from its manifest revision and deployment records, not from UUID sorting. Keep that generation and any additional rollback copy you need. Preserve a candidate's manifest and headers separately before removing its full directory.
+5. While still holding the lock, manually remove only one explicitly reviewed older `previous.<uuid>` directory at a time. Avoid wildcard deletion. Preserve `deployed`, its complete chunk union, the lock file, and any pending journal or journal-owned stage. Then re-audit `deployed` before releasing the lock.
+
+An orphan `upload.*` directory from an abrupt process termination or failed cleanup can also be reviewed manually during that locked maintenance window. Remove it only when no pending transaction exists, no deployment CLI is running, and it is not a recovery copy you need. This procedure reclaims duplicate local directories; retiring old chunk hashes from `deployed` or Cloudflare needs a separate policy for sessions pinned to older manifests.
+
 ## Release application code
 
 The existing GitHub workflow builds and uploads only the audited application package. It does not run the asset producer, fetch hosted game data or upload game packs. `VITE_GAME_ASSET_URL` is a public build setting, defaulting to `https://assets.pullfiction.com/`. Configure the repository variable only when using another asset service URL.
