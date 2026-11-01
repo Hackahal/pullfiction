@@ -6,13 +6,27 @@ local white='Interface\\Buttons\\WHITE8X8'
 local colors={[1]={.78,.61,.43},[2]={.96,.55,.73},[3]={.67,.83,.45},[4]={1,.96,.41},[5]={.95,.95,.95},[7]={.1,.4,.95},[8]={.41,.8,.94},[9]={.58,.51,.79},[11]={1,.49,.04}}
 local powercolors={[0]={.08,.3,.95},[1]={.85,.12,.12},[2]={1,.5,.25},[3]={1,.85,.12},[4]={.1,.7,.7}}
 local function rect(o,p,x,y,w,h)
- o:ClearAllPoints();o:SetPoint('TOPLEFT',p,'TOPLEFT',x,-y);o:SetWidth(math.max(.1,w));o:SetHeight(h)
+ w=math.max(.1,w)
+ local old=o._pfRect
+ if old and old[1]==p and old[2]==x and old[3]==y and old[4]==w and old[5]==h then return end
+ o:ClearAllPoints();o:SetPoint('TOPLEFT',p,'TOPLEFT',x,-y);o:SetWidth(w);o:SetHeight(h)
+ o._pfRect={p,x,y,w,h}
+end
+-- These widgets are owned here: keep exact arguments across payload changes so an unrelated
+-- cast/health update does not re-anchor, resize and re-shape every member's labels.
+local function setfont(o,size)
+ if o._pfFontSize==size then return end
+ if o:SetFont(font,size,'OUTLINE') then o._pfFontSize=size end
+end
+local function settext(o,value)
+ if o._pfText==value then return end
+ o:SetText(value);o._pfText=value
 end
 local function texture(p,layer,r,g,b,a)
  local t=p:CreateTexture(nil,layer);t:SetTexture(white);t:SetVertexColor(r,g,b,a);return t
 end
 local function text(p)
- local t=p:CreateFontString(nil,'OVERLAY');t:SetFont(font,10,'OUTLINE');t:SetJustifyH('LEFT');t:SetTextColor(1,1,1,1);return t
+ local t=p:CreateFontString(nil,'OVERLAY');setfont(t,10);t:SetJustifyH('LEFT');t:SetTextColor(1,1,1,1);return t
 end
 local function make(index)
  if GameTooltip then GameTooltip:SetParent(WorldFrame) end
@@ -54,12 +68,12 @@ function PullFictionRaid_Update(units,enabled,u,rowcount,scale)
    rect(f.powerbg,f,2*u,34*u,83*u,8*u)
    rect(f.power,f,2*u,34*u,83*u,8*u);f.power:SetMinMaxValues(0,math.max(1,d.maxpower));f.power:SetValue(d.power)
    local pc=powercolors[d.powertype or 0] or powercolors[0];f.power:SetStatusBarColor(pc[1],pc[2],pc[3])
-   rect(f.powertext,f,4*u,33*u,79*u,10*u);f.powertext:SetFont(font,7*u,'OUTLINE');f.powertext:SetJustifyH('CENTER');f.powertext:SetText(d.maxpower>0 and ((d.powerknown==false and '?' or tostring(math.floor(d.power)))..' / '..tostring(math.floor(d.maxpower))) or '--')
-   rect(f.name,f,5*u,4*u,77*u,12*u);f.name:SetFont(font,10*u,'OUTLINE');f.name:SetText(d.name)
-   rect(f.hp,f,5*u,19*u,77*u,11*u);f.hp:SetFont(font,9*u,'OUTLINE');f.hp:SetText(d.hp==0 and 'Dead' or '')
+   rect(f.powertext,f,4*u,33*u,79*u,10*u);setfont(f.powertext,7*u);f.powertext:SetJustifyH('CENTER');settext(f.powertext,d.maxpower>0 and ((d.powerknown==false and '?' or tostring(math.floor(d.power)))..' / '..tostring(math.floor(d.maxpower))) or '--')
+   rect(f.name,f,5*u,4*u,77*u,12*u);setfont(f.name,10*u);settext(f.name,d.name)
+   rect(f.hp,f,5*u,19*u,77*u,11*u);setfont(f.hp,9*u);settext(f.hp,d.hp==0 and 'Dead' or '')
    if d.cast then
     rect(f.castbg,f,2*u,44*u,83*u,6*u);rect(f.castfill,f,2*u,44*u,83*u*d.cast.progress,6*u)
-    rect(f.castname,f,4*u,43*u,80*u,8*u);f.castname:SetFont(font,7*u,'OUTLINE');f.castname:SetText(d.cast.name)
+    rect(f.castname,f,4*u,43*u,80*u,8*u);setfont(f.castname,7*u);settext(f.castname,d.cast.name)
     f.castbg:Show();f.castfill:Show();f.castname:Show()
    else f.castbg:Hide();f.castfill:Hide();f.castname:Hide() end
    local visible={};local debuffs=0;local buffs=0
@@ -71,7 +85,7 @@ function PullFictionRaid_Update(units,enabled,u,rowcount,scale)
      local x=a.debuff and (4+(n-1)*12) or (83-(n-debuffs)*12)
      rect(icon,f,x*u,20*u,10*u,10*u);rect(icon.edge,icon,-u,-u,12*u,12*u)
      icon.edge:SetVertexColor(a.debuff and .8 or .04,a.debuff and .12 or .04,a.debuff and .08 or .04,1)
-     icon.image:SetTexture(a.icon);icon.image:SetTexCoord(.07,.93,.07,.93);icon.stack:SetFont(font,7*u,'OUTLINE');icon.stack:SetText(a.stack>1 and tostring(a.stack) or '');icon:Show()
+     icon.image:SetTexture(a.icon);icon.image:SetTexCoord(.07,.93,.07,.93);setfont(icon.stack,7*u);settext(icon.stack,a.stack>1 and tostring(a.stack) or '');icon:Show()
     else icon:Hide() end
    end
    f:SetAlpha(d.hp==0 and .5 or 1);f:Show()

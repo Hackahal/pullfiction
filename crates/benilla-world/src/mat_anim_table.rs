@@ -14,6 +14,9 @@ use bevy::render::extract_resource::{ExtractResource, ExtractResourcePlugin};
 use bevy::render::renderer::RenderQueue;
 use bevy::render::{Render, RenderApp, RenderSystems};
 
+mod absolute_tint;
+pub use absolute_tint::AbsoluteTintMaterials;
+
 /// Slots in the table, row 0 included. A batch whose loop differs by sequence takes a row per
 /// placement (about 145 within half a second of entering Upper Blackrock Spire), and exhaustion
 /// is silent: the batch freezes at its seed. 2048 costs 32 KB per `wow_light`-layout buffer.
@@ -138,6 +141,8 @@ fn upload_mat_anim(
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<MatAnimTable>()
+        .init_resource::<AbsoluteTintMaterials>()
+        .add_systems(PostUpdate, absolute_tint::reap)
         .init_resource::<MatAnimMirrors>()
         .add_plugins(ExtractResourcePlugin::<MatAnimTable>::default())
         .add_plugins(ExtractResourcePlugin::<MatAnimMirrors>::default());

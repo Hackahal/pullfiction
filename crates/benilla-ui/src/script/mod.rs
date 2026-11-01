@@ -1133,6 +1133,16 @@ impl UiScript {
         })
     }
 
+    /// Call an already compiled function with structured host data. Keep the same handler
+    /// ordering as `run`: callbacks raised by the function execute inside this entry.
+    pub fn call_function<R: mlua::FromLuaMulti>(
+        &self,
+        function: &mlua::Function,
+        args: impl mlua::IntoLuaMulti,
+    ) -> mlua::Result<R> {
+        host::unheld(&self.lua, || function.call(args))
+    }
+
     /// Load and evaluate a Lua chunk, returning its result: for tests and one-shot queries.
     pub fn eval<T: mlua::FromLuaMulti>(&self, chunk: &str) -> mlua::Result<T> {
         host::unheld(&self.lua, || {
@@ -1680,3 +1690,35 @@ impl UiScript {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod structured_call_tests {
+    use super::*;
+
+    #[test]
+    fn compiled_host_calls_unhold_callbacks_and_restore_after_errors() {
+        let mut script = UiScript::new().unwrap();
+        let function = script
+            .lua()
+            .create_function(|lua, fail: bool| {
+                assert!(
+                    !host::holding(lua),
+                    "compiled entries match run's callback ordering"
+                );
+                if fail {
+                    Err(mlua::Error::runtime("partial update"))
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
+        script.host_out(|script| {
+            assert!(host::holding(script.lua()));
+            script.call_function::<()>(&function, false).unwrap();
+            assert!(host::holding(script.lua()));
+            assert!(script.call_function::<()>(&function, true).is_err());
+            assert!(host::holding(script.lua()));
+        });
+        assert!(!host::holding(script.lua()));
+    }
+}

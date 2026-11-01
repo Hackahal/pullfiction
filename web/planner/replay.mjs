@@ -9,7 +9,7 @@ export {reportSource} from './game-versions.mjs';
 export function reportCode(value) {return reportSource(value).code;}
 
 export const CLASS_COLORS = { Warrior:'#c79c6e',Paladin:'#f58cba',Hunter:'#abd473',Rogue:'#fff569',Priest:'#ffffff',Shaman:'#0070de',Mage:'#69ccf0',Warlock:'#9482c9',Druid:'#ff7d0a' };
-export function normalizeReplay(raw, models = {}) {
+export function normalizeReplay(raw, models = {}, reused = new Map()) {
   const { report, fight, actors, events } = raw;
   const ruleset=gameVersion(raw.gameVersion??report?.gameVersion??'vanilla').id;
   if(raw.gameVersion&&report?.gameVersion&&raw.gameVersion!==report.gameVersion)throw new Error('Replay game versions disagree.');
@@ -26,7 +26,7 @@ export function normalizeReplay(raw, models = {}) {
   function track(id, instance = 1) {
     const actor = catalog.get(id); if (!actor || id <= 0) return null;
     const key = `${id}:${instance || 1}`;
-    if (!tracks.has(key)) tracks.set(key, { key, id, instance: instance || 1, name: actor.name, type: actor.type, class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
+    if (!tracks.has(key)) tracks.set(key, reused.get(key) ?? { key, id, instance: instance || 1, name: actor.name, type: actor.type, class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
     return tracks.get(key);
   }
   for (const id of fight.friendlyPlayers ?? []) track(id);
@@ -36,7 +36,7 @@ export function normalizeReplay(raw, models = {}) {
     const t = event.timestamp - fight.startTime;
     for (const side of ['source', 'target']) {
       const actor = track(event[`${side}ID`], event[`${side}Instance`]);
-      if (!actor) continue;
+      if (!actor || reused.has(actor.key)) continue;
       actor.firstSeen=Math.min(actor.firstSeen,t);actor.lastSeen=Math.max(actor.lastSeen,t);
       if(actor.type==='Player')actor.activity.push(t);
       // Current WCL events flatten resources onto the event: 1=source, 2=target.
@@ -57,6 +57,7 @@ export function normalizeReplay(raw, models = {}) {
     }
   }
   for (const actor of tracks.values()) {
+    if(reused.has(actor.key))continue;
     actor.activity=[...new Set(actor.activity)].sort((a,b)=>a-b);
     actor.samples.sort((a,b) => a[0]-b[0]);
     actor.samples = actor.samples.filter((s,i,all) => i === all.length-1 || s[0] !== all[i+1][0]);
@@ -78,6 +79,7 @@ export function normalizeReplay(raw, models = {}) {
   const chapters=(fight.chapters??[]).map(f=>({...f,start:f.startTime-fight.startTime,end:f.endTime-fight.startTime}));
   const combatWindows=chapters.length?[...chapters].sort((a,b)=>a.start-b.start):[{start:0,end:fight.endTime-fight.startTime}];
   for(const actor of tracks.values()){
+    if(reused.has(actor.key))continue;
     actor.activityWindows=[];
     if(actor.type!=='Player')continue;
     for(const window of combatWindows){
@@ -213,13 +215,14 @@ export function latestAt(samples,t) {
   let lo=0,hi=samples.length;while(lo<hi){const mid=(lo+hi)>>>1;if(samples[mid][0]<=t)lo=mid+1;else hi=mid;}
   return lo?samples[lo-1][1]:null;
 }
-export function enrichCombat(replay, itemModels={}, spellMetadata={}) {
+export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
   const {raw}=replay;
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
   const abilities=new Map((raw.abilities??[]).map(a=>[a.gameID,a]));
   const details=Object.values(raw.playerDetails?.data?.playerDetails??{}).flat();
   const info=new Map(raw.events.filter(e=>e.type==='combatantinfo').map(e=>[e.sourceID,e]));
   for(const a of all){
+    if(reused.has(a.key))continue;
     combatIndexes.delete(a);
     const d=details.find(p=>p.id===a.id), ci=info.get(a.id);
     a.owner=raw.actors.find(x=>x.id===a.id)?.petOwner??null;
@@ -240,32 +243,32 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}) {
     // WCL uses -4 for some melee events; the client uses spell 1 for melee.
     const spell=loggedSpell===-4?1:Math.max(0,loggedSpell);
     const ability=abilities.get(loggedSpell)??{name:`Spell ${spell}`,icon:null};
-    if(source&&e.type==='cast'&&RACIAL_RACES[spell]){source.race=RACIAL_RACES[spell];source.raceSource=`Recorded ${ability.name}`;}
+    if(source&&!reused.has(source.key)&&e.type==='cast'&&RACIAL_RACES[spell]){source.race=RACIAL_RACES[spell];source.raceSource=`Recorded ${ability.name}`;}
     for(const [side,a] of [['source',source],['target',target]]){
-      if(!a)continue;
+      if(!a||reused.has(a.key))continue;
       const r=e[`${side}Resources`]??(e.resourceActor===(side==='source'?1:2)?e:null);
       if(r&&Number.isFinite(r.hitPoints)&&r.maxHitPoints>0)a.health.push([t,{current:r.hitPoints,max:r.maxHitPoints,percent:Math.max(0,Math.min(1,r.hitPoints/r.maxHitPoints))}]);
       const p=r?.classResources?.find(p=>p.max>0&&Number.isFinite(p.amount)&&p.type>=0&&p.type<=3);if(p)a.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
     }
-    if(e.type==='resourcechange'&&target&&Number.isInteger(e.resourceChangeType)&&Number.isFinite(e.resourceChange)){
+    if(e.type==='resourcechange'&&target&&!reused.has(target.key)&&Number.isInteger(e.resourceChangeType)&&Number.isFinite(e.resourceChange)){
       const type=e.resourceChangeType,max=Number.isFinite(e.maxResourceAmount)&&e.maxResourceAmount>0?e.maxResourceAmount:null;
       target.resourceChanges.push([t,{type,gain:e.resourceChange,waste:Number.isFinite(e.waste)?e.waste:0,max,spell,name:ability.name,icon:ability.icon}]);
       // A gain/cap is useful evidence, but it does not identify the remaining pool.
       // An exact snapshot on this same event wins over a cap-only sample.
       if(type>=0&&type<=3&&max)target.power.push([t,{current:null,max,type}]);
     }
-    if(source&&e.type==='combatantinfo')source.auras.push([t,{reset:(e.auras??[]).map(a=>a.ability??a.abilityGameID).filter(Number.isInteger)}]);
+    if(source&&!reused.has(source.key)&&e.type==='combatantinfo')source.auras.push([t,{reset:(e.auras??[]).map(a=>a.ability??a.abilityGameID).filter(Number.isInteger)}]);
     if(source&&target&&e.type==='summon'&&!target.samples.length)combat.push({id:i,t,kind:'summon-cue',source:source.key,target:target.key,spell,name:ability.name,illustrative:true});
     if(source&&e.type==='begincast')combat.push({id:i,t,kind:'start',source:source.key,target:target?.key??null,spell,name:ability.name});
     if(source&&e.type==='cast')combat.push({id:i,t,kind:'go',source:source.key,target:target?.key??null,spell,name:ability.name,melee:!!e.melee||spell===1});
     if(target&&e.type==='interrupt')combat.push({id:i,t,kind:'interrupt',source:source?.key??null,target:target.key,spell,name:ability.name});
-    if(target&&/^(apply|remove|refresh)(buff|debuff)/.test(e.type))target.auras.push([t,{spell,name:ability.name,icon:ability.icon,remove:e.type.startsWith('remove')&&!e.type.endsWith('stack'),debuff:e.type.includes('debuff'),stack:e.stack??1}]);
+    if(target&&!reused.has(target.key)&&/^(apply|remove|refresh)(buff|debuff)/.test(e.type))target.auras.push([t,{spell,name:ability.name,icon:ability.icon,remove:e.type.startsWith('remove')&&!e.type.endsWith('stack'),debuff:e.type.includes('debuff'),stack:e.stack??1}]);
     if(target&&(e.type==='damage'||e.type==='heal'))combat.push({id:i,t,kind:e.type,source:source?.key??null,target:target.key,spell,name:ability.name,amount:e.amount??0,melee:!!e.melee||spell===1,tick:!!e.tick});
   }
-  for(const a of all){a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
+  for(const a of all){if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
-  reconstructCasts(replay,spellMetadata);
-  for(const actor of all)prepareMovement(actor);
+  reconstructCasts(replay,spellMetadata,reused);
+  for(const actor of all)if(!reused.has(actor.key))prepareMovement(actor);
   replay.visualEvents=buildVisualEvents(replay);
   return replay;
 }

@@ -882,7 +882,11 @@ fn fragment(in: WowVsOut, @builtin(front_facing) is_front: bool) -> WowFragOut {
     let lit = select(select(lit_exterior, lit_interior, is_interior), lit_m2_interior, is_rig);
     // Gamma-space albedo: lighting runs on the authored byte values. `m.tint` plus its mat-anim
     // delta is the animated M2Color tint.
-    let anim_tint = m.tint.rgb + wow_light.matanim[u32(m.anim_slots.y)].xyz;
+    let tint_row = wow_light.matanim[u32(abs(m.anim_slots.y))];
+    // Negative slots carry exact absolute RGB, avoiding a material rebuild as particles age.
+    // A zeroed studio buffer still reads the seed; positive slots retain their delta semantics.
+    let anim_tint = select(m.tint.rgb + tint_row.xyz, tint_row.xyz,
+        m.anim_slots.y < 0.0 && tint_row.w == 1.0);
     let albedo = base.rgb * anim_tint;
     // An unlit batch replaces the lit path: fullbright, with only the highlight added (below).
     let is_emissive = m.model_flags.w > 0.5;

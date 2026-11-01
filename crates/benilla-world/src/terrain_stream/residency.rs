@@ -14,7 +14,7 @@
 use bevy::prelude::*;
 
 use super::collider::PendingCollider;
-use super::TerrainStreamer;
+use super::{Placements, TerrainStreamer, WorldLoadProgress};
 
 /// The tile grid's half extent, `0x7ffab4`: a world coordinate maps to `17066.666 − c`.
 const GRID_ORIGIN: f32 = 17066.666;
@@ -114,7 +114,22 @@ pub(super) fn publish_terrain_residency(
     pending: Query<(), With<PendingCollider>>,
     asset_server: Res<AssetServer>,
     mut residency: ResMut<TerrainResidency>,
+    placements: Res<Placements>,
+    progress: Option<ResMut<WorldLoadProgress>>,
 ) {
+    if let Some(mut progress) = progress {
+        progress.trajectory_ready = trajectory_tiles_ready(
+            &state,
+            &placements,
+            |entity| pending.contains(entity),
+            |handle| {
+                matches!(
+                    asset_server.load_state(handle),
+                    bevy::asset::LoadState::Failed(_)
+                )
+            },
+        );
+    }
     let mut next = TerrainResidency {
         one_object: state.one_object,
         ..TerrainResidency::default()
@@ -236,8 +251,82 @@ mod tests {
         app.add_plugins((MinimalPlugins, bevy::asset::AssetPlugin::default()))
             .init_asset::<benilla_assets::AdtTile>()
             .init_resource::<TerrainResidency>()
+            .init_resource::<Placements>()
             .add_systems(Update, publish_terrain_residency);
         app
+    }
+
+    #[test]
+    fn trajectory_readiness_waits_for_far_placement_colliders_and_furnishing() {
+        use super::super::{ModelHandle, Placement, TileState};
+        let mut app = test_app();
+        app.init_resource::<WorldLoadProgress>();
+        let root = app.world_mut().spawn_empty().id();
+        let owner_entity = app
+            .world_mut()
+            .spawn(PendingCollider::ready(
+                avian3d::prelude::Collider::sphere(1.0),
+                None,
+                true,
+            ))
+            .id();
+        let mut state = TerrainStreamer::default();
+        let mut tile = TileState::requested(Handle::default());
+        tile.entity = Some(root);
+        tile.placements = vec![17];
+        state.tiles.insert((32, 48), tile);
+        state.trajectory_tiles = vec![(32, 48)];
+        app.insert_resource(state);
+        app.world_mut().resource_mut::<Placements>().by_id.insert(
+            17,
+            Placement {
+                model: ModelHandle::M2(Default::default()),
+                transform: Transform::IDENTITY,
+                entities: vec![owner_entity],
+                spawned: false,
+                doodad_set: 0,
+                name_set: 0,
+                doodads: vec![],
+                portal_instance: None,
+                refs: 1,
+                owner: (32, 48),
+            },
+        );
+        app.update();
+        assert!(!app.world().resource::<WorldLoadProgress>().trajectory_ready);
+        app.world_mut()
+            .resource_mut::<TerrainStreamer>()
+            .tiles
+            .get_mut(&(32, 48))
+            .unwrap()
+            .furnished = true;
+        app.update();
+        assert!(!app.world().resource::<WorldLoadProgress>().trajectory_ready);
+        app.world_mut()
+            .resource_mut::<Placements>()
+            .by_id
+            .get_mut(&17)
+            .unwrap()
+            .spawned = true;
+        app.update();
+        assert!(
+            !app.world().resource::<WorldLoadProgress>().trajectory_ready,
+            "far owner still has a pending collider"
+        );
+        app.world_mut()
+            .entity_mut(owner_entity)
+            .remove::<PendingCollider>();
+        app.update();
+        assert!(app.world().resource::<WorldLoadProgress>().trajectory_ready);
+        app.world_mut()
+            .resource_mut::<TerrainStreamer>()
+            .trajectory_tiles
+            .push((33, 48));
+        app.update();
+        assert!(
+            !app.world().resource::<WorldLoadProgress>().trajectory_ready,
+            "new requested terrain is not resident"
+        );
     }
 
     /// An authored tile whose ADT fails to load is walked on, not walled off.
@@ -253,6 +342,8 @@ mod tests {
         state
             .tiles
             .insert((32, 48), TileState::requested(handle.clone()));
+        state.trajectory_tiles = vec![(32, 48)];
+        app.init_resource::<WorldLoadProgress>();
         app.insert_resource(state);
         let failed = |app: &App| {
             matches!(
@@ -273,6 +364,10 @@ mod tests {
             app.world().resource::<TerrainResidency>().tile(32, 48),
             "a failed read keeps the old walk-on behaviour"
         );
+        assert!(
+            app.world().resource::<WorldLoadProgress>().trajectory_ready,
+            "failed ADT preserves the existing residency exception"
+        );
     }
 
     #[test]
@@ -282,4 +377,31 @@ mod tests {
         assert!(r.box_resident([17060.0, 0.0], [17070.0, 1.0]));
         assert!(!TerrainResidency::default().box_resident([-10.0, -10.0], [10.0, 10.0]));
     }
+}
+
+/// Publish after placement spawns and deferred collider inserts, including camera-distant owners.
+pub(super) fn trajectory_tiles_ready(
+    state: &TerrainStreamer,
+    placements: &Placements,
+    pending: impl Fn(Entity) -> bool,
+    failed: impl Fn(&Handle<benilla_assets::AdtTile>) -> bool,
+) -> bool {
+    state.trajectory_tiles.iter().all(|tile| {
+        state.tiles.get(tile).is_some_and(|t| {
+            // Preserve the existing failed-ADT residency exception documented above.
+            if t.entity.is_none() && failed(&t.handle) {
+                return true;
+            }
+            t.furnished
+                && t.entity.is_some_and(|root| !pending(root))
+                && t.wall.is_none_or(|wall| !pending(wall))
+                && t.placements.iter().all(|uid| {
+                    placements.by_id.get(uid).is_some_and(|owner| {
+                        owner.spawned
+                            && owner.doodads.iter().all(|d| d.spawned)
+                            && owner.entities.iter().all(|entity| !pending(*entity))
+                    })
+                })
+        })
+    })
 }

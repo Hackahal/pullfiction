@@ -34,6 +34,8 @@ pub(super) fn update_model_particles(
     mut forms: ResMut<crate::model_forms::ModelForms>,
     mut mesh_assets: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<WowModelMaterial>>,
+    mut tint_slots: ResMut<crate::mat_anim_table::AbsoluteTintMaterials>,
+    mut anim_table: ResMut<crate::mat_anim_table::MatAnimTable>,
     light: Res<crate::lighting::SharedLightBuffer>,
     mut emitters: Query<&mut ParticleEmitter>,
     mut draws: Query<
@@ -179,10 +181,76 @@ pub(super) fn update_model_particles(
                     }
                     *tag = MeshTag(crate::mesh_tag::alpha_bits(rgba[3]));
                 }
-                if let Some(m) = materials.get_mut(mat) {
-                    m.extension.tint = Vec4::new(rgba[0], rgba[1], rgba[2], 1.0);
-                }
+                let tint = Vec4::new(rgba[0], rgba[1], rgba[2], 1.0);
+                tint_slots.set(&mut anim_table, &mut materials, mat.id(), tint);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::asset::{AssetEvent, AssetPlugin};
+    use bevy::ecs::message::MessageCursor;
+
+    #[derive(Asset, TypePath)]
+    struct TintFixture(Vec4);
+
+    #[test]
+    fn particle_write_gate_emits_modified_only_for_exact_rgb_changes() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<TintFixture>();
+        let original = Vec4::new(0.12345679, 0.2, 0.3, 1.0);
+        let handle = app
+            .world_mut()
+            .resource_mut::<Assets<TintFixture>>()
+            .add(TintFixture(original));
+        let mut cursor = MessageCursor::<AssetEvent<TintFixture>>::default();
+        for (tint, changes) in [
+            (original, 0),
+            (
+                Vec4::new(
+                    f32::from_bits(original.x.to_bits() + 1),
+                    original.y,
+                    original.z,
+                    1.0,
+                ),
+                1,
+            ),
+            (
+                Vec4::new(
+                    f32::from_bits(original.x.to_bits() + 1),
+                    original.y,
+                    original.z,
+                    1.0,
+                ),
+                0,
+            ),
+        ] {
+            benilla_assets::write_gated(
+                &mut app.world_mut().resource_mut::<Assets<TintFixture>>(),
+                &handle,
+                |m| m.0 != tint,
+                |m| m.0 = tint,
+            );
+            app.update();
+            assert_eq!(
+                cursor
+                    .read(app.world().resource::<Messages<AssetEvent<TintFixture>>>())
+                    .filter(|event| matches!(event, AssetEvent::Modified { .. }))
+                    .count(),
+                changes
+            );
+            assert_eq!(
+                app.world()
+                    .resource::<Assets<TintFixture>>()
+                    .get(&handle)
+                    .unwrap()
+                    .0,
+                tint
+            );
         }
     }
 }

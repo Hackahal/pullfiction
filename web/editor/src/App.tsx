@@ -764,11 +764,19 @@ export function App({ controller }: { controller: EditorController }) {
               </button>
               <button
                 className="play"
-                aria-label={state.playing ? "Pause" : "Play"}
+                aria-label={
+                  state.playPreparing
+                    ? "Cancel preparation"
+                    : state.playing
+                      ? "Pause"
+                      : "Play"
+                }
                 disabled={!state.replay && state.workspaceMode !== "plan"}
                 onClick={() => controller.toggle()}
               >
-                <EditorIcon name={state.playing ? "pause" : "play"} />
+                <EditorIcon
+                  name={state.playing || state.playPreparing ? "pause" : "play"}
+                />
               </button>
               <button
                 aria-label="Next encounter"
@@ -1859,9 +1867,11 @@ function Viewport({
           state.replay &&
           state.sceneReady &&
           !(state.workspaceMode === "plan" && controller.displaySnapshot()) &&
-          (state.movementPreparing || state.movementConflicted) && (
+          (state.playPreparing ||
+            state.movementPreparing ||
+            state.movementConflicted) && (
             <div className="scene-movement-status" role="status">
-              {state.movementPreparing
+              {state.playPreparing || state.movementPreparing
                 ? "Preparing movement…"
                 : "Some movement could not be reconstructed."}
             </div>

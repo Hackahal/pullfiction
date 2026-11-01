@@ -22,6 +22,10 @@ use std::{
     time::Duration,
 };
 
+#[path = "trajectory_terrain.rs"]
+mod terrain;
+
+const TERRAIN_CAPACITY: &str = "Canonical terrain dependency capacity exceeded";
 const FRAME_STEPS: usize = 200;
 const BEAM: usize = 8;
 const MAX_ENTRIES: usize = 256;
@@ -387,15 +391,28 @@ impl Default for Planning {
 }
 struct Entry {
     input: Arc<NativeComponentInput>,
+    input_bytes: usize,
+    terrain_blocked: Option<Query>,
+    accounted_bytes: usize,
     planning: Planning,
     result: Query,
     ticks: Vec<Arc<Tick>>,
     demand_frame: AtomicU64,
+    visible_demand_frame: AtomicU64,
     demand_time: AtomicU64,
 }
 #[derive(Default, Resource)]
 pub struct CanonicalTrajectories {
     entries: VecDeque<Entry>,
+    accounted_bytes: usize,
+    world_resets: u64,
+    evictions: u64,
+    capacity_conflicts: u64,
+    last_reset: Option<ValidationReset>,
+    terrain_request_key: Option<u64>,
+    terrain_owner_key: Option<u64>,
+    terrain_requested_tiles: usize,
+    terrain_capacity_exceeded: bool,
     revision: u64,
     validation_epoch: u64,
     world: Option<u64>,
@@ -407,16 +424,95 @@ pub struct CanonicalTrajectories {
     pub search_expansions_last_frame: usize,
     pub elapsed_processing_ms: f64,
 }
+/// The conservative collision signature remains the certification boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValidationReset {
+    InitialWorld,
+    CollisionChanged,
+    ReadinessChanged,
+}
+#[derive(Clone, Debug)]
+pub struct TrajectoryDiagnostics {
+    pub source: String,
+    pub actor: String,
+    pub component: String,
+    pub content: String,
+    pub demand_time: Option<f64>,
+    pub committed_through: Option<f64>,
+    pub preparing_through: f64,
+    pub cache_bytes: usize,
+    pub physics_work: usize,
+    pub waiting_candidates: usize,
+    pub repairing: bool,
+    pub needs_work: bool,
+    pub result: Query,
+}
+#[derive(Clone, Debug)]
+pub struct CacheDiagnostics {
+    pub validation_epoch: u64,
+    pub world_ready: bool,
+    pub world_resets: u64,
+    pub last_reset: Option<ValidationReset>,
+    pub terrain_requested_tiles: usize,
+    pub terrain_capacity_exceeded: bool,
+    pub evictions: u64,
+    pub capacity_conflicts: u64,
+    pub cache_bytes: usize,
+    pub cache_limit_bytes: usize,
+    pub steps_last_frame: usize,
+    pub search_expansions_last_frame: usize,
+    pub elapsed_processing_ms: f64,
+}
 impl CanonicalTrajectories {
     /// Start a complete presentation demand set; queries below renew its members.
     /// Keep cached checkpoints and pending cursors so a later seek can resume them.
     pub fn clear_demands(&self) {
         for entry in &self.entries {
             entry.demand_frame.store(0, Ordering::Relaxed);
+            entry.visible_demand_frame.store(0, Ordering::Relaxed);
         }
     }
     pub fn cache_bytes(&self) -> usize {
         self.bytes()
+    }
+    pub fn diagnostics(&self) -> CacheDiagnostics {
+        CacheDiagnostics {
+            validation_epoch: self.validation_epoch,
+            world_ready: self.world_ready,
+            world_resets: self.world_resets,
+            last_reset: self.last_reset,
+            terrain_requested_tiles: self.terrain_requested_tiles,
+            terrain_capacity_exceeded: self.terrain_capacity_exceeded,
+            evictions: self.evictions,
+            capacity_conflicts: self.capacity_conflicts,
+            cache_bytes: self.accounted_bytes,
+            cache_limit_bytes: MAX_BYTES,
+            steps_last_frame: self.steps_last_frame,
+            search_expansions_last_frame: self.search_expansions_last_frame,
+            elapsed_processing_ms: self.elapsed_processing_ms,
+        }
+    }
+    /// Snapshot only when diagnostics are requested, never in the planner loop.
+    pub fn component_diagnostics(&self) -> Vec<TrajectoryDiagnostics> {
+        self.entries
+            .iter()
+            .map(|e| TrajectoryDiagnostics {
+                source: e.input.source.clone(),
+                actor: e.input.actor.clone(),
+                component: e.input.component.clone(),
+                content: e.input.content.clone(),
+                demand_time: (e.demand_frame.load(Ordering::Relaxed) != 0)
+                    .then(|| f64::from_bits(e.demand_time.load(Ordering::Relaxed))),
+                committed_through: e.ticks.last().map(|t| t.time),
+                preparing_through: e.target_time(),
+                cache_bytes: e.accounted_bytes,
+                physics_work: e.planning.work,
+                waiting_candidates: e.planning.waiting.len(),
+                repairing: e.planning.repair.is_some(),
+                needs_work: e.needs_work(),
+                result: e.result.clone(),
+            })
+            .collect()
     }
     pub fn component_count(&self) -> usize {
         self.entries.len()
@@ -434,7 +530,7 @@ impl CanonicalTrajectories {
         let changed = self.source.as_deref() != Some(source);
         self.source = Some(source.to_owned());
         let n = self.entries.len();
-        self.entries.retain(|e| e.input.source == source);
+        self.retain_entries(|e| e.input.source == source);
         if changed || self.entries.len() != n {
             self.revision = self.revision.wrapping_add(1);
         }
@@ -448,7 +544,7 @@ impl CanonicalTrajectories {
             }
             return Ok(());
         }
-        self.entries.retain(|e| {
+        self.retain_entries(|e| {
             !(e.input.source == input.source
                 && e.input.actor == input.actor
                 && e.input.component == input.component)
@@ -466,14 +562,20 @@ impl CanonicalTrajectories {
         } else {
             Query::NotReady
         };
+        let accounted_bytes = input.bytes();
         self.entries.push_back(Entry {
+            input_bytes: accounted_bytes,
+            terrain_blocked: None,
+            accounted_bytes,
             input: Arc::new(input),
             planning: Planning::default(),
             result,
             ticks: vec![],
             demand_frame: AtomicU64::new(0),
+            visible_demand_frame: AtomicU64::new(0),
             demand_time: AtomicU64::new(0),
         });
+        self.accounted_bytes += accounted_bytes;
         self.revision = self.revision.wrapping_add(1);
         Ok(())
     }
@@ -481,6 +583,33 @@ impl CanonicalTrajectories {
         self.entries
             .iter()
             .find(|e| e.input.key() == (source, actor, component, content))
+    }
+    /// Prepare a known component before presentation, within the ordinary cache,
+    /// physics and search bounds. Visible queries retain priority. Callers clear
+    /// and rebuild the demand set on navigation; cached certified prefixes survive.
+    pub fn prepare(
+        &self,
+        source: &str,
+        actor: &str,
+        component: &str,
+        content: &str,
+        time: f64,
+    ) -> bool {
+        let Some(e) = self.find(source, actor, component, content) else {
+            return false;
+        };
+        if !time.is_finite()
+            || time < e.input.samples[0].0
+            || time > e.input.samples.last().unwrap().0
+        {
+            return false;
+        }
+        // A background request cannot replace a selected pose in this demand set.
+        if e.visible_demand_frame.load(Ordering::Relaxed) != self.frame + 1 {
+            e.demand_frame.store(self.frame + 1, Ordering::Relaxed);
+            e.demand_time.store(time.to_bits(), Ordering::Relaxed);
+        }
+        true
     }
     pub fn query(
         &self,
@@ -500,6 +629,8 @@ impl CanonicalTrajectories {
             return Query::Missing;
         }
         e.demand_frame.store(self.frame + 1, Ordering::Relaxed);
+        e.visible_demand_frame
+            .store(self.frame + 1, Ordering::Relaxed);
         e.demand_time.store(time.to_bits(), Ordering::Relaxed);
         if e.ticks.last().is_some_and(|r| time <= r.time) {
             return sample(&e.ticks, time).map_or(Query::Missing, Query::Ready);
@@ -532,17 +663,29 @@ impl CanonicalTrajectories {
         if self.world == Some(world) && self.world_ready == ready {
             return;
         }
+        self.last_reset = Some(if self.world.is_none() {
+            ValidationReset::InitialWorld
+        } else if self.world != Some(world) {
+            ValidationReset::CollisionChanged
+        } else {
+            ValidationReset::ReadinessChanged
+        });
+        self.world_resets = self.world_resets.wrapping_add(1);
         self.world = Some(world);
         self.world_ready = ready;
         self.validation_epoch = self.validation_epoch.wrapping_add(1);
         for e in &mut self.entries {
+            let before = e.accounted_bytes;
             e.planning = Planning::default();
+            e.terrain_blocked = None;
             e.ticks.clear();
             e.result = if !e.input.coverage_complete {
                 Query::MissingCoverage
             } else {
                 Query::NotReady
             };
+            e.refresh_bytes();
+            self.accounted_bytes = self.accounted_bytes - before + e.accounted_bytes;
         }
         self.revision = self.revision.wrapping_add(1);
     }
@@ -558,43 +701,167 @@ impl CanonicalTrajectories {
             .min_by_key(|(_, e)| e.demand_frame.load(Ordering::Relaxed))
             .map(|(i, _)| i);
         if let Some(index) = candidate {
-            self.entries.remove(index);
+            self.accounted_bytes -= self.entries.remove(index).unwrap().accounted_bytes;
+            self.evictions = self.evictions.wrapping_add(1);
             self.revision = self.revision.wrapping_add(1);
             true
         } else {
             false
         }
     }
+    fn retain_entries(&mut self, mut keep: impl FnMut(&Entry) -> bool) {
+        let total = &mut self.accounted_bytes;
+        self.entries.retain(|e| {
+            if keep(e) {
+                true
+            } else {
+                *total -= e.accounted_bytes;
+                false
+            }
+        });
+    }
     fn bytes(&self) -> usize {
-        fn candidate(c: &Candidate) -> usize {
-            c.cursor.ticks.len() * 192
-                + c.checkpoints.len() * 8
-                + c.transfer_rises.len() * 16
-                + c.cursor.windows.len() * 16
-                + c.cursor.launches.len() * 8
-                + c.checkpoints
-                    .iter()
-                    .map(|p| {
-                        std::mem::size_of::<Cursor>() + p.windows.len() * 16 + p.launches.len() * 8
-                    })
-                    .sum::<usize>()
-                + c.walking_fallback.as_deref().map_or(0, candidate)
+        self.accounted_bytes
+    }
+    fn step_entry(
+        &mut self,
+        index: usize,
+        world: &WorldCollision,
+        capsule: &Collider,
+        search_budget: usize,
+    ) -> (usize, usize, bool) {
+        let entry = &mut self.entries[index];
+        let before = entry.accounted_bytes;
+        let result = entry.step(world, capsule, search_budget);
+        self.accounted_bytes = self.accounted_bytes - before + entry.accounted_bytes;
+        result
+    }
+    // Returns true when the current work must stop after a capacity conflict.
+    fn enforce_capacity(&mut self, index: usize) -> bool {
+        if self.bytes() <= MAX_BYTES {
+            return false;
         }
+        // Eviction can shift deque indices; keep the stepped entry's identity.
+        let stepped_input = self.entries[index].input.clone();
+        while self.bytes() > MAX_BYTES && self.evict_inactive() {}
+        if self.bytes() <= MAX_BYTES {
+            return false;
+        }
+        let Some(index) = self
+            .entries
+            .iter()
+            .position(|e| Arc::ptr_eq(&e.input, &stepped_input))
+        else {
+            return true;
+        };
+        let entry = &mut self.entries[index];
+        let before = entry.accounted_bytes;
+        entry.result = Query::Conflict("Canonical cache capacity exceeded");
+        entry.planning = Planning::default();
+        entry.refresh_bytes();
+        self.accounted_bytes = self.accounted_bytes - before + entry.accounted_bytes;
+        self.capacity_conflicts = self.capacity_conflicts.wrapping_add(1);
+        self.revision = self.revision.wrapping_add(1);
+        true
+    }
+    fn prepare_terrain(
+        &mut self,
+        map: Option<u32>,
+        requests: &mut benilla_world::terrain_stream::TrajectoryTerrainRequests,
+    ) -> bool {
+        use benilla_world::terrain_stream::MAX_TRAJECTORY_TERRAIN_TILES;
+        let active = |e: &Entry| {
+            e.demand_frame.load(Ordering::Relaxed) != 0
+                && Some(e.input.map) == map
+                && e.input.coverage_complete
+        };
+        let mut ownership = std::collections::hash_map::DefaultHasher::new();
+        map.hash(&mut ownership);
+        let mut signature = std::collections::hash_map::DefaultHasher::new();
+        map.hash(&mut signature);
+        self.validation_epoch.hash(&mut signature);
+        for e in self.entries.iter().filter(|e| active(e)) {
+            e.input.key().hash(&mut signature);
+            e.input.key().hash(&mut ownership);
+            e.terrain_through().hash(&mut signature);
+            e.visit_terrain_cursors(|cursor| {
+                let p = bevy_to_wow(cursor.state.center);
+                terrain::point_key([p[0], p[1]]).hash(&mut signature);
+                if let Some((_, path)) = &cursor.guidance {
+                    for p in path.iter() {
+                        let p = bevy_to_wow(*p);
+                        terrain::point_key([p[0], p[1]]).hash(&mut signature);
+                    }
+                }
+            });
+        }
+        let owner_key = ownership.finish();
+        let key = signature.finish();
+        if self.terrain_request_key == Some(key) && requests.map == map {
+            return false;
+        }
+        let previous_map = requests.map;
+        let previous_tiles = requests.tiles.clone();
+        let mut coverage = terrain::Coverage::default();
+        // Keep discovered repair/cursor dependencies while the same component
+        // demand set owns them. Dropping one would invalidate the certified prefix
+        // and repeat the same load/restart loop at that frontier.
+        if self.terrain_owner_key == Some(owner_key) && requests.map == map {
+            for &tile in &requests.tiles {
+                coverage.insert_tile(tile);
+            }
+        }
+        for e in self.entries.iter().filter(|e| active(e)) {
+            let through = e.terrain_through();
+            let rows = &e.input.samples[..=through];
+            coverage.point([rows[0].1, rows[0].2]);
+            for pair in rows.windows(2) {
+                coverage.segment([pair[0].1, pair[0].2], [pair[1].1, pair[1].2]);
+            }
+            e.visit_terrain_cursors(|cursor| {
+                let p = bevy_to_wow(cursor.state.center);
+                coverage.point([p[0], p[1]]);
+                if let Some((_, path)) = &cursor.guidance {
+                    for pair in path.windows(2) {
+                        let a = bevy_to_wow(pair[0]);
+                        let b = bevy_to_wow(pair[1]);
+                        coverage.segment([a[0], a[1]], [b[0], b[1]]);
+                    }
+                }
+            });
+        }
+        self.terrain_requested_tiles = coverage.count();
+        self.terrain_capacity_exceeded = coverage.count() > MAX_TRAJECTORY_TERRAIN_TILES;
+        let overflow = self.terrain_capacity_exceeded;
+        if !overflow {
+            requests.tiles = coverage.tiles();
+        } else if requests.map != map {
+            requests.tiles.clear();
+        }
+        // On overflow retain only the previously bounded set, preventing tile
+        // drops from clearing the explicit conflict through world invalidation.
+        requests.map = map;
+        for e in self.entries.iter_mut().filter(|e| active(e)) {
+            if overflow {
+                if e.terrain_blocked.is_none() {
+                    e.terrain_blocked = Some(e.result.clone());
+                    e.result = Query::Conflict(TERRAIN_CAPACITY);
+                    self.revision = self.revision.wrapping_add(1);
+                }
+            } else if let Some(prior) = e.terrain_blocked.take() {
+                e.result = prior;
+                self.revision = self.revision.wrapping_add(1);
+            }
+        }
+        self.terrain_request_key = Some(key);
+        self.terrain_owner_key = Some(owner_key);
+        requests.map != previous_map || requests.tiles != previous_tiles
+    }
+    #[cfg(test)]
+    fn recompute_bytes(&self) -> usize {
         self.entries
             .iter()
-            .map(|e| {
-                e.input.bytes()
-                    + e.ticks.len() * 128
-                    + e.planning
-                        .waiting
-                        .iter()
-                        .chain(&e.planning.finished)
-                        .map(candidate)
-                        .sum::<usize>()
-                    + e.planning.repair.as_ref().map_or(0, |r| {
-                        candidate(&r.candidate) + r.failed.ticks.len() * 192 + MAX_SEARCH * 384
-                    })
-            })
+            .map(|e| e.estimated_bytes() - e.input_bytes + e.input.bytes())
             .sum()
     }
 }
@@ -1244,8 +1511,81 @@ fn prepare_repair(
     })
 }
 impl Entry {
+    fn refresh_bytes(&mut self) {
+        self.accounted_bytes = self.estimated_bytes();
+    }
+    // Preserve the previous conservative estimate, including shared histories,
+    // nested fallbacks, checkpoints and reserved repair search space.
+    fn estimated_bytes(&self) -> usize {
+        fn candidate(c: &Candidate) -> usize {
+            c.cursor.ticks.len() * 192
+                + c.checkpoints.len() * 8
+                + c.transfer_rises.len() * 16
+                + c.cursor.windows.len() * 16
+                + c.cursor.launches.len() * 8
+                + c.checkpoints
+                    .iter()
+                    .map(|p| {
+                        std::mem::size_of::<Cursor>() + p.windows.len() * 16 + p.launches.len() * 8
+                    })
+                    .sum::<usize>()
+                + c.walking_fallback.as_deref().map_or(0, candidate)
+        }
+        self.input_bytes
+            + self.ticks.len() * 128
+            + self
+                .planning
+                .waiting
+                .iter()
+                .chain(&self.planning.finished)
+                .map(candidate)
+                .sum::<usize>()
+            + self.planning.repair.as_ref().map_or(0, |r| {
+                candidate(&r.candidate) + r.failed.ticks.len() * 192 + MAX_SEARCH * 384
+            })
+    }
+
+    // Last observed endpoint needed to certify the requested prefix plus the
+    // existing eight-second lookahead and two-second validation window.
+    fn terrain_through(&self) -> usize {
+        let first = self.input.samples[0].0;
+        let last = self.input.samples.last().unwrap().0;
+        let wanted = f64::from_bits(self.demand_time.load(Ordering::Relaxed));
+        let commit =
+            (first + (((wanted + 8000.).min(last) - first) / 8000.).ceil() * 8000.).min(last);
+        let mut target = commit + 2000.;
+        if let Some(&(_, end)) = self
+            .input
+            .transfers
+            .iter()
+            .find(|&&(a, b)| a < commit && commit < b)
+        {
+            target = target.max(end);
+        }
+        self.input
+            .samples
+            .partition_point(|s| s.0 < target)
+            .min(self.input.samples.len() - 1)
+    }
+    fn visit_terrain_cursors(&self, mut visit: impl FnMut(&Cursor)) {
+        fn candidate(c: &Candidate, visit: &mut impl FnMut(&Cursor)) {
+            visit(&c.cursor);
+            if let Some(fallback) = &c.walking_fallback {
+                candidate(fallback, visit);
+            }
+        }
+        for c in self.planning.waiting.iter().chain(&self.planning.finished) {
+            candidate(c, &mut visit);
+        }
+        if let Some(repair) = &self.planning.repair {
+            candidate(&repair.candidate, &mut visit);
+            visit(&repair.failed);
+        }
+    }
     fn needs_visible_pose(&self) -> bool {
         self.needs_work()
+            && self.visible_demand_frame.load(Ordering::Relaxed)
+                == self.demand_frame.load(Ordering::Relaxed)
             && !self.ticks.last().is_some_and(|tick| {
                 tick.time >= f64::from_bits(self.demand_time.load(Ordering::Relaxed))
             })
@@ -1294,6 +1634,16 @@ impl Entry {
     }
     // Returns (physics work, search work, visible-state revision).
     fn step(
+        &mut self,
+        world: &WorldCollision,
+        capsule: &Collider,
+        search_budget: usize,
+    ) -> (usize, usize, bool) {
+        let result = self.step_inner(world, capsule, search_budget);
+        self.refresh_bytes();
+        result
+    }
+    fn step_inner(
         &mut self,
         world: &WorldCollision,
         capsule: &Collider,
@@ -1492,6 +1842,7 @@ impl Entry {
 pub struct TrajectoryDrive;
 pub fn install(app: &mut App) {
     physics::install_budget(app);
+    app.init_resource::<benilla_world::terrain_stream::TrajectoryTerrainRequests>();
     app.init_resource::<CanonicalTrajectories>().add_systems(
         Update,
         drive
@@ -1522,6 +1873,7 @@ fn drive(
     residency: Option<Res<benilla_world::terrain_stream::TerrainResidency>>,
     mut identity: Local<ResidencyIdentity>,
     mut budget: ResMut<physics::PhysicsBudget>,
+    mut terrain_requests: Option<ResMut<benilla_world::terrain_stream::TrajectoryTerrainRequests>>,
 ) {
     let start = Instant::now();
     if identity.value.as_ref() != residency.as_deref() {
@@ -1560,14 +1912,31 @@ fn drive(
             .map(|l| (l.memberships.0, l.filters.0))
             .hash(&mut signature);
     }
+    // Publish collision dependencies before interpreting readiness. A fresh set
+    // must receive the streamer's own readiness acknowledgement, even if the
+    // preceding frame's camera/trajectory tiles were complete.
+    let requests_changed = terrain_requests
+        .as_deref_mut()
+        .is_some_and(|requests| plans.prepare_terrain(current_map, requests));
     let ready = current_map.is_some()
         && progress.as_deref().is_none_or(|p| {
-            p.scene_ready
+            !requests_changed
+                && p.scene_ready
+                && (terrain_requests
+                    .as_deref()
+                    .is_none_or(|r| r.map != current_map || r.tiles.is_empty())
+                    || p.trajectory_ready)
                 && p.colliders_pending == 0
                 && p.merge_pending == 0
                 && p.placements_pending == 0
         });
+    let validation_epoch = plans.validation_epoch;
     plans.observe_world(signature.finish(), ready);
+    if plans.validation_epoch != validation_epoch {
+        if let Some(requests) = terrain_requests.as_deref_mut() {
+            plans.prepare_terrain(current_map, requests);
+        }
+    }
     plans.frame = plans.frame.wrapping_add(1);
     plans.steps_last_frame = 0;
     plans.search_expansions_last_frame = 0;
@@ -1610,7 +1979,7 @@ fn drive(
             continue;
         }
         let searches = FRAME_SEARCH - plans.search_expansions_last_frame;
-        let (used, expanded, changed) = plans.entries[index].step(&world, &capsule, searches);
+        let (used, expanded, changed) = plans.step_entry(index, &world, &capsule, searches);
         budget.remaining = budget.remaining.saturating_sub(used);
         plans.steps_last_frame += used;
         plans.search_expansions_last_frame += expanded;
@@ -1626,12 +1995,7 @@ fn drive(
         if idle >= plans.entries.len() || transitions > FRAME_STEPS * 4 {
             break;
         }
-        while plans.bytes() > MAX_BYTES && plans.evict_inactive() {}
-        if plans.bytes() > MAX_BYTES {
-            let index = index % plans.entries.len();
-            plans.entries[index].result = Query::Conflict("Canonical cache capacity exceeded");
-            plans.entries[index].planning = Planning::default();
-            plans.revision = plans.revision.wrapping_add(1);
+        if plans.enforce_capacity(index) {
             break;
         }
     }
@@ -1642,6 +2006,8 @@ fn drive(
         plans.revision = plans.revision.wrapping_add(1);
     }
     plans.elapsed_processing_ms = start.elapsed().as_secs_f64() * 1000.;
+    #[cfg(test)]
+    assert_eq!(plans.bytes(), plans.recompute_bytes());
 }
 
 #[cfg(test)]
@@ -1675,11 +2041,15 @@ mod tests {
     fn entry(input: NativeComponentInput) -> Entry {
         input.validate().unwrap();
         Entry {
+            input_bytes: input.bytes(),
+            terrain_blocked: None,
+            accounted_bytes: input.bytes(),
             input: Arc::new(input),
             planning: Planning::default(),
             result: Query::NotReady,
             ticks: vec![],
             demand_frame: AtomicU64::new(0),
+            visible_demand_frame: AtomicU64::new(0),
             demand_time: AtomicU64::new(0),
         }
     }
@@ -1703,6 +2073,326 @@ mod tests {
                 panic!("canonical fixture did not terminate")
             })
             .unwrap()
+    }
+    fn assert_accounting(plans: &CanonicalTrajectories) {
+        assert_eq!(plans.bytes(), plans.recompute_bytes());
+        for e in &plans.entries {
+            assert_eq!(e.input_bytes, e.input.bytes());
+            assert_eq!(e.accounted_bytes, e.estimated_bytes());
+        }
+    }
+    #[test]
+    fn terrain_preparation_retains_the_chronological_prefix_and_bounded_lookahead() {
+        let mut plans = CanonicalTrajectories::default();
+        let mut i = input();
+        i.samples = (0..80)
+            .map(|n| (n as f64 * 1000., n as f32 * 100., 1., Some(0.)))
+            .collect();
+        plans.submit(i.clone()).unwrap();
+        plans.query(&i.source, &i.actor, &i.component, &i.content, 5000.);
+        let mut requests = benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert_eq!(requests.map, Some(0));
+        for p in [[0., 1.], [500., 1.], [1800., 1.]] {
+            assert!(requests.tiles.contains(&terrain::tile(p)), "missing {p:?}");
+        }
+        assert!(!requests.tiles.contains(&terrain::tile([7900., 1.])));
+        assert_eq!(
+            plans.diagnostics().terrain_requested_tiles,
+            requests.tiles.len()
+        );
+        assert!(!plans.diagnostics().terrain_capacity_exceeded);
+        let before = requests.tiles.clone();
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert_eq!(requests.tiles, before);
+        assert_accounting(&plans);
+        plans.clear_demands();
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert!(requests.tiles.is_empty());
+        plans.query(&i.source, &i.actor, &i.component, &i.content, 5000.);
+        plans.prepare_terrain(Some(1), &mut requests);
+        assert!(requests.tiles.is_empty(), "requests never cross maps");
+        plans.retain_source("new-report");
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert!(requests.tiles.is_empty());
+    }
+    #[test]
+    fn terrain_dependency_capacity_is_explicit_and_smaller_seek_restores_prior_status() {
+        let mut plans = CanonicalTrajectories::default();
+        let mut i = input();
+        i.samples = (0..=20)
+            .map(|n| (n as f64 * 1000., 0., 1., Some(0.)))
+            .collect();
+        i.samples.push((40000., 16000., 16000., Some(0.)));
+        plans.submit(i.clone()).unwrap();
+        plans.query(&i.source, &i.actor, &i.component, &i.content, 30000.);
+        let mut requests = benilla_world::terrain_stream::TrajectoryTerrainRequests::default();
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert!(plans.diagnostics().terrain_capacity_exceeded);
+        assert!(
+            plans.diagnostics().terrain_requested_tiles
+                > benilla_world::terrain_stream::MAX_TRAJECTORY_TERRAIN_TILES
+        );
+        assert_eq!(plans.entries[0].result, Query::Conflict(TERRAIN_CAPACITY));
+        assert!(!plans.entries[0].needs_work());
+        assert!(
+            requests.tiles.is_empty(),
+            "oversized demand is rejected instead of partially certified"
+        );
+        assert_accounting(&plans);
+        plans.clear_demands();
+        plans.query(&i.source, &i.actor, &i.component, &i.content, 0.);
+        plans.prepare_terrain(Some(0), &mut requests);
+        assert!(!plans.diagnostics().terrain_capacity_exceeded);
+        assert!(!requests.tiles.is_empty());
+        assert_eq!(plans.entries[0].result, Query::NotReady);
+        assert!(plans.entries[0].needs_work());
+        assert_accounting(&plans);
+    }
+    #[test]
+    fn terrain_requests_are_published_before_world_ready_and_physics_waits_for_their_collisions() {
+        use benilla_world::terrain_stream::{
+            TerrainResidency, TrajectoryTerrainRequests, WorldLoadProgress,
+        };
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        install(&mut app);
+        app.world_mut()
+            .insert_resource(benilla_world::world_map::CurrentMap(0));
+        app.world_mut().insert_resource(TerrainResidency::default());
+        app.world_mut().insert_resource(WorldLoadProgress {
+            scene_ready: true,
+            trajectory_ready: true,
+            ..Default::default()
+        });
+        let i = input();
+        app.world_mut()
+            .resource_mut::<CanonicalTrajectories>()
+            .submit(i.clone())
+            .unwrap();
+        let mut driver = IntoSystem::into_system(drive);
+        driver.initialize(app.world_mut());
+        app.world().resource::<CanonicalTrajectories>().query(
+            &i.source,
+            &i.actor,
+            &i.component,
+            &i.content,
+            1000.,
+        );
+        driver.run((), app.world_mut()).unwrap();
+        let tiles = app
+            .world()
+            .resource::<TrajectoryTerrainRequests>()
+            .tiles
+            .clone();
+        assert!(tiles.contains(&terrain::tile([0., 1.])));
+        assert_eq!(
+            app.world().resource::<CanonicalTrajectories>().entries[0]
+                .planning
+                .work,
+            0
+        );
+        app.world_mut()
+            .resource_mut::<WorldLoadProgress>()
+            .trajectory_ready = false;
+        // A terrain resident bit alone is insufficient while its room placements
+        // are still being installed by the streamer.
+        app.world_mut()
+            .insert_resource(TerrainResidency::with_tiles(tiles.clone()));
+        app.world_mut()
+            .resource_mut::<physics::PhysicsBudget>()
+            .remaining = FRAME_STEPS;
+        driver.run((), app.world_mut()).unwrap();
+        assert_eq!(
+            app.world().resource::<CanonicalTrajectories>().entries[0]
+                .planning
+                .work,
+            0
+        );
+        app.world_mut()
+            .resource_mut::<WorldLoadProgress>()
+            .trajectory_ready = true;
+        for _ in 0..20 {
+            app.world_mut()
+                .resource_mut::<physics::PhysicsBudget>()
+                .remaining = FRAME_STEPS;
+            driver.run((), app.world_mut()).unwrap();
+            if matches!(
+                app.world().resource::<CanonicalTrajectories>().entries[0].result,
+                Query::Ready(_)
+            ) {
+                break;
+            }
+        }
+        let plans = app.world().resource::<CanonicalTrajectories>();
+        assert!(
+            plans.entries[0].planning.work > 0
+                || matches!(plans.entries[0].result, Query::Ready(_))
+        );
+        assert!(matches!(
+            plans.query(&i.source, &i.actor, &i.component, &i.content, 1000.),
+            Query::Ready(_)
+        ));
+        assert_accounting(plans);
+    }
+    #[test]
+    fn cached_accounting_matches_oracle_across_cache_lifecycle() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        app.world_mut()
+            .run_system_once(|world: WorldCollision| {
+                let capsule =
+                    Collider::capsule(CAPSULE_RADIUS, CAPSULE_HEIGHT - 2. * CAPSULE_RADIUS);
+                let mut plans = CanonicalTrajectories::default();
+                let original = input();
+                plans.submit(original.clone()).unwrap();
+                assert_accounting(&plans);
+                plans.observe_world(1, true);
+                for _ in 0..2000 {
+                    plans.step_entry(0, &world, &capsule, FRAME_SEARCH);
+                    assert_accounting(&plans);
+                    if matches!(
+                        plans.entries[0].result,
+                        Query::Ready(_) | Query::Conflict(_)
+                    ) {
+                        break;
+                    }
+                }
+                assert!(matches!(plans.entries[0].result, Query::Ready(_)));
+                assert!(plans.bytes() > original.bytes());
+                let mut replaced = original.clone();
+                replaced.content = "new-content".into();
+                plans.submit(replaced).unwrap();
+                assert_accounting(&plans);
+                assert_eq!(plans.bytes(), original.bytes());
+                plans.entries[0].planning.work = MAX_COMPONENT_WORK;
+                plans.step_entry(0, &world, &capsule, FRAME_SEARCH);
+                assert!(matches!(plans.entries[0].result, Query::Conflict(_)));
+                assert_accounting(&plans);
+                plans.observe_world(2, false);
+                assert_accounting(&plans);
+                assert_eq!(
+                    plans.diagnostics().last_reset,
+                    Some(ValidationReset::CollisionChanged)
+                );
+                plans.observe_world(2, true);
+                assert_eq!(
+                    plans.diagnostics().last_reset,
+                    Some(ValidationReset::ReadinessChanged)
+                );
+                assert!(plans.evict_inactive());
+                assert_accounting(&plans);
+                assert_eq!(plans.bytes(), 0);
+                plans.submit(original).unwrap();
+                plans.retain_source("different-report");
+                assert_accounting(&plans);
+                assert_eq!(plans.bytes(), 0);
+            })
+            .unwrap();
+    }
+    #[test]
+    fn nested_candidates_repair_and_shifted_capacity_conflict_are_accounted() {
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        app.world_mut()
+            .run_system_once(|world: WorldCollision| {
+                let capsule =
+                    Collider::capsule(CAPSULE_RADIUS, CAPSULE_HEIGHT - 2. * CAPSULE_RADIUS);
+                let mut plans = CanonicalTrajectories::default();
+                let mut inactive = input();
+                inactive.actor = "evict-first".into();
+                plans.submit(inactive).unwrap();
+                let active = input();
+                plans.submit(active.clone()).unwrap();
+                plans.query(
+                    &active.source,
+                    &active.actor,
+                    &active.component,
+                    &active.content,
+                    0.,
+                );
+                let mut c = initial(&active, 0, &world, &capsule).unwrap().unwrap();
+                c.checkpoints.push(Arc::new(c.cursor.clone()));
+                c.walking_fallback = Some(Box::new(c.clone()));
+                let probe = WorldProbe::new(&world);
+                let from = c.cursor.state.center - Vec3::Y * (CAPSULE_HEIGHT * 0.5);
+                let goal = from + Vec3::X;
+                let search = Search::new(&probe, from, goal).unwrap();
+                let before = plans.entries[1].accounted_bytes;
+                plans.entries[1].planning.repair = Some(Repair {
+                    candidate: c.clone(),
+                    failed: c.cursor.clone(),
+                    search,
+                    goal,
+                });
+                plans.entries[1].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[1].accounted_bytes;
+                assert_accounting(&plans);
+                plans.step_entry(1, &world, &capsule, 1);
+                assert_accounting(&plans);
+                // Reserve enough checkpoint estimates to force capacity recovery,
+                // keeping allocation small because each checkpoint is shared.
+                c.checkpoints =
+                    vec![Arc::new(c.cursor.clone()); MAX_BYTES / std::mem::size_of::<Cursor>() + 1];
+                let before = plans.entries[1].accounted_bytes;
+                plans.entries[1].planning.waiting.push_back(c);
+                plans.entries[1].refresh_bytes();
+                plans.accounted_bytes =
+                    plans.accounted_bytes - before + plans.entries[1].accounted_bytes;
+                assert_accounting(&plans);
+                assert!(plans.enforce_capacity(1));
+                assert_eq!(plans.entries.len(), 1);
+                assert_eq!(plans.entries[0].input.actor, active.actor);
+                assert!(matches!(
+                    plans.entries[0].result,
+                    Query::Conflict("Canonical cache capacity exceeded")
+                ));
+                assert_eq!(plans.diagnostics().evictions, 1);
+                assert_eq!(plans.diagnostics().capacity_conflicts, 1);
+                assert!(plans.bytes() < MAX_BYTES);
+                assert_accounting(&plans);
+            })
+            .unwrap();
+    }
+    #[test]
+    fn preparation_is_bounded_background_demand_and_preserves_seek_checkpoints() {
+        let mut plans = CanonicalTrajectories::default();
+        let i = input();
+        plans.submit(i.clone()).unwrap();
+        assert!(!plans.prepare(&i.source, &i.actor, &i.component, &i.content, f64::NAN));
+        assert!(!plans.prepare(&i.source, &i.actor, &i.component, &i.content, 3000.));
+        assert!(plans.prepare(&i.source, &i.actor, &i.component, &i.content, 1000.));
+        assert!(plans.entries[0].needs_work());
+        assert!(!plans.entries[0].needs_visible_pose());
+        assert!(
+            plans.entries[0].ticks.is_empty(),
+            "demand cannot advance physics"
+        );
+        plans.query(&i.source, &i.actor, &i.component, &i.content, 500.);
+        assert!(plans.entries[0].needs_visible_pose());
+        plans.prepare(&i.source, &i.actor, &i.component, &i.content, 1500.);
+        assert_eq!(plans.component_diagnostics()[0].demand_time, Some(500.));
+        plans.clear_demands();
+        assert!(!plans.entries[0].needs_work());
+        let mut app = world(&[(-20., 0.), (100., 0.)]);
+        let completed = finish(&mut app, i.clone(), 1);
+        let bytes = completed.accounted_bytes;
+        plans.entries[0] = completed;
+        plans.accounted_bytes = bytes;
+        let before = plans.entries[0].ticks.clone();
+        let epoch = plans.validation_epoch();
+        for time in [2000., 0., 1500., 500., 2000.] {
+            plans.clear_demands();
+            assert!(matches!(
+                plans.query(&i.source, &i.actor, &i.component, &i.content, time),
+                Query::Ready(_)
+            ));
+            assert_eq!(plans.validation_epoch(), epoch);
+            assert_eq!(plans.bytes(), bytes);
+            assert!(!plans.entries[0].needs_work());
+            for (a, b) in before.iter().zip(&plans.entries[0].ticks) {
+                assert!(Arc::ptr_eq(a, b));
+            }
+        }
+        assert_accounting(&plans);
     }
     #[test]
     fn immutable_content_and_source_updates_never_depend_on_seek_generation() {
@@ -1790,6 +2480,7 @@ mod tests {
         let baseline =
             [0., 499., 999., 1000., 1001., 1999., 2000.].map(|t| sample(&e.ticks, t).unwrap());
         let mut p = CanonicalTrajectories::default();
+        p.accounted_bytes += e.accounted_bytes;
         p.entries.push_back(e);
         for n in [6, 0, 4, 2, 5, 1, 3, 3, 0, 6] {
             assert_eq!(
@@ -2215,6 +2906,7 @@ mod tests {
         assert!(matches!(e.result, Query::Conflict(_)));
         assert_eq!(e.ticks.last().unwrap().time, 8000.);
         let mut p = CanonicalTrajectories::default();
+        p.accounted_bytes += e.accounted_bytes;
         p.entries.push_back(e);
         assert!(matches!(
             p.query(&i2.source, &i2.actor, &i2.component, &i2.content, 8000.),

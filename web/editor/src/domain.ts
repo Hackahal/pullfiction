@@ -59,11 +59,13 @@ export const reportCode = data.reportCode;
 export const normalizeReplay = data.normalizeReplay as unknown as (
   raw: RawReplay,
   models: Record<string, unknown>,
+  reused?: Map<string, Actor>,
 ) => Replay;
 export const enrichCombat = data.enrichCombat as unknown as (
   replay: Replay,
   models: Record<string, unknown>,
   spells?: Record<string, unknown>,
+  reused?: Map<string, Actor>,
 ) => Replay;
 export const poseAt = data.poseAt as unknown as (
   actor: Actor,

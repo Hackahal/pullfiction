@@ -1,4 +1,7 @@
 //! Offline log actors and combat edges, reusing the game's model, equipment and spell pipelines.
+#[path = "planner_replay_transport.rs"]
+pub mod transport;
+
 use crate::{
     creature_anim::{
         CastEvent, CastEventKind, Casting, MovementState, PlaySeq, SpellGoTargets, SwingMessage,
@@ -437,6 +440,8 @@ pub struct ReplayUnit {
     #[serde(default)]
     pub trajectory: Option<ReplayTrajectoryReference>,
     #[serde(default)]
+    pub trajectory_prepare: Option<ReplayTrajectoryReference>,
+    #[serde(default)]
     pub trajectory_bridge: Option<ReplayTrajectoryBridge>,
     pub dead: bool,
     #[serde(default)]
@@ -525,6 +530,7 @@ pub struct ReplaySpellDiagnostic {
 #[derive(Default, Resource)]
 pub struct ReplayControl {
     pub movement_diagnostics_request: Option<u32>,
+    pub playback_preparation_request: Option<u32>,
     pub movement_diagnostics_response: Option<(u32, Vec<serde_json::Value>)>,
     pub trajectory_status: ReplayTrajectoryStatus,
     pub trajectory_missing: Vec<ReplayTrajectoryMissing>,
@@ -826,6 +832,19 @@ pub(crate) fn apply(
         canonical
             .holds
             .retain(|key, _| active_references.contains(key));
+        for unit in batch {
+            if let Some(reference) = &unit.trajectory_prepare {
+                if let Some(time) = reference.at {
+                    plans.prepare(
+                        &reference.source,
+                        &unit.key,
+                        &reference.component,
+                        &reference.content,
+                        time,
+                    );
+                }
+            }
+        }
         let mut trajectory_status = ReplayTrajectoryStatus::default();
         let mut trajectory_missing = Vec::new();
         // A paused retry can reflect newly ready floor assets/placements without

@@ -112,7 +112,8 @@ pub struct WowModelExt {
     #[uniform(100)]
     pub sidn: Vec4,
     /// Rows of the shared light buffer's `matanim` region, `0` = identity: `x` = UV scroll, `y` =
-    /// tint, `z` = the texture-transform affine, `w` = the UI tile's cell clip.
+    /// tint delta (negative `y` selects an absolute tint), `z` = the texture-transform affine,
+    /// `w` = the UI tile's cell clip.
     #[uniform(100)]
     pub anim_slots: Vec4,
     /// The second texture stage: `x` = bound (1) or not (0), `y` = its combine preset

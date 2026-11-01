@@ -3644,12 +3644,16 @@ test("planned and recorded reference poses share the edge cache and invalidate m
 test("missing optional presentation cues preserve replay preparation but cancellation still aborts", async () => {
   for (const aborted of [false, true]) {
     const f = fixture();
-    const error = new Error(aborted ? "Cancelled" : "Client effect is unavailable");
+    const error = new Error(
+      aborted ? "Cancelled" : "Client effect is unavailable",
+    );
     error.name = aborted ? "AbortError" : "NotFoundError";
     const internals = f.c as unknown as {
       localFiles: unknown;
       browserBridge: unknown;
-      prepareReplayForInstall: (input: RawReplay) => Promise<{replay: {actors: unknown[]}}>;
+      prepareReplayForInstall: (
+        input: RawReplay,
+      ) => Promise<{ replay: { actors: unknown[] } }>;
     };
     internals.localFiles = { prepare: async () => {} };
     internals.browserBridge = {
@@ -3659,12 +3663,24 @@ test("missing optional presentation cues preserve replay preparation but cancell
         return {};
       },
     };
-    const input = { ...raw, actors: [], events: [], abilities: [{gameID: 440802, name: "Frozen Orb"}] };
-    if (aborted) await assert.rejects(internals.prepareReplayForInstall(input), (e: unknown) => e === error);
+    const input = {
+      ...raw,
+      actors: [],
+      events: [],
+      abilities: [{ gameID: 440802, name: "Frozen Orb" }],
+    };
+    if (aborted)
+      await assert.rejects(
+        internals.prepareReplayForInstall(input),
+        (e: unknown) => e === error,
+      );
     else {
       const prepared = await internals.prepareReplayForInstall(input);
       assert.equal(prepared.replay.actors.length, 0);
-      assert.match(f.c.getSnapshot().notice, /Some spell effects are unavailable/);
+      assert.match(
+        f.c.getSnapshot().notice,
+        /Some spell effects are unavailable/,
+      );
     }
     f.c.stop();
   }
@@ -4709,4 +4725,74 @@ test("buffering a known transfer holds its ordinary interpretation until complet
   assert.equal(after.source, before.source);
   assert.notEqual(after.content, before.content);
   f.c.stop();
+});
+
+test("delta publication reconstructs the same complete frames through seeks and source reinstalls", () => {
+  const f = fixture();
+  const expected = new Map<number, unknown>();
+  for (const time of [1000, 6000, 9500, 1000]) {
+    f.c.seek(time);
+    expected.set(time, structuredClone(f.frame));
+  }
+  let rows = new Map<string, Record<string, unknown>>();
+  let reconstructed: unknown[] = [];
+  const payloads: any[] = [];
+  f.engine.set_replay_frame_delta = (json) => {
+    const packet = JSON.parse(json);
+    payloads.push(packet);
+    if (packet.reset) rows.clear();
+    for (const actor of packet.updates)
+      rows.set(actor.key, { ...rows.get(actor.key), ...actor });
+    rows = new Map(packet.order.map((key: string) => [key, rows.get(key)!]));
+    reconstructed = [...rows.values()];
+  };
+  for (const time of [1000, 6000, 9500, 1000]) {
+    f.c.seek(time);
+    assert.deepEqual(reconstructed, expected.get(time));
+  }
+  assert.equal(payloads[0].reset, true);
+  assert.ok(payloads.slice(1).every((packet) => !packet.reset));
+  f.c.installReplay(structuredClone(raw) as RawReplay);
+  assert.equal(payloads.at(-1).reset, true);
+});
+
+test("playback waits for native preparation and ignores cancelled or stale acknowledgements", async () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  await Promise.resolve();
+  const first = requests.at(-1)!;
+  assert.ok(first > 0);
+  f.c.seek(1000);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.toggle();
+  await Promise.resolve();
+  const second = requests.at(-1)!;
+  assert.notEqual(first, second);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: second }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  f.c.toggle();
+  f.c.toggle();
+  await Promise.resolve();
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(requests.at(-1), 0);
+});
+
+test("speculative asset warming cannot block native playback preparation", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  // A model/spell prefetch may be slow or unavailable while current-scene collision is ready.
+  (f.c as any).warmEncounter = () => new Promise<void>(() => {});
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.ok(requests.at(-1)! > 0);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: requests.at(-1) }));
+  assert.equal(f.c.getSnapshot().playing, true);
 });

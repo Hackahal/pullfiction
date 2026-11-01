@@ -81,6 +81,7 @@ fn drive(
     mut layout: Local<Layout>,
     mut session: Local<Option<u64>>,
     mut last_update: Local<crate::planner_raid::UiPayload>,
+    mut aura_order: Local<Vec<usize>>,
 ) {
     vm.turn(|mut script,mut world|{
   let Some(script)=script.as_mut()else{last_update.clear();return;};
@@ -115,8 +116,10 @@ fn drive(
     let selected=world.selection.guid==Some(guid.0);
     if name_only { name_only_entities.insert(guid.0,entity); }
     let color=crate::planner_unit_colors::nameplate_color(player,store.0.unit_class().unwrap_or(0),body.estimated,body.friendly);
-    let mut auras:Vec<_>=body.plate_auras.iter().filter(|a|store.0.unit_aura_ids().any(|id|id==a.spell)).filter(|a|!friendly||selected||a.debuff).collect();
-    auras.sort_by_key(|a|(!a.debuff,a.spell));auras.truncate(if friendly&&!selected{2}else{4});
+    // Keep indices, not references, so one allocation serves every plate and survives frames.
+    let auras=&mut *aura_order;auras.clear();
+    auras.extend(body.plate_auras.iter().enumerate().filter(|(_,a)|store.0.unit_aura_ids().any(|id|id==a.spell)).filter(|(_,a)|!friendly||selected||a.debuff).map(|(i,_)|i));
+    auras.sort_by_key(|&i|{let a=&body.plate_auras[i];(!a.debuff,a.spell)});auras.truncate(if friendly&&!selected{2}else{4});
     if name_only { auras.clear(); }
     let width=if selected{154.}else if friendly{104.}else{140.};
     let height=if name_only {13.}else{13.+if friendly&&!selected{5.}else{10.}+if body.plate_cast.is_some(){14.}else{0.}+if auras.is_empty(){0.}else{18.}};
@@ -125,7 +128,7 @@ fn drive(
     let name=if body.estimated{format!("~ {name}")}else{name.to_owned()};
     let health=if body.health_known{store.0.unit_health().unwrap_or(0)as f32/store.0.unit_max_health().unwrap_or(1).max(1)as f32}else{0.};
     let hptext=if body.health_known{format!("{:.0}%",health*100.)}else{"?".into()};
-    let aura_text=auras.iter().map(|a|format!("{{icon={},stack={},debuff={}}}",quote(&icon(&a.icon)),a.stack,a.debuff)).collect::<Vec<_>>().join(",");
+    let aura_text=auras.iter().map(|&i|&body.plate_auras[i]).map(|a|format!("{{icon={},stack={},debuff={}}}",quote(&icon(&a.icon)),a.stack,a.debuff)).collect::<Vec<_>>().join(",");
     let cast=body.plate_cast.as_ref().filter(|_|!name_only).map(|c|format!("{{name={},icon={},progress={:.4},remaining={}}}",quote(&c.name),quote(&icon(&c.icon)),c.progress.clamp(0.,1.),quote(&format!("{:.1}",c.remaining.max(0.))))).unwrap_or("nil".into());
     data.insert(guid.0,format!("key={},name={},w={width},h={height},friendly={friendly},selected={selected},name_only={name_only},r={},g={},b={},health={:.4},hptext={},cast={cast},auras={{{aura_text}}}",quote(&guid.0.to_string()),quote(&name),color[0],color[1],color[2],health.clamp(0.,1.),quote(&hptext)));
    }

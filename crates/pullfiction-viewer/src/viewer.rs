@@ -120,6 +120,7 @@ fn enqueue_inspection(command: Command) {
 
 #[wasm_bindgen]
 pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
+    FRAME_DECODER.with(|decoder| decoder.borrow_mut().clear());
     if json.len() > MAX_REPLAY_FRAME_BYTES {
         return Err(JsValue::from_str(&format!(
             "Replay frame too large: {} bytes exceeds the {} byte limit",
@@ -163,6 +164,26 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
     enqueue(Command::Replay(actors));
     Ok(())
 }
+/// Acknowledged only after the selected native replay pose is prepared.
+#[wasm_bindgen]
+pub fn prepare_replay_playback(token: u32) {
+    enqueue(Command::PreparePlayback(token));
+}
+
+thread_local! {
+    static FRAME_DECODER: RefCell<benilla_app::planner_replay::transport::FrameDecoder> = RefCell::default();
+}
+
+/// Version one field deltas retain actor metadata until explicit removal/source reset.
+#[wasm_bindgen]
+pub fn set_replay_frame_delta(json: &str) -> Result<(), JsValue> {
+    let actors = FRAME_DECODER
+        .with(|decoder| decoder.borrow_mut().decode(json))
+        .map_err(|error| JsValue::from_str(&error))?;
+    enqueue(Command::Replay(actors));
+    Ok(())
+}
+
 #[wasm_bindgen]
 pub fn set_replay_camera(json: &str) -> Result<(), JsValue> {
     if json.len() > 200_000 {
@@ -309,6 +330,7 @@ enum Command {
     Clock(f64, f64, bool),
     Portraits(Vec<benilla_app::planner_replay::ReplayPortrait>),
     MovementDiagnostics(u32),
+    PreparePlayback(u32),
     TrajectoryProbe(benilla_app::planner_trajectory_probe::Request),
     TrajectorySource(String),
     TrajectoryComponent(benilla_app::planner_trajectory::NativeComponentInput),
@@ -577,8 +599,28 @@ fn commands(
                     );
                 }
             }
+            Command::PreparePlayback(token) => {
+                replay.playback_preparation_request = (token != 0).then_some(token);
+            }
             Command::MovementDiagnostics(token) => {
-                replay.movement_diagnostics_request = Some(token)
+                replay.movement_diagnostics_request = Some(token);
+                let cache = plans.diagnostics();
+                let components: Vec<_> = plans.component_diagnostics().iter().take(256).map(|row| serde_json::json!({
+                    "actor": row.actor, "component": row.component, "content": row.content,
+                    "demandTime": row.demand_time, "committedThrough": row.committed_through,
+                    "preparingThrough": row.preparing_through, "cacheBytes": row.cache_bytes,
+                    "physicsWork": row.physics_work, "waitingCandidates": row.waiting_candidates,
+                    "repairing": row.repairing, "needsWork": row.needs_work, "result": format!("{:?}", row.result),
+                })).collect();
+                report("trajectoryCache", &serde_json::json!({
+                    "token": token, "validationEpoch": cache.validation_epoch, "worldReady": cache.world_ready,
+                    "worldResets": cache.world_resets, "lastReset": format!("{:?}", cache.last_reset),
+                    "evictions": cache.evictions, "capacityConflicts": cache.capacity_conflicts,
+                    "cacheBytes": cache.cache_bytes, "cacheLimitBytes": cache.cache_limit_bytes,
+                    "stepsLastFrame": cache.steps_last_frame, "searchExpansionsLastFrame": cache.search_expansions_last_frame,
+                    "elapsedProcessingMs": cache.elapsed_processing_ms, "components": components,
+                    "terrainRequestedTiles": cache.terrain_requested_tiles, "terrainCapacityExceeded": cache.terrain_capacity_exceeded,
+                }).to_string());
             }
             Command::ActorInspection(request) => inspection.pending = Some(request),
             Command::Clock(time, rate, playing) => {
@@ -815,6 +857,14 @@ fn actor_labels(
     mut last_trajectory: Local<Option<benilla_app::planner_replay::ReplayTrajectoryStatus>>,
     mut last_missing: Local<Vec<benilla_app::planner_replay::ReplayTrajectoryMissing>>,
 ) {
+    if replay.trajectory_status.pending == 0 {
+        if let Some(token) = replay.playback_preparation_request.take() {
+            report(
+                "playbackPrepared",
+                &serde_json::json!({"token":token}).to_string(),
+            );
+        }
+    }
     if last_trajectory.as_ref() != Some(&replay.trajectory_status) {
         report(
             "movementPreparation",
