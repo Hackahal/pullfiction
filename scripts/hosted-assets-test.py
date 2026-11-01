@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Portable fixtures for hosted chunks. No client game bytes are needed."""
 import gzip
+from contextlib import ExitStack
 import importlib.util
 from unittest.mock import patch
 import json
@@ -155,6 +156,7 @@ class HostedTests(unittest.TestCase):
                     producer.prepare(Storage(),BUILD,path,[])
             self.assertFalse((path/'manifest.json').exists())
             self.assertEqual(json.loads(Path(str(path)+'.failure.json').read_bytes())['status'],'failed')
+            self.assertEqual(set(json.loads(Path(str(path)+'.checkpoint.json').read_bytes())['manifest']),{'schema','build','chunks','files'})
             # The same build can resume after the required local input becomes
             # available; globally missing optional models remain explicit.
             class RepairedStorage:
@@ -169,6 +171,60 @@ class HostedTests(unittest.TestCase):
             self.assertTrue(Path(str(path)+'.report.json').is_file())
             self.assertEqual(report['status'],'verified')
             self.assertEqual(audit(path)['status'],'verified')
+
+    def test_finish_audit_and_report_failures_resume_from_clean_prefinalization_checkpoint(self):
+        spec=importlib.util.spec_from_file_location('prepare_finalization_fixture',Path(__file__).with_name('prepare-hosted-assets.py'))
+        producer=importlib.util.module_from_spec(spec);spec.loader.exec_module(producer)
+        catalogs={kind:{'source':BUILD} for kind in ('spells','creatures','items','characters','world')}
+        catalogs['creatures']['characterModelPaths']={}
+        snapshot={'manifest':{'status':'complete'},'catalogs':catalogs}
+        class Storage:
+            def read(self,name):return b'fixture table'
+        class Appearance:
+            def __init__(self,*args):self.tables={'ChrCustomizationMaterial':{},'TextureFileData':{}}
+        for phase in ('finish','audit','report'):
+            with self.subTest(phase=phase),tempfile.TemporaryDirectory() as temp,ExitStack() as mocks:
+                path=Path(temp)/'prepared';checkpoint=Path(str(path)+'.checkpoint.json')
+                for target,attribute,value in (
+                    (producer.catalog_tools,'snapshot_catalogs',snapshot),
+                    (producer.catalog_tools,'prefix_reader',None),
+                    (producer.model_tools,'inventory',{}),
+                    (producer.model_tools,'appearance_dependencies',{}),
+                    (producer.model_tools,'excluded_model_consumers',[]),
+                    (producer,'lighting_catalog',{'source':BUILD}),
+                    (producer,'talent_catalog',{'source':BUILD}),
+                    (producer,'named_table',({},'')),
+                ):mocks.enter_context(patch.object(target,attribute,return_value=value))
+                mocks.enter_context(patch.object(producer,'Characters',Appearance))
+                original_finish=producer.ChunkWriter.finish
+                original_write=Path.write_bytes
+                checkpoint_before=[]
+                failure=OSError('Injected '+phase+' finalization failure')
+                def finish(writer,**metadata):
+                    checkpoint_before.append(checkpoint.read_bytes())
+                    return original_finish(writer,**metadata)
+                def write(target,data):
+                    if phase=='report' and target==Path(str(path)+'.failure.json'):
+                        raise OSError('Injected failure-evidence write failure')
+                    if ((phase=='finish' and target==path/'manifest.json')
+                            or (phase=='report' and target==Path(str(path)+'.report.json'))):
+                        original_write(target,b'partial final output')
+                        raise failure
+                    return original_write(target,data)
+                with ExitStack() as faults:
+                    faults.enter_context(patch.object(producer.ChunkWriter,'finish',finish))
+                    faults.enter_context(patch.object(Path,'write_bytes',write))
+                    if phase=='audit':faults.enter_context(patch.object(producer,'audit',side_effect=failure))
+                    with self.assertRaises(OSError) as caught:producer.prepare(Storage(),BUILD,path,[])
+                self.assertIs(caught.exception,failure)
+                self.assertEqual(len(checkpoint_before),1)
+                self.assertEqual(checkpoint.read_bytes(),checkpoint_before[0])
+                self.assertEqual(set(json.loads(checkpoint.read_bytes())['manifest']),{'schema','build','chunks','files'})
+                self.assertFalse((path/'manifest.json').exists())
+                manifest,report=producer.prepare(Storage(),BUILD,path,[],resume=True)
+                self.assertEqual(manifest['status'],'ready')
+                self.assertEqual(report['status'],'verified')
+                self.assertEqual(audit(path)['status'],'verified')
 
     def test_prepared_output_removes_unsupported_only_chunks_and_preserves_shared_slices(self):
         spec = importlib.util.spec_from_file_location('prepare_pruning_fixture',Path(__file__).with_name('prepare-hosted-assets.py'))

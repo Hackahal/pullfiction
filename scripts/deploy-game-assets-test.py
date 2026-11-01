@@ -274,4 +274,24 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual({p.name:p.read_bytes() for p in (self.retained/'chunks').iterdir()},complete_union)
         self.assertTrue(all((self.retained/'chunks'/(sha+'.bin.gz')).is_file() for sha in newest_chunks))
 
+    def test_deployment_stage_and_journal_reuse_shared_sync_helpers_in_order(self):
+        state=self.retained.parent;state.mkdir(parents=True)
+        shutil.copy2(self.root/'cloudflare/game-asset-headers',self.release/'_headers')
+        events=[]
+        original_file,original_directory,original_replace=deployment.sync_file,deployment.sync_directory,deployment.os.replace
+        def file_sync(fd):events.append(('file',None));return original_file(fd)
+        def directory_sync(path):events.append(('directory',Path(path)));return original_directory(path)
+        def replace(source,destination):events.append(('replace',Path(destination)));return original_replace(source,destination)
+        count=sum(path.is_file() for path in self.release.rglob('*'))
+        with patch.object(deployment,'sync_file',side_effect=file_sync),patch.object(deployment,'sync_directory',side_effect=directory_sync),patch.object(deployment.os,'replace',side_effect=replace):
+            deployment.durable_generation(self.release)
+            deployment.write_pending(state,{'schema':1})
+        files=[i for i,event in enumerate(events) if event[0]=='file']
+        self.assertEqual(len(files),count+1)
+        self.assertLess(files[count-1],events.index(('directory',self.release/'chunks')))
+        self.assertLess(events.index(('directory',self.release.parent)),files[-1])
+        self.assertLess(files[-1],events.index(('replace',state/'pending.json')))
+        self.assertGreater(len(events)-1,events.index(('replace',state/'pending.json')))
+        self.assertEqual(events[-1],('directory',state))
+
 if __name__ == '__main__': unittest.main()

@@ -9,6 +9,35 @@ import {
   type HostedManifest,
 } from "./hosted-assets";
 const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+async function advanceUntilSettled<T>(
+  pending: Promise<T>,
+  tick: () => void,
+  wallLimitMs = 5_000,
+): Promise<T> {
+  let result:
+    { ok: true; value: T } | { ok: false; error: unknown } | undefined;
+  void pending.then(
+    (value) => {
+      result = { ok: true, value };
+    },
+    (error) => {
+      result = { ok: false, error };
+    },
+  );
+  const deadline = performance.now() + wallLimitMs;
+  while (!result && performance.now() < deadline) {
+    tick();
+    // Let real crypto/decompression/I/O settle between mock-clock advances.
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.ok(
+    result,
+    "Operation did not settle within the bounded mock-clock pump",
+  );
+  if (!result.ok) throw result.error;
+  return result.value;
+}
+
 function fixture() {
   const raws = [new Uint8Array([9, 1, 2]), new Uint8Array([3, 4, 9])];
   const zipped = raws.map((raw) => new Uint8Array(gzipSync(raw)));
@@ -577,6 +606,8 @@ test("native fetch recovers from stalled HTTP headers and a stalled JSON body", 
 test("progressing manifest and chunk bodies may exceed the inactivity deadline", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const f = fixture();
+  const cancellation = new AbortController();
+  t.after(() => cancellation.abort());
   const transfers: string[] = [],
     signals: AbortSignal[] = [];
   const stream = (bytes: Uint8Array) => {
@@ -599,6 +630,7 @@ test("progressing manifest and chunk bodies may exceed the inactivity deadline",
   const operation = (async () => {
     const reader = await openHostedAssets("https://assets.example", undefined, {
       cache: null,
+      signal: cancellation.signal,
       retries: 0,
       requestTimeoutMs: 25,
       fetch: async (url, options) => {
@@ -618,17 +650,10 @@ test("progressing manifest and chunk bodies may exceed the inactivity deadline",
     }
   })();
   // Each body's five chunks span at least 50 ms, beyond the 25 ms idle limit.
-  const outcome = operation.then(
-    (value) => ({ value }),
-    (error) => ({ error }),
+  const result = await advanceUntilSettled(operation, () =>
+    t.mock.timers.tick(10),
   );
-  for (let i = 0; i < 40; i++) {
-    t.mock.timers.tick(10);
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-  const result = await outcome;
-  assert.ok("value" in result, "error" in result ? String(result.error) : "");
-  assert.deepEqual(result.value, [1, 2, 3, 4]);
+  assert.deepEqual(result, [1, 2, 3, 4]);
   assert.equal(transfers.length, 3);
   assert.ok(signals.every((signal) => !signal.aborted));
 });
@@ -636,8 +661,11 @@ test("progressing manifest and chunk bodies may exceed the inactivity deadline",
 test("empty body chunks do not count as progress", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   let calls = 0;
+  const cancellation = new AbortController();
+  t.after(() => cancellation.abort());
   const opening = openHostedAssets("https://assets.example", undefined, {
     cache: null,
+    signal: cancellation.signal,
     retries: 0,
     requestTimeoutMs: 25,
     fetch: async () => {
@@ -656,11 +684,10 @@ test("empty body chunks do not count as progress", async (t) => {
     () => null,
     (error) => error,
   );
-  for (let i = 0; i < 4; i++) {
-    t.mock.timers.tick(10);
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-  assert.equal((await outcome).name, "TimeoutError");
+  const failure = await advanceUntilSettled(outcome, () =>
+    t.mock.timers.tick(10),
+  );
+  assert.equal(failure.name, "TimeoutError");
   assert.equal(calls, 1);
 });
 
@@ -677,4 +704,11 @@ test("manifest byte limit matches the static upload ceiling without retries", as
     { name: "AssetIntegrityError" },
   );
   assert.equal(calls, 1);
+});
+
+test("mock-clock settlement fails explicitly for a never-settling operation", async () => {
+  await assert.rejects(
+    advanceUntilSettled(new Promise<never>(() => {}), () => {}, 1),
+    /did not settle/,
+  );
 });

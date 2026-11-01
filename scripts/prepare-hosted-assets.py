@@ -133,6 +133,7 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
         enqueue(name)
         return data
 
+    finalizing = False
     try:
         snapshot = catalog_tools.snapshot_catalogs(raw, build, catalog_tools.prefix_reader(storage))
         if snapshot['manifest']['status'] != 'complete':
@@ -316,6 +317,7 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
         for alias, name in sorted(aliases.items()):
             entry = writer.manifest['files'].get('model:'+name)
             if entry: writer.manifest['files']['model:'+alias] = dict(entry)
+        finalizing = True
         manifest = writer.finish(status='ready', coverage={'catalogModelCandidates':len(references),'modelsConverted':sum('model:'+name in writer.manifest['files'] for name in models),'unsupportedResources':len(unsupported)}, appearanceInputs=sorted(appearance_inputs),
             aliases=aliases, unsupported=unsupported, maps=maps,
             producer={'sha256':digest(Path(__file__).read_bytes()), 'adaptersSha256':digest(b''.join(p.read_bytes() for p in sorted((ROOT/'scripts').glob('classic_*.py'))))})
@@ -324,10 +326,25 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
         Path(str(output)+'.report.json').write_bytes(json_bytes(report))
         return manifest, report
     except Exception as error:
-        checkpoint()
-        # No manifest is finalized on failure; retain explicit failure evidence.
-        Path(str(output)+'.failure.json').write_bytes(json_bytes({'status':'failed', 'error':type(error).__name__, 'reason':str(error),
-            'maps':maps, 'processed':len(processed), 'queued':len(queued), 'unsupported':unsupported}))
+        if finalizing:
+            # Keep the durable pre-finalization checkpoint free of finish()
+            # metadata, including when audit/reporting fails after it returns.
+            try:
+                (Path(output)/'manifest.json').unlink(missing_ok=True)
+            except OSError as cleanup:
+                error.add_note('Could not remove partial manifest: '+str(cleanup))
+        else:
+            try:
+                checkpoint()
+            except Exception as saving:
+                error.add_note('Could not save failure checkpoint: '+str(saving))
+        # Retain explicit failure evidence without poisoning resumable state or
+        # replacing the original exception when the filesystem is unavailable.
+        try:
+            Path(str(output)+'.failure.json').write_bytes(json_bytes({'status':'failed', 'error':type(error).__name__, 'reason':str(error),
+                'maps':maps, 'processed':len(processed), 'queued':len(queued), 'unsupported':unsupported}))
+        except OSError as reporting:
+            error.add_note('Could not write failure evidence: '+str(reporting))
         raise
 
 

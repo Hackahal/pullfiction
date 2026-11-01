@@ -11,24 +11,16 @@ import subprocess
 import tempfile
 import uuid
 
-from hosted_assets import audit, digest, json_bytes
+from hosted_assets import audit, digest, json_bytes, sync_file, sync_directory
 
 ROOT = Path(__file__).resolve().parent.parent
-
-
-def sync_directory(path):
-    fd = os.open(path, os.O_RDONLY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
 
 
 def durable_generation(path):
     for item in path.rglob('*'):
         if item.is_file():
             with item.open('rb') as stream:
-                os.fsync(stream.fileno())
+                sync_file(stream.fileno())
     sync_directory(path/'chunks')
     sync_directory(path)
     sync_directory(path.parent)
@@ -64,7 +56,7 @@ def write_pending(state, transaction):
     with tempfile.NamedTemporaryFile(dir=state, prefix='pending.', delete=False) as stream:
         stream.write(json_bytes(transaction))
         stream.flush()
-        os.fsync(stream.fileno())
+        sync_file(stream.fileno())
         temporary = Path(stream.name)
     os.replace(temporary, state/'pending.json')
     sync_directory(state)
