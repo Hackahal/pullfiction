@@ -1,3 +1,4 @@
+import type { ParseEncounter, ParseOptions } from "./playback-parses";
 import { IncrementalReplayNormalizer } from "./incremental-replay";
 import { EncounterAssetWarmer } from "./encounter-assets";
 import { ReplayPresenceIndex } from "./replay-presence-index";
@@ -1537,6 +1538,23 @@ export class EditorController {
     link.download = name;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  playbackParseData(
+    code: string,
+    encounter: ParseEncounter,
+    version: GameVersion,
+    options: ParseOptions,
+    signal?: AbortSignal,
+    selected?: { name: string; className: string },
+  ) {
+    return this.requireBrowserLogs().parseData.load(
+      code,
+      encounter,
+      version,
+      options,
+      signal,
+      selected,
+    );
   }
   logAccount(signal?: AbortSignal) {
     return this.requireBrowserLogs().account(this.state.gameVersion, signal);
@@ -4517,6 +4535,7 @@ export class EditorController {
   disconnectWcl() {
     this.cancelImport();
     this.wclSession?.disconnect();
+    this.browserLogs?.parseData.clear();
     this.patch({ wclConnected: false, report: null });
   }
   cancelImport() {

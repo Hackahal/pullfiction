@@ -1,3 +1,4 @@
+import { PredictedParses } from "./PredictedParses";
 import {
   replayIdentity,
   analysisIntervalsAvailable,
@@ -96,7 +97,14 @@ function saved(key: string, preset: Partial<typeof defaults>): typeof defaults {
     return {
       ...base,
       metric: Object.hasOwn(metrics, s.metric) ? s.metric : base.metric,
-      view: ["meter", "table", "graph", "events", "resources"].includes(s.view)
+      view: [
+        "meter",
+        "table",
+        "graph",
+        "events",
+        "resources",
+        "parses",
+      ].includes(s.view)
         ? s.view
         : base.view,
       group: ["actor", "spell", "target"].includes(s.group)
@@ -141,8 +149,11 @@ export function Analysis({
     [ascending, setAscending] = useState(false);
   const replay = state.replay;
   const events = useMemo(
-    () => (replay && config.view !== "resources" ? indexEvents(replay) : []),
-    [replay, config.view === "resources"],
+    () =>
+      replay && config.view !== "resources" && config.view !== "parses"
+        ? indexEvents(replay)
+        : [],
+    [replay, config.view === "resources" || config.view === "parses"],
   );
   useEffect(() => {
     try {
@@ -175,7 +186,7 @@ export function Analysis({
   const { start, end, displayEnd, seconds } = range;
   const neededRanges = useMemo<[number, number][]>(
     () =>
-      config.view === "resources"
+      config.view === "resources" || config.view === "parses"
         ? []
         : config.window === "elapsed" && !fight
           ? ((config.view === "graph"
@@ -421,6 +432,21 @@ export function Analysis({
       {actorOptions}
     </select>
   );
+  if (config.view === "parses")
+    return (
+      <section className="analysis-panel analysis-v2" aria-label="Analysis">
+        <div className="analysis-header">
+          <strong>Predicted parses</strong>
+          <button onClick={() => set({ view: "meter", metric: "damage" })}>
+            Damage meter
+          </button>
+          <button aria-label="Close analysis" onClick={close}>
+            ×
+          </button>
+        </div>
+        <PredictedParses state={state} controller={controller} />
+      </section>
+    );
   return (
     <section className="analysis-panel analysis-v2" aria-label="Analysis">
       <div className="analysis-header">
@@ -477,6 +503,14 @@ export function Analysis({
             </select>
           </>
         )}
+        {config.metric === "damage" && config.view !== "resources" && (
+          <button
+            title="Show predicted parses during playback"
+            onClick={() => set({ view: "parses" })}
+          >
+            Parse %
+          </button>
+        )}
         <PanelSettings
           title={
             config.view === "resources"
@@ -499,6 +533,7 @@ export function Analysis({
                 <option value="graph">Graph</option>
                 <option value="events">Events</option>
                 <option value="resources">Resources</option>
+                <option value="parses">Predicted parses</option>
               </select>
             </label>
             {config.view !== "resources" && (

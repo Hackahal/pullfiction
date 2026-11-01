@@ -1,3 +1,4 @@
+import { WclParseData } from "./wcl-parse-data";
 import {
   fetchSpeedCategory,
   fetchSpeedWorldRecord,
@@ -150,7 +151,10 @@ export function browserQuery(
 // All events/resources remain intact for the existing normalizeReplay/enrichCombat pipeline.
 export class BrowserLogs {
   private realmCache = new Map<string, LogRealm[]>();
-  constructor(private query: Query) {}
+  readonly parseData: WclParseData;
+  constructor(private query: Query) {
+    this.parseData = new WclParseData(query);
+  }
   speedCategory(version: "vanilla" | "sod", map: number, signal?: AbortSignal) {
     return fetchSpeedCategory(this.query, version, map, signal);
   }
