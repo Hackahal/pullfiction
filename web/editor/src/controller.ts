@@ -2348,6 +2348,7 @@ export class EditorController {
               class: snapshot.actors[i].class,
               icon: snapshot.actors[i].icon,
               type: snapshot.actors[i].type,
+              friendly: snapshot.actors[i].friendly,
               id: 0,
               instance: 1,
               gameID: snapshot.actors[i].gameID ?? 0,
@@ -2535,6 +2536,7 @@ export class EditorController {
               class: a.class ?? "",
               icon: a.icon ?? null,
               type: a.type,
+              ...(a.friendly !== undefined ? { friendly: a.friendly } : {}),
               position: [
                 p.pos[0],
                 p.pos[1],
@@ -6403,7 +6405,7 @@ export class EditorController {
           speed: 0,
           dead: false,
           estimated: false,
-          friendly: actor.type === "Pet",
+          friendly: actor.friendly ?? actor.type === "Pet",
           nameplate: actorNameplateEnabled(actor, options),
           race: appearance.race ?? actor.race,
           sex: appearance.sex ?? actor.sex,
@@ -6449,6 +6451,10 @@ export class EditorController {
             : null,
           cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
           auras: state.auras.slice(0, 48).map((a) => a.spell),
+          self_auras: state.auras
+            .slice(0, 48)
+            .filter((a) => a.selfCast)
+            .map((a) => a.spell),
         };
       });
     this.sendPositions();
@@ -6905,7 +6911,7 @@ export class EditorController {
             speed: 0,
             dead: false,
             estimated: false,
-            friendly: a.type !== "NPC",
+            friendly: a.friendly ?? a.type !== "NPC",
             nameplate: actorNameplateEnabled(a, this.state.options),
             race: a.race ?? 1,
             sex: a.sex ?? 0,
@@ -7028,6 +7034,7 @@ export class EditorController {
             wisp: !!pose?.wisp,
             plate_auras: options.auras ? unit.plate_auras : [],
             auras: options.auras ? unit.auras : [],
+            self_auras: options.auras ? unit.self_auras : [],
           };
         });
       this.engine!.configure_replay_camera?.(

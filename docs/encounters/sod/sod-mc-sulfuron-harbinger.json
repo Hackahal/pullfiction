@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-sulfuron-harbinger",
+  "ruleset": "sod",
+  "boss": "Sulfuron Harbinger",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100669,
+  "rawEncounterId": 669,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        23
+      ],
+      "selectedFightNames": [
+        "Sulfuron Harbinger"
+      ],
+      "matchedNpcTemplateIds": [
+        228436
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-sulfuron-harbinger"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Sulfuron.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Sulfuron_Harbinger_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "mending-hotfix",
+      "url": "https://news.blizzard.com/en-gb/article/24122901/hotfixes-august-23-2024",
+      "quality": "Official August1 2024 entry: Dark Mending LoS/range prevention removed; recast adjusted"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Priest healing and shared HP",
+      "spellIds": [
+        19775
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual priest cast start, interruption or death; community heat3 shared HP",
+      "state": "Actual priest cast start, interruption or death; community heat3 shared HP",
+      "lifecycle": "Each source priest owns a cast; shared health does not merge actor lifetimes",
+      "placement": "Actual priest position; leaving LoS/range alone is not a cast-cancel event",
+      "animation": "Heal windup and actual end independent of addon nameplate timer",
+      "acceptanceCheck": "sod-mc-sulfuron-harbinger/MC-SUL-HEAL",
+      "acceptanceCriteria": "MC-SUL-HEAL: interrupt one priest only; no fabricated heal after death; no synthetic shared HP events",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Inspire and Demoralizing Shout",
+      "spellIds": [
+        19779,
+        19778
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual recipient aura application/removal and cast",
+      "state": "Actual recipient aura application/removal and cast",
+      "lifecycle": "Inspire belongs to affected ally, not always boss; shout per-target state",
+      "placement": "Preserve source/recipient distinction and logged raid flags",
+      "animation": "Aura appearance separate from attack-rate semantics",
+      "acceptanceCheck": "sod-mc-sulfuron-harbinger/MC-SUL-INSPIRE",
+      "acceptanceCriteria": "MC-SUL-INSPIRE: recipient-specific buff and removal survive seeks; no addon-derived markers",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Living Fallout ground ownership",
+      "spellIds": [
+        461103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual encounter-scoped contact/damage and future creation evidence",
+      "state": "Actual encounter-scoped contact/damage and future creation evidence",
+      "lifecycle": "Pool independent of contact; reuse of ID on other bosses cannot share lifetime",
+      "placement": "Actual area anchors and source actor; target position not pool center",
+      "animation": "Persistent ground visual checked at actual age",
+      "acceptanceCheck": "sod-mc-sulfuron-harbinger/MC-SUL-FALLOUT",
+      "acceptanceCriteria": "MC-SUL-FALLOUT: Geddon pools never leak into Sulfuron; contact refresh does not restart pool",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Independent adds and final cleanup",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Priest/boss death and actual reset",
+      "state": "Priest/boss death and actual reset",
+      "lifecycle": "Four distinct priest actors despite shared HP; cancel exact dead source cast; cleanup under proven ownership",
+      "placement": "Actual add corpses and spawn anchors",
+      "animation": "Boss death and shared priest deaths remain separate",
+      "acceptanceCheck": "sod-mc-sulfuron-harbinger/MC-SUL-END",
+      "acceptanceCriteria": "MC-SUL-END: seek after one death cannot stop surviving priest casts; repeated pulls clean old pools",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Shared HP representation and actual priest death synchronization",
+    "Fallout creation trigger, geometry and removal",
+    "Hand of Ragnaros, Flame Spear and priest DoT IDs not guessed",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "12098, 228436",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

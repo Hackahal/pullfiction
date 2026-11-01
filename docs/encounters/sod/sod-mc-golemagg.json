@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-golemagg",
+  "ruleset": "sod",
+  "boss": "Golemagg the Incinerator",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100670,
+  "rawEncounterId": 670,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        25
+      ],
+      "selectedFightNames": [
+        "Golemagg the Incinerator"
+      ],
+      "matchedNpcTemplateIds": [
+        228435
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-golemagg"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Golemagg.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Golemagg_the_Incinerator_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Magma Splash",
+      "spellIds": [
+        13880
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual target aura dose and removal",
+      "state": "Actual target aura dose and removal",
+      "lifecycle": "Maintain stack and recipient, including evidence for pets despite addon warning filters",
+      "placement": "Actual melee recipient and tank swaps",
+      "animation": "Body aura and armor effects not inferred from model tint",
+      "acceptanceCheck": "sod-mc-golemagg/MC-GOLE-SPLASH",
+      "acceptanceCriteria": "MC-GOLE-SPLASH: stack decrease/removal and direct seek agree; actor source is preserved",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Heat Pyroblast expiry explosion",
+      "spellIds": [
+        20228,
+        460858,
+        465155
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Pyroblast aura/refresh/removal and separate465155 cast or damage",
+      "state": "Actual Pyroblast aura/refresh/removal and separate465155 cast or damage",
+      "lifecycle": "Refresh updates recipient lifetime; expiry may produce explosion, but any removal is not proof of detonation",
+      "placement": "Explosion follows actual recipient at impact, not initial cast position",
+      "animation": "DoT visual separate from explosion and affected nearby players",
+      "acceptanceCheck": "sod-mc-golemagg/MC-GOLE-PYRO",
+      "acceptanceCriteria": "MC-GOLE-PYRO: refresh cannot trigger old expiry; correct recipient owns explosion; no fabricated blast after death/dispel",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Rocks and Earthquake",
+      "spellIds": [
+        461463
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Falling Rocks success; community heat3 repeated Earthquake",
+      "state": "Actual Falling Rocks success; community heat3 repeated Earthquake",
+      "lifecycle": "Each rock and quake instance separate; exact callbacks and impact evidence required",
+      "placement": "Real rock origins, trajectories, floor hits and quake footprint",
+      "animation": "No guessed ballistic arc or periodic shake schedule",
+      "acceptanceCheck": "sod-mc-golemagg/MC-GOLE-ROCKS",
+      "acceptanceCriteria": "MC-GOLE-ROCKS: retain individual casts and actual destination; seek at impact age matches",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Core Ragers and Crushing Stone",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Rager presence and community heat3 targeted boulders",
+      "state": "Actual Rager presence and community heat3 targeted boulders",
+      "lifecycle": "Distinct add life, attack and boss-linked state; no automatic low-HP heal imported from Era",
+      "placement": "Actual Rager and target positions; no assumed range buff",
+      "animation": "Exact body buff and thrown rock effects need IDs/reference",
+      "acceptanceCheck": "sod-mc-golemagg/MC-GOLE-RAGERS",
+      "acceptanceCriteria": "MC-GOLE-RAGERS: targeted rock source stays Rager; boss death cleanup requires actual relation",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Final phase death/reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual low-HP state, death or reset",
+      "state": "Actual low-HP state, death or reset",
+      "lifecycle": "Cancel outstanding owner casts on proven death; preserve actual delayed effects",
+      "placement": "No lastSeen despawn",
+      "animation": "Separate corpse and area continuation",
+      "acceptanceCheck": "sod-mc-golemagg/MC-GOLE-END",
+      "acceptanceCriteria": "MC-GOLE-END: repeated pulls and seeks do not retain old rock or Pyro expiry",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Falling Rocks heat mapping, individual projectile and impact IDs",
+    "Core Rager template and actual trust/heal/death linkage in SoD",
+    "Earthquake/Crushing Stone IDs and area geometry",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "11988, 228435",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

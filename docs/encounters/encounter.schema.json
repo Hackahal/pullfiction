@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Portable raid encounter research",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "unitId",
+    "ruleset",
+    "boss",
+    "raid",
+    "mapId",
+    "encounterId",
+    "rawEncounterId",
+    "providerMapping",
+    "bossUnits",
+    "researchEvidence",
+    "verification",
+    "sources",
+    "expectedMechanics",
+    "clientCandidateSpellIds",
+    "candidateLimit",
+    "unresolved"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "unitId": {
+      "type": "string",
+      "pattern": "^(sod|vanilla)-"
+    },
+    "ruleset": {
+      "enum": [
+        "sod",
+        "vanilla"
+      ]
+    },
+    "boss": {
+      "type": "string",
+      "minLength": 1
+    },
+    "raid": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mapId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "encounterId": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "rawEncounterId": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "providerMapping": {
+      "type": "object",
+      "required": [
+        "status",
+        "basis"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "mapped-from-retained-report",
+            "unresolved",
+            "mapped-from-report-metadata"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metadataReceipt": {
+          "type": "object"
+        },
+        "sourceRef": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "bossUnits": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "researchEvidence": {
+      "type": "object",
+      "required": [
+        "retainedCombatEventsAvailable",
+        "scope"
+      ],
+      "properties": {
+        "retainedCombatEventsAvailable": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "const": "unverified"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "quality"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https?://"
+          },
+          "quality": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "client-reference",
+              "retained-evidence",
+              "research-evidence"
+            ]
+          },
+          "availability": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "url"
+            ]
+          },
+          {
+            "required": [
+              "kind"
+            ]
+          }
+        ],
+        "additionalProperties": true
+      }
+    },
+    "expectedMechanics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mechanic",
+          "spellIds",
+          "clientCandidateSpellIds",
+          "trigger",
+          "state",
+          "lifecycle",
+          "placement",
+          "animation",
+          "acceptanceCheck",
+          "acceptanceCriteria",
+          "sourceRefs",
+          "spellIdEvidence",
+          "verification"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mechanic": {
+            "type": "string",
+            "minLength": 1
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lifecycle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "placement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "animation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "acceptanceCheck": {
+            "type": "string",
+            "minLength": 1
+          },
+          "acceptanceCriteria": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attributionLimit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "researchScope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "spellIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "uniqueItems": true
+          },
+          "clientCandidateSpellIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "uniqueItems": true
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "bibliographyRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "unresolvedSourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "spellIdEvidence": {
+            "type": "object"
+          },
+          "verification": {
+            "const": "unverified"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "clientCandidateSpellIds": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 2
+      },
+      "uniqueItems": true
+    },
+    "candidateLimit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unresolved": {
+      "type": "array"
+    },
+    "researchContext": {
+      "type": "object"
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "verification"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verification": {
+            "const": "unverified"
+          }
+        }
+      }
+    },
+    "group": {
+      "type": "object"
+    },
+    "sourceContextUpdate": {
+      "type": "object",
+      "required": [
+        "scope",
+        "eventAvailability",
+        "mechanicsReaudited",
+        "verification"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eventAvailability": {
+          "enum": [
+            "acquired-not-inspected",
+            "archived-inaccessible"
+          ]
+        },
+        "mechanicsReaudited": {
+          "const": false
+        },
+        "verification": {
+          "const": "unverified"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

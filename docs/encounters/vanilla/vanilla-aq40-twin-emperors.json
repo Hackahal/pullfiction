@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq40-twin-emperors",
+  "ruleset": "vanilla",
+  "boss": "Twin Emperors",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 50715,
+  "rawEncounterId": 715,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-aq40-twin-emperors"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/DeadlyBossMods/DBM-Vanilla/blob/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ40/TwinEmps.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/twin-emperors-veklor-veknilash-temple-of-ahnqiraj-strategy",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Twin Teleport",
+      "spellIds": [
+        799,
+        800
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded teleport source/application on actual emperor instances",
+      "state": "Discontinuous swap and subsequent facing/threat observations",
+      "lifecycle": "Actual boundaries only, not35second periodic jumps",
+      "placement": "Observed pre/post anchors; never swap inferred coordinates or invent Z",
+      "animation": "Authored teleport kits, no travel segment for teleport",
+      "acceptanceCheck": "vanilla-aq40-twin-emperors/V-AQ-TWIN-SWAP",
+      "acceptanceCriteria": "V-AQ-TWIN-SWAP: before/exact/after applications in standalone/fullrun are deterministic",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Shared health and Heal Brother",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual damage/healing and independent HP samples",
+      "state": "Linked encounter identity with distinct emperor bodies/HP maxima",
+      "lifecycle": "Actual positiveHP snapshots and deaths; no synthetic mirrored damage or forced death",
+      "placement": "Keep separate anchors and actor-instance identities",
+      "animation": "No display replacement or disappearing emperor from shared health alone",
+      "acceptanceCheck": "vanilla-aq40-twin-emperors/V-AQ-TWIN-HP",
+      "acceptanceCriteria": "V-AQ-TWIN-HP: preserve literal life samples, damage immunity and heals separately",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Emperor attacks and Blizzard",
+      "spellIds": [
+        26613,
+        26607
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual strike, spell/channel and Blizzard aura/result records",
+      "state": "Veknilash physical strike versus Veklor magic and ground threat",
+      "lifecycle": "Exact casts/interrupts, recorded aura cleanup; no scheduled threats",
+      "placement": "Observed Blizzard anchor if available; victims are not an invented ground center",
+      "animation": "Exact authored Area routes and caster/target/loop kits inspected",
+      "acceptanceCheck": "vanilla-aq40-twin-emperors/V-AQ-TWIN-ATTACK",
+      "acceptanceCriteria": "V-AQ-TWIN-ATTACK: correct emperor, cast/channel lifecycle and independent ground ownership",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Mutate and Explode Bug",
+      "spellIds": [
+        802,
+        804
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual bug-target application/cast and explosion results",
+      "state": "Mutation and exploding warning belong to bug recipient",
+      "lifecycle": "Aura removal/death/explosion/continuation proof only; warning duration not spawn lifetime",
+      "placement": "Actual selected scarab/scorpion instance and sampled anchor",
+      "animation": "Authored body transformation/procedures retained; no arbitrary scale or seasonal replacement",
+      "acceptanceCheck": "vanilla-aq40-twin-emperors/V-AQ-TWIN-BUG",
+      "acceptanceCriteria": "V-AQ-TWIN-BUG: player-source results and bug warning owner survive seeks, no caster duplicate",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-aq40-twin-emperors/V-AQ-TWIN-END",
+      "acceptanceCriteria": "V-AQ-TWIN-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "No HealBrother or15minute Berserk retained; do not schedule them into this188.8second kill.",
+    "Mutate growth mechanics may involve body/aura effect semantics absent from graph: do not claim display replacement or fixed scale from guide wording. Fresh802 graph has impact/missile and AreaModel734, not proof of authored scale parameter.",
+    "Veklor death and helper despawn lack direct proof; retain separate completion context rather than blanket kill-to-death conversion.",
+    "Ground center/duration and scale/flight native presentation remain unaccepted.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15275,
+      15276
+    ],
+    "baselineScope": "Baseline addon explicitly excludes SoD teleport1217333. Registered799/800 must match actual source/target evidence; bars do not establish swap cadence or landing coordinates."
+  }
+}

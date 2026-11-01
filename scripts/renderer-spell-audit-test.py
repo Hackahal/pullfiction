@@ -27,6 +27,34 @@ def graph():
 
 
 class AuditTest(unittest.TestCase):
+    def test_animation_rate_support_is_record_specific_not_a_blanket_body_mapping(self):
+        g=graph()
+        g['kits']['4']['proceduralEffects']=[
+            {'id':11,'type':11,'values':[0,0,0,0]},
+            {'id':12,'type':11,'values':[0,2,0,0]}]
+        result=a.audit(g)
+        records=result['capabilityLedger']['procedure:type:11']['recordImplementations']
+        self.assertEqual(records['procedure:11'],'implemented')
+        self.assertEqual(records['procedure:12'],'unsupported')
+
+    def test_freeze_parameter_compatibility_does_not_implement_cast_or_shared_lifecycles(self):
+        g={'spells':{'1':{'visuals':[{'id':1}]},'2':{'visuals':[{'id':2}]},'3':{'visuals':[{'id':3}]}},
+           'effects':{},'kits':{'4':{'effects':[],'proceduralEffects':[{'id':11,'type':11,'values':[0,0,0,0]}]}},
+           'visuals':{
+               '1':{'events':[{'start':'Cast','target':'Caster','end':'One-Shot','kit':4}]},
+               '2':{'events':[{'start':'Aura Start','target':'Target','end':'Aura End','kit':4}]},
+               '3':{'events':[{'start':'Cast','target':'Caster','end':'One-Shot','kit':4},
+                              {'start':'Aura Start','target':'Target','end':'Aura End','kit':4}]}}}
+        result=a.audit(g)
+        self.assertTrue(result['spells']['1']['hasUnimplementedOrUnknownModes'])
+        self.assertFalse(result['spells']['2']['hasUnimplementedOrUnknownModes'])
+        self.assertTrue(result['spells']['3']['hasUnimplementedOrUnknownModes'])
+        records=result['capabilityLedger']['procedure:freeze-consumer']['recordImplementations']
+        self.assertEqual(records['visual:1:event:0:procedure:11'],'unsupported')
+        self.assertEqual(records['visual:2:event:0:procedure:11'],'implemented')
+        self.assertEqual(records['visual:3:event:0:procedure:11'],'unsupported')
+        self.assertEqual(records['visual:3:event:1:procedure:11'],'implemented')
+
     def test_missing_missile_effect_is_an_unresolved_requirement_for_its_spell(self):
         g={'spells':{'1':{'visuals':[{'id':10}]},'2':{'visuals':[{'id':20}]}},
            'visuals':{'10':{'missiles':[{'effect':999}]},'20':{'missiles':[{'effect':0}]}},

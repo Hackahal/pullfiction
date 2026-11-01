@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-anub-rekhan",
+  "ruleset": "vanilla",
+  "boss": "Anub'Rekhan",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51107,
+  "rawEncounterId": 1107,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-anub-rekhan"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Anubrekhan.lua",
+      "quality": "Pinned primary Classic addon; cast/aura registrations, not runtime or pixel evidence",
+      "retrieved": "2026-11-01",
+      "commit": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/anubrekhan-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide, Rokman, updated2025-09-07, page patch1.15.8; guide-linked spell IDs verified separately",
+      "date": "2025-09-07",
+      "retrieved": "2026-11-01",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=28961/summon-corpse-scarabs-10",
+        "https://www.wowhead.com/classic/spell=29105/summon-corpse-scarabs-5",
+        "https://www.wowhead.com/classic/spell=15284/cleave",
+        "https://www.wowhead.com/classic/spell=28969/acid-spit",
+        "https://www.wowhead.com/classic/spell=28991/web"
+      ],
+      "url": "https://www.wowhead.com/classic/npc=16573/crypt-guard",
+      "quality": "Actual resolved Classic guide links establish identity only; most spell pages robot-blocked, no invented spell-page contents"
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Impale line and launch",
+      "spellIds": [
+        28783
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast and impacts",
+      "state": "Line victims and airborne state differ from selected target",
+      "lifecycle": "Impact and landing need independent evidence",
+      "placement": "Observed anchors only; missing Z unknown",
+      "animation": "Spikes and knockup require native checks",
+      "acceptanceCheck": "vanilla-naxx-anub-rekhan/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Locust Swarm kite",
+      "spellIds": [
+        28785
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast, self aura and removal",
+      "state": "Boss aura and recipient silence/DoT separate",
+      "lifecycle": "Removal or actual interruption ends state; no90s scheduled cast",
+      "placement": "Recorded boss path; no invented orbit or speed",
+      "animation": "Moving swarm and channel age separate",
+      "acceptanceCheck": "vanilla-naxx-anub-rekhan/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Crypt Guard control",
+      "spellIds": [
+        15284,
+        28969,
+        28991
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Guard actions",
+      "state": "Cleave direction, Acid Spit stacks and Web recipients independent",
+      "lifecycle": "Actual debuff removal/death; guard not retired at boss end by assumption",
+      "placement": "Measured facing and per-instance samples",
+      "animation": "Target aura versus melee cone checked separately",
+      "acceptanceCheck": "vanilla-naxx-anub-rekhan/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Corpse Scarab lifecycle",
+      "spellIds": [
+        28961,
+        29105
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded summon after actual corpse",
+      "state": "Guard and player corpses can produce independent scarabs",
+      "lifecycle": "Do not generate ten/five adds from every death; recorded create/death/destroy wins",
+      "placement": "Spawn anchors need actual corpse/object evidence",
+      "animation": "Death corpse and child spawn separate",
+      "acceptanceCheck": "vanilla-naxx-anub-rekhan/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-anub-rekhan/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested.",
+    "Guide-linked Guard Cleave15284 differs from actual NPC16573 source spell15579 in this cache; no alias or substitution is established."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15956,
+      16573,
+      16698
+    ]
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-high-priestess-arlokk",
+  "ruleset": "vanilla",
+  "boss": "High Priestess Arlokk",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50791,
+  "rawEncounterId": 791,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-high-priestess-arlokk"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Arlokk.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/high-priestess-arlokk-zul-gurub-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-04-23",
+      "author": "Neryssa",
+      "patch": "Page patch 1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=12540/gouge",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=24236/whirlwind"
+      ],
+      "quality": "Resolved baseline links. Primary Vanish 24223 trigger is unit-spell event; return detected by actual boss swing, not fixed hidden duration."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Gong activation and first appearance",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual gong interaction, spawn or encounter evidence",
+      "state": "Boss entry 14515 distinct from gong object and existing pen panthers",
+      "lifecycle": "No firstSeen-based generated summon or fixed spawn location",
+      "placement": "Actual entrance/gong anchors; object ID/placement unresolved",
+      "animation": "Summon/appearance and attackable state separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Vanish, return and Panther morph",
+      "spellIds": [
+        24223
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual unit vanish and observed subsequent boss swing",
+      "state": "Hidden boss, Panther model and actual return independently evidenced",
+      "lifecycle": "No 43.7–61.5s inferred hidden window or health-only morph",
+      "placement": "No movement interpolation through invisible teleport; endpoint needs evidence",
+      "animation": "Fade, form model and return animation retain actual age",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Mark and Panther targeting",
+      "spellIds": [
+        24210
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual mark applications and Panther activity",
+      "state": "Marked player is not automatic permanent focus; actual targets retained",
+      "lifecycle": "No threat-table rewrite or generated chase path; actual removals",
+      "placement": "Observed Panther/player paths only; no invented speed",
+      "animation": "Mark aura and independent Panther life separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Gouge, Pain and Whirlwind",
+      "spellIds": [
+        12540,
+        24212,
+        24236
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual control/DoT/Whirlwind actions",
+      "state": "Actual tank incapacitation and affected victims independent",
+      "lifecycle": "Actual dispel/remove/death/interrupt; no fixed duration from timers",
+      "placement": "Actual boss facing/recipient anchors; area footprint unverified",
+      "animation": "Melee/control aura, DoT and spinning-body host separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Panthers continue after boss death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual postkill NPC activity and individual terminals",
+      "state": "Boss completion does not kill or reveal every pen actor by assumption",
+      "lifecycle": "Retain target-only deaths/cleanup across chapters; no identity merging",
+      "placement": "Measured add anchors; stealth/reveal time unobserved unless explicit",
+      "animation": "Living Panther, corpse and source visibility distinct",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-zg-high-priestess-arlokk/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Guide says roughly 1 minute first Vanish; primary first timer 33.7–34.4s and later timings explicitly need more logs. No fixed schedule chosen.",
+    "Gong/spawn and stealthed-panther presence need actual unit/object evidence; absence of attacks is not invisibility proof.",
+    "Cached revision absent, live revision 1/season 2 separate; coverage remains unknown.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5 seconds before and 30000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14515
+    ]
+  }
+}

@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-caldoran",
+  "ruleset": "sod",
+  "boss": "Grand Crusader Caldoran",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3189,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-caldoran"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/grand-crusader-caldoran-scarlet-enclave-strategy",
+      "author": "Jurdi",
+      "date": "2025-04-25",
+      "quality": "authored SoD guide",
+      "limitation": "Final sword5% threshold conflicts with retained9.7% actor observations; not pixel authority"
+    },
+    {
+      "id": "S2",
+      "url": "https://www.icy-veins.com/wow-classic/season-of-discovery-scarlet-enclave",
+      "author": "Abide",
+      "date": "2025-05-01",
+      "quality": "authored SoD guide",
+      "limitation": "Same5% disagreement; orientation descriptions not coordinate authority"
+    },
+    {
+      "id": "S3",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24179333/hotfixes-april-28-2025",
+      "author": "Blizzard",
+      "date": "2025-04-24",
+      "quality": "official primary hotfix",
+      "claims": [
+        "Conflagration aura shown on adds",
+        "Wake windup animation changed",
+        "Add fear transition corrected"
+      ]
+    },
+    {
+      "id": "S4",
+      "url": "https://us.forums.blizzard.com/en/wow/t/cauldoran-enrage-before-channeling-final-ashbringer-at-10/2098555",
+      "date": "2025-04-27",
+      "quality": "original player encounter account",
+      "claims": [
+        "Second sword described as10% phase"
+      ],
+      "limitation": "Player account does not establish server threshold"
+    },
+    {
+      "id": "retained-log",
+      "kind": "retained-evidence",
+      "quality": "Mechanic-level reference in the upstream research; private primary evidence is omitted.",
+      "availability": "Available to the original research; not distributed with this library."
+    },
+    {
+      "id": "current-client-graph",
+      "kind": "client-reference",
+      "quality": "Mechanic-level reference in the upstream research; private primary evidence is omitted.",
+      "availability": "Available to the original research; not distributed with this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Cathedral waves and Reclamation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded spawn/activity and resurrection evidence",
+      "state": "Recorded spawn/activity and resurrection evidence",
+      "lifecycle": "Same add can die and rise again; fire prevents a later resurrection",
+      "placement": "Actor instance position; corpse, rise and casts require evidence",
+      "animation": "Actor instance position; corpse, rise and casts require evidence",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-ADD-RESURRECT",
+      "acceptanceCriteria": "CAL-ADD-RESURRECT",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Divine Conflagration",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Player debuff, then delayed fire",
+      "state": "Player debuff, then delayed fire",
+      "lifecycle": "Target circle until removal/expiry, separate persistent fire",
+      "placement": "Circle follows target before drop; fire stays at expiry position",
+      "animation": "Circle follows target before drop; fire stays at expiry position",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-CONFLAG-DROP",
+      "acceptanceCriteria": "CAL-CONFLAG-DROP",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Tank attacks and blind",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cast start, completion, impact and debuff events",
+      "state": "Cast start, completion, impact and debuff events",
+      "lifecycle": "Interrupt/death cancels pending cast; blind debuff only where recorded",
+      "placement": "Actor facing, distinct Wake windup after April hotfix; no invented cone dimensions",
+      "animation": "Actor facing, distinct Wake windup after April hotfix; no invented cone dimensions",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-CAST-CANCEL",
+      "acceptanceCriteria": "CAL-CAST-CANCEL",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "First Ashbringer",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss 55%, sword attackable",
+      "state": "Boss 55%, sword attackable",
+      "lifecycle": "Wrath channel/pulses until sword 40%; sword can disappear and return",
+      "placement": "Independent sword actor plus boss weapon state; no assumed flight arc",
+      "animation": "Independent sword actor plus boss weapon state; no assumed flight arc",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-SWORD-RETURN",
+      "acceptanceCriteria": "CAL-SWORD-RETURN",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Dying Light escape",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Root, protected circle, Dying Light, portal",
+      "state": "Root, protected circle, Dying Light, portal",
+      "lifecycle": "Root ends before escape; protection and blast separate; gate state on evidence",
+      "placement": "Angela/room circle, collapsing cathedral, portal and discontinuous relocation",
+      "animation": "Angela/room circle, collapsing cathedral, portal and discontinuous relocation",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-ESCAPE-SEEK",
+      "acceptanceCriteria": "CAL-ESCAPE-SEEK",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Cathedral collapse",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Encounter transition and collapse effects",
+      "state": "Encounter transition and collapse effects",
+      "lifecycle": "Warning, fall, impact; no debris after transition cleanup unless recorded",
+      "placement": "Ground destinations and falling trajectory needed; avoid target body attachment",
+      "animation": "Ground destinations and falling trajectory needed; avoid target body attachment",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-COLLAPSE-AREA",
+      "acceptanceCriteria": "CAL-COLLAPSE-AREA",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Cessation and Hollows",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cessation cast and recorded add instances",
+      "state": "Cessation cast and recorded add instances",
+      "lifecycle": "Spawn; death leaves separate pool; repeat only when observed",
+      "placement": "Spawn positions, death position pool, target fixation only if recorded",
+      "animation": "Spawn positions, death position pool, target fixation only if recorded",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-HOLLOW-POOL",
+      "acceptanceCriteria": "CAL-HOLLOW-POOL",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Final sword and echoes",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded sword/echo events; guide threshold disputed below",
+      "state": "Recorded sword/echo events; guide threshold disputed below",
+      "lifecycle": "Sword gates boss vulnerability; each echo uses its recorded mechanic",
+      "placement": "Echo instance identities; Divine Consecration is a ground area",
+      "animation": "Echo instance identities; Divine Consecration is a ground area",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-FINAL-CONSECRATION",
+      "acceptanceCriteria": "CAL-FINAL-CONSECRATION",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Kill/wipe and seeks",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded health/death/encounter end",
+      "state": "Recorded health/death/encounter end",
+      "lifecycle": "Final boss death differs from sword withdrawal; remove active effects by ownership",
+      "placement": "Corpses and weapon/object state need evidence, no victory animation guess",
+      "animation": "Corpses and weapon/object state need evidence, no victory animation guess",
+      "acceptanceCheck": "sod-scarlet-caldoran/CAL-END-RESET",
+      "acceptanceCriteria": "CAL-END-RESET",
+      "sourceRefs": [
+        "S1",
+        "S2",
+        "S3",
+        "retained-log",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Final sword5% guide conflict with9.7% retained activation; use observed ability trigger",
+    "Second sword withdrawal has no explicit lifecycle end",
+    "Ground destination, radius, orientation and full lifetime missing",
+    "Portal object and Conflagration/Hollow world effects linkage absent",
+    "No original gameplay footage inspected",
+    "Wipe/berserk and alternate echo variants absent from retained kill",
+    "Current client1.15.9 snapshot postdates2025-10-06 log; exact patch visual parity unproven",
+    "No per-event Z coordinates; floor placement must use verified geometry"
+  ]
+}

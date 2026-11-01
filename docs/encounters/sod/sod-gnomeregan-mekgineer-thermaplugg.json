@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-mekgineer-thermaplugg",
+  "ruleset": "sod",
+  "boss": "Mekgineer Thermaplugg",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2940,
+  "rawEncounterId": 2940,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        22,
+        25
+      ],
+      "selectedFightNames": [
+        "Mekgineer Thermaplugg"
+      ],
+      "matchedNpcTemplateIds": [
+        218537,
+        218538,
+        218970,
+        218972,
+        218974
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-mekgineer-thermaplugg"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/mekgineer-thermaplugg-strategy",
+      "date": "2024-02-19",
+      "quality": "exact SoD authored guide, bomb NPC and Frozen Solid links verified"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/MekgineerThermaplugg.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD NPC/event identity and explicit CLEU limitations"
+    },
+    {
+      "id": "client",
+      "quality": "fresh client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24057474/hotfixes-may-6-2024",
+      "quality": "official February2024 safe-spawn fix"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "T01",
+      "mechanic": "Suit retirement and final pilot",
+      "spellIds": [
+        438572
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded Vehicle Damaged unit signal or independently attributed lifecycle evidence",
+      "state": "fire→frost→poison→hybrid→pilot; first three suits retire rather than die",
+      "lifecycle": "guide50% trigger; variable walk/RP gap; active NPC ID differs from preplaced inactive ID; no fixed hidden interval",
+      "placement": "actual centerward movement, preserve elevation; never infer straight path from combat silence",
+      "animation": "438572 CasterCast; activation/retirement model pose/visibility requires evidence",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T01",
+      "acceptanceCriteria": "seek before/after each retirement, repeated pull/reset and buffered partial chapters; no old suit fighting or premature future suit",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T02",
+      "mechanic": "Six independent dispenser activations and buttons",
+      "spellIds": [
+        11518,
+        11521,
+        11798,
+        11523,
+        11524,
+        11526,
+        11527,
+        437853,
+        438735
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual per-pillar activation, interaction and High Voltage recipient",
+      "state": "six independent dispenser states;30s player click lockout, health cost and mana return",
+      "lifecycle": "DBM explicitly says Bomb3 lacks CLEU activation; unit11523 vs11798; no activate event means unknown, not off",
+      "placement": "static actual pillar/button coordinates; retained object ID required",
+      "animation": "no route for activation spells or Summon Bomb; High Voltage Target impact",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T02",
+      "acceptanceCriteria": "activate3 with unit-only signal, click same/different pillar during lockout; missing events remain unknown; no invented ten-second spawns",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T03",
+      "mechanic": "Three bomb species and persistent ground hazards",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "observed summon/appearance, kill or detonation and actual area creation",
+      "state": "NPC219110 fire/219111 frost/219112 nature; killable moving bombs distinct from stationary pools",
+      "lifecycle": "actual life, detonation and pool removal; no assumed identical timer or chapter clipping",
+      "placement": "start at observed drop position; measured descent/chase only; pool at detonation destination",
+      "animation": "client candidates438717 fire,438725 frost,438730 nature AreaTriggerStart;438859/439672 impact variants, unobserved relation",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T03",
+      "acceptanceCriteria": "kill a bomb before explosion, detonate another; source motion must not drag its pool; groundZ/partialbuffer/repeated seeks",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "T04",
+      "mechanic": "Fire punch and Furnace Surge",
+      "spellIds": [
+        438683,
+        438710,
+        438713
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual punch/debuff/cast and channel evidence",
+      "state": "stacking Sprocketfire; fleeing frontal fire",
+      "lifecycle": "client4387133s cast has no visual; candidate438714 is10s channel,43871510s state; relation needs evidence",
+      "placement": "actual facing and moving boss origin; do not aim cone at stale tank position",
+      "animation": "438714/438716 AreaAura,438715 CasterAura; no fabricated parent-child cast",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T04",
+      "acceptanceCriteria": "channel interrupt/end early, target leaves cone; seek mid-channel must retain exact age and no wrong destination",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T05",
+      "mechanic": "Frost stacks and Frozen Solid",
+      "spellIds": [
+        438719,
+        438720,
+        438721,
+        438723
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual smash/discharge plus recipient stacks",
+      "state": "ten stacks freeze; discharge interaction on frozen targets",
+      "lifecycle": "3s discharge;30s frozen client state; remove/dispel observed, never predict stun from missing stacks",
+      "placement": "moving actual recipients, no generic ice pool at each aura victim",
+      "animation": "438721 Target/CasterAura,438723 CasterCast; Freezing has no route",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T05",
+      "acceptanceCriteria": "dispel at nine, freeze at ten, frozen recipient discharge, seek after early removal",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T06",
+      "mechanic": "Poison hammer and Toxic Ventilation",
+      "spellIds": [
+        438726,
+        438727,
+        438732
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual hammer/channel and recipient stack records",
+      "state": "stacking nature vulnerability and interruptible raid channel",
+      "lifecycle": "438732 indefinite client channel; require self-aura/interrupt/death/end evidence; no guessed finite duration",
+      "placement": "Caster channel host stays exact active suit; impacts to actual victims",
+      "animation": "ChannelStart Caster and RadiationSickness TargetImpact",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T06",
+      "acceptanceCriteria": "interrupt channel early; missing terminal stays unknown; never carry it into next suit/reset or synthesize unobserved targets",
+      "sourceRefs": [
+        "dbm",
+        "client",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "T07",
+      "mechanic": "Final pilot, loot and cleanup",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "hybrid recorded death then pilot lifecycle and final kill",
+      "state": "pilot218537 distinct from hybrid218974; quest safe remains world object",
+      "lifecycle": "encounter victory must not substitute for previous phase retirement or discard surviving bombs/pools prematurely",
+      "placement": "official safe below one dispenser; exact observed object and transform required",
+      "animation": "loot/safe interaction and suit exit animation unknown",
+      "acceptanceCheck": "sod-gnomeregan-mekgineer-thermaplugg/T07",
+      "acceptanceCriteria": "hybrid dead/pilot alive interval, final pilot death, safe visible and no stale prior boss effects",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "official"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    438714,
+    438715,
+    438716,
+    438717,
+    438718,
+    438725,
+    438730,
+    438859,
+    439672
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "retirement appearance vs true despawn, active/inactive instance transitions",
+    "unit-only event retention in WCL replay inputs",
+    "Bomb3 absent CLEU and exact button object IDs",
+    "Furnace parent/channel/damage relationships",
+    "bomb fall/chase/detonation/area IDs and elevation",
+    "pilot spawn and safe object IDs",
+    "postkill pool/despawn boundaries"
+  ],
+  "researchContext": {
+    "npcIds": [
+      218538,
+      218970,
+      218972,
+      218974,
+      218537
+    ],
+    "inactiveNpcIds": [
+      218969,
+      218971,
+      218973,
+      218975
+    ],
+    "bombNpcIds": [
+      219110,
+      219111,
+      219112
+    ],
+    "supportLimits": [
+      "29 client spell records/32 kits mapped; no retained-log/native credit",
+      "primary module explicitly identifies unit-only Vehicle Damaged438572 and Bomb311523; ordinary CLEU does not establish full state",
+      "first three suits do not die; generic poseAt death/life cannot establish retirement from a cast-name alone",
+      "438713 parent Furnace Surge has no visual,438714 same-name channel is10s; causal relation not demonstrated by graph",
+      "Toxic Ventilation438732 indefinite channel can only be capped by recorded terminal evidence; no event means unknown",
+      "stationary Area routes need actual destination/lifetime and native age, not victim aura fallback"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

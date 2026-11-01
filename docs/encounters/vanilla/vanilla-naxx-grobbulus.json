@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-grobbulus",
+  "ruleset": "vanilla",
+  "boss": "Grobbulus",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51111,
+  "rawEncounterId": 1111,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-grobbulus"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Grobbulus.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/grobbulus-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-11",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=28240/poison-cloud",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=28218/summon-fallout-slime",
+        "https://www.wowhead.com/classic/spell=28137/slime-stream",
+        "https://www.wowhead.com/classic/npc=16290/fallout-slime"
+      ],
+      "quality": "Resolved guide links; Cloud summon record authored75second ceiling is not observed object terminal. Generic Enrage19953 held as candidate."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Mutating Injection expiry and cleanse",
+      "spellIds": [
+        28169
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual disease application, removal/cleanse and later cloud evidence",
+      "state": "Player disease is separate from the new ground host",
+      "lifecycle": "Removal does not itself locate or create an observed cloud",
+      "placement": "Actual recipient release anchor; missing destination unknown",
+      "animation": "Disease aura versus delayed explosion/cloud",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Growing Poison Cloud",
+      "spellIds": [
+        28240
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss selfcast and cloud actor/object evidence",
+      "state": "Independent persistent ground cloud host16363",
+      "lifecycle": "Recorded create/destroy wins; no assumed75second lifetime or cleanup at boss death",
+      "placement": "Actual world anchor and authored growth; no victim-centered circle",
+      "animation": "Area route, growth, age and floor placement separately validated",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Slime Spray and Fallout adds",
+      "spellIds": [
+        28157,
+        28218
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cone impacts and summon evidence",
+      "state": "Affected players and independent Slime16290 instances",
+      "lifecycle": "Do not spawn one slime for every inferred target; observed lifecycle only",
+      "placement": "Boss facing and real source/target anchors",
+      "animation": "Spray cone and slime emergence separate",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Out-of-range Slime Stream",
+      "spellIds": [
+        28137
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast and damage/aura evidence",
+      "state": "Anti-kite effect is distinct from cloud proximity",
+      "lifecycle": "Actual removal/result; no distance-derived cast",
+      "placement": "Measured targets; threat target unknown unless retained",
+      "animation": "Recipient periodic damage state",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Late enrage",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual self-state if retained",
+      "state": "Separate from ordinary melee and source-only timer",
+      "lifecycle": "Primary720second expectation does not manufacture a cast",
+      "placement": "Boss host",
+      "animation": "Exact spell association and native body effect remain unresolved",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-grobbulus/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15931,
+      16290,
+      16363
+    ]
+  }
+}

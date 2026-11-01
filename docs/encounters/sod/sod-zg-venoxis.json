@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-venoxis",
+  "ruleset": "sod",
+  "boss": "High Priest Venoxis",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 100784,
+  "rawEncounterId": 784,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "reportRevision": 1,
+      "reportResponseSha256": "2200f0f1f8688bf21158dd629f66653bb35a9b4c591d651ef740680631d2cb39",
+      "provenanceResponseSha256": "0e9f58d0a8e576c227602da0f7eee5b3bfb22b8d834a5c856049527073e03df1",
+      "providerZoneId": 2014,
+      "discoveryPartitions": [
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 309,
+      "selectedFightIds": [
+        25
+      ],
+      "selectedFightNames": [
+        "High Priest Venoxis"
+      ],
+      "matchedNpcTemplateIds": [
+        14507
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-zg-venoxis"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned 10/max 20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Venoxis.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/high-priest-venoxis-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=3385s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "56:25",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
+      "quality": "Exact SoD authored overview indexed content; direct fetch 403; supports postdeath loa spirit and exclusive selectable blessing"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Pull adds and control",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline four snakes engage",
+      "state": "Pull adds and control",
+      "lifecycle": "Actual add CC/birth/death independent of boss phase",
+      "placement": "Actual add anchors and movement",
+      "animation": "Native serpent models and CC",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-ADDS",
+      "acceptanceCriteria": "VENOXIS-ADDS: controlled and dead instances seek correctly",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Renew and Holy Fire",
+      "spellIds": [
+        23895,
+        23860
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM hostile Renew/player Fire aura",
+      "state": "Renew and Holy Fire",
+      "lifecycle": "Actual dispel/end before nominal duration",
+      "placement": "Correct caster/victim",
+      "animation": "Native heal/fire and target state",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-AURA",
+      "acceptanceCriteria": "VENOXIS-AURA: dispel cancels lifecycle",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          23895,
+          23860
+        ],
+        "addonSourceLines": [
+          34,
+          35,
+          41,
+          42,
+          46,
+          49,
+          50,
+          72,
+          80,
+          89,
+          91
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Parasitic Serpent",
+      "spellIds": [
+        23865
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM target aura application",
+      "state": "Parasitic Serpent",
+      "lifecycle": "Actual aura and summoned instance relation unknown",
+      "placement": "Target aura versus independent snake",
+      "animation": "Native aura; no inferred creature spawn",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-PARASITE",
+      "acceptanceCriteria": "VENOXIS-PARASITE: ownership and ending exact",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          23865
+        ],
+        "addonSourceLines": [
+          34,
+          39,
+          83
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Snake transformation",
+      "spellIds": [
+        23849
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM observes unit successful transform after phase-soon health",
+      "state": "Snake transformation",
+      "lifecycle": "Persistent form until actual death/reset",
+      "placement": "Same actor body and facing",
+      "animation": "Snake display; impact 721 only is insufficient",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-FORM",
+      "acceptanceCriteria": "VENOXIS-FORM: no health-threshold-only synthetic transform",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          23849
+        ],
+        "addonSourceLines": [
+          104
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Poison Cloud",
+      "spellIds": [
+        23861
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM cast success cloud",
+      "state": "Poison Cloud",
+      "lifecycle": "Actual placed cloud lifetime; guide remainder-of-fight conflicts DBM 10s timer",
+      "placement": "Independent cast-location ground center",
+      "animation": "Native cloud 152419, not caster-carried aura",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-CLOUD",
+      "acceptanceCriteria": "VENOXIS-CLOUD: anchors and actual end survive seeks",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          23861
+        ],
+        "addonSourceLines": [
+          33,
+          40,
+          48,
+          65
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Holy Wrath and enrage",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline chain spell and low-health enrage",
+      "state": "Holy Wrath and enrage",
+      "lifecycle": "Actual jumps/buff removal and reset",
+      "placement": "Real chain target order, no proximity simulation",
+      "animation": "Native chain/enrage once IDs evidenced",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-END",
+      "acceptanceCriteria": "VENOXIS-END: no generated chain or residual form",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Postdeath loa and blessing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        466903,
+        466909
+      ],
+      "trigger": "SoD defeated priest produces selectable loa spirit; actual player blessing application",
+      "state": "Hethiss blessing",
+      "lifecycle": "One selected priest blessing at a time; observed apply/replace/remove and actual spirit spawn/despawn, not generated on boss death",
+      "placement": "Spirit at actual anchor; player aura/proc uses actual owner and targets",
+      "animation": "Native loa/spell assets only when identities established; Nature damage proc on attacks/spells",
+      "acceptanceCheck": "sod-zg-venoxis/VENOXIS-LOA",
+      "acceptanceCriteria": "VENOXIS-LOA: postboss spirit, exclusive blessing and actual proc/cleanup survive seeks",
+      "sourceRefs": [
+        "official-sod-p5",
+        "sod-overview",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "Exact-name client candidates for identified SoD blessing; no guide-linked IDs, addon event or retained occurrence credit.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    466903,
+    466909
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD cloud lifecycle and enrage/chain IDs",
+    "ParasiticSerpent aura-to-NPC relation",
+    "Current addon revision has 2026 changes, not captured 2024 script",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "14507"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

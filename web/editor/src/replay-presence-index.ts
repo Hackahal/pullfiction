@@ -46,22 +46,39 @@ export class ReplayPresenceIndex {
       if (actor.type === "Player") continue;
       const samples = actor.samples ?? [];
       if (!samples.length && !actor.spawn) continue;
-      let start = actor.runLifetime ? actor.firstSeen : -Infinity;
-      const end = actor.runLifetime ? actor.lastSeen + 3000 : Infinity;
+      // Explicit lifecycle records outrank the fallback activity timeout in poseAt.
+      // Missing samples after a summon do not establish removal.
+      const explicitLife = !!actor.lifeEvents?.length;
+      let start =
+        actor.runLifetime && !explicitLife ? actor.firstSeen : -Infinity;
+      const end =
+        actor.runLifetime && !explicitLife ? actor.lastSeen + 3000 : Infinity;
       if (actor.spawn) start = Math.max(start, actor.spawn.visibleFrom);
       else if (actor.type !== "NPC") start = Math.max(start, samples[0][0]);
       let dead = false;
-      for (const [at, nextDead] of actor.deaths ?? []) {
-        if (at < start) {
-          dead = nextDead;
-          continue;
+      let present = explicitLife ? !!actor.initiallyPresent : true;
+      const edges = [
+        ...(actor.deaths ?? []).map(([at, value]) => ({
+          at,
+          value,
+          life: false,
+        })),
+        ...(actor.lifeEvents ?? []).map(([at, value]) => ({
+          at,
+          value,
+          life: true,
+        })),
+      ].sort((a, b) => a.at - b.at);
+      for (const edge of edges) {
+        if (edge.at > end) break;
+        if (edge.at > start) {
+          if (!dead && present) rows.push({ actor, start, end: edge.at });
+          start = edge.at;
         }
-        if (at > end) break;
-        if (!dead && at > start) rows.push({ actor, start, end: at });
-        start = at;
-        dead = nextDead;
+        if (edge.life) present = edge.value;
+        else dead = edge.value;
       }
-      if (!dead && start <= end)
+      if (!dead && present && start <= end)
         rows.push({
           actor,
           start,

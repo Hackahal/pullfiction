@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-grubbis",
+  "ruleset": "sod",
+  "boss": "Grubbis",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2925,
+  "rawEncounterId": 2925,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        2
+      ],
+      "selectedFightNames": [
+        "Grubbis"
+      ],
+      "matchedNpcTemplateIds": [
+        217280,
+        217956
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-grubbis"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24056979",
+      "quality": "official SoD Phase2",
+      "scope": "10-player raid;new vents;roster distinction from dungeon"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/grubbis-strategy",
+      "quality": "authored exactSoDguide",
+      "date": "2024-02-22"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/Grubbis.lua",
+      "quality": "primary maintained encounter addon source",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "scope": "encounter2925,NPC217280,Chomper217956,actual eventIDs;not server script"
+    },
+    {
+      "id": "client",
+      "quality": "primary currentclient visual export",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "G01",
+      "mechanic": "gauntlet/waves",
+      "spellIds": [
+        436168,
+        435361,
+        435362,
+        435363,
+        435832,
+        435835
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Emi start andobserved Troggquake/wave scripts",
+      "state": "gauntletA→B→boss with continuingadds",
+      "lifecycle": "each recorded summon/death;no fixedschedule",
+      "placement": "two cave entrances;exactspawn coords/path unmeasured",
+      "animation": "script IDs have no declared visual;host/serveranimation unknown",
+      "acceptanceCheck": "sod-gnomeregan-grubbis/G01",
+      "acceptanceCriteria": "verify ordered phase events/addlifetimes andseek throughbetween-wavecombatdrops",
+      "sourceRefs": [
+        "guide",
+        "dbm"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "G02",
+      "mechanic": "vents/clouds",
+      "spellIds": [
+        435520,
+        435525,
+        435526,
+        434165,
+        434168
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "vent activation andcloud fixate",
+      "state": "cloud moves towardrecorded recipient;troggcontact removescloud/killsadd",
+      "lifecycle": "actualsourcecloud create/contact/destroy;unknown withoutlogs",
+      "placement": "vent emitter/circulatingroomcloud require realposition/radius",
+      "animation": "all listed controlIDs lackdeclaredvisual;do notsubstitute pool",
+      "acceptanceCheck": "sod-gnomeregan-grubbis/G02",
+      "acceptanceCriteria": "verify cloudpath/fixate andcontact removal without killingboss",
+      "sourceRefs": [
+        "official",
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "G03",
+      "mechanic": "Grubbis channel/backcone",
+      "spellIds": [
+        436027,
+        436037,
+        436059
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded Mad/Radiation start/success",
+      "state": "5sMad clientchannel;Radiation precast",
+      "lifecycle": "actualcancel/removal wins;exactrange disputed",
+      "placement": "rearcone usesbossfacing;Mad radiusguideconflict",
+      "animation": "clientMad Casteraura/precast;Radiation precastonly",
+      "acceptanceCheck": "sod-gnomeregan-grubbis/G03",
+      "acceptanceCriteria": "front/flank/rear/time-aligned capture;do notchooseMad radiusfromconflictingguides",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "G04",
+      "mechanic": "rage/ToxicVigor",
+      "spellIds": [
+        436074,
+        434941
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actualselfaura orcloudcontactbuff",
+      "state": "rage/empowerment",
+      "lifecycle": "clientRage10s;recordedremove wins",
+      "placement": "actualbuffrecipient;no globalactorlift",
+      "animation": "RageCaster aura;VigorTargetaura",
+      "acceptanceCheck": "sod-gnomeregan-grubbis/G04",
+      "acceptanceCriteria": "separateselfRage fromforeignbuff andrewind provenance",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "G05",
+      "mechanic": "Chomper",
+      "spellIds": [
+        436100,
+        439956
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Petrifybegin andRevivePetifobserved",
+      "state": "independentbasilisk androot/stunrecipient",
+      "lifecycle": "interruptcancels;death/revive needevents",
+      "placement": "NPC217956;actualposition/scale unknown",
+      "animation": "Petrify8s clientduration;RevivePet10scast",
+      "acceptanceCheck": "sod-gnomeregan-grubbis/G05",
+      "acceptanceCriteria": "interruptPetrify noimpact;correct8srecipient/removal;death/reviveindependent",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "vent objectidentity/positions",
+    "cloud model/path/contactmechanics",
+    "exactMad radius",
+    "eventphase boundaries andwipe",
+    "ChomperRevivePet actuallyused inretainedversion",
+    "raw/reportencounter encoding"
+  ],
+  "researchContext": {
+    "npcIds": [
+      217280,
+      217956
+    ],
+    "encounterIdEvidence": "DBM exactSoD module SetEncounterID2925;no retained report toverify encoding",
+    "supportLimits": [
+      "no confirmed retainedGnomeregan logs;all temporal/spatial/runtime behavior unverified",
+      "wave/vent/cloud control spells have no visualgraph route",
+      "Mad reach differs between authored guides;radius unresolved",
+      "generic importer cannotcreate servercloudpath/contactdespawn fromspellnames"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

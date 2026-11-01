@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-lilian-voss",
+  "ruleset": "sod",
+  "boss": "Lilian Voss",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3190,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-lilian-voss"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/lillian-voss-scarlet-enclave-strategy",
+      "author": "Jurdi",
+      "updated": "2025-05-30",
+      "ruleset": "SoD patch1.15.8",
+      "quality": "authored encounter guide; exact visual parity unproven",
+      "id": "source-01"
+    },
+    {
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss7.html",
+      "author": "Kim",
+      "updated": "2025-05-09",
+      "ruleset": "SoD",
+      "quality": "authored work-in-progress guide; count/enrage disagreements recorded",
+      "id": "source-02"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1233847",
+      "quality": "client spell record; server script semantics limited",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1233901",
+      "quality": "client spell record; server script semantics limited",
+      "id": "source-04"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1233849",
+      "quality": "client spell record; server script semantics limited",
+      "id": "source-05"
+    },
+    {
+      "quality": "current production converter graph; client1.15.9.70576 build5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-06",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "retained report events; fight15 28730 events; one short kill",
+      "id": "source-07",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Boss and Putress",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Encounter start, observed actors",
+      "state": "Encounter start, observed actors",
+      "lifecycle": "Voss active until recorded end; Putress independently present",
+      "placement": "Follow recorded actor positions and facing; Putress perimeter motion only where samples support it",
+      "animation": "Follow recorded actor positions and facing; Putress perimeter motion only where samples support it",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-ACTORS",
+      "acceptanceCriteria": "VOSS-ACTORS: both identities are present and motion follows samples",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Debilitating Strike",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Successful strike and target aura",
+      "state": "Successful strike and target aura",
+      "lifecycle": "Healing absorb remains until recorded removal",
+      "placement": "Target attached effect; native strike/impact only when client records support it",
+      "animation": "Target attached effect; native strike/impact only when client records support it",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-STRIKE",
+      "acceptanceCriteria": "VOSS-STRIKE: correct tank and cleanup after swap/removal",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Ambition / Ambitious Pursuit",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded casts and stack events",
+      "state": "Recorded casts and stack events",
+      "lifecycle": "Stack gains, changes and removal reconstructed from events",
+      "placement": "Boss-attached aura; preserve stacks without inventing haste animation",
+      "animation": "Boss-attached aura; preserve stacks without inventing haste animation",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-AMBITION",
+      "acceptanceCriteria": "VOSS-AMBITION: direct seek has same aura/stack state",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Scarlet Grasp",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded cast start and completion",
+      "state": "Recorded cast start and completion",
+      "lifecycle": "Cast effect ends/cancels; pull follows completion",
+      "placement": "Boss cast plus sampled player displacement; do not interpolate long travel across a discontinuity",
+      "animation": "Boss cast plus sampled player displacement; do not interpolate long travel across a discontinuity",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-GRASP",
+      "acceptanceCriteria": "VOSS-GRASP: cast and pulled positions agree before/after seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Unstable Concoction",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Target aura application",
+      "state": "Target aura application",
+      "lifecycle": "Attached warning until removal, then explosion if supported by event",
+      "placement": "Warning follows holder; explosion at expiration position, not caster or application position",
+      "animation": "Warning follows holder; explosion at expiration position, not caster or application position",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-BOMB",
+      "acceptanceCriteria": "VOSS-BOMB: each holder has independent marker, endpoint impact and cleanup",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Noxious Poison / Toxic Pool",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Target poison application, expiry or dispel",
+      "state": "Target poison application, expiry or dispel",
+      "lifecycle": "Poison ends on removal; pool persists independently until encounter cleanup",
+      "placement": "Freeze pool at holder's removal position; use sampled floor only, unknown Z stays unknown",
+      "animation": "Freeze pool at holder's removal position; use sampled floor only, unknown Z stays unknown",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-POOL",
+      "acceptanceCriteria": "VOSS-POOL: moving holder does not drag deposited pool; seek restores all live pools",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Ignite",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Raid target applications",
+      "state": "Raid target applications",
+      "lifecycle": "Per-target aura and periodic damage, end on removal",
+      "placement": "Attached native fire; nearby damage does not spawn persistent ground fire",
+      "animation": "Attached native fire; nearby damage does not spawn persistent ground fire",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-IGNITE",
+      "acceptanceCriteria": "VOSS-IGNITE: correct attached fire and removal without persistent fabricated hazard",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Intoxicating Venom",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Aura and stack changes, immobilization if present",
+      "state": "Aura and stack changes, immobilization if present",
+      "lifecycle": "Clear/reapply stacks based on log; no simulated movement rules",
+      "placement": "Attached venom/immobilize native effects; actual player samples determine movement",
+      "animation": "Attached venom/immobilize native effects; actual player samples determine movement",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-VENOM",
+      "acceptanceCriteria": "VOSS-VENOM: moving/stationary targets preserve recorded stack changes after seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Enrage / defeat / wipe",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Poison Bolt or encounter boundary",
+      "state": "Poison Bolt or encounter boundary",
+      "lifecycle": "Cleanup at recorded boundary; stop cast/aura/hazard state",
+      "placement": "No fixed four/ten-minute timer; do not invent corpse animation or escape vanish",
+      "animation": "No fixed four/ten-minute timer; do not invent corpse animation or escape vanish",
+      "acceptanceCheck": "sod-scarlet-lilian-voss/VOSS-END",
+      "acceptanceCriteria": "VOSS-END: crossing and seeking past boundary produce no stale effects",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Complete Vanish escape choreography after the last20ms",
+    "Exact Toxic Pool floor/height, footprint, model looping and effect lifetime semantics",
+    "Bomb expiration explosion graphics have no separate retained damage event",
+    "Putress continuous perimeter movement has four samples only",
+    "Original gameplay visual parity",
+    "Different guide enrage timings not exercised by86.7s kill"
+  ]
+}

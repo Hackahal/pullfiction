@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-four-horsemen",
+  "ruleset": "sod",
+  "boss": "The Four Horsemen",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201121,
+  "rawEncounterId": 1121,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        38
+      ],
+      "selectedFightNames": [
+        "The Four Horsemen"
+      ],
+      "matchedNpcTemplateIds": [
+        16062,
+        16063,
+        16064,
+        16065
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-four-horsemen"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/MilitaryQuarter/Horsemen.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/four-horsemen-naxxramas-raid-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "emp-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/SoD_Hardmode.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD code; PTR comments and later handlers attributed separately"
+    },
+    {
+      "id": "emp-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-hardmodes-overview",
+      "date": "2025-02-15",
+      "quality": "authored live SoD difficulty guide"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24171906/fase-7-de-la-temporada-del-descubrimiento-%C2%A1naxxramas-ya-est%C3%A1-disponible",
+      "date": "2025-02-06",
+      "quality": "official live phase7 launch;20-player tuning/up to40 and augmented final bosses"
+    },
+    {
+      "id": "seal-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24179333/hotfixes-february-26-2025",
+      "quality": "official hotfix archive caps Seal progression at rank7; supersedes plannedrank10 guide"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "date": "2025-02-26",
+      "quality": "authored SoD overview; rank10 plan is stale versus official cap"
+    },
+    {
+      "id": "official-reset-fix",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "quality": "official February2025 archive: spirit reset persistence fixed"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "H01",
+      "mechanic": "Four independent hosts, shields and death spirits",
+      "spellIds": [
+        29061,
+        28928,
+        28931,
+        28932,
+        28934
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual per-horseman health/shield/death and spirit summon",
+      "state": "Mograine16062,Zeliek16063,Korthazz16064,Blaumeux16065; death changes host to stationary spirit",
+      "lifecycle": "first death not end; spirit actual life until encounter/reset; shield removed independently",
+      "placement": "spirit at actual corpse, not assigned static corner; no moving corpse after death",
+      "animation": "transparent spirit model and mount visibility need native evidence",
+      "acceptanceCheck": "sod-naxx-four-horsemen/H01-acceptance",
+      "acceptanceCriteria": "different deathorder, spirit keeps marks, final kill and wipe/repull; no stale ghost after reset",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client",
+        "official-reset-fix"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "H02",
+      "mechanic": "SoD marks and stack ownership",
+      "spellIds": [
+        1226218,
+        1226219,
+        1226220,
+        1226221
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual source instance cast and recipient dose",
+      "state": "Zeliek/Blaumeux/Mograine/Korthazz new IDs distinct from28832–35 baseline",
+      "lifecycle": "client75s and actual refresh/remove; no inferred21s/13s schedule",
+      "placement": "actual source range; do not hardcode baseline60yd vsSoD65yd without event proof",
+      "animation": "each recipient retains own aura, source death does not erase spirit mark",
+      "acceptanceCheck": "sod-naxx-four-horsemen/H02-acceptance",
+      "acceptanceCriteria": "four overlapping marks, source dies but same recipient refreshes, death clears; repeated/random seek",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "H03",
+      "mechanic": "Meteor and persistent Void Zone",
+      "spellIds": [
+        28884,
+        28863
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual meteor victims and ground creation",
+      "state": "split damage meteor versus fixed shadow hazard",
+      "lifecycle": "actual hazard/remove;90s guide not proof of observed lifetime",
+      "placement": "creation position independent of victim movement; actual destination/floor required",
+      "animation": "authored Area routes lack native execution proof",
+      "acceptanceCheck": "sod-naxx-four-horsemen/H03-acceptance",
+      "acceptanceCriteria": "meteor shared victims; void zone remains when targeted tank moves and source dies; wipe clears only recorded bounds",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "H04",
+      "mechanic": "Holy chain and Mograine proc",
+      "spellIds": [
+        28883,
+        28882
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual HolyWrath topology and RighteousFire proc",
+      "state": "chain recipients including pets/totems unresolved; proc on actual victim",
+      "lifecycle": "actual source/result/removal, no synthesized chain ticks",
+      "placement": "initial target/range disputed by guide/comments; no nearest-tank assumption",
+      "animation": "beam/path and impact order require explicit source/recipient evidence",
+      "acceptanceCheck": "sod-naxx-four-horsemen/H04-acceptance",
+      "acceptanceCriteria": "first recipient not tank, same-time chain results, pet bounce, proc after tank swap; no invented chain geometry",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "POWER",
+      "mechanic": "Observed Empowerment and Seal version",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual enabled quarter auras, Sanctified/Seal snapshot and change records",
+      "state": "quarter-specific mechanics plus raidwide scaling; Seal rank/role separate from NPC power",
+      "lifecycle": "15-minute orb interaction cooldown is a game rule, not a synthesized replay event; actual enable/reset/disable",
+      "placement": "lobby world orbs/wing gates need object identity; no global cosmetic aura replacement",
+      "animation": "Authority/Seal client-name candidates do not establish exact rank or scaling",
+      "acceptanceCheck": "sod-naxx-four-horsemen/POWER-acceptance",
+      "acceptanceCriteria": "normal versus enabled quarter, rank/role change and partial snapshot; no damage-derived rank assumption",
+      "sourceRefs": [
+        "official",
+        "emp-guide",
+        "seal-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "MARCH",
+      "mechanic": "Military Marching Orders",
+      "spellIds": [
+        1219058,
+        1219060,
+        1219072,
+        1219108
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual quarter aura, orders aura and raidwarning/emote",
+      "state": "required emote, success speed buff or recorded failure",
+      "lifecycle": "actual orders remove; no31.59s generated schedule; PTR comments are not live proof",
+      "placement": "player-self source, emote host and speed changes distinct from NPC casts",
+      "animation": "emote animation only with actual event; no forced dance from guessed text",
+      "acceptanceCheck": "sod-naxx-four-horsemen/MARCH-acceptance",
+      "acceptanceCriteria": "precombat and mid-pull orders, success/failure, player-self source, boss→trash continuation and seek",
+      "sourceRefs": [
+        "emp-primary",
+        "emp-guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1218232,
+    1218271,
+    1218275,
+    1218276,
+    1218283,
+    1224428,
+    1219539,
+    1219548,
+    1220514
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Primary explicitly confirms SoD marks1226218–21 but old Meteor28884/VoidZone28863/HolyWrath28883 IDs.",
+    "Primary mentions new holy/shadow bolts and UnyieldingPain but does not map IDs; do not infer Wrath rear-caster behavior without exact SoD evidence.",
+    "Baseline includes spirits rooted at corpse; official hotfix specifically prevents spirits persisting through reset.",
+    "HolyWrath initial target/radius and bounce radius conflict among guide and SoD-tagged comments; actual chain evidence required.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Authority same-name variant→quarter/empower count and Seal variant→rank/role mapping",
+    "raid-warning/emote, object and unit-event retention by provider"
+  ],
+  "researchContext": {
+    "npcIds": [
+      16062,
+      16063,
+      16064,
+      16065
+    ],
+    "wing": "military",
+    "sourceFindings": [
+      "Primary explicitly confirms SoD marks1226218–21 but old Meteor28884/VoidZone28863/HolyWrath28883 IDs.",
+      "Primary mentions new holy/shadow bolts and UnyieldingPain but does not map IDs; do not infer Wrath rear-caster behavior without exact SoD evidence.",
+      "Baseline includes spirits rooted at corpse; official hotfix specifically prevents spirits persisting through reset.",
+      "HolyWrath initial target/radius and bounce radius conflict among guide and SoD-tagged comments; actual chain evidence required.",
+      "Official Seal rank7 cap supersedes plannedrank10; no numeric damage/HP scaling inferred from current guide table.",
+      "Global manager237752 and quarter effects can cross boss/trash chapter boundaries; missing cast/aura is unknown, not disabled."
+    ],
+    "candidateSpellIds": {
+      "authorityNameOnly": [
+        1218232,
+        1218271,
+        1218275,
+        1218276,
+        1218283,
+        1224428
+      ],
+      "sealNameOnly": [
+        1219539,
+        1219548,
+        1220514
+      ]
+    },
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "No confirmed retained SoD Naxx pull. Old ruleset-unknown Naxx cache excluded; no observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

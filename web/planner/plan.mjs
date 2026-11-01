@@ -46,6 +46,7 @@ export function validatePlan(input){
     const key=text(a.key,80,'Snapshot actor');
     const appearance={};
     if(a.icon!==undefined)appearance.icon=a.icon===null?null:text(a.icon,240,'Actor icon');
+    if(a.friendly!==undefined){if(typeof a.friendly!=='boolean')throw Error('Invalid actor friendliness.');appearance.friendly=a.friendly;}
     // WCL gameID can identify a player or pet, not just a creature entry. Preserve its native u32 range.
     for(const [key,max] of [['displayID',10000000],['gameID',0xffffffff],['race',1000],['sex',2]])if(a[key]!==undefined&&a[key]!==null){if(!Number.isInteger(a[key])||a[key]<0||a[key]>max)throw Error('Invalid actor appearance.');appearance[key]=a[key];}
     if(a.scale!==undefined){if(!Number.isFinite(a.scale)||a.scale<.05||a.scale>20)throw Error('Invalid actor scale.');appearance.scale=a.scale;}

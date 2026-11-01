@@ -8,6 +8,254 @@ const raw={report:{code:'DyN7vF94QR8aj1Lc'},fight:{startTime:1000,endTime:11000,
  {timestamp:3000,sourceID:1,targetID:2,targetInstance:1,resourceActor:2,x:97640,y:101387},
  {timestamp:4000,type:'death',targetID:2,targetInstance:1},
 ]};
+test('Static ownership distinguishes boss pets from player pets without changing missing-owner defaults',()=>{
+ const actors=[...raw.actors,{id:3,type:'Pet',name:'Ward',gameID:14987,petOwner:2},
+  {id:4,type:'Pet',name:'Player pet',gameID:416,petOwner:1},{id:5,type:'Pet',name:'Unknown',petOwner:999},
+  {id:6,type:'Pet',name:'Nested',petOwner:3},{id:7,type:'Pet',name:'Cycle',petOwner:8},
+  {id:8,type:'Pet',name:'Cycle',petOwner:7},{id:9,type:'NPC',name:'Guardian',petOwner:1}];
+ const r=normalizeReplay({...raw,actors,events:actors.map(a=>({timestamp:1000,type:'cast',sourceID:a.id}))});
+ const friend=id=>r.actors.find(a=>a.id===id).friendly;
+ assert.equal(friend(1),undefined,'player transport retains its existing defaults');
+ for(const [id,expected]of [[2,false],[3,false],[4,true],[5,true],[6,false],[7,true],[8,true],[9,true]])assert.equal(friend(id),expected,String(id));
+});
+test('Recorded summon/create/destroy lifetimes survive seeks and keep independent add instances',()=>{
+ const data={...raw,events:[
+  {timestamp:2000,type:'summon',sourceID:1,targetID:2,targetInstance:1},
+  {timestamp:2100,type:'damage',sourceID:2,sourceInstance:1,targetID:1,resourceActor:1,x:100,y:200},
+  {timestamp:3000,type:'create',sourceID:1,targetID:2,targetInstance:2},
+  {timestamp:3100,type:'damage',sourceID:2,sourceInstance:2,targetID:1,resourceActor:1,x:300,y:400},
+  {timestamp:4000,type:'death',targetID:2,targetInstance:1},
+  {timestamp:5000,type:'destroy',targetID:2,targetInstance:1},
+  {timestamp:6000,type:'summon',targetID:2,targetInstance:1},
+  {timestamp:6100,type:'damage',sourceID:2,sourceInstance:1,targetID:1,resourceActor:1,x:500,y:600},
+ ]};
+ const replay=normalizeReplay(data),a=replay.actors.find(a=>a.key==='2:1'),b=replay.actors.find(a=>a.key==='2:2');
+ for(const t of [5000,0,4000,1000,3000,999,5000]){
+  const pose=poseAt(a,t);
+  assert.equal(!!pose,t>=1000&&t<4000||t>=5000,`instance 1 at ${t}`);
+  if(pose)assert.equal(pose.dead,t>=3000&&t<5000);
+ }
+ assert.equal(poseAt(b,1999),null);assert.ok(poseAt(b,2000));assert.ok(poseAt(b,9000));
+ assert.ok(poseAt(a,5050).discontinuity,'movement cannot interpolate through destruction and recreation');
+});
+test('An already observed NPC stays present before a later resummon; destroy-only tracks disappear exactly',()=>{
+ const data={...raw,events:[
+  {timestamp:1000,type:'damage',sourceID:2,targetID:1,resourceActor:1,x:100,y:200},
+  {timestamp:3000,type:'summon',sourceID:1,targetID:2},
+  {timestamp:4000,type:'destroy',targetID:2},
+ ]};
+ const a=normalizeReplay(data).actors.find(a=>a.key==='2:1');assert.ok(poseAt(a,0));assert.equal(poseAt(a,3000),null);
+ const b=normalizeReplay({...data,events:data.events.filter(e=>e.type!=='summon')}).actors.find(a=>a.key==='2:1');
+ assert.ok(poseAt(b,2999));assert.equal(poseAt(b,3000),null);assert.ok(poseAt(b,0));
+});
+test('Aura self provenance is instance-specific and survives refresh, removal and rewind',()=>{
+ const data={...raw,events:[
+  {timestamp:1000,type:'applybuff',sourceID:2,targetID:2,abilityGameID:27619},
+  {timestamp:2000,type:'refreshbuff',sourceID:2,targetID:2,abilityGameID:27619},
+  {timestamp:2500,type:'refreshbuff',targetID:2,abilityGameID:27619},
+  {timestamp:2600,type:'removebuffstack',targetID:2,abilityGameID:27619,stack:1},
+  {timestamp:3000,type:'applydebuff',sourceID:2,sourceInstance:2,targetID:2,abilityGameID:1604},
+  {timestamp:4000,type:'applybuff',targetID:2,abilityGameID:27680},
+  {timestamp:5000,type:'removebuff',targetID:2,abilityGameID:27619},
+ ]};
+ const actor=enrichCombat(normalizeReplay(data)).actors.find(a=>a.key==='2:1');
+ for(const t of [3500,0,1500,4500,1600,1000]){
+  const auras=combatStateAt(actor,t).auras;
+  assert.equal(auras.find(a=>a.spell===27619)?.selfCast,t<4000?true:undefined);
+  if(t>=2000)assert.equal(auras.find(a=>a.spell===1604).selfCast,false);
+  if(t>=3000)assert.equal(auras.find(a=>a.spell===27680).selfCast,false);
+ }
+ const replacement=enrichCombat(normalizeReplay({...data,events:[...data.events,
+  {timestamp:6000,type:'applybuff',targetID:2,abilityGameID:27619}]})).actors.find(a=>a.key==='2:1');
+ assert.equal(combatStateAt(replacement,5000).auras.find(a=>a.spell===27619).selfCast,false);
+});
+test('Valid HP snapshots reconstruct revived adds and zero-HP deaths in single-fight replays',()=>{
+ const r=normalizeReplay({...raw,events:[
+  {timestamp:1000,type:'damage',sourceID:1,targetID:2,resourceActor:2,hitPoints:20,maxHitPoints:100,x:100,y:200},
+  {timestamp:2000,type:'death',targetID:2},
+  {timestamp:3000,type:'cast',sourceID:2,resourceActor:1,hitPoints:40,maxHitPoints:100,x:100,y:200},
+  {timestamp:5000,type:'damage',sourceID:1,targetID:2,resourceActor:2,hitPoints:0,maxHitPoints:100,x:100,y:200},
+ ]});
+ const a=r.actors.find(a=>a.key==='2:1');
+ for(const [t,dead] of [[2500,false],[1500,true],[4500,true],[0,false],[2000,false]])assert.equal(poseAt(a,t).dead,dead);
+ assert.deepEqual(a.deaths,[[1000,true],[2000,false],[4000,true]]);
+ const unknown=normalizeReplay({...raw,events:[
+  {timestamp:1000,type:'damage',sourceID:2,resourceActor:1,hitPoints:0,maxHitPoints:0,x:100,y:200},
+ ]}).actors.find(a=>a.key==='2:1');
+ assert.equal(poseAt(unknown,0).dead,false,'unknown zero-cap resources are not death evidence');
+});
+test('Postmortem overkill ticks retaining positive HP do not resurrect a dead boss',()=>{
+ for(const fight of [raw.fight,{...raw.fight,chapters:[{...raw.fight,id:1}]}]){
+  const r=normalizeReplay({...raw,fight,events:[
+   {timestamp:1000,type:'damage',sourceID:1,targetID:2,resourceActor:2,hitPoints:100,maxHitPoints:100,x:100,y:200},
+   {timestamp:2000,type:'death',targetID:2},
+   {timestamp:2109,type:'damage',sourceID:1,targetID:2,tick:true,amount:1,overkill:400,resourceActor:2,hitPoints:1,maxHitPoints:100,x:100,y:200},
+   {timestamp:3000,type:'damage',sourceID:1,targetID:2,overkill:10,targetResources:{hitPoints:1,maxHitPoints:100}},
+   {timestamp:4000,type:'damage',sourceID:2,targetID:1,overkill:20,resourceActor:1,hitPoints:40,maxHitPoints:100},
+   {timestamp:5000,type:'damage',sourceID:1,targetID:2,overkill:20,resourceActor:2,hitPoints:0,maxHitPoints:100},
+  ]});
+  const a=r.actors.find(a=>a.key==='2:1');
+  assert.deepEqual(a.deaths,[[1000,true],[3000,false],[4000,true]]);
+  for(const t of [2999,1109,1000,2500,1109])assert.equal(poseAt(a,t).dead,true);
+  assert.equal(poseAt(a,3000).dead,false);
+  assert.equal(poseAt(a,4000).dead,true);
+ }
+});
+test('An indefinite channel follows a recorded self aura and survives seeking without a fabricated timeout',()=>{
+ const replay=enrichCombat(normalizeReplay({...raw,events:[
+  {timestamp:1000,type:'applydebuff',sourceID:2,targetID:2,abilityGameID:30},
+  {timestamp:1000,type:'cast',sourceID:2,targetID:-1,abilityGameID:30},
+  {timestamp:8000,type:'removedebuff',targetID:2,abilityGameID:30},
+ ]}),{}, {30:{channel:true,durationMs:-1}});
+ const actor=replay.actors.find(a=>a.key==='2:1'),c=actor.casts.find(c=>c.channel);
+ assert.equal(c.end,7000);assert.equal(c.inferredEnd,false);assert.equal(c.timingSource,'recorded self aura');
+ for(const t of [6000,1,6999,4000])assert.equal(combatStateAt(actor,t).cast?.spell,30);
+ assert.equal(combatStateAt(actor,7000).cast,null);
+ const unknown=enrichCombat(normalizeReplay({...raw,events:[
+  {timestamp:1000,type:'applybuff',sourceID:1,targetID:2,abilityGameID:30},
+  {timestamp:1000,type:'cast',sourceID:2,abilityGameID:30},
+ ]}),{}, {30:{channel:true,durationMs:-1}}).actors.find(a=>a.key==='2:1');
+ assert.equal(combatStateAt(unknown,100).cast,null,'an aura from another actor cannot authorize an infinite channel');
+});
+test('Recorded interrupts and snapshot boundaries cap a self-aura-bound indefinite channel',()=>{
+ for(const edge of [{timestamp:4000,type:'interrupt',sourceID:1,targetID:2,extraAbilityGameID:30},
+                   {timestamp:4000,type:'combatantinfo',sourceID:2,auras:[]}]){
+  const actor=enrichCombat(normalizeReplay({...raw,events:[
+   {timestamp:1000,type:'applybuff',sourceID:2,targetID:2,abilityGameID:30},
+   {timestamp:1000,type:'cast',sourceID:2,abilityGameID:30},edge,
+   {timestamp:8000,type:'removebuff',targetID:2,abilityGameID:30},
+  ]}),{}, {30:{channel:true,durationMs:-1}}).actors.find(a=>a.key==='2:1');
+  assert.equal(combatStateAt(actor,2999).cast?.spell,30);assert.equal(combatStateAt(actor,3000).cast,null);
+ }
+});
+test('Repeated untargeted area casts associate results with the latest launch and retain all victim times',()=>{
+ const r=enrichCombat(normalizeReplay({...raw,gameVersion:'sod',fight:{...raw.fight,encounterID:3187},
+  actors:[raw.actors[0],{...raw.actors[1],gameID:241904},{id:3,name:'Other player',type:'Player'}],events:[
+  {timestamp:1000,type:'cast',sourceID:2,abilityGameID:1232829},
+  {timestamp:1100,type:'damage',sourceID:2,targetID:1,abilityGameID:1232829},
+  {timestamp:5000,type:'cast',sourceID:2,abilityGameID:1232829},
+  {timestamp:5100,type:'damage',sourceID:2,targetID:1,abilityGameID:1232829},
+  {timestamp:5110,type:'damage',sourceID:2,targetID:3,abilityGameID:1232829},
+  {timestamp:5120,type:'damage',sourceID:2,targetID:3,abilityGameID:1232829},
+ ]}),{},{});
+ const launches=r.visualEvents.filter(e=>e.kind==='go');
+ assert.deepEqual(launches.map(e=>e.impacts),[
+  [{target:'1:1',t:100}],[{target:'1:1',t:4100},{target:'3:1',t:4110}],
+ ]);
+ assert.deepEqual(r.visualEvents.filter(e=>e.kind==='impact').map(e=>e.t),[100,4100,4110,4120]);
+});
+test('Unknown overlapping targetless projectiles retain unused launches instead of dropping a victim',()=>{
+ const r=enrichCombat(normalizeReplay({...raw,events:[
+  {timestamp:1000,type:'cast',sourceID:2,abilityGameID:30},
+  {timestamp:1100,type:'cast',sourceID:2,abilityGameID:30},
+  {timestamp:1200,type:'damage',sourceID:2,targetID:1,abilityGameID:30},
+  {timestamp:1300,type:'damage',sourceID:2,targetID:1,abilityGameID:30},
+ ]}),{},{});
+ assert.deepEqual(r.visualEvents.filter(e=>e.kind==='go').map(e=>e.impacts),[
+  [{target:'1:1',t:200}],[{target:'1:1',t:300}],
+ ]);
+});
+test('Provider Falling damage retains chart data without colliding with positive client spell IDs',()=>{
+ const r=enrichCombat(normalizeReplay({...raw,abilities:[{gameID:3,name:'Falling'}],events:[
+  {timestamp:1000,type:'damage',sourceID:-1,targetID:1,abilityGameID:3,amount:123},
+  {timestamp:2000,type:'damage',sourceID:2,targetID:1,abilityGameID:3,amount:10},
+ ]}),{},{});
+ assert.equal(r.combat.filter(e=>e.kind==='damage').length,2);
+ assert.equal(r.combat[0].amount,123);assert.equal(r.combat[0].environmental,true);
+ assert.deepEqual(r.visualEvents.filter(e=>e.kind==='impact').map(e=>e.source),['2:1']);
+});
+test('Targeted finite channels end at their uniquely owned victim aura removal',()=>{
+ const base={...raw,actors:[...raw.actors,{id:3,name:'Other mob',type:'NPC'}],events:[
+  {timestamp:1000,type:'cast',sourceID:2,targetID:1,abilityGameID:30},
+  {timestamp:1002,type:'applydebuff',sourceID:2,targetID:1,abilityGameID:30},
+  {timestamp:2000,type:'refreshdebuff',targetID:1,abilityGameID:30},
+  {timestamp:4000,type:'removedebuff',targetID:1,abilityGameID:30},
+ ]};
+ const actor=enrichCombat(normalizeReplay(base),{}, {30:{channel:true,durationMs:7500}}).actors.find(a=>a.key==='2:1');
+ const c=actor.casts.find(c=>c.channel);
+ assert.equal(c.end,3000);assert.equal(c.timingSource,'recorded target aura');assert.equal(c.inferredEnd,false);
+ for(const [t,active]of [[2999,true],[3000,false],[100,true],[2999,true]])assert.equal(!!combatStateAt(actor,t).cast,active);
+ const overlap={...base,events:[...base.events.slice(0,2),
+  {timestamp:1500,type:'applydebuff',sourceID:3,targetID:1,abilityGameID:30},base.events[3]]};
+ const ambiguous=enrichCombat(normalizeReplay(overlap),{}, {30:{channel:true,durationMs:7500}}).actors.find(a=>a.key==='2:1');
+ assert.equal(ambiguous.casts.find(c=>c.channel).end,7500,'unattributed overlapping removals cannot identify the caster');
+ overlap.events.at(-1).sourceID=2;
+ const known=enrichCombat(normalizeReplay(overlap),{}, {30:{channel:true,durationMs:7500}}).actors.find(a=>a.key==='2:1');
+ assert.equal(known.casts.find(c=>c.channel).end,3000,'an explicit caster removal identifies its own channel');
+ const mismatch={...base,events:[...base.events.slice(0,3),{...base.events[3],sourceID:3}]};
+ const other=enrichCombat(normalizeReplay(mismatch),{}, {30:{channel:true,durationMs:7500}}).actors.find(a=>a.key==='2:1');
+ assert.equal(other.casts.find(c=>c.channel).end,7500,'another explicit caster does not remove this source-owned channel');
+});
+test('The actual normalization/enrichment pipeline applies AQ teleports to NPCs and rooted pets',()=>{
+ const input={...raw,gameVersion:'sod',fight:{...raw.fight,gameZone:{id:531},encounterID:100709,enemyNPCs:[{id:2}]},
+  actors:[raw.actors[0],{...raw.actors[1],gameID:15263}],events:[
+   {timestamp:1000,type:'damage',sourceID:2,resourceActor:1,x:100,y:100},
+   {timestamp:1100,type:'cast',sourceID:2,abilityGameID:20449,resourceActor:1,x:100,y:100},
+   {timestamp:1200,type:'damage',sourceID:2,resourceActor:1,x:10000,y:100},
+  ]};
+ const actor=enrichCombat(normalizeReplay(input),{},{}).actors.find(a=>a.key==='2:1');
+ assert.deepEqual(poseAt(actor,99).pos,actor.samples[0].slice(1));
+ assert.deepEqual(poseAt(actor,100).pos,actor.samples.at(-1).slice(1));
+ assert.equal(poseAt(actor,100).positionSource,'ability jump estimate');
+ assert.equal(poseAt(actor,100).estimated,true);
+ const petInput={...input,fight:{...input.fight,encounterID:100712},
+  actors:[raw.actors[0],{...raw.actors[1],gameID:15510},{id:3,type:'Pet',name:'Pet',petOwner:1}],events:[
+   {timestamp:1000,type:'damage',sourceID:3,resourceActor:1,x:100,y:100},
+   {timestamp:1500,type:'applydebuff',sourceID:2,targetID:3,abilityGameID:731},
+   {timestamp:2000,type:'damage',sourceID:3,resourceActor:1,x:1200,y:100},
+  ]};
+ const pet=enrichCombat(normalizeReplay(petInput),{},{}).actors.find(a=>a.key==='3:1');
+ assert.deepEqual(poseAt(pet,499).pos,pet.samples[0].slice(1));
+ assert.deepEqual(poseAt(pet,500).pos,pet.samples.at(-1).slice(1));
+ assert.equal(poseAt(pet,500).estimated,true);assert.equal(poseAt(pet,500).movement,null);
+ const withDeparture={...petInput,events:petInput.events.map(e=>e.type==='applydebuff'?{...e,resourceActor:2,x:100,y:100}:e)};
+ const anchored=enrichCombat(normalizeReplay(withDeparture),{},{}).actors.find(a=>a.key==='3:1');
+ for(const t of [500,600,999,600]){
+  assert.deepEqual(poseAt(anchored,t).pos,anchored.samples.at(-1).slice(1));
+  assert.equal(poseAt(anchored,t).positionSource,'ability jump estimate');assert.equal(poseAt(anchored,t).movement,null);
+ }
+});
+test('Mason charge annotation runs after named teleport cast reconstruction',()=>{
+ const input={...raw,gameVersion:'sod',fight:{...raw.fight,encounterID:3197},
+  actors:[{id:2,name:'Mason',type:'NPC',gameID:241021}],
+  abilities:[{gameID:31,name:'Teleport'}],events:[
+   {timestamp:1100,type:'cast',sourceID:2,abilityGameID:1228331,resourceActor:1,x:100,y:100},
+   {timestamp:1200,type:'cast',sourceID:2,abilityGameID:31,resourceActor:1,x:600,y:100},
+   {timestamp:1300,type:'cast',sourceID:2,abilityGameID:1228370,resourceActor:1,x:1100,y:100},
+  ]};
+ const r=enrichCombat(normalizeReplay(input),{},{}),actor=r.actors[0];
+ assert.equal(actor.casts.find(c=>c.spell===31).name,'Teleport');
+ assert.deepEqual(actor.chargeSegments,[[200,300]]);
+ assert.equal(poseAt(actor,150).discontinuity,true);
+ assert.deepEqual(poseAt(actor,150).pos,actor.samples[0].slice(1));
+ const smooth=enrichCombat(normalizeReplay({...input,abilities:[],events:input.events.filter(e=>e.abilityGameID!==31).concat([
+  {timestamp:1200,type:'damage',sourceID:2,resourceActor:1,x:600,y:100},
+ ])}),{},{}).actors[0];
+ assert.ok(poseAt(smooth,150).speed>35);assert.equal(poseAt(smooth,150).discontinuity,false);
+});
+test('Recorded self-aura removal caps finite channels without stretching their client timeout',()=>{
+ for(const [durationMs,end,source] of [[60000,3000,'recorded self aura'],[2000,2000,'client spell data']]){
+  const r=enrichCombat(normalizeReplay({...raw,events:[
+   {timestamp:1000,type:'applybuff',sourceID:2,targetID:2,abilityGameID:30},
+   {timestamp:1000,type:'cast',sourceID:2,abilityGameID:30},
+   {timestamp:4000,type:'removebuff',targetID:2,abilityGameID:30},
+  ]}),{}, {30:{channel:true,durationMs}});
+  const c=r.actors.find(a=>a.key==='2:1').casts.find(c=>c.channel);
+  assert.equal(c.end,end);assert.equal(c.timingSource,source);
+ }
+});
+test('Council presentation windows participate in the normal import and pose path',()=>{
+ const r=normalizeReplay({...raw,gameVersion:'sod',fight:{...raw.fight,encounterID:3188},
+  actors:[{id:1,gameID:242660,type:'NPC',name:'Molten Basin'},{id:2,gameID:244819,type:'NPC',name:'Primordial Flame'}],
+  events:[
+   {timestamp:1000,type:'applybuff',sourceID:1,targetID:1,abilityGameID:1231133},
+   {timestamp:1100,type:'applybuff',sourceID:2,targetID:2,abilityGameID:1236152,x:100,y:200,resourceActor:1},
+   {timestamp:3000,type:'removebuff',targetID:1,abilityGameID:1231133},
+  ]});
+ const a=r.actors.find(a=>a.key==='2:1');
+ assert.equal(a.presentationEvidence.kind,'encounter-lifecycle-inference');
+ for(const [t,visible] of [[100,true],[2000,false],[0,false],[1999,true],[100,true]])assert.equal(!!poseAt(a,t),visible);
+});
 test('Current WCL resources map to the correct actor instance and WoW axes',()=>{
  const r=normalizeReplay(raw);const mob=r.actors.find(a=>a.key==='2:1');
  assert.deepEqual(mob.samples[0],[0,1011.87,-974.4,null]);
@@ -245,14 +493,31 @@ test('Recorded interrupts match the interrupted spell and death closes a channel
  const channel=a.casts[1];assert.equal(channel.channel,true);assert.equal(channel.start,1000);assert.equal(channel.end,2500);assert.equal(channel.outcome,'death');
  assert.equal(combatStateAt(a,2499).cast.channel,true);assert.equal(combatStateAt(a,2500).cast,null);
 });
-test('Casts cannot pair through encounter boundaries or out-of-order raw delivery',()=>{
+test('Casts cannot pair through a new encounter or out-of-order raw delivery',()=>{
  const r=actions([
   {timestamp:5000,type:'cast',sourceID:1,abilityGameID:10},
   {timestamp:1100,type:'begincast',sourceID:1,abilityGameID:10},
-  {timestamp:2500,type:'encounterend'},
+  {timestamp:2500,type:'encounterstart'},
  ],{10:{castMs:3000}});
  const cs=r.actors.find(a=>a.id===1).casts;
  assert.equal(cs[0].outcome,'encounter boundary');assert.equal(cs[0].end,1500);assert.equal(cs[1].instant,true);
+});
+test('Recorded completions and owned channel state survive an encounter end without a fabricated interrupt',()=>{
+ const r=actions([
+  {timestamp:1100,type:'begincast',sourceID:1,abilityGameID:10},
+  {timestamp:2500,type:'encounterend'},
+  {timestamp:5000,type:'cast',sourceID:1,abilityGameID:10},
+ ],{10:{castMs:3000}});
+ const c=r.actors.find(a=>a.id===1).casts;
+ assert.equal(c.length,1);assert.equal(c[0].end,4000);assert.equal(c[0].outcome,'completed');assert.equal(c[0].inferredEnd,false);
+ const held=actions([
+  {timestamp:1100,type:'applybuff',sourceID:1,targetID:1,abilityGameID:10},
+  {timestamp:1100,type:'cast',sourceID:1,targetID:1,abilityGameID:10},
+  {timestamp:2500,type:'encounterend'},
+  {timestamp:5000,type:'removebuff',targetID:1,abilityGameID:10},
+ ],{10:{channel:true,durationMs:-1}}).actors.find(a=>a.id===1);
+ assert.equal(held.casts.find(c=>c.channel).end,4000);
+ assert.equal(combatStateAt(held,3999).cast?.spell,10);assert.equal(combatStateAt(held,4000).cast,null);
 });
 test('Visual playback keeps direct damage/healing times and multihit targets without firing missiles for DoT ticks',()=>{
  const r=actions([

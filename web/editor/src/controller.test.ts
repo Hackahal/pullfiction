@@ -8,7 +8,7 @@ import { STORAGE_KEY } from "./domain";
 import luaparse from "luaparse";
 import { IDBFactory } from "fake-indexeddb";
 import { IndexedProjectStore, newProject, replaySource } from "./project-store";
-import { emptyPlan } from "./domain";
+import { emptyPlan, parsePlan } from "./domain";
 const raw = {
   report: { code: "DyN7vF94QR8aj1Lc", title: "Run" },
   fight: {
@@ -359,6 +359,19 @@ test("native channel snapshots use only the recorded cast target and clear it on
   f.c.seek(2500);
   assert.equal(f.frame.find((a) => a.key === "1:1")!.channel, false);
   assert.equal(f.frame.find((a) => a.key === "1:1")!.channel_target, null);
+  f.c.stop();
+});
+test("native self aura provenance follows active snapshots, rewinds and the aura visibility option", () => {
+  const f = fixture();
+  f.c.seek(6500);
+  assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, [133]);
+  f.c.seek(5000);
+  assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, []);
+  f.c.seek(6500);
+  f.c.setOption("auras", false);
+  assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, []);
+  f.c.setOption("auras", true);
+  assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, [133]);
   f.c.stop();
 });
 
@@ -1367,6 +1380,61 @@ test("Changing raids cancels the result of an in-flight replay import", async ()
   await pending;
   assert.equal(f.c.getSnapshot().plan.mapId, 533);
   assert.equal(f.c.getSnapshot().replay, null);
+  f.c.stop();
+});
+
+test("Boss-owned pets stay hostile in replay transport and reopened standalone plans", () => {
+  const f = fixture();
+  f.c.installReplay({
+    ...raw,
+    actors: [
+      ...raw.actors,
+      { id: 3, name: "Ward", type: "Pet", petOwner: 2, gameID: 14987 },
+      { id: 4, name: "Player pet", type: "Pet", petOwner: 1, gameID: 416 },
+    ],
+    events: [
+      ...raw.events,
+      ...[3, 4].flatMap((id) => [
+        {
+          timestamp: 2000,
+          type: "create",
+          sourceID: id === 3 ? 2 : 1,
+          targetID: id,
+          abilityGameID: 24309,
+        },
+        {
+          timestamp: 2100,
+          type: "cast",
+          sourceID: id,
+          abilityGameID: 1,
+          resourceActor: 1,
+          x: 350,
+          y: 250,
+        },
+      ]),
+    ],
+  } as unknown as RawReplay);
+  f.c.seek(1500);
+  assert.equal(f.frame.find((a) => a.key === "3:1")?.friendly, false);
+  assert.equal(f.frame.find((a) => a.key === "4:1")?.friendly, true);
+  f.c.planFromMoment();
+  const saved = parsePlan(JSON.stringify(f.c.getSnapshot().plan));
+  const step = saved.steps.find((s) =>
+    s.snapshot?.actors.some((a) => a.key === "3:1"),
+  )!;
+  assert.equal(
+    step.snapshot!.actors.find((a) => a.key === "3:1")?.friendly,
+    false,
+  );
+  const standalone = new EditorController();
+  standalone.attachEngine(f.engine);
+  standalone.editPlan(saved);
+  standalone.setWorkspaceMode("plan");
+  standalone.setActiveStep(step.id, false);
+  standalone.render();
+  assert.equal(f.frame.find((a) => a.key === "3:1")?.friendly, false);
+  assert.equal(f.frame.find((a) => a.key === "4:1")?.friendly, true);
+  standalone.stop();
   f.c.stop();
 });
 

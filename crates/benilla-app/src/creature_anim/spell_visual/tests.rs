@@ -1182,6 +1182,189 @@ fn aura_state_kit_arms_persistent_and_reaps_on_aura_end() {
     }
 }
 
+#[test]
+fn recorded_self_aura_routes_rearm_on_provenance_change_and_reap_on_removal() {
+    use benilla_protocol::messages::{ObjectFields, ObjectType};
+    const AURA: u32 = 27619;
+    #[derive(Resource, Default)]
+    struct FxLog(Vec<SpellKitFx>);
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_message::<SpellKitFx>()
+        .add_message::<crate::net::FieldChanged>()
+        .add_message::<crate::aura_visual::AuraProc>()
+        .add_message::<SpellKitSound>()
+        .add_message::<super::BaseAnimRecompute>()
+        .init_resource::<FxLog>();
+    let data = serde_json::json!({"schema":1,
+        "effects":{"1":{"type":0,"fileDataID":100}},
+        "kits":{"10":{"effects":[{"id":1,"effect":1,"attachment":34}],"animations":[]}},
+        "visuals":{"50":{"events":[{"start":"Aura Start","target":"Caster","kit":10}],"missiles":[]}}});
+    let mut visuals = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    visuals
+        .merge_modern_json(&serde_json::to_vec(&data).unwrap())
+        .unwrap();
+    app.insert_resource(SpellVisuals(visuals));
+    app.insert_resource(crate::ui_action::Spells {
+        catalog: SpellCatalog::from_displays(HashMap::from([(
+            AURA,
+            SpellDisplay {
+                visual: 50,
+                ..Default::default()
+            },
+        )])),
+        ..crate::ui_action::Spells::empty_for_tests()
+    });
+    app.add_systems(
+        Update,
+        (
+            super::arm_aura_state_fx,
+            |mut r: MessageReader<SpellKitFx>, mut log: ResMut<FxLog>| {
+                log.0.extend(r.read().cloned())
+            },
+        )
+            .chain(),
+    );
+    let unit = app
+        .world_mut()
+        .spawn((
+            crate::net::ObjectStore(
+                ObjectFields::from_pairs(&[(47, AURA), (95, 0x0E)]).into_created(ObjectType::Unit),
+            ),
+            super::RecordedSelfAuras::default(),
+        ))
+        .id();
+    app.update();
+    assert!(
+        app.world().resource::<FxLog>().0.is_empty(),
+        "unknown source must not play the caster route"
+    );
+    app.world_mut()
+        .entity_mut(unit)
+        .insert(super::RecordedSelfAuras(vec![AURA]));
+    app.update();
+    assert!(matches!(
+        app.world().resource::<FxLog>().0.as_slice(),
+        [SpellKitFx::Begin {
+            persistent: true,
+            ..
+        }]
+    ));
+    app.update();
+    assert_eq!(
+        app.world().resource::<FxLog>().0.len(),
+        1,
+        "held snapshots do not duplicate FX"
+    );
+    app.world_mut()
+        .entity_mut(unit)
+        .insert(super::RecordedSelfAuras::default());
+    app.update();
+    assert!(matches!(
+        app.world().resource::<FxLog>().0.last(),
+        Some(SpellKitFx::Reap { force: true, .. })
+    ));
+    app.world_mut()
+        .entity_mut(unit)
+        .insert(super::RecordedSelfAuras(vec![AURA]));
+    app.update();
+    assert_eq!(
+        app.world().resource::<FxLog>().0.len(),
+        3,
+        "seek/source change restores the self route"
+    );
+    crate::net::apply_fields_for_test(
+        app.world_mut(),
+        unit,
+        ObjectFields::from_pairs(&[(95, 0)]).into_created(ObjectType::Unit),
+    );
+    app.update();
+    assert!(matches!(
+        app.world().resource::<FxLog>().0.last(),
+        Some(SpellKitFx::Reap { force: true, .. })
+    ));
+    assert_eq!(app.world().resource::<FxLog>().0.len(), 4);
+}
+
+#[test]
+fn modern_freeze_body_procedure_arms_holds_reaps_and_rearms() {
+    use crate::aura_visual::{AuraNode, AuraProc};
+    use benilla_protocol::messages::{ObjectFields, ObjectType};
+    const WEB_WRAP: u32 = 28622;
+    #[derive(Resource, Default)]
+    struct ProcLog(Vec<AuraProc>);
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_message::<SpellKitFx>()
+        .add_message::<crate::net::FieldChanged>()
+        .add_message::<AuraProc>()
+        .add_message::<SpellKitSound>()
+        .add_message::<super::BaseAnimRecompute>()
+        .init_resource::<ProcLog>();
+    let graph = serde_json::json!({"schema":1,"effects":{},
+        "kits":{"3378":{"effects":[],"animations":[],"proceduralEffects":[
+            {"id":356922,"type":11,"values":[0,0,0,0]}]}},
+        "visuals":{"50":{"events":[{"start":"Aura Start","target":"Target","kit":3378}],"missiles":[]}}});
+    let mut visuals = SpellVisualCatalog::from_tables(HashMap::new(), HashMap::new());
+    visuals
+        .merge_modern_json(&serde_json::to_vec(&graph).unwrap())
+        .unwrap();
+    app.insert_resource(SpellVisuals(visuals));
+    app.insert_resource(crate::ui_action::Spells {
+        catalog: SpellCatalog::from_displays(HashMap::from([(
+            WEB_WRAP,
+            SpellDisplay {
+                visual: 50,
+                ..Default::default()
+            },
+        )])),
+        ..crate::ui_action::Spells::empty_for_tests()
+    });
+    app.add_systems(
+        Update,
+        (
+            super::arm_aura_state_fx,
+            |mut reader: MessageReader<AuraProc>, mut log: ResMut<ProcLog>| {
+                log.0.extend(reader.read().cloned())
+            },
+        )
+            .chain(),
+    );
+    let unit = app
+        .world_mut()
+        .spawn(crate::net::ObjectStore(
+            ObjectFields::from_pairs(&[(47, WEB_WRAP), (95, 0x0E)]).into_created(ObjectType::Unit),
+        ))
+        .id();
+    app.update();
+    assert!(matches!(app.world().resource::<ProcLog>().0.as_slice(),
+        [AuraProc::Begin { entity,spell_id,nodes }] if *entity==unit&&*spell_id==WEB_WRAP&&nodes==&[AuraNode::AnimRate(0.)]));
+    app.update();
+    assert_eq!(
+        app.world().resource::<ProcLog>().0.len(),
+        1,
+        "held aura does not duplicate freeze nodes"
+    );
+    crate::net::apply_fields_for_test(
+        app.world_mut(),
+        unit,
+        ObjectFields::from_pairs(&[(95, 0)]).into_created(ObjectType::Unit),
+    );
+    app.update();
+    assert!(
+        matches!(app.world().resource::<ProcLog>().0.last(),Some(AuraProc::Reap {spell_id,..}) if *spell_id==WEB_WRAP)
+    );
+    crate::net::apply_fields_for_test(
+        app.world_mut(),
+        unit,
+        ObjectFields::from_pairs(&[(47, WEB_WRAP), (95, 0x0E)]).into_created(ObjectType::Unit),
+    );
+    app.update();
+    assert!(
+        matches!(app.world().resource::<ProcLog>().0.last(),Some(AuraProc::Begin {nodes,..}) if nodes==&[AuraNode::AnimRate(0.)])
+    );
+}
+
 /// An instant harmful GO lays one severity-0 wound on each hit (`0x6e8bf0` at `0x6e8c89`), a
 /// helpful one none; a state kit's wound anim adds nothing (stage 2 never reaches the `[8,10]`
 /// test, `0x60f383`); a missile arrival always wounds (`0x61dc50` at `0x61dc74`).

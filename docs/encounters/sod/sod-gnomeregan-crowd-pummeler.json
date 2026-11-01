@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-crowd-pummeler",
+  "ruleset": "sod",
+  "boss": "Crowd Pummeler 9-60",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2899,
+  "rawEncounterId": 2899,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        11
+      ],
+      "selectedFightNames": [
+        "Crowd Pummeler 9-60"
+      ],
+      "matchedNpcTemplateIds": [
+        215728
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-crowd-pummeler"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24056979",
+      "quality": "official SoD raised-platform relocation"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/crowd-pummeler-9-60-strategy",
+      "quality": "exact SoD authored guide",
+      "date": "2024-06-11"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/CrowdPummeler.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon event mapping"
+    },
+    {
+      "id": "spell",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=431957/gear-toss",
+        "https://www.wowhead.com/classic/spell=432062/the-claw"
+      ],
+      "quality": "client-derived ability records linked by exact guide",
+      "url": "https://www.wowhead.com/classic/spell=431957/gear-toss"
+    },
+    {
+      "id": "client",
+      "quality": "fresh client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Smash facing/knockback",
+      "spellIds": [
+        431720,
+        432423
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "observed cast and success marker",
+      "state": "frontal attack on raised platform",
+      "lifecycle": "3s client precast; recorded completion/cancel wins",
+      "placement": "feet/base facing may differ from torso; exact cone and fall Z need evidence",
+      "animation": "431720 precast/cast and TargetNotCaster impact;432423 no visual",
+      "acceptanceCheck": "sod-gnomeregan-crowd-pummeler/C01",
+      "acceptanceCriteria": "record feet orientation and victim trajectory; no torso-only facing or false flat-floor fall",
+      "sourceRefs": [
+        "official",
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "moving gears",
+      "spellIds": [
+        431957
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual gear spawn and collision if observable",
+      "state": "two researched moving ground hazards",
+      "lifecycle": "object birth/despawn/collision; no duration derived from victim damage",
+      "placement": "linear path per guide; exact path/collision/height unobserved",
+      "animation": "431957 collision no visual; related client431946 AreaTrigger route is not an automatic replacement",
+      "acceptanceCheck": "sod-gnomeregan-crowd-pummeler/C02",
+      "acceptanceCriteria": "independent gears and collision; stop at actual end; seeking must recover hazard age",
+      "sourceRefs": [
+        "guide",
+        "spell",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Claw grab",
+      "spellIds": [
+        432062
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "source cast and actual target",
+      "state": "fixate→charge→grab and periodic damage",
+      "lifecycle": "3s cast; exact carry/release/cancel observed separately",
+      "placement": "target attachment and movement require evidence; no arbitrary lift",
+      "animation": "current graph has Caster cast/precast; server grab not encoded by route alone",
+      "acceptanceCheck": "sod-gnomeregan-crowd-pummeler/C03",
+      "acceptanceCriteria": "target identity; delayed landing/carry/release; no interpolated ground walk through grip",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "spell",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Off Balanced",
+      "spellIds": [
+        431839
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual recipient aura/stack",
+      "state": "knockback vulnerability",
+      "lifecycle": "recorded stack/remove",
+      "placement": "recipient state; no invented displacement multiplier",
+      "animation": "no declared visual",
+      "acceptanceCheck": "sod-gnomeregan-crowd-pummeler/C04",
+      "acceptanceCriteria": "stack and removal on rewind; distinguish actual fall/death from mechanic expectation",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    431946
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "gear model/source/path and spawn events",
+    "Smash torso/base rotation and cone geometry",
+    "true low-health Claw transition",
+    "player carry anchor/release/Z",
+    "event encoding/seek/wipe cleanup"
+  ],
+  "researchContext": {
+    "npcIds": [
+      215728
+    ],
+    "encounterIdEvidence": "pinned exact SoD DBM module",
+    "supportLimits": [
+      "no confirmed logs/runtime credit",
+      "DBM explicitly lacks actual blade spawn and stage transition trigger",
+      "Smash guide ID431720 and DBM success432423 differ; no silent substitution",
+      "Gear collision431957 suppresses caster logging; damage alone cannot recover orbit/path",
+      "raised platform and carried player need actual Z/attachment evidence"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

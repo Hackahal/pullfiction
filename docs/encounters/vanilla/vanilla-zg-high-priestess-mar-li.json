@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-high-priestess-mar-li",
+  "ruleset": "vanilla",
+  "boss": "High Priestess Mar'li",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50786,
+  "rawEncounterId": 786,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-high-priestess-mar-li"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Marli.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/high-priestess-marli-zul-gurub-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-04-23",
+      "author": "Neryssa",
+      "patch": "Page patch 1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=24300/drain-life",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=24110/enveloping-webs",
+        "https://www.wowhead.com/classic/spell=10912/mind-control",
+        "https://www.wowhead.com/classic/npc=11388/witherbark-speaker",
+        "https://www.wowhead.com/classic/npc=15041"
+      ],
+      "quality": "Resolved baseline links; DrainLife 7s is authored ceiling, actual channel end is recorded. Primary explicitly questions Enlarge dispel warning validity."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID 2, cachedRevision None, liveRevision 1; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client 1.15.9.70576/build 5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Troll and spider morph",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual morph/unit-state and observed root/charge evidence",
+      "state": "Boss 14510 identity retained across different models",
+      "lifecycle": "No automatic transform from a timer or every web application",
+      "placement": "Measured movement and unknown Z; reject guessed charge arcs",
+      "animation": "Morph, threat change and locomotion separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Drain Life channel",
+      "spellIds": [
+        24300
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast, target aura, ticks/heal and interrupt/removal",
+      "state": "Caster heal and actual drained recipient retained",
+      "lifecycle": "Recorded interrupt/aura terminal/death; no forced 7s hold",
+      "placement": "Actual source/target anchors, no inferred chain topology",
+      "animation": "Channel beam, host hold and pulse age separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Poison Volley and Corrosive Poison",
+      "spellIds": [
+        24099,
+        24111
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast and per-target aura/damage",
+      "state": "Volley impact and persistent poison independent",
+      "lifecycle": "Actual dispel/remove; no generated periodic ticks",
+      "placement": "Observed recipients; full radius unknown",
+      "animation": "Projectile/impact and aura owner separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Spawn waves and Enlarge",
+      "spellIds": [
+        24083,
+        24109
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Observed summons, actual NPC 15041 activity and buff",
+      "state": "Each spider instance and growth state independent",
+      "lifecycle": "No generated spider count/growth timer; dispel requires actual evidence",
+      "placement": "Actual spawn/path anchors; scale not derived from health",
+      "animation": "Emergence, body-scale procedure and death separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Speaker possession and Enveloping Webs",
+      "spellIds": [
+        10912,
+        24110
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual control on 11388 and boss root/silence",
+      "state": "Controlled Speaker, boss and rooted recipients distinct",
+      "lifecycle": "Actual control/root removal; no synthesized tank switch or threat wipe",
+      "placement": "Real recipient/movement anchors",
+      "animation": "Priest channel, possessed model, web root and silence separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-zg-high-priestess-mar-li/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Primary TODO questions whether Enlarge dispel warning is valid; no automatic dispel success or model scale inferred.",
+    "Cached revision absent; live revision 1 and season 2 do not establish complete historical coverage.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5 seconds before and 5000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14510,
+      11388,
+      15041
+    ]
+  }
+}

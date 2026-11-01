@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-atalai-defenders",
+  "ruleset": "sod",
+  "boss": "Atal'ai Defenders",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2954,
+  "rawEncounterId": 2954,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        7
+      ],
+      "selectedFightNames": [
+        "Atal'ai Defenders"
+      ],
+      "matchedNpcTemplateIds": [
+        218868,
+        218922,
+        221637,
+        221638,
+        221639,
+        221640,
+        221759,
+        221834,
+        221835,
+        221836,
+        221837
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-atalai-defenders"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/AtalaiDefenders.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/atalai-defenders-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Six defenders and undead continuation",
+      "spellIds": [
+        444962,
+        444963,
+        444964,
+        444747,
+        444960
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual defender death/summon, followed by a separate undead continuation",
+      "state": "Individual defender death/summon, followed by a separate undead continuation",
+      "lifecycle": "Keep original corpse separate from summoned identity; crowd control persists until actual removal",
+      "placement": "Actual defender activation and undead spawn positions",
+      "animation": "Do not infer mesh replacement from death alone",
+      "acceptanceCheck": "sod-sunken-temple-atalai-defenders/ST-DEF-IDENTITY",
+      "acceptanceCriteria": "ST-DEF-IDENTITY: living corpse and undead actor can coexist; every stage seek is deterministic",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Gasher stacks and axes",
+      "spellIds": [
+        445284,
+        445289
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Fervor dose and Spinning Axes event",
+      "state": "Fervor dose and Spinning Axes event",
+      "lifecycle": "Independent aura stack and spinning effect lifetime",
+      "placement": "Caster-attached axes unless source proves independent objects",
+      "animation": "Inspect actual kit rather than guess rotational speed",
+      "acceptanceCheck": "sod-sunken-temple-atalai-defenders/ST-DEF-GASHER",
+      "acceptanceCriteria": "ST-DEF-GASHER: retain stack count and cancellation when the relevant actor dies",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Interrupts, healing, summons and chains",
+      "spellIds": [
+        446372,
+        446364,
+        438294,
+        438341,
+        438335,
+        446338,
+        23511,
+        438350,
+        446360
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary module registers these individual casts, aura and interrupt handlers",
+      "state": "Primary module registers these individual casts, aura and interrupt handlers",
+      "lifecycle": "Interrupt ends the matching cast only; guardians/wards require independent lifetime",
+      "placement": "Actual source, recipient and guardian positions; no fabricated chain order",
+      "animation": "Use authored spell route after original-game comparison",
+      "acceptanceCheck": "sod-sunken-temple-atalai-defenders/ST-DEF-CASTS",
+      "acceptanceCriteria": "ST-DEF-CASTS: interruption, dispel, summon and target changes survive backward/forward seeks",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Encounter end versus individual death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "All required defender phases end or encounter resets",
+      "state": "All required defender phases end or encounter resets",
+      "lifecycle": "An individual death must not terminate the entire encounter or all undead continuations",
+      "placement": "No synthetic synchronized deaths",
+      "animation": "Each actor life state independently checked",
+      "acceptanceCheck": "sod-sunken-temple-atalai-defenders/ST-DEF-END",
+      "acceptanceCriteria": "ST-DEF-END: no early cleanup after first defender; clean remaining encounter summons on verified end",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact undead NPC-to-living mappings and sixth summon trigger",
+    "Guide calls Mijan summons serpent totems; pinned addon labels 438335 Healing Ward. Do not merge these without log/client evidence.",
+    "Guide lists Hukku Curse of Blood but addon instead registers Shadow Bolt Volley and Guardians; no unsupported ID guessed",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "\n\t221759, 221637, -- Gasher\n\t221834, 221638, -- Loro\n\t218868, 221835, -- Mijan\n\t221640, 221837, -- Zul'Lor\n\t221836, 221639, -- Zolo\n\t218922 -- Hukku\n"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

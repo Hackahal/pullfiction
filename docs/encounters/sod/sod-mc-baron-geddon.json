@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-baron-geddon",
+  "ruleset": "sod",
+  "boss": "Baron Geddon",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100668,
+  "rawEncounterId": 668,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        18
+      ],
+      "selectedFightNames": [
+        "Baron Geddon"
+      ],
+      "matchedNpcTemplateIds": [
+        228433
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-baron-geddon"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/BaronGeddon.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://us.forums.blizzard.com/en/wow/t/mc-tuning-coming-later-in-the-day-on-tuesday/1906064",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Concurrent Living Bombs",
+      "spellIds": [
+        465725,
+        461090,
+        461105,
+        20475
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual bomb application/removal after actual cast",
+      "state": "Individual bomb application/removal after actual cast",
+      "lifecycle": "Each bomb has independent recipient/expiration; explosion requires real impact, not any removal",
+      "placement": "Actual recipient position at detonation, affected neighbors and upward movement",
+      "animation": "Bomb body state and explosion separate; addon marks are not logged markers",
+      "acceptanceCheck": "sod-mc-baron-geddon/MC-GED-BOMBS",
+      "acceptanceCriteria": "MC-GED-BOMBS: simultaneous bombs never collapse; dispel/death/cancel does not fabricate detonation; seek at each removal exact",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Inferno and lingering ground fire",
+      "spellIds": [
+        461087,
+        461110,
+        19695,
+        461111,
+        461103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Inferno start/removal or Living Fallout contact",
+      "state": "Actual Inferno start/removal or Living Fallout contact",
+      "lifecycle": "Inferno hold ends on actual removal; persistent patch distinct from caster's moving aura; no heat1 bomb fallout after documented patch",
+      "placement": "Verified Inferno or detonation anchor; not current boss position after movement",
+      "animation": "Native hold and world patch need separate ownership/age",
+      "acceptanceCheck": "sod-mc-baron-geddon/MC-GED-FIRE",
+      "acceptanceCriteria": "MC-GED-FIRE: caster movement does not drag old fire; cancellation closes hold; direct seek restores active patch age",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Ignite Mana",
+      "spellIds": [
+        19659
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual recipient aura and mana events",
+      "state": "Actual recipient aura and mana events",
+      "lifecycle": "Per-player and pet evidence retained; addon player/mana filter does not exclude logged pets",
+      "placement": "Actual targets, not all players",
+      "animation": "Aura appearance independent of mana drain simulation",
+      "acceptanceCheck": "sod-mc-baron-geddon/MC-GED-MANA",
+      "acceptanceCriteria": "MC-GED-MANA: removal and mana snapshots remain exact without dropping pet recipients",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Armageddon and death race",
+      "spellIds": [
+        461121,
+        20478,
+        458841
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual end-stage cast; 458841 is addon heat1 aura check",
+      "state": "Actual end-stage cast; 458841 is addon heat1 aura check",
+      "lifecycle": "Boss death/cancel ends pending explosion only when evidenced; no automatic15-second kill from addon bar",
+      "placement": "Actual boss location and impacted actors",
+      "animation": "Cast hold, death and explosion ordered independently",
+      "acceptanceCheck": "sod-mc-baron-geddon/MC-GED-END",
+      "acceptanceCriteria": "MC-GED-END: kill before completion never replays cancelled explosion; heat-specific threshold is reference, not scheduler",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Bomb explosion spell IDs, actual patch creation and lifetime",
+    "Vertical launch path and fall damage anchors",
+    "Observed heat aura and cast completion/cancellation behavior",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "12056, 228433",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

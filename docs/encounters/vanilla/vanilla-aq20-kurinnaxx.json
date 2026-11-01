@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq20-kurinnaxx",
+  "ruleset": "vanilla",
+  "boss": "Kurinnaxx",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": null,
+  "rawEncounterId": 718,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-aq20-kurinnaxx"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Kurinnaxx.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/kurinnaxx-ruins-of-ahnqiraj-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Kurinnaxx.lua",
+      "quality": "pinned primary addon baseline branch"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
+      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Mortal Wound and facing",
+      "spellIds": [
+        25646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon wound applies/stacks; baseline frontal cleave",
+      "state": "Mortal Wound and facing",
+      "lifecycle": "Real15s refresh/end and actual tank swaps",
+      "placement": "Real boss facing and victim instances",
+      "animation": "Native strike and target wound state",
+      "acceptanceCheck": "vanilla-aq20-kurinnaxx/KURINNAXX-WOUND",
+      "acceptanceCriteria": "KURINNAXX-WOUND: stack/refresh/remove stable",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Sand Trap creation",
+      "spellIds": [
+        25648
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon SPELL_CREATE attributed to source player",
+      "state": "Sand Trap creation",
+      "lifecycle": "Actual gameobject/trap birth, placement and expiry",
+      "placement": "Independent snapshot of creating player; not permanent attachment",
+      "animation": "Native trap object/ground model when identified",
+      "acceptanceCheck": "vanilla-aq20-kurinnaxx/KURINNAXX-CREATE",
+      "acceptanceCriteria": "KURINNAXX-CREATE: player-source trap retained and anchored",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Sand Trap explosion",
+      "spellIds": [
+        25656
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline delayed growing trap detonates",
+      "state": "Sand Trap explosion",
+      "lifecycle": "Actual explosion and20s silence/hit penalty, early cleanup",
+      "placement": "Real trap center and affected players",
+      "animation": "Native growth/explosion; no timed cosmetic circle",
+      "acceptanceCheck": "vanilla-aq20-kurinnaxx/KURINNAXX-TRAP",
+      "acceptanceCriteria": "KURINNAXX-TRAP: creation, telegraph and blast distinct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Enrage",
+      "spellIds": [
+        26527
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon aura; baseline30percent",
+      "state": "Enrage",
+      "lifecycle": "Actual apply/remove, no threshold-generated buff",
+      "placement": "Boss body",
+      "animation": "Native enrage668 and actual speed state",
+      "acceptanceCheck": "vanilla-aq20-kurinnaxx/KURINNAXX-ENRAGE",
+      "acceptanceCriteria": "KURINNAXX-ENRAGE: correct source and true end",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and independent actor cleanup",
+      "state": "Boss, adds and control remain separate",
+      "lifecycle": "Only actual lifetime/removal edges; no checkpoint, inherited curse or automatic add retirement",
+      "placement": "Actual spawn/return anchors and surviving actor positions",
+      "animation": "Native death/reset/object state only when established",
+      "acceptanceCheck": "vanilla-aq20-kurinnaxx/VANILLA-KURINNAXX-RESET",
+      "acceptanceCriteria": "VANILLA-KURINNAXX-RESET: repeated pull, surviving adds and exact cleanup without synthesized actors",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15348
+    ]
+  }
+}

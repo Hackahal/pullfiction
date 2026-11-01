@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq40-cthun",
+  "ruleset": "vanilla",
+  "boss": "C'Thun",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 50717,
+  "rawEncounterId": 717,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-aq40-cthun"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/DeadlyBossMods/DBM-Vanilla/blob/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ40/CThun.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/cthun-temple-of-ahnqiraj-strategy",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Eye beams and chains",
+      "spellIds": [
+        26134
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual begin/success/results and explicit chain links if available",
+      "state": "Initial beam owner distinct from bounced victims/giant eye sources",
+      "lifecycle": "Actual target-scan/markers remain observations; no synthetic chain from damage sorting",
+      "placement": "Actual linked source/target anchors; no nearest-neighbor chain or doubled damage synthesis",
+      "animation": "Authored beam/missile/chain supports inspected per exact ID",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-BEAM",
+      "acceptanceCriteria": "V-AQ-CTHUN-BEAM: every retained recipient/source survives; cast warning target not guessed from all results",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Dark Glare",
+      "spellIds": [
+        26029
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual channel/self-aura/rotation evidence on Eye",
+      "state": "Red sweeping channel distinct from EyeBeam and ordinary attacks",
+      "lifecycle": "Actual start/end/interrupt/death; addon48/86/39second bars not state",
+      "placement": "Recorded facing anchors; rotation direction and angular speed not scripted",
+      "animation": "Exact beam/body tint procedures; no duplicate target beam per hit",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-GLARE",
+      "acceptanceCriteria": "V-AQ-CTHUN-GLARE: actual sweep boundary seek-correct; no unobserved timedGlare",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Eye to body and weakened state",
+      "spellIds": [
+        26586
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Eye death/body emerge and flesh-tentacle lifecycle",
+      "state": "Distinct Eye15589/body15727 and shell/weakened context",
+      "lifecycle": "Two proven flesh deaths establish causal window only; no45second timeout without end evidence",
+      "placement": "Actual body anchors; no borrowed scale/display or spawn-at-center",
+      "animation": "Separate body meshes and emerge/weak animation; no life/death conflation",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-PHASE",
+      "acceptanceCriteria": "V-AQ-CTHUN-PHASE: Eye death not encounterkill; body and weakness replay through seeks",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Stomach and exit",
+      "spellIds": [
+        26476
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DigestiveAcid application/stacks/removal plus actual devour/exit/position evidence",
+      "state": "Inside/outside membership, rising acid distinct from movement event",
+      "lifecycle": "Application proves inside at that time, not exact swallow instant; removal may be death/cure/exit",
+      "placement": "Observed anchors; no connecting underground route or inventedZ/landing",
+      "animation": "Typed compartment/teleport cues, no camera/gameheight invented",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-STOMACH",
+      "acceptanceCriteria": "V-AQ-CTHUN-STOMACH: membership and actual movements independent; death removal not autoexitjump",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Tentacles and rupture",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual tentacle spawn/cast/aura/results/HP/death",
+      "state": "Separate eye/claw/giant/flesh identities and channels",
+      "lifecycle": "Actual instance lifetimes and postfight continuation; no periodic wave schedule",
+      "placement": "Explicit instance anchors; no ring/entrance templates from guide",
+      "animation": "Native model/channel/Area kit inspection without substituted mesh",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-ADDS",
+      "acceptanceCriteria": "V-AQ-CTHUN-ADDS: each physical instance distinguished from positionless representations; channels end only with proof",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-aq40-cthun/V-AQ-CTHUN-END",
+      "acceptanceCriteria": "V-AQ-CTHUN-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "DarkGlare continuous beam onset/end/rotation and required body/visual spell state are missing from retained events; no specific unlogged spell alias or timeout implemented.",
+    "Stomach entry/exit movement instants, layer/Z and intermediate anchors remain unknown; membership is useful without a false jump.",
+    "Weakness inferred from two actual flesh deaths needs labelled phase context; no directCarapace removal or vulnerability-end proof beforebodydeath.",
+    "GroundRupture26139/26478 have no visual definitions; no arbitrary Area effect substituted. No retained wipe/reset scenario.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15589,
+      15727
+    ],
+    "baselineScope": "Baseline Classic guide plus pinned primary IDs. Primary also registers341722 but that is not an alias for26134: every observed ID stays literal. DarkGlare addon scheduling is prediction, not proof; raw ruleset-qualified data wins."
+  }
+}

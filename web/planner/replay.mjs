@@ -1,6 +1,12 @@
+import {hakkarSnapshotPreservations} from './encounters/vanilla-hakkar.mjs';
 import {prepareMovement,movementBetween,runProgress} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
 import {reconstructCasts,buildVisualEvents} from './replay-actions.mjs';
+import {applyCouncilPresentation} from './encounters/sod-reborn-council.mjs';
+import {applyMasonPresentation} from './encounters/sod-mason.mjs';
+import {applyAq40IllusionPresentation} from './encounters/sod-aq40-illusions.mjs';
+import {applyViscidusPresentation} from './encounters/sod-viscidus.mjs';
+import {encounterJumpEvents} from './encounters/sod-aq40-movement.mjs';
 export {visualEventsBetween} from './replay-actions.mjs';
 import {requireRaid} from './raids.mjs';
 // WCL resource coordinates use hundredths of a yard. Keep WCL actor AND instance IDs.
@@ -18,6 +24,15 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   if (!Number.isFinite(fight.startTime) || !(fight.endTime > fight.startTime)) throw new Error('Invalid encounter time range.');
   if (events.length > 2500000 || actors.length > 10000) throw new Error('Replay exceeds the prototype import limit.');
   const catalog = new Map(actors.map(a => [a.id, a]));
+  const ownerFriendly = (actor) => {
+    let owner=actor;const seen=new Set();
+    while(owner.petOwner&&!seen.has(owner.id)){
+      seen.add(owner.id);const parent=catalog.get(owner.petOwner);
+      if(!parent)break;owner=parent;
+    }
+    if(seen.has(owner.id)&&owner.petOwner)return actor.type==='Pet';
+    return owner.type==='Player'?true:owner.type==='NPC'?false:actor.type==='Pet';
+  };
   // A same-map zonechange can be a portal into another instance room. Its
   // timestamp is evidence of discontinuity, not evidence of a destination Z.
   const positionBreaks = events.filter(e => e.type === 'zonechange' && Number.isFinite(e.timestamp))
@@ -26,7 +41,7 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   function track(id, instance = 1) {
     const actor = catalog.get(id); if (!actor || id <= 0) return null;
     const key = `${id}:${instance || 1}`;
-    if (!tracks.has(key)) tracks.set(key, reused.get(key) ?? { key, id, instance: instance || 1, name: actor.name, type: actor.type, class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
+    if (!tracks.has(key)) tracks.set(key, reused.get(key) ?? { key, id, instance: instance || 1, name: actor.name, type: actor.type, friendly:actor.type==='Player'?undefined:ownerFriendly(actor), class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], lifeEvents: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
     return tracks.get(key);
   }
   for (const id of fight.friendlyPlayers ?? []) track(id);
@@ -51,9 +66,19 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
           if(Number.isFinite(r.facing))actor.facings.push([t,-r.facing/100-Math.PI/2]);
         }
       }
-      if(fight.chapters && r?.hitPoints>0)actor.deaths.push([t,false]);
+      // Some postmortem damage ticks retain 1 HP alongside positive overkill.
+      // That contradictory damage snapshot cannot establish a resurrection.
+      if(Number.isFinite(r?.hitPoints)&&r.hitPoints>=0&&r.maxHitPoints>0&&
+        !(side==='target'&&r.hitPoints>0&&event.type==='damage'&&event.overkill>0))
+        actor.deaths.push([t,r.hitPoints===0]);
       if (side === 'target' && event.type === 'death') actor.deaths.push([t,true]);
       if (side === 'target' && event.type === 'resurrect') actor.deaths.push([t,false]);
+      if (side === 'target' && actor.type !== 'Player') {
+        if (event.type === 'summon' || event.type === 'create') {
+          actor.lifeEvents.push([t,true]);
+          actor.deaths.push([t,false]);
+        } else if (event.type === 'destroy') actor.lifeEvents.push([t,false]);
+      }
     }
   }
   for (const actor of tracks.values()) {
@@ -75,6 +100,9 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     let wasDead=false;
     actor.deaths=actor.deaths.filter(([,dead])=>{if(dead===wasDead)return false;wasDead=dead;return true;});
     actor.runLifetime=!!fight.chapters && actor.type==='Pet';
+    actor.lifeEvents.sort((a,b)=>a[0]-b[0]);
+    const creation=actor.lifeEvents.find(([,present])=>present);
+    actor.initiallyPresent=!creation || actor.firstSeen<creation[0];
   }
   const chapters=(fight.chapters??[]).map(f=>({...f,start:f.startTime-fight.startTime,end:f.endTime-fight.startTime}));
   const combatWindows=chapters.length?[...chapters].sort((a,b)=>a.start-b.start):[{start:0,end:fight.endTime-fight.startTime}];
@@ -94,7 +122,8 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   }
   const gaps=chapters.slice(1).map((next,i)=>({start:chapters[i].end,end:next.start})).filter(g=>g.end>g.start);
   for(const gap of gaps)gap.hasEvents=events.some(e=>e.timestamp>fight.startTime+gap.start&&e.timestamp<fight.startTime+gap.end);
-  return { version:1, gameVersion:ruleset, map:raid.map, report, fight, duration: fight.endTime-fight.startTime, chapters, gaps, actors:[...tracks.values()], raw };
+  const replay={ version:1, gameVersion:ruleset, map:raid.map, report, fight, duration: fight.endTime-fight.startTime, chapters, gaps, actors:[...tracks.values()], raw };
+  return applyViscidusPresentation(applyAq40IllusionPresentation(applyCouncilPresentation(replay)));
 }
 // Activity is independent of positional confidence. Real casts and combat observations
 // keep the character model even when its location must be interpolated.
@@ -110,7 +139,12 @@ function coveredByActivity(actor,time) {
   return !!(lo&&casts[lo-1].end>time&&!casts[lo-1].instant);
 }
 export function poseAt(actor, time, smoothGaps = false) {
-  if(actor.runLifetime && (time<actor.firstSeen || time>actor.lastSeen+3000))return null;
+  if(actor.presentationWindows && !actor.presentationWindows.some(([start,end])=>start<=time&&time<end))return null;
+  if(actor.viscidusPresentation?.retirements.some(r=>r.start<=time&&(r.endInclusive?time<=r.end:time<r.end)))return null;
+  if(actor.lifeEvents?.length){
+    const present=latestAt(actor.lifeEvents,time)??actor.initiallyPresent;
+    if(!present)return null;
+  } else if(actor.runLifetime && (time<actor.firstSeen || time>actor.lastSeen+3000))return null;
   const s = actor.samples ?? [];
   if (actor.spawn && time < actor.spawn.visibleFrom) return null;
   if (actor.spawn && (!s.length || time < s[0][0])) {
@@ -129,9 +163,11 @@ export function poseAt(actor, time, smoothGaps = false) {
   const a=s[Math.max(0,lo-1)], b=beforeFirst?null:s[lo];
   const gap=b?b[0]-a[0]:Infinity;
   const distance=b?Math.hypot(b[1]-a[1],b[2]-a[2]):0;
-  const lifeBoundary=!!b&&(actor.deaths??[]).some(([t])=>t>a[0]&&t<=b[0]);
+  const lifeBoundary=!!b&&((actor.deaths??[]).some(([t])=>t>a[0]&&t<=b[0])
+    ||(actor.lifeEvents??[]).some(([t])=>t>a[0]&&t<=b[0]));
   const zoneBoundary=!!b&&(actor.positionBreaks??[]).some(t=>t>a[0]&&t<=b[0]);
-  let discontinuity=!!b&&(distance/(gap/1000)>35||lifeBoundary||zoneBoundary);
+  const measuredCharge=!!b&&actor.chargeSegments?.some(([start,end])=>start===a[0]&&end===b[0]);
+  let discontinuity=!!b&&((distance/(gap/1000)>35&&!measuredCharge)||lifeBoundary||zoneBoundary);
   const fresh = !beforeFirst && time-a[0] <= 2000;
   let pos=a.slice(1), speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
   const loadedBetween=!actor.bufferedRanges||actor.bufferedRanges.some(([start,end])=>start<=a[0]&&end>=b?.[0]);
@@ -235,7 +271,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     a.icon=raw.actors.find(x=>x.id===a.id)?.icon??null;
     if(a.type==='Pet'&&!a.displayID&&a.gameID>100000){a.displayID=447;a.petModelSource='Representative wolf; original model not recorded';}
   }
-  const combat=[];
+  const snapshotPreservations=hakkarSnapshotPreservations(raw);
+  const combat=[],auraSources=new Map(all.map(a=>[a.key,new Map()]));
   for(const [i,e] of raw.events.map((e,i)=>[i,e]).sort((a,b)=>a[1].timestamp-b[1].timestamp)){
     const t=e.timestamp-raw.fight.startTime;if(t<0||t>replay.duration)continue;
     const source=index.get(`${e.sourceID}:${e.sourceInstance||1}`), target=index.get(`${e.targetID}:${e.targetInstance||1}`);
@@ -257,18 +294,42 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
       // An exact snapshot on this same event wins over a cap-only sample.
       if(type>=0&&type<=3&&max)target.power.push([t,{current:null,max,type}]);
     }
-    if(source&&!reused.has(source.key)&&e.type==='combatantinfo')source.auras.push([t,{reset:(e.auras??[]).map(a=>a.ability??a.abilityGameID).filter(Number.isInteger)}]);
+    if(source&&!reused.has(source.key)&&e.type==='combatantinfo'){
+      const preservation=snapshotPreservations.get(e);
+      source.auras.push([t,{reset:(e.auras??[]).map(a=>a.ability??a.abilityGameID).filter(Number.isInteger),...preservation}]);
+      const sources=auraSources.get(source.key);
+      for(const spell of sources.keys())if(!preservation?.preserve.includes(spell))sources.delete(spell);
+    }
     if(source&&target&&e.type==='summon'&&!target.samples.length)combat.push({id:i,t,kind:'summon-cue',source:source.key,target:target.key,spell,name:ability.name,illustrative:true});
     if(source&&e.type==='begincast')combat.push({id:i,t,kind:'start',source:source.key,target:target?.key??null,spell,name:ability.name});
     if(source&&e.type==='cast')combat.push({id:i,t,kind:'go',source:source.key,target:target?.key??null,spell,name:ability.name,melee:!!e.melee||spell===1});
     if(target&&e.type==='interrupt')combat.push({id:i,t,kind:'interrupt',source:source?.key??null,target:target.key,spell,name:ability.name});
-    if(target&&!reused.has(target.key)&&/^(apply|remove|refresh)(buff|debuff)/.test(e.type))target.auras.push([t,{spell,name:ability.name,icon:ability.icon,remove:e.type.startsWith('remove')&&!e.type.endsWith('stack'),debuff:e.type.includes('debuff'),stack:e.stack??1}]);
-    if(target&&(e.type==='damage'||e.type==='heal'))combat.push({id:i,t,kind:e.type,source:source?.key??null,target:target.key,spell,name:ability.name,amount:e.amount??0,melee:!!e.melee||spell===1,tick:!!e.tick});
+    if(target&&!reused.has(target.key)&&/^(apply|remove|refresh)(buff|debuff)/.test(e.type)){
+      const sources=auraSources.get(target.key),remove=e.type.startsWith('remove')&&!e.type.endsWith('stack');
+      // A source-free refresh/stack update continues the same aura. A new
+      // unknown application cannot inherit ownership from an older application.
+      const selfCast=source?source.key===target.key:
+        (e.type.startsWith('refresh')||e.type.endsWith('stack'))?(sources.get(spell)??false):false;
+      if(remove)sources.delete(spell);else sources.set(spell,selfCast);
+      target.auras.push([t,{spell,name:ability.name,icon:ability.icon,remove,debuff:e.type.includes('debuff'),stack:e.stack??1,selfCast}]);
+    }
+    if(target&&(e.type==='damage'||e.type==='heal'))combat.push({id:i,t,kind:e.type,source:source?.key??null,target:target.key,spell,name:ability.name,amount:e.amount??0,melee:!!e.melee||spell===1,tick:!!e.tick,
+      environmental:e.sourceID===-1&&ability.name==='Falling'});
   }
   for(const a of all){if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
   reconstructCasts(replay,spellMetadata,reused);
   for(const actor of all)if(!reused.has(actor.key))prepareMovement(actor);
+  for(const [key,events]of encounterJumpEvents(replay)){
+    // Reused actors already carry these derived boundaries; never append twice.
+    if(reused.has(key))continue;
+    const actor=all.find(a=>a.key===key);
+    actor.movement.encounterJumps=events;
+    actor.movement.departureJumps=events.map(e=>e.t);
+    actor.movement.blinks=[...actor.movement.blinks,...events.map(e=>[e.t])].sort((a,b)=>a[0]-b[0]);
+  }
+  // Stream reuse promises immutable prior actor derivations.
+  applyMasonPresentation(reused.size?{...replay,actors:all.filter(a=>!reused.has(a.key))}:replay);
   replay.visualEvents=buildVisualEvents(replay);
   return replay;
 }
@@ -324,13 +385,19 @@ function activeCast(index,t) {
   const found=first(1,0,size);
   return found<0?null:casts[found];
 }
+function resetAuraState(state,aura) {
+  const retained=(aura.preserve??[]).map(spell=>state.get(spell)).filter(Boolean);
+  state.clear();
+  for(const spell of aura.reset)state.set(spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false});
+  for(const entry of retained)state.set(entry.spell,entry);
+}
 function auraState(index,t) {
   const events=index.auras;
   if(!index.sortedAuras){
     const state=new Map(index.initial.map(spell=>[spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false}]));
     for(const [at,a]of events){
       if(at>t)break;
-      if(a.reset){state.clear();for(const spell of a.reset)state.set(spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false});}
+      if(a.reset)resetAuraState(state,a);
       else if(a.remove)state.delete(a.spell);else state.set(a.spell,a);
     }
     return [...state.values()];
@@ -346,7 +413,7 @@ function auraState(index,t) {
   }
   for(;index.cursor<target;){
     const a=events[index.cursor++][1],state=index.state;
-    if(a.reset){state.clear();for(const spell of a.reset)state.set(spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false});}
+    if(a.reset)resetAuraState(state,a);
     else if(a.remove)state.delete(a.spell);
     else state.set(a.spell,a);
     if(index.cursor%AURA_CHECKPOINT===0&&!index.checkpoints.has(index.cursor))

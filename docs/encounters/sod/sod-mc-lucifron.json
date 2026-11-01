@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-lucifron",
+  "ruleset": "sod",
+  "boss": "Lucifron",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100663,
+  "rawEncounterId": 663,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        6
+      ],
+      "selectedFightNames": [
+        "Lucifron"
+      ],
+      "matchedNpcTemplateIds": [
+        228429
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-lucifron"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Lucifron.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Lucifron_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "heat-official",
+      "url": "https://wow-site-bwa-production-eks-prod-use1-01.worldofwarcraft.blizzard.com/en-us/news/24115319/turn-up-the-heat-in-season-of-discovery-molten-core",
+      "quality": "Official July 24 2024 heat announcement; historical launch context"
+    },
+    {
+      "id": "hotfix-official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24122901/hotfixes-august-23-2024",
+      "quality": "Official hotfix archive indexed content: heat punishment and boss-facing fixes; direct fetch 403 in this research session"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Impending Doom and Curse",
+      "spellIds": [
+        19702,
+        19703,
+        460931,
+        460932
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded SoD or baseline cast and individual aura events; exact heat variant remains unassigned",
+      "state": "Recorded SoD or baseline cast and individual aura events; exact heat variant remains unassigned",
+      "lifecycle": "Doom delayed hit must close on actual dispel/removal; Curse per-target until removal",
+      "placement": "Actual affected recipients, not every actor within guessed radius",
+      "animation": "Use exact spell visual; no alias of modern ID to old spell",
+      "acceptanceCheck": "sod-mc-lucifron/MC-LUCI-AURAS",
+      "acceptanceCriteria": "MC-LUCI-AURAS: dispelled Doom has no fabricated late hit; Curse variants retain original IDs",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Protector mind control and markers",
+      "spellIds": [
+        20604
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Protector source cast and recipient control application/removal",
+      "state": "Actual Protector source cast and recipient control application/removal",
+      "lifecycle": "Temporary hostile allegiance and player control end on actual removal; add death does not prove every aura ended",
+      "placement": "Actual Protector/recipient positions",
+      "animation": "Control body effect separate from faction/targetability and raid marker",
+      "acceptanceCheck": "sod-mc-lucifron/MC-LUCI-MC",
+      "acceptanceCriteria": "MC-LUCI-MC: each controller owns correct recipient; never synthesize addon-assigned icons as logged raid markers",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Molten Heat Protectors",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Community SoD reference describes three adds with linked revival unless killed together",
+      "state": "Community SoD reference describes three adds with linked revival unless killed together",
+      "lifecycle": "Preserve each death and positive-HP revival; do not merge repeated actor instances or invent simultaneous-kill grace",
+      "placement": "Actual Protector spawn and resurrection anchors",
+      "animation": "Revive only from explicit life evidence; corpse cannot remain dead after observed revival",
+      "acceptanceCheck": "sod-mc-lucifron/MC-LUCI-ADDS",
+      "acceptanceCriteria": "MC-LUCI-ADDS: three-add pull supports death/revive and boss-death cleanup; same logic must not spawn third add on unproven heat",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Boss death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Verified life/end events scoped to actual pull and heat",
+      "state": "Verified life/end events scoped to actual pull and heat",
+      "lifecycle": "Close proven owned Protectors/control/effects; preserve unrelated player auras",
+      "placement": "No lastSeen cleanup heuristic",
+      "animation": "Separate death, resurrection and reset states",
+      "acceptanceCheck": "sod-mc-lucifron/MC-LUCI-END",
+      "acceptanceCriteria": "MC-LUCI-END: direct seeks and repeated pulls retain no stale protector or control state",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact heat mapping for 460931/460932, resurrection window and Protector templates",
+    "Shadow Shock ID not assigned from name alone",
+    "No current SoD pull; untagged historical cache excluded",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "12118, 228429",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

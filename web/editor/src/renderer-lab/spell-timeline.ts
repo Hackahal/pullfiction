@@ -81,6 +81,7 @@ interface FixtureUnit {
   channel: boolean;
   channel_target?: string | null;
   auras: number[];
+  self_auras?: number[];
 }
 /** Changes are delivered together with Go, so ending a successful cast cannot emit Fail. */
 export function applySpellActions(
@@ -120,9 +121,13 @@ export function applySpellActions(
       });
     } else if (kind === "aura-start") {
       if (!unit.auras.includes(spell)) unit.auras.push(spell);
+      unit.self_auras = (unit.self_auras ?? []).filter((id) => id !== spell);
+      if (effect.casterId === (effect.targetId ?? effect.casterId))
+        unit.self_auras.push(spell);
       changed = true;
     } else if (kind === "aura-end") {
       unit.auras = unit.auras.filter((id) => id !== spell);
+      unit.self_auras = (unit.self_auras ?? []).filter((id) => id !== spell);
       changed = true;
     } else {
       unit.cast = kind === "channel-end" ? 0 : spell;

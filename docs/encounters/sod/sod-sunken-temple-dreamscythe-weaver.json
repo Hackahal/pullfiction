@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-dreamscythe-weaver",
+  "ruleset": "sod",
+  "boss": "Dreamscythe and Weaver",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2955,
+  "rawEncounterId": 2955,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        8
+      ],
+      "selectedFightNames": [
+        "Dreamscythe and Weaver"
+      ],
+      "matchedNpcTemplateIds": [
+        220833,
+        220864
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-dreamscythe-weaver"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/DreamscytheAndWeaver.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/dreamscythe-and-weaver-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Three stages and Emerald Ward",
+      "spellIds": [
+        443302
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Dreamscythe ward application signals stage2; its removal signals stage3 in primary addon",
+      "state": "Dreamscythe ward application signals stage2; its removal signals stage3 in primary addon",
+      "lifecycle": "Dreamscythe, then Weaver, then both active; guide describes 80/60 percent handoffs and shared health",
+      "placement": "Inactive and active dragons keep their true transforms",
+      "animation": "Ward does not establish invisibility, display replacement or flight altitude",
+      "acceptanceCheck": "sod-sunken-temple-dreamscythe-weaver/ST-DW-STAGES",
+      "acceptanceCriteria": "ST-DW-STAGES: actor-specific ward transition drives stage, never client timer or independent HP interpolation",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Directional and delayed knockback",
+      "spellIds": [
+        443766,
+        443793,
+        443830,
+        443827
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual primary or delayed Wing Buffet cast start, including both directions",
+      "state": "Actual primary or delayed Wing Buffet cast start, including both directions",
+      "lifecycle": "Keep first and second cast intervals separate",
+      "placement": "Dragons travel to arena edges; use observed positions and facing; retain pit and outer hazard geometry",
+      "animation": "Actual flight/land and player displacement, no guessed flight Z",
+      "acceptanceCheck": "sod-sunken-temple-dreamscythe-weaver/ST-DW-BUFFET",
+      "acceptanceCriteria": "ST-DW-BUFFET: each dragon and direction produces correct recipient movement; seek between two buffs preserves their order",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Acid Breath",
+      "spellIds": [
+        442622
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Frontal breath and recipient aura dose",
+      "state": "Frontal breath and recipient aura dose",
+      "lifecycle": "Per-target stack and expiration",
+      "placement": "Actual caster facing and cone; not all nearby players",
+      "animation": "Native breath and body aura verified independently",
+      "acceptanceCheck": "sod-sunken-temple-dreamscythe-weaver/ST-DW-BREATH",
+      "acceptanceCriteria": "ST-DW-BREATH: correct dragon ownership and per-player stacks",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Caustic Overflow and death",
+      "spellIds": [
+        443856
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Outer hazard contact; actual falls or encounter end",
+      "state": "Outer hazard contact; actual falls or encounter end",
+      "lifecycle": "Hazard persists independently of contact debuff; cleanup requires encounter boundary",
+      "placement": "Pit fall requires measured Z; never project missing height onto floor",
+      "animation": "Contact aura does not prove ground surface geometry",
+      "acceptanceCheck": "sod-sunken-temple-dreamscythe-weaver/ST-DW-HAZARD",
+      "acceptanceCriteria": "ST-DW-HAZARD: no inferred pool from target position; both dragons and hazard clean up at verified end",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact active/inactive attackability flags, shared HP representation and landing timestamps",
+    "Flight altitude, arena-edge transforms, knockback trajectories and outer hazard boundary",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "220833, 220864"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-gluth",
+  "ruleset": "sod",
+  "boss": "Gluth",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201108,
+  "rawEncounterId": 1108,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        28
+      ],
+      "selectedFightNames": [
+        "Gluth"
+      ],
+      "matchedNpcTemplateIds": [
+        15932,
+        16360,
+        16400
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-gluth"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/ConstructQuarter/Gluth.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/gluth-naxxramas-raid-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "emp-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaNaxx/SoD_Hardmode.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD code; PTR comments and later handlers attributed separately"
+    },
+    {
+      "id": "emp-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-hardmodes-overview",
+      "date": "2025-02-15",
+      "quality": "authored live SoD difficulty guide"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24171906/fase-7-de-la-temporada-del-descubrimiento-%C2%A1naxxramas-ya-est%C3%A1-disponible",
+      "date": "2025-02-06",
+      "quality": "official live phase7 launch;20-player tuning/up to40 and augmented final bosses"
+    },
+    {
+      "id": "seal-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24179333/hotfixes-february-26-2025",
+      "quality": "official hotfix archive caps Seal progression at rank7; supersedes plannedrank10 guide"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "date": "2025-02-26",
+      "quality": "authored SoD overview; rank10 plan is stale versus official cap"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "GL01",
+      "mechanic": "Tunnel drop and independent zombies",
+      "spellIds": [
+        28217,
+        29307
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual tunnel damage, drop anchors and zombie summons",
+      "state": "ZombieChow16360 independent source, wounds on actual kiter",
+      "lifecycle": "no10s generated spawn waves; actual death/despawn/consumption",
+      "placement": "elevated pipe→arena drop discontinuity, three actual spawn sites; missingZ unknown",
+      "animation": "zombie walk/death and landing need actual lifecycle/animation",
+      "acceptanceCheck": "sod-naxx-gluth/GL01-acceptance",
+      "acceptanceCriteria": "partial input starts in tunnel; measured drop, multiple zombies born later, target-only continuation after boss death",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "GL02",
+      "mechanic": "Decimate, forced return and devour",
+      "spellIds": [
+        28374,
+        28375,
+        29682,
+        28404
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual decimate result, CallAllZombieChow and devour",
+      "state": "health change distinct from death; zombies approach boss; devour kills chow and heals boss",
+      "lifecycle": "28374 metadata versus28375 result; no automatic100s pulse or five-percent synthetic HP",
+      "placement": "measured zombie return and boss charge; search10yd spell record not proof of trajectory",
+      "animation": "actual stomp/devour/charge clips only; no inventedstraight chase",
+      "acceptanceCheck": "sod-naxx-gluth/GL02-acceptance",
+      "acceptanceCriteria": "decimate same time multiple victims, chow reaches boss/dies/heal, another killed enroute, sparse gaps reject charge interpolation",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "GL03",
+      "mechanic": "Frenzy, fear and mortal stacks",
+      "spellIds": [
+        28371,
+        29685,
+        25646,
+        26662,
+        19801
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual self-enrage, roar, recipient wound and dispel",
+      "state": "eight-second client frenzy distinct from hardenrage and mortal stack",
+      "lifecycle": "actual dispel/removal, no guessed third-decimate enrage event",
+      "placement": "fear paths measured; actual frontal geometry and threat target",
+      "animation": "hunter19801 player dispel must preserve ownership",
+      "acceptanceCheck": "sod-naxx-gluth/GL03-acceptance",
+      "acceptanceCriteria": "failed/successful enrage dispel, source-free wound refresh, feared kiter causes devour; rewind restores stacks",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "POWER",
+      "mechanic": "Observed Empowerment and Seal version",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual enabled quarter auras, Sanctified/Seal snapshot and change records",
+      "state": "quarter-specific mechanics plus raidwide scaling; Seal rank/role separate from NPC power",
+      "lifecycle": "15-minute orb interaction cooldown is a game rule, not a synthesized replay event; actual enable/reset/disable",
+      "placement": "lobby world orbs/wing gates need object identity; no global cosmetic aura replacement",
+      "animation": "Authority/Seal client-name candidates do not establish exact rank or scaling",
+      "acceptanceCheck": "sod-naxx-gluth/POWER-acceptance",
+      "acceptanceCriteria": "normal versus enabled quarter, rank/role change and partial snapshot; no damage-derived rank assumption",
+      "sourceRefs": [
+        "official",
+        "emp-guide",
+        "seal-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "CHARGE",
+      "mechanic": "Construct Overcharged",
+      "spellIds": [
+        1219229,
+        1219234,
+        1219235
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual quarter state, warning debuff and subsequent aura",
+      "state": "bomb warning distinct from haste plus damaging pulses; actual recipients",
+      "lifecycle": "primary PTR5s claim versus active10s timer; current duration and recorded end distinct; no arbitrary selectioncount",
+      "placement": "recipient-centered damaging aura moves with actual actor; no stationary pool assumption",
+      "animation": "client authored aura routes; initial self/foreign provenance retained",
+      "acceptanceCheck": "sod-naxx-gluth/CHARGE-acceptance",
+      "acceptanceCriteria": "two targets with staggered warning/buff, early death/remove, player-self pulses and repeated seeks",
+      "sourceRefs": [
+        "emp-primary",
+        "emp-guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1218232,
+    1218271,
+    1218275,
+    1218276,
+    1218283,
+    1224428,
+    1219539,
+    1219548,
+    1220514
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Primary detects Decimate through damage28375, labels timer28374; cast/result IDs must stay distinct and no synthetic damaging cast is needed.",
+    "Construct warning1219234 currentclient10s versus oldPTR comment5s; subsequent1219235 state30s and actual removal win.",
+    "Exact tunnel hazard spell and permanent/add transition visibility need retained events; NPC16400 is the linked tunnel source candidate.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Authority same-name variant→quarter/empower count and Seal variant→rank/role mapping",
+    "raid-warning/emote, object and unit-event retention by provider"
+  ],
+  "researchContext": {
+    "npcIds": [
+      15932,
+      16360,
+      16400
+    ],
+    "wing": "construct",
+    "sourceFindings": [
+      "Primary detects Decimate through damage28375, labels timer28374; cast/result IDs must stay distinct and no synthetic damaging cast is needed.",
+      "Construct warning1219234 currentclient10s versus oldPTR comment5s; subsequent1219235 state30s and actual removal win.",
+      "Exact tunnel hazard spell and permanent/add transition visibility need retained events; NPC16400 is the linked tunnel source candidate.",
+      "Official Seal rank7 cap supersedes plannedrank10; no numeric damage/HP scaling inferred from current guide table.",
+      "Global manager237752 and quarter effects can cross boss/trash chapter boundaries; missing cast/aura is unknown, not disabled."
+    ],
+    "candidateSpellIds": {
+      "authorityNameOnly": [
+        1218232,
+        1218271,
+        1218275,
+        1218276,
+        1218283,
+        1224428
+      ],
+      "sealNameOnly": [
+        1219539,
+        1219548,
+        1220514
+      ]
+    },
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "No confirmed retained SoD Naxx pull. Old ruleset-unknown Naxx cache excluded; no observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

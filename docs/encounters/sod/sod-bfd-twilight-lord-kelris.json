@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bfd-twilight-lord-kelris",
+  "ruleset": "sod",
+  "boss": "Twilight Lord Kelris",
+  "raid": "Blackfathom Deeps",
+  "mapId": 48,
+  "encounterId": 2825,
+  "rawEncounterId": 2825,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "reportRevision": 1,
+      "reportResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "provenanceResponseSha256": "c72063eb0f0b81751295223bda06dda3e4455a3aca479e5ea4259f585d6d49fe",
+      "providerZoneId": 2007,
+      "discoveryPartitions": [
+        "Discovery P1",
+        "Discovery P2+"
+      ],
+      "selectedMapId": 48,
+      "selectedFightIds": [
+        14
+      ],
+      "selectedFightNames": [
+        "Twilight Lord Kelris"
+      ],
+      "matchedNpcTemplateIds": [
+        209678
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "d2d9b25b956c25ce468c37a0b2bf736dc2d40a17c5ff9bd61962f93cbbea6802"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bfd-twilight-lord-kelris"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackfathom-deeps-raid/twilight-lord-kelris-strategy",
+      "author": "Joardee",
+      "updated": "2024-01-31",
+      "quality": "authored exact SoD BFD strategy; not gameplay frames, retained events or exact server script"
+    },
+    {
+      "id": "current-client",
+      "quality": "current production converter graph; record existence only, not occurrence or supported pixels",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "mind-record",
+      "url": "https://www.wowhead.com/classic/spell=425233/mind-blast",
+      "quality": "guide-linked primary1.5s single-target cast"
+    },
+    {
+      "id": "sod-dream-hotfix-summary",
+      "url": "https://warcraft.wiki.gg/wiki/Twilight_Lord_Kelris_%28Season_of_Discovery%29",
+      "quality": "SoD secondary summary of DreamEater forced-phase2 cleanup fix; not observed runtime"
+    },
+    {
+      "id": "official-2023-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24030413/hotfixes-january-8-2024",
+      "quality": "Official Blizzard indexed search content; direct fetch403, no gameplay/runtime credit",
+      "supports": "December12 SoD hotfix reduced Kelris Shadow/Arcane75 to25 and PhantasmalPriestess all resistance75 to0; an official indexed hotfix also confirms incorrect DreamPortal/DreamEater death was fixed."
+    },
+    {
+      "id": "pinned-dbmsod",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_BFD/TwilightLordKelris.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "Primary addon explicitly gated IsSeasonal SeasonOfDiscovery; SetEncounterID is raw encounter ID, not WCL offset",
+      "lines": "1-10"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "qJKNyxL714dBZ2Ga",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Mind Blast",
+      "spellIds": [
+        425233
+      ],
+      "clientCandidateSpellIds": [
+        426493
+      ],
+      "trigger": "Closest-target shadow cast",
+      "state": "Mind Blast",
+      "lifecycle": "Actual interruption/completion and phase variant",
+      "placement": "Recorded target, not generated threat selection",
+      "animation": "Native caster/impact",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-MIND",
+      "acceptanceCriteria": "KELRIS-MIND:1.5s versus1s variant and interrupts exact",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          425233
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Shadowy Chains",
+      "spellIds": [
+        425265
+      ],
+      "clientCandidateSpellIds": [
+        425239,
+        426494,
+        426495
+      ],
+      "trigger": "Cast chains and target DoT",
+      "state": "Shadowy Chains",
+      "lifecycle": "Damage/aura/removal independent",
+      "placement": "Actual chain targets including eligible pets",
+      "animation": "Native chain and victim state",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-CHAINS",
+      "acceptanceCriteria": "KELRIS-CHAINS: cast-only and aura variants remain separate",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          425265
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Shadow Crash",
+      "spellIds": [
+        426069
+      ],
+      "clientCandidateSpellIds": [
+        426070,
+        426197,
+        426198,
+        426199,
+        426200,
+        426415,
+        426496,
+        426498,
+        426501
+      ],
+      "trigger": "Reticle, arc, shadow ground zone",
+      "state": "Shadow Crash",
+      "lifecycle": "Land then field expiry",
+      "placement": "Independent fixed center",
+      "animation": "Native missile/ground effects",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-CRASH",
+      "acceptanceCriteria": "KELRIS-CRASH: no moving victim-attached puddle",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          426069
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Sleep and dream membership",
+      "spellIds": [
+        423135
+      ],
+      "clientCandidateSpellIds": [
+        423140,
+        423592
+      ],
+      "trigger": "Two players leave normal realm",
+      "state": "Sleep and dream membership",
+      "lifecycle": "Dream until actual exit or forced return",
+      "placement": "Realm membership independent of XY/Z",
+      "animation": "Native sleep/phase representation",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-DREAM",
+      "acceptanceCriteria": "KELRIS-DREAM: correct actor membership on seek",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "guideLinkedSpellIds": [
+          423135
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Priestesses, tendrils and portals",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        424732,
+        424735,
+        425460,
+        425462
+      ],
+      "trigger": "Dream enemies transform and can open exit",
+      "state": "Priestesses, tendrils and portals",
+      "lifecycle": "Actual births/deaths/exit; no random portal simulation",
+      "placement": "Actual dream-only actors and portal anchors",
+      "animation": "Native actor/portal assets when identified",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-PORTAL",
+      "acceptanceCriteria": "KELRIS-PORTAL: return and DreamEater cleanup without fake death",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Phase2 and end",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        426487,
+        426489
+      ],
+      "trigger": "Guide35percent no further Sleep, interrupt behavior changes",
+      "state": "Phase2 and end",
+      "lifecycle": "Use actual phase evidence; death/wipe clears realm state",
+      "placement": "No guessed enlargement or instant relocation",
+      "animation": "Native actual transformation only",
+      "acceptanceCheck": "sod-bfd-twilight-lord-kelris/KELRIS-END",
+      "acceptanceCriteria": "KELRIS-END: direct phase/reset/return reconstruction",
+      "sourceRefs": [
+        "sod-guide",
+        "current-client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "guideLinkedSpellIds are resolved guide hyperlinks; clientCandidateSpellIds are exact-name current client candidates only, not aliases or confirmed boss usage. None are retained observations.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    426493,
+    425239,
+    426494,
+    426495,
+    426070,
+    426197,
+    426198,
+    426199,
+    426200,
+    426415,
+    426496,
+    426498,
+    426501,
+    423140,
+    423592,
+    424732,
+    424735,
+    425460,
+    425462,
+    426487,
+    426489
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact phase35percent and damage-buff trigger/ManifestingDreams semantics",
+    "Actual dream-only NPC identities, transformations and portal spawn probability",
+    "DreamEater patch behavior and forced phase2 exit; no historical death bug synthesized",
+    "Actual retained phase/actor/spell IDs and source ownership",
+    "Missing log Z and stacked/water geometry",
+    "Original gameplay frame comparison and native visual acceptance",
+    "Retained pull date must select pre/post resistance and DreamEater fix behavior; no stat or death simulation from present client alone."
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "bossNpcId": 209678
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}
