@@ -367,3 +367,48 @@
   border-top: 1px solid #393d40;
   padding-top: 10px;
 }
+
+.predicted-parses {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px;
+  gap: 8px;
+  overflow: auto;
+}
+.parse-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.parse-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+}
+.parse-controls select {
+  max-width: 120px;
+}
+.predicted-parses p {
+  margin: 0;
+  font-size: 12px;
+}
+.parse-caption {
+  color: var(--muted, #aaa);
+}
+.predicted-parses td {
+  font-variant-numeric: tabular-nums;
+}
+.predicted-parses tr.is-selected {
+  background: #ffffff12;
+}
+
+.parse-row-note {
+  display: block;
+  color: var(--muted, #aaa);
+  font-size: 11px;
+  max-width: 320px;
+  white-space: normal;
+}
