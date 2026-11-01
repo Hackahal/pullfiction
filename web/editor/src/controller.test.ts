@@ -4129,6 +4129,136 @@ test("permanent trajectory errors remain rejected for synchronous and asynchrono
   }
 });
 
+test("same-component Play retries recover transient pressure before accepting current native readiness", (t) => {
+  trajectoryRetryTimers(t);
+  for (const pressure of ["queue", "active-cache"] as const) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    const submissions: unknown[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.engine.submit_replay_trajectory = (json) => {
+      submissions.push(JSON.parse(json));
+      if (pressure === "queue" && submissions.length === 1)
+        throw Error("Too many queued trajectory components");
+      packets.push(JSON.parse(json));
+    };
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    if (pressure === "active-cache")
+      f.c.receive(
+        "trajectoryError",
+        JSON.stringify({
+          ...identity,
+          message: "Canonical active cache capacity exceeded",
+        }),
+      );
+    f.c.toggle();
+    const first = requests.at(-1)!;
+    assert.ok(first > 0);
+    assert.equal(f.c.getSnapshot().playPreparing, true, pressure);
+    t.mock.timers.tick(99);
+    assert.equal(submissions.length, 1);
+    assert.equal(f.c.getSnapshot().playing, false);
+    t.mock.timers.tick(1);
+    assert.equal(submissions.length, 2);
+    assert.deepEqual(
+      submissions[1],
+      submissions[0],
+      "recovery resubmits the identical required component",
+    );
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "submission alone cannot start the clock",
+    );
+    f.c.receive(
+      "movementPreparation",
+      JSON.stringify({ ready: 1, pending: 0, conflict: 0 }),
+    );
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "status alone cannot acknowledge Play",
+    );
+    f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+    assert.equal(f.c.getSnapshot().playing, true);
+
+    f.c.seek(600);
+    assert.equal(player().trajectory!.content, identity.content);
+    assert.equal(
+      submissions.length,
+      2,
+      "accepted content remains deduplicated across the same-component seek",
+    );
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({
+        ...identity,
+        source: "stale-installation",
+        message: "Invalid canonical sample",
+      }),
+    );
+    f.c.toggle();
+    const second = requests.at(-1)!;
+    assert.notEqual(second, first);
+    assert.equal(f.c.getSnapshot().playPreparing, true);
+    f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "old acknowledgements cannot start a new attempt",
+    );
+    f.c.receive("playbackPrepared", JSON.stringify({ token: second }));
+    assert.equal(f.c.getSnapshot().playing, true);
+    f.c.stop();
+  }
+});
+
+test("permanent required content remains terminal across Play retries and same-component seeks", async () => {
+  for (const reason of [
+    "Canonical input capacity exceeded",
+    "Invalid canonical sample",
+  ]) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    f.c.toggle();
+    const stale = requests.at(-1)!;
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({ ...identity, message: reason }),
+    );
+    const submitted = packets.length;
+    for (const time of [600, 500, 600]) {
+      f.c.seek(time);
+      assert.equal(player().trajectory!.content, identity.content);
+      f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+      await Promise.resolve();
+      f.c.toggle();
+      assert.equal(f.c.getSnapshot().playPreparing, false, reason);
+      assert.equal(f.c.getSnapshot().playing, false, reason);
+      assert.equal(requests.at(-1), 0);
+      assert.match(f.c.getSnapshot().notice, /Movement could not be prepared/);
+      assert.equal(
+        packets.length,
+        submitted,
+        "immutable rejected content is not silently resubmitted",
+      );
+      f.c.receive("playbackPrepared", JSON.stringify({ token: stale }));
+      assert.equal(f.c.getSnapshot().playing, false);
+    }
+    f.c.stop();
+  }
+});
+
 test("canonical transport sends one immutable dense packet across forward, backward and repeated seeks", () => {
   const { f, actor, packets, sources, player } = canonicalTransportFixture([
     [0, 2, -1, 0],
