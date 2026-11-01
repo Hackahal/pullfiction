@@ -421,3 +421,75 @@ test("Trashing the active project rejects marker hits queued before the reset", 
   );
   c.stop();
 });
+
+test("shares use unsaved current edits even when local persistence fails", async () => {
+  const f = setup();
+  try {
+    await f.controller.initializeLibrary();
+    await f.controller.createProject(409, "vanilla", "Shared route");
+    f.controller.updateStep({ notes: "Latest unsaved note" });
+    f.store.put = async () => {
+      throw new Error("disk full");
+    };
+    await f.controller.saveProject();
+    assert.equal(f.controller.getSnapshot().saveStatus, "error");
+    const snapshot = await f.controller.projectShareSnapshot(
+      f.controller.getSnapshot().projectId!,
+    );
+    assert.equal(snapshot.plan.steps[0].notes, "Latest unsaved note");
+    assert.equal("id" in snapshot, false);
+    assert.equal("replay" in snapshot, false);
+  } finally {
+    f.controller.stop();
+  }
+});
+test("share imports preserve WCL reference and create independent projects/source caches", async () => {
+  const f = setup();
+  try {
+    await f.controller.initializeLibrary();
+    await f.controller.createProject(409, "vanilla", "Existing plan");
+    const existing = f.controller.getSnapshot().projectId;
+    const original = newProject(emptyPlan(409));
+    original.plan.steps[0].notes = "Shared note";
+    original.time = 12345;
+    original.source = {
+      code: "DyN7vF94QR8aj1Lc",
+      title: "MC run",
+      gameVersion: "vanilla",
+      fight: "run",
+      map: 409,
+      cacheKey: "vanilla:DyN7vF94QR8aj1Lc:run:409:original",
+    };
+    await f.store.put(original);
+    const snapshot = await f.controller.projectShareSnapshot(original.id);
+    assert.equal("cacheKey" in snapshot.source!, false);
+    const a = await f.controller.importSharedSnapshot(snapshot);
+    const b = await f.controller.importSharedSnapshot(snapshot);
+    assert.notEqual(a, b);
+    assert.notEqual(a, original.id);
+    assert.notEqual(
+      (await f.store.get(a))!.source!.cacheKey,
+      (await f.store.get(b))!.source!.cacheKey,
+    );
+    assert.equal(
+      f.controller.getSnapshot().projectId,
+      existing,
+      "preview/import does not replace active work",
+    );
+    assert.equal(await f.controller.openProject(a), true);
+    assert.equal(f.controller.getSnapshot().sourceStatus, "missing");
+    assert.equal(f.controller.getSnapshot().time, 12345);
+    await f.controller.saveProject();
+    assert.equal((await f.store.get(a))!.time, 12345);
+    assert.equal(f.controller.getSnapshot().plan.steps[0].notes, "Shared note");
+    f.controller.updateStep({ notes: "Recipient edits" });
+    await f.controller.saveProject();
+    assert.equal((await f.store.get(b))!.plan.steps[0].notes, "Shared note");
+    assert.equal(
+      (await f.store.get(original.id))!.plan.steps[0].notes,
+      "Shared note",
+    );
+  } finally {
+    f.controller.stop();
+  }
+});

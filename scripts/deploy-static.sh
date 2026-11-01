@@ -10,4 +10,5 @@ release="$1"
 python3 scripts/static-package.py audit "$release"
 node scripts/static-viewer-smoke.mjs "$release"
 export WRANGLER_SEND_METRICS=false
-exec tools/release/node_modules/.bin/wrangler deploy --config wrangler.static.jsonc --assets "$release"
+config="$(node scripts/sharing-config.mjs)"
+exec tools/release/node_modules/.bin/wrangler deploy --config "$config" --assets "$release"

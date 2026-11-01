@@ -1,3 +1,8 @@
+import {
+  shareSnapshot,
+  readSharedSnapshot,
+  type SharedSnapshot,
+} from "./share-client";
 import { IncrementalReplayNormalizer } from "./incremental-replay";
 import { EncounterAssetWarmer } from "./encounter-assets";
 import { ReplayPresenceIndex } from "./replay-presence-index";
@@ -1372,10 +1377,13 @@ export class EditorController {
           mode: project.mode,
         };
         this.patch({ sourceStatus: "cached" });
-      } else if (project.source)
+      } else if (project.source) {
+        this.clockTime = project.time;
+        this.patch({ time: project.time });
         this.notify(
           "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
         );
+      }
       this.setWorkspaceMode(project.mode);
       return true;
     } catch (error) {
@@ -1462,6 +1470,45 @@ export class EditorController {
     } catch (error) {
       this.notify(`Could not import project: ${message(error)}`);
     }
+  }
+  async projectShareSnapshot(id?: string): Promise<SharedSnapshot> {
+    this.finishDrawing();
+    if (this.pendingPicks)
+      throw new Error("Wait for the drawing to finish before sharing");
+    // Current edits remain shareable even when local persistence has failed.
+    const project =
+      !id || this.activeProject?.id === id
+        ? {
+            ...newProject(this.state.plan, this.projectSource),
+            time: this.clockTime,
+            mode: this.state.workspaceMode,
+            kind: this.projectKind,
+          }
+        : await this.projectStore?.get(id);
+    if (!project || project.deletedAt !== null)
+      throw new Error("Local project not found");
+    return shareSnapshot(project);
+  }
+  async importSharedSnapshot(value: unknown) {
+    if (!this.projectStore)
+      throw new Error("Local project storage unavailable");
+    await this.initializeLibrary();
+    const snapshot = readSharedSnapshot(value);
+    const source = snapshot.source
+      ? {
+          ...snapshot.source,
+          cacheKey: `${snapshot.source.gameVersion}:${snapshot.source.code}:${snapshot.source.fight}:${snapshot.source.map}:${planId()}`,
+        }
+      : null;
+    const project = {
+      ...newProject(snapshot.plan, source),
+      time: snapshot.time,
+      mode: snapshot.mode,
+      kind: snapshot.kind,
+    };
+    await this.projectStore.put(project);
+    this.patch({ projects: [project, ...this.state.projects] });
+    return project.id;
   }
   async exportProject(id: string) {
     try {

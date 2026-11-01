@@ -21,11 +21,13 @@ export function Library({
   controller,
   initialTab,
   close,
+  share,
 }: {
   state: Snapshot;
   controller: EditorController;
   initialTab: Tab;
   close: () => void;
+  share: (projectId: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [filter, setFilter] = useState("");
@@ -56,7 +58,11 @@ export function Library({
     const background = Array.from(root.current?.parentElement?.children ?? [])
       .filter(
         (element): element is HTMLElement =>
-          element instanceof HTMLElement && element !== root.current,
+          element instanceof HTMLElement &&
+          element !== root.current &&
+          // Native modal dialogs manage their own background inertness.
+          // Marking the dialog itself inert also disables its controls.
+          element.tagName !== "DIALOG",
       )
       .map((element) => ({ element, inert: element.inert }));
     for (const { element } of background) element.inert = true;
@@ -379,6 +385,14 @@ export function Library({
                       </button>
                     ) : (
                       <>
+                        <button
+                          aria-label={`Share ${p.plan.name}`}
+                          title="Share edits and Warcraft Logs reference"
+                          disabled={disabled}
+                          onClick={() => share(p.id)}
+                        >
+                          Share
+                        </button>
                         <button
                           aria-label={`Duplicate ${p.plan.name}`}
                           title="Duplicate plan"

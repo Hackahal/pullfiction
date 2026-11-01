@@ -81,3 +81,7 @@ __pycache__/
 # Pinned release tools are installed locally; only manifests belong in Git.
 /tools/release/node_modules/
 /.wrangler/
+
+# Local Worker secrets. Never commit real Turnstile secrets.
+.dev.vars
+.dev.vars.*

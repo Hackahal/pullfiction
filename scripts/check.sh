@@ -11,7 +11,7 @@ python3 scripts/repository-audit.py --tree-only
 python3 scripts/repository-audit-test.py
 npm run check --prefix web/editor
 npm test --prefix web/editor
-node --test web/planner/*.test.mjs scripts/static-viewer-loader.test.mjs scripts/wowhead-page-fetch.test.mjs web/archive/policy.test.mjs
+node --test cloudflare/*.test.mjs web/planner/*.test.mjs scripts/static-viewer-loader.test.mjs scripts/wowhead-page-fetch.test.mjs web/archive/policy.test.mjs
 for test in scripts/*-test.py scripts/test_ui_quality_loop.py; do
   python3 "$test"
 done

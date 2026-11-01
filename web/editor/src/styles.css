@@ -4384,3 +4384,9 @@ a.inspect-rune-entry:focus-visible {
   border-color: transparent;
   box-shadow: none;
 }
+
+.share-dialog { max-width: min(640px, 95vw); }
+.share-dialog .modal-content { display: grid; gap: 12px; }
+.share-dialog input { width: 100%; min-width: 0; }
+.share-owned { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.share-owned span { flex: 1; overflow-wrap: anywhere; }

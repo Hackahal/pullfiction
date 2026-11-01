@@ -64,7 +64,7 @@ The repository requires these Actions settings:
 | `CLOUDFLARE_ACCOUNT_ID` | Variable | Cloudflare account hosting `pullfiction` |
 | `VITE_WCL_CLIENT_ID` | Variable | Public Warcraft Logs PKCE client ID |
 
-Production uses the `pullfiction` Worker and the custom domain `pullfiction.com`. There is no Worker application server, database, game-data endpoint, or paid-service requirement.
+Production uses the `pullfiction` Worker and the custom domain `pullfiction.com`. The Worker serves an optional D1-backed sharing API. Sharing requires D1 and Turnstile setup but no paid-service subscription. See [share links](SHARING.md) for configuration and limits. Game assets stay on their separate service.
 
 Optional Cloudflare RUM is disabled under **Speed → Real user monitoring**. Cloudflare can otherwise [inject an analytics snippet outside the EU by default](https://blog.cloudflare.com/the-rum-diaries-enabling-web-analytics-by-default/). The hosted health check tolerates extra analytics markup. RUM is not required for the application.
 
@@ -127,7 +127,7 @@ The production build also runs `static-viewer-smoke.mjs` before publishing the l
 
 ## Use the Cloudflare configuration
 
-`wrangler.static.jsonc` points only at `.agent/work/browser-static/release`. It declares Workers Static Assets, a single-page application fallback, and the production custom domain. It has no Worker script, game-data binding, or credential. `workers.dev` and version-preview URLs are disabled. The local deploy command can select a different audited output directory.
+`wrangler.static.jsonc` points only at `.agent/work/browser-static/release`. It declares Workers Static Assets, a single-page application fallback, and the production custom domain. Its Worker script handles `/api/shares` and `/api/shares/*`; all other requests use static assets. The deployment helper adds optional D1 and rate-limit bindings from environment configuration. No credentials are stored in the configuration. `workers.dev` and version-preview URLs are disabled. The local deploy command can select a different audited output directory.
 
 Cloudflare serves custom headers from the release's `_headers` file. Hashed Vite bundles receive an immutable cache policy. The page, archive runtime, and viewer files revalidate on use. Missing application routes fall back to `index.html`; missing runtime files must still be treated as load failures by their consumers.
 
