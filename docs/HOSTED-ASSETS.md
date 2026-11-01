@@ -19,7 +19,7 @@ Preparation produces `manifest.json` and content-addressed `chunks/*.bin.gz` fil
 
 Models, world geometry and catalogs are prepared locally. Player appearance recipes and texture blending remain dynamic in the browser, using the prepared input tables and textures. This preserves combinations of skin, hair and equipment without publishing every possible finished atlas.
 
-Optimization removes raw archive inputs that were only needed during conversion and deduplicates identical payloads. It preserves the raw tables and character model inputs needed by dynamic appearance composition. For Naxxramas it extracts the authored raid building at its original transform, retains all 73 groups and their minimaps, and omits the surrounding terrain and city props. Shared buildings referenced by other raids or spell effects remain available. A sibling optimization report records before/after sizes and the source placement.
+Optimization removes raw archive inputs that were only needed during conversion and deduplicates identical payloads. It preserves the raw tables and character model inputs needed by dynamic appearance composition. For Naxxramas and Blackwing Lair it extracts the authored raid buildings at their original transforms, retains all groups and their minimaps, and omits surrounding terrain and props. It also removes unused WMO collision-search tables and validated duplicate triangle metadata. Shared buildings referenced by other raids or spell effects remain available. A sibling optimization report records before/after sizes, source placements and decisions for every raid. See [Hosted asset optimization](HOSTED-ASSET-OPTIMIZATION.md) for retained geometry and measured savings.
 
 ## Deploy directly to Cloudflare
 

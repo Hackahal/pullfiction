@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Trim local conversion inputs and Naxxramas exterior scenery from a prepared pack."""
+"""Trim conversion inputs, unused WMO tables, and audited raid exterior scenery from a prepared pack."""
 import argparse
 from functools import lru_cache
 import gzip
@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 from hosted_assets import audit, digest, json_bytes
-from hosted_asset_optimization import prepare_naxx, repack_hosted_assets
+from hosted_asset_optimization import STANDALONE_RAIDS, prepare_standalone, repack_hosted_assets
 from classic_world import World, chunks, parts
 from classic_table_strings import named_table
 
@@ -50,10 +50,17 @@ def optimize(source, destination, storage):
     map_rows, _ = named_table(raw('dbfilesclient/map.db2'), 'Map')
     if any('WdtFileDataID' in row for row in map_rows.values()):
         world.set_maps(map_rows.values())
-    naxx = prepare_naxx(world, raw)
-    wdt_key = 'world:world/maps/stratholme raid/stratholme raid.wdt'
-    replacements = {wdt_key:naxx['wdt'], 'map:533':json_bytes(naxx['map'])}
-    excluded = {key for key in manifest['files'] if key.startswith('world:world/maps/stratholme raid/') and key.endswith('.adt')}
+    standalone, replacements, excluded = {}, {}, set()
+    for map_id, config in STANDALONE_RAIDS.items():
+        directory = config['directory']
+        if not any(raid['map'] == map_id for raid in manifest.get('maps', [])):
+            continue
+        selected = prepare_standalone(world, raw, map_id, directory)
+        standalone[map_id] = selected
+        replacements[f'world:world/maps/{directory}/{directory}.wdt'] = selected['wdt']
+        replacements['map:'+str(map_id)] = json_bytes(selected['map'])
+        excluded.update(key for key in manifest['files']
+                        if key.startswith(f'world:world/maps/{directory}/') and key.endswith('.adt'))
     # Retain only WMOs referenced by surviving map WDT/ADT resources. Shared
     # buildings used in other raids stay available even if Naxx no longer uses them.
     roots = set()
@@ -78,16 +85,26 @@ def optimize(source, destination, storage):
             name = name[:-8]+'.wmo'
         if name not in roots:
             excluded.add(key)
-    if 'world:__classic/110251.wmo' in excluded:
-        raise ValueError('Naxxramas raid root was incorrectly excluded')
+    for map_id in standalone:
+        if 'world:__classic/'+str(STANDALONE_RAIDS[map_id]['root'])+'.wmo' in excluded:
+            raise ValueError('Standalone raid root was incorrectly excluded')
     result = repack_hosted_assets(source,destination,replacements,excluded)
-    result['naxx'] = {key:naxx[key] for key in ('sourceUID','sourcePosition','position','worldResources')}
-    original = json.loads(payload('map:533'))
     def stats(value):
         return {'areas':len(value['areas']), 'floors':len(value['floors']), 'tiles':len(value['tiles']),
                 'triangles':sum(len(f['indices'])//3 for f in value['floors'])}
-    result['naxx']['before'] = stats(original)
-    result['naxx']['after'] = stats(naxx['map'])
+    result['raids'] = []
+    for raid in manifest.get('maps', []):
+        map_id = raid['map']
+        before = json.loads(payload('map:'+str(map_id)))
+        selected = standalone.get(map_id)
+        report = {**raid, 'action':'standalone' if selected else 'preserved',
+                  'before':stats(before), 'after':stats(selected['map'] if selected else before)}
+        if selected:
+            report.update({key:selected[key] for key in ('sourceUID','sourcePosition','position','worldResources')})
+        result['raids'].append(report)
+    # Keep the original report field for existing local inspection tools.
+    result['naxx'] = next((r for r in result['raids'] if r['map'] == 533), None)
+
     (Path(str(destination)+'.optimization.json')).write_bytes(json_bytes(result))
     return result
 
@@ -104,8 +121,8 @@ def main():
     args=parser.parse_args()
     with producer.assets.CascStorage(args.install,args.library) as storage:
         result=optimize(args.input,args.output,storage)
-    print(json.dumps({k:v for k,v in result.items() if k not in ('removed','naxx')},sort_keys=True))
-    print(json.dumps(result['naxx'],sort_keys=True))
+    print(json.dumps({k:v for k,v in result.items() if k not in ('removed','naxx','raids')},sort_keys=True))
+    print(json.dumps([{k:v for k,v in raid.items() if k != 'worldResources'} for raid in result['raids']],sort_keys=True))
 
 
 if __name__ == '__main__':

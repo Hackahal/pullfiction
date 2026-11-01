@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from classic_world import CENTER, World, pack, parts, read
 from hosted_assets import ChunkWriter, audit
-from hosted_asset_optimization import (GLOBAL_WMO_UID, NAXX_ROOT, naxx_placements,
-                                       naxx_wdt, prepare_naxx, repack_hosted_assets)
+from hosted_asset_optimization import (GLOBAL_WMO_UID, NAXX_ROOT, STANDALONE_RAIDS, naxx_placements,
+                                       naxx_wdt, prepare_naxx, prepare_standalone, trim_wmo_group, repack_hosted_assets)
 
 BUILD = {'product':'fixture','version':'1','buildKey':'a'*32}
 
@@ -117,5 +117,71 @@ class OptimizationTests(unittest.TestCase):
             self.assertEqual(report['removed'],['world:exterior.adt'])
             self.assertEqual(result['files']['world:raid.wdt']['bytes'],3)
             with self.assertRaisesRegex(ValueError,'Only explicit world'): repack_hosted_assets(source,Path(tmp)/'bad',excluded_world={'model:id:3'})
+
+
+    def test_blackwing_keeps_all24_authored_groups_and_source_placement(self):
+        config = STANDALONE_RAIDS[469]
+        root_name = '__classic/108348.wmo'
+        mohd = bytearray(64); struct.pack_into('<I',mohd,4,24)
+        root = pack({'MOHD':bytes(mohd), 'MOGI':struct.pack('<I6fi',0,0,0,0,1,1,1,0)*24,
+                     'MOGN':b'Room\0', 'GFID':struct.pack('<24I',*range(2000,2024))})
+        geometry = pack({'MOVT':struct.pack('<9f',0,0,0,1,0,0,0,1,0),
+                         'MOVI':struct.pack('<6H',0,1,2,2,1,0),'MOPY':b'\0'*4})
+        group = pack({'MOGP':b'\0'*68+geometry})
+        def raw(key):
+            if key=='world/maps/blackwinglair/blackwinglair.wdt': return wdt()
+            if key=='id:108348': return root
+            if key.startswith('id:') and 2000 <= int(key[3:]) < 2024: return group
+            if key.endswith('.blp'): return b'BLP2fixture'
+            raise FileNotFoundError(key)
+        original = World.resource
+        def adapted(world,key):
+            if key.endswith('.adt'): return adt(placement()).replace(NAXX_ROOT.encode(),root_name.encode())
+            return original(world,key)
+        world=World(raw)
+        with patch.object(World,'resource',adapted): result=prepare_standalone(world,raw,469,config['directory'])
+        self.assertEqual(result['sourceUID'],17)
+        self.assertEqual(len(result['worldResources']),26)
+        self.assertEqual(len(result['map']['floors']),24)
+        self.assertEqual(parts(result['wdt'])['MWMO'],(root_name+'\0').encode())
+        self.assertTrue(all(f['area'].startswith(str(GLOBAL_WMO_UID)+':') for f in result['map']['floors']))
+        with self.assertRaisesRegex(ValueError,'Unsupported standalone'): prepare_standalone(world,raw,469,'moltencore')
+        with self.assertRaisesRegex(ValueError,'Unsupported standalone'): prepare_standalone(world,raw,309,"zul'gurub")
+
+    def test_group_trim_keeps_header_unknown_and_repeated_layers_exact(self):
+        from classic_world import chunks
+        header=bytes(range(68))
+        kept=[('MOVT',struct.pack('<9f',0,0,0,1,0,0,0,1,0)),
+              ('MOVI',struct.pack('<3H',0,1,2)),('MOPY',b'\0\0'),
+              ('MOTV',b'first'),('MOTV',b'second'),('MOCV',b'color'),
+              ('MODR',b'props'),('MOLR',b'lights'),('MLIQ',b'liquid'),('UNKN',b'unknown')]
+        children=kept+[('MOBN',b'bspnodes'),('MOBR',b'bspfaces'),('MPY2',struct.pack('<2H',0,0))]
+        source=pack({'MVER':struct.pack('<I',17),'MOGP':header+b''.join(pack({t:b}) for t,b in children),'OTHR':b'outer'})
+        result=trim_wmo_group(source); group=parts(result)['MOGP']
+        self.assertEqual(group[:68],header)
+        self.assertEqual(list(chunks(group[68:])),kept)
+        self.assertEqual(parts(result)['OTHR'],b'outer')
+        self.assertEqual(trim_wmo_group(result),result)
+        self.assertEqual(trim_wmo_group(pack({'MOHD':b'root'})),pack({'MOHD':b'root'}))
+
+    def test_group_trim_rejects_unconverted_conflicting_or_truncated_input(self):
+        base=pack({'MOVT':struct.pack('<9f',0,0,0,1,0,0,0,1,0),'MOVI':struct.pack('<3H',0,1,2)})
+        mp=pack({'MPY2':struct.pack('<2H',0,0)})
+        for body in (base+mp,base+mp+pack({'MOPY':b'\1\0'})):
+            with self.assertRaises(ValueError): trim_wmo_group(pack({'MOGP':b'\0'*68+body}))
+        with self.assertRaisesRegex(ValueError,'Truncated'): trim_wmo_group(pack({'MOGP':b'short'}))
+
+    def test_repack_trims_groups_without_changing_resource_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source,dest=Path(tmp)/'source',Path(tmp)/'dest'
+            original=pack({'MOGP':b'\0'*68+pack({'MOBN':b'node','MOBR':b'face','UNKN':b'keep'})})
+            writer=ChunkWriter(source,BUILD)
+            writer.add('world:room_000.wmo',original);writer.finish()
+            report=repack_hosted_assets(source,dest)
+            result=json.loads((dest/'manifest.json').read_bytes())
+            self.assertEqual(set(result['files']),{'world:room_000.wmo'})
+            self.assertEqual(report['removed'],[])
+            self.assertEqual(report['groupTables'],{'files':1,'savedBytes':24})
+            self.assertEqual(audit(dest)['status'],'verified')
 
 if __name__=='__main__': unittest.main()
