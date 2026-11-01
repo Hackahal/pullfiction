@@ -14,7 +14,7 @@ import re
 import sys
 import time
 
-from hosted_assets import ChunkWriter, audit, digest, json_bytes
+from hosted_assets import ChunkWriter, audit, digest, json_bytes, durable_write, sync_file, sync_directory
 from classic_compat import CompatError, adapt_model
 from classic_world import World, parts, chunks as world_chunks, read as field
 from classic_table_strings import named_table
@@ -63,6 +63,12 @@ def creature_texture_resources(catalog):
 
 
 
+def write_checkpoint(writer, checkpoint_path, record):
+    """Flush chunk persistence before atomically publishing preparation state."""
+    writer.flush()
+    durable_write(checkpoint_path,json_bytes(record))
+
+
 def prune_prepared_chunks(writer):
     """Finalize reachability in producer-owned output, never deployed retention."""
     # Pending slices receive their content hash only during flush.
@@ -83,6 +89,15 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
         writer.output, writer.limit, writer.max_bytes, writer.max_files = Path(output), chunk_bytes, max_bytes, max_files
         writer.pending, writer.references = bytearray(), []
         writer.manifest, writer.total = state['manifest'], state['total']
+        # A checkpoint created by an older producer may predate synced chunk
+        # writes. Request persistence once before publishing any newer state.
+        referenced = {part['chunk'] for entry in writer.manifest['files'].values() for part in entry['parts']}
+        for sha in referenced:
+            with (writer.output/'chunks'/(sha+'.bin.gz')).open('rb') as stream:
+                sync_file(stream.fileno())
+        sync_directory(writer.output/'chunks')
+        sync_directory(writer.output)
+        sync_directory(writer.output.parent)
     else:
         writer = ChunkWriter(output, build, chunk_bytes, max_bytes, max_files)
     queue, queued, processed = deque(), set(), set()
@@ -96,12 +111,10 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
         required = set(state['required'])
         dependency_graph = {k:set(v) for k,v in state['dependencyGraph'].items()}
     def checkpoint():
-        writer.flush()
         record = {'build':build,'manifest':writer.manifest,'total':writer.total,'queue':list(queue),
             'queued':sorted(queued),'processed':sorted(processed),'unsupported':unsupported,'models':models,
             'required':sorted(required),'dependencyGraph':{k:sorted(v) for k,v in dependency_graph.items()}}
-        temporary = checkpoint_path.with_suffix('.tmp')
-        temporary.write_bytes(json_bytes(record)); temporary.replace(checkpoint_path)
+        write_checkpoint(writer,checkpoint_path,record)
     aliases = {}
     start = time.monotonic()
 
@@ -295,6 +308,9 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
             raise ValueError('Required resources unavailable: '+', '.join(sorted(required & unsupported.keys())))
         for name in unsupported:
             writer.manifest['files'].pop('model:'+name,None)
+        # Persist the new resource reachability before deleting chunks that an
+        # earlier checkpoint might still have referenced.
+        checkpoint()
         prune_prepared_chunks(writer)
         # Named character paths remain usable in the renderer as well as file IDs.
         for alias, name in sorted(aliases.items()):

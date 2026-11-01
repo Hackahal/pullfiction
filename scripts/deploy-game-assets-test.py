@@ -42,13 +42,13 @@ class DeploymentTests(unittest.TestCase):
         writer.add('read:fonts/fixture.ttf',payload)
         writer.finish(appearanceInputs=[])
 
-    def run_script(self,first=None,ci=False,recover=False):
+    def run_script(self,first=None,ci=False,recover=False,release=None):
         env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
         env['WRANGLER_CAPTURE'] = str(self.capture)
         if first is not None: env['HOSTED_ASSETS_FIRST_DEPLOY'] = first
         if ci: env['CI'] = '1'
         return subprocess.run(['bash',str(self.root/'scripts/deploy-game-assets.sh'),
-                               *(['--recover'] if recover else [str(self.release)])],
+                               *(['--recover'] if recover else [str(release or self.release)])],
                               cwd=self.root,env=env,text=True,capture_output=True)
 
     def assert_not_uploaded(self,result):
@@ -258,5 +258,20 @@ class DeploymentTests(unittest.TestCase):
         self.assertIs(caught.exception,failure)
         self.assertFalse(self.capture.exists())
         self.assertFalse((self.retained.parent/'pending.json').exists())
+
+    def test_old_manifest_rollback_preserves_chunks_needed_by_newer_sessions(self):
+        self.pack(self.retained,b'old fixture bytes')
+        old_revision=audit(self.retained)['revision']
+        result=self.run_script()
+        self.assertEqual(result.returncode,0,result.stderr)
+        newest=json.loads((self.retained/'manifest.json').read_bytes())
+        newest_chunks=set(newest['chunks'])
+        complete_union={p.name:p.read_bytes() for p in (self.retained/'chunks').iterdir()}
+        previous=next(self.retained.parent.glob('previous.*'))
+        rollback=self.run_script(release=previous)
+        self.assertEqual(rollback.returncode,0,rollback.stderr)
+        self.assertEqual(audit(self.retained)['revision'],old_revision)
+        self.assertEqual({p.name:p.read_bytes() for p in (self.retained/'chunks').iterdir()},complete_union)
+        self.assertTrue(all((self.retained/'chunks'/(sha+'.bin.gz')).is_file() for sha in newest_chunks))
 
 if __name__ == '__main__': unittest.main()

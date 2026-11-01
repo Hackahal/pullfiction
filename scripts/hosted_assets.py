@@ -2,6 +2,9 @@
 import gzip
 import hashlib
 import json
+import os
+import sys
+import tempfile
 from pathlib import Path
 import re
 
@@ -22,6 +25,50 @@ def revision(manifest):
     return digest(json_bytes({k:v for k,v in manifest.items() if k != 'revision'}))
 
 
+def sync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def sync_file(descriptor):
+    os.fsync(descriptor)
+    if sys.platform == 'darwin':
+        import fcntl
+        # Request the stronger drive-cache flush when Python exposes it. This
+        # is an OS request, not evidence of real power-loss behavior.
+        if hasattr(fcntl,'F_FULLFSYNC'):
+            fcntl.fcntl(descriptor,fcntl.F_FULLFSYNC)
+
+
+def durable_write(path, data, *, temporary_directory=None):
+    """Sync bytes before atomic replacement, then sync both rename directories."""
+    path = Path(path)
+    temporary_directory = Path(temporary_directory or path.parent)
+    descriptor, name = tempfile.mkstemp(prefix='.hosted-write-',suffix='.tmp',dir=temporary_directory)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor,'wb') as stream:
+            stream.write(data)
+            stream.flush()
+            sync_file(stream.fileno())
+        os.replace(temporary,path)
+        sync_directory(path.parent)
+        if temporary_directory != path.parent:
+            sync_directory(temporary_directory)
+    except BaseException:
+        # Cleanup must not replace the original write/rename/sync failure.
+        try:
+            temporary.unlink(missing_ok=True)
+        except BaseException:
+            pass
+        raise
+    else:
+        temporary.unlink(missing_ok=True)
+
+
 class ChunkWriter:
     def __init__(self, output, build, chunk_bytes=CHUNK_BYTES, max_bytes=64*1024**3, max_files=500000):
         if not 0 < chunk_bytes <= CHUNK_BYTES:
@@ -31,6 +78,9 @@ class ChunkWriter:
             raise FileExistsError('Output must be a fresh directory')
         self.output.mkdir(parents=True)
         (self.output/'chunks').mkdir()
+        sync_directory(self.output/'chunks')
+        sync_directory(self.output)
+        sync_directory(self.output.parent)
         self.limit, self.max_bytes, self.max_files = chunk_bytes, max_bytes, max_files
         self.pending = bytearray()
         self.references = []
@@ -46,7 +96,7 @@ class ChunkWriter:
         sha = digest(compressed)
         if len(compressed) >= MAX_COMPRESSED:
             raise ValueError('Compressed chunk exceeds static service budget')
-        (self.output/'chunks'/(sha+'.bin.gz')).write_bytes(compressed)
+        durable_write(self.output/'chunks'/(sha+'.bin.gz'), compressed, temporary_directory=self.output.parent)
         self.manifest['chunks'][sha] = {'bytes':len(compressed), 'rawBytes':len(raw)}
         for part in self.references:
             part['chunk'] = sha

@@ -64,4 +64,4 @@ Additional guides: [editor controls](docs/EDITOR-CONTROLS.md), [browser asset bo
 
 ## Licence
 
-The upstream code is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE). Third-party components retain their own notices. No Blizzard game assets are licensed or distributed by this project.
+The upstream code is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE). Third-party components retain their own notices. Blizzard game assets are excluded from this repository and GitHub application releases; prepared assets are served separately. The code licences do not license those game assets.

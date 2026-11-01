@@ -4,7 +4,7 @@ Prepare game data on the owner's machine and upload it directly to Cloudflare Wo
 
 ## Prepare a generation locally
 
-Use an offline Classic 1.15.9 installation and the native CascLib library. The producer reuses the application's model, world, catalog and appearance adapters. Run the producer's `--help` for installation and library options.
+Run local preparation on macOS or Linux with an offline Classic 1.15.9 installation and the native CascLib library. The producer reuses the application's model, world, catalog and appearance adapters. Run the producer's `--help` for installation and library options.
 
 Choose a new output under `.agent/work/`. This directory is ignored by Git. Never move generated data into the source tree, GitHub releases, Actions artifacts or Actions caches. The producer and deployment script reject CI execution.
 
@@ -14,6 +14,8 @@ python3 scripts/prepare-hosted-assets.py --install /path/to/Classic --library /p
 python3 scripts/prepare-hosted-assets.py audit .agent/work/hosted-assets-next
 python3 scripts/optimize-hosted-assets.py --input .agent/work/hosted-assets-next --output .agent/work/hosted-assets-ready --install /path/to/Classic --library /path/to/native/CascLib
 ```
+
+Checkpoints flush pending chunks before writing the checkpoint. Chunk bytes are synced before their directory entries, then checkpoint bytes are synced before atomic replacement and parent-directory sync. Resuming an older checkpoint also syncs its referenced chunks before publishing newer state. For these chunk and checkpoint writes on macOS, the file helper requests `F_FULLFSYNC` when Python exposes it. These operations request filesystem and drive-cache persistence; fixture ordering checks are not evidence of actual machine power-loss durability. Interrupted temporary writes remain outside the public pack directory.
 
 Preparation produces `manifest.json` and content-addressed `chunks/*.bin.gz` files. Each resource has a SHA-256 digest and a list of byte ranges within independently compressed chunks. Large resources can span chunks. The producer targets 16 MiB of uncompressed bytes per chunk and enforces Cloudflare's 25 MiB upload ceiling. Read the preparation inventory for unavailable or unsupported resources before publishing.
 
@@ -45,7 +47,7 @@ If an upload reports an uncertain failure or local finalization fails, preserve 
 bash scripts/deploy-game-assets.sh --recover
 ```
 
-Recovery verifies the saved manifest, headers and complete chunk inventory, then finishes the local retention transaction. It never contacts Cloudflare. If recovery reports missing or altered bytes, restore those bytes from the saved generation or a backup before retrying. Do not delete `pending.json` to bypass recovery. After an uncertain upload, check the actual Cloudflare version separately; local recovery preserves chunks for both possible outcomes. Keep previous manifests locally. Cloudflare deployment rollback restores the previous asset version.
+Recovery verifies the saved manifest, headers and complete chunk inventory, then finishes the local retention transaction. It never contacts Cloudflare. If recovery reports missing or altered bytes, restore those bytes from the saved generation or a backup before retrying. Do not delete `pending.json` to bypass recovery. After an uncertain upload, check the actual Cloudflare version separately; local recovery preserves chunks for both possible outcomes. Keep previous manifests locally. For an asset rollback, deploy the desired previous manifest through the normal deployer, for example `bash scripts/deploy-game-assets.sh .agent/work/hosted-assets/previous.<uuid>`. It combines that audited previous generation with the complete current retained chunk union, preserving chunks used by sessions that opened the newer manifest. Resolve any pending transaction first and verify delivery afterward. Selecting an earlier Cloudflare version alone restores its older asset set and can remove newer-session chunks, so it is not the asset rollback procedure.
 
 ## Bootstrap a separate new service
 

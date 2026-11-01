@@ -4,6 +4,7 @@ import gzip
 import importlib.util
 from unittest.mock import patch
 import json
+import hosted_assets as hosted
 from pathlib import Path
 import tempfile
 import unittest
@@ -208,6 +209,72 @@ class HostedTests(unittest.TestCase):
                 self.assertEqual(audit(path)['status'],'verified')
                 producer.prune_prepared_chunks(writer)  # Safe to resume/repeat.
                 self.assertEqual({p.name[:-7] for p in (path/'chunks').iterdir()},reachable)
+
+    def test_checkpoint_orders_chunk_and_checkpoint_persistence(self):
+        spec = importlib.util.spec_from_file_location('prepare_sync_fixture',Path(__file__).with_name('prepare-hosted-assets.py'))
+        producer = importlib.util.module_from_spec(spec);spec.loader.exec_module(producer)
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/'pack'; checkpoint=Path(temp)/'pack.checkpoint.json'
+            writer=ChunkWriter(path,BUILD,chunk_bytes=8)
+            writer.add('read:pending',b'fixture')
+            events=[]
+            original_file,original_dir,original_replace=hosted.sync_file,hosted.sync_directory,hosted.os.replace
+            def file_sync(fd): events.append(('file',None));return original_file(fd)
+            def directory_sync(directory): events.append(('directory',Path(directory)));return original_dir(directory)
+            def replace(source,destination): events.append(('replace',Path(destination)));return original_replace(source,destination)
+            with patch.object(hosted,'sync_file',side_effect=file_sync),patch.object(hosted,'sync_directory',side_effect=directory_sync),patch.object(hosted.os,'replace',side_effect=replace):
+                producer.write_checkpoint(writer,checkpoint,{'manifest':writer.manifest})
+            chunk=next(iter(writer.manifest['chunks']))
+            chunk_replace=events.index(('replace',path/'chunks'/(chunk+'.bin.gz')))
+            chunk_directory=events.index(('directory',path/'chunks'))
+            checkpoint_replace=events.index(('replace',checkpoint))
+            checkpoint_directory=next(i for i,event in enumerate(events) if i>checkpoint_replace and event==('directory',checkpoint.parent))
+            files=[i for i,event in enumerate(events) if event[0]=='file']
+            self.assertLess(files[0],chunk_replace)
+            self.assertLess(chunk_replace,chunk_directory)
+            self.assertLess(chunk_directory,files[1])
+            self.assertLess(files[1],checkpoint_replace)
+            self.assertLess(checkpoint_replace,checkpoint_directory)
+            saved=json.loads(checkpoint.read_bytes())
+            self.assertEqual(saved['manifest']['files']['read:pending']['parts'][0]['chunk'],chunk)
+            self.assertEqual(gzip.decompress((path/'chunks'/(chunk+'.bin.gz')).read_bytes()),b'fixture')
+            self.assertEqual(list(Path(temp).glob('.hosted-write-*')),[])
+
+    def test_checkpoint_sync_and_replace_faults_preserve_a_valid_old_or_new_record(self):
+        spec = importlib.util.spec_from_file_location('prepare_sync_fault_fixture',Path(__file__).with_name('prepare-hosted-assets.py'))
+        producer = importlib.util.module_from_spec(spec);spec.loader.exec_module(producer)
+        for phase in ('chunk_file','chunk_directory','checkpoint_file','checkpoint_replace','checkpoint_directory'):
+            with self.subTest(phase=phase),tempfile.TemporaryDirectory() as temp:
+                path=Path(temp)/'pack';checkpoint=Path(temp)/'pack.checkpoint.json'
+                writer=ChunkWriter(path,BUILD,chunk_bytes=8)
+                producer.write_checkpoint(writer,checkpoint,{'phase':'old','manifest':writer.manifest})
+                writer.add('read:pending',b'fixture')
+                original_file,original_dir,original_replace=hosted.sync_file,hosted.sync_directory,hosted.os.replace
+                file_calls=0;checkpoint_renamed=False
+                def file_sync(fd):
+                    nonlocal file_calls
+                    file_calls+=1
+                    if (phase=='chunk_file' and file_calls==1) or (phase=='checkpoint_file' and file_calls==2):raise OSError('Injected file sync fault')
+                    return original_file(fd)
+                def directory_sync(directory):
+                    if (phase=='chunk_directory' and Path(directory)==path/'chunks') or (phase=='checkpoint_directory' and checkpoint_renamed):raise OSError('Injected directory sync fault')
+                    return original_dir(directory)
+                def replace(source,destination):
+                    nonlocal checkpoint_renamed
+                    if Path(destination)==checkpoint:
+                        if phase=='checkpoint_replace':raise OSError('Injected checkpoint rename fault')
+                        checkpoint_renamed=True
+                    return original_replace(source,destination)
+                with patch.object(hosted,'sync_file',side_effect=file_sync),patch.object(hosted,'sync_directory',side_effect=directory_sync),patch.object(hosted.os,'replace',side_effect=replace):
+                    with self.assertRaises(OSError):producer.write_checkpoint(writer,checkpoint,{'phase':'new','manifest':writer.manifest})
+                record=json.loads(checkpoint.read_bytes())
+                if phase!='checkpoint_directory':self.assertEqual(record['phase'],'old')
+                for entry in record['manifest']['files'].values():
+                    data=b''.join(gzip.decompress((path/'chunks'/(part['chunk']+'.bin.gz')).read_bytes())[part['offset']:part['offset']+part['length']] for part in entry['parts'])
+                    self.assertEqual(digest(data),entry['sha256'])
+                self.assertEqual(list(Path(temp).glob('.hosted-write-*')),[])
+                producer.write_checkpoint(writer,checkpoint,{'phase':'new','manifest':writer.manifest})
+                self.assertEqual(json.loads(checkpoint.read_bytes())['phase'],'new')
 
     def test_unexpected_public_files(self):
         with tempfile.TemporaryDirectory() as temp:
