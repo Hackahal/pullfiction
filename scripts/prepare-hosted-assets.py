@@ -62,6 +62,18 @@ def creature_texture_resources(catalog):
     return sorted(result)
 
 
+
+def prune_prepared_chunks(writer):
+    """Finalize reachability in producer-owned output, never deployed retention."""
+    # Pending slices receive their content hash only during flush.
+    writer.flush()
+    used = {part['chunk'] for entry in writer.manifest['files'].values() for part in entry['parts']}
+    for path in (writer.output/'chunks').iterdir():
+        if re.fullmatch(r'[0-9a-f]{64}\.bin\.gz', path.name) and path.name[:-7] not in used:
+            path.unlink()
+    writer.manifest['chunks'] = {sha:entry for sha,entry in writer.manifest['chunks'].items() if sha in used}
+
+
 def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_bytes=64*1024**3, max_files=500000, resume=False):
     checkpoint_path = Path(str(output)+'.checkpoint.json')
     state = json.loads(checkpoint_path.read_bytes()) if resume else None
@@ -283,11 +295,7 @@ def prepare(storage, build, output, raids, *, chunk_bytes=16*1024*1024, max_byte
             raise ValueError('Required resources unavailable: '+', '.join(sorted(required & unsupported.keys())))
         for name in unsupported:
             writer.manifest['files'].pop('model:'+name,None)
-        used_chunks = {part['chunk'] for entry in writer.manifest['files'].values() for part in entry['parts'] if part['chunk']}
-        # Pending slices have no hash until flush.
-        writer.flush()
-        used_chunks = {part['chunk'] for entry in writer.manifest['files'].values() for part in entry['parts']}
-        writer.manifest['chunks'] = {sha:entry for sha,entry in writer.manifest['chunks'].items() if sha in used_chunks}
+        prune_prepared_chunks(writer)
         # Named character paths remain usable in the renderer as well as file IDs.
         for alias, name in sorted(aliases.items()):
             entry = writer.manifest['files'].get('model:'+name)

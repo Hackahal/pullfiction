@@ -169,6 +169,46 @@ class HostedTests(unittest.TestCase):
             self.assertEqual(report['status'],'verified')
             self.assertEqual(audit(path)['status'],'verified')
 
+    def test_prepared_output_removes_unsupported_only_chunks_and_preserves_shared_slices(self):
+        spec = importlib.util.spec_from_file_location('prepare_pruning_fixture',Path(__file__).with_name('prepare-hosted-assets.py'))
+        producer = importlib.util.module_from_spec(spec); spec.loader.exec_module(producer)
+        for shared_pending in (False,True):
+            with self.subTest(shared_pending=shared_pending), tempfile.TemporaryDirectory() as temp:
+                path = Path(temp)/'prepared'
+                writer = ChunkWriter(path,BUILD,chunk_bytes=4)
+                writer.add('model:unsupported',b'DROP')
+                exclusive = writer.manifest['files']['model:unsupported']['parts'][0]['chunk']
+                writer.add('model:unsupported-shared',b'KEEP')
+                writer.add('model:supported-shared',b'KEEP')
+                shared = writer.manifest['files']['model:supported-shared']['parts'][0]['chunk']
+                writer.add('read:supported',b'GOOD')
+                writer.add('model:unsupported-mixed',b'BAD')
+                writer.add('read:supported-mixed',b'g')
+                mixed = writer.manifest['files']['read:supported-mixed']['parts'][0]['chunk']
+                writer.add('model:unsupported-pending',b'xx')
+                if shared_pending: writer.add('read:supported-pending',b'xx')
+                # A resumed producer may have written a chunk after its last
+                # checkpoint; it is also unreferenced fresh output, not history.
+                orphan = gzip.compress(b'authored checkpoint orphan',mtime=0)
+                orphan_sha = digest(orphan)
+                (path/'chunks'/(orphan_sha+'.bin.gz')).write_bytes(orphan)
+                for key in ('model:unsupported','model:unsupported-shared','model:unsupported-mixed','model:unsupported-pending'):
+                    writer.manifest['files'].pop(key)
+                producer.prune_prepared_chunks(writer)
+                manifest = writer.finish(appearanceInputs=[])
+                reachable = {part['chunk'] for entry in manifest['files'].values() for part in entry['parts']}
+                physical = {p.name[:-7] for p in (path/'chunks').iterdir()}
+                self.assertEqual(physical,reachable)
+                self.assertEqual(set(manifest['chunks']),reachable)
+                self.assertNotIn(exclusive,physical)
+                self.assertNotIn(orphan_sha,physical)
+                self.assertIn(shared,physical)
+                self.assertIn(mixed,physical)
+                self.assertEqual(len(physical),4 if shared_pending else 3)
+                self.assertEqual(audit(path)['status'],'verified')
+                producer.prune_prepared_chunks(writer)  # Safe to resume/repeat.
+                self.assertEqual({p.name[:-7] for p in (path/'chunks').iterdir()},reachable)
+
     def test_unexpected_public_files(self):
         with tempfile.TemporaryDirectory() as temp:
             path=Path(temp)/'out'; self.make(path)
