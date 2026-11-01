@@ -7,11 +7,17 @@ case "${1:-}" in
   ""|--source-only) ;;
   *) echo "Usage: bash scripts/check.sh [--source-only]" >&2; exit 2 ;;
 esac
+node --input-type=module -e '
+const [major, minor] = process.versions.node.split(".").map(Number);
+if (major < 22 || (major === 22 && minor < 13)) {
+  console.error("Source checks require Node.js 22.13 or later for node:sqlite.");
+  process.exit(1);
+}'
 python3 scripts/repository-audit.py --tree-only
 python3 scripts/repository-audit-test.py
 npm run check --prefix web/editor
 npm test --prefix web/editor
-node --test web/planner/*.test.mjs scripts/static-viewer-loader.test.mjs scripts/wowhead-page-fetch.test.mjs web/archive/policy.test.mjs
+node --test cloudflare/*.test.mjs web/planner/*.test.mjs scripts/static-viewer-loader.test.mjs scripts/wowhead-page-fetch.test.mjs web/archive/policy.test.mjs
 for test in scripts/*-test.py scripts/test_ui_quality_loop.py; do
   python3 "$test"
 done

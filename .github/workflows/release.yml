@@ -120,6 +120,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          PULLFICTION_SHARE_DATABASE_ID: ${{ vars.PULLFICTION_SHARE_DATABASE_ID }}
+          PULLFICTION_SHARE_SITE_KEY: ${{ vars.PULLFICTION_SHARE_SITE_KEY }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Set the CLOUDFLARE_API_TOKEN Actions secret.' >&2; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Set the CLOUDFLARE_ACCOUNT_ID repository variable.' >&2; exit 1; }
