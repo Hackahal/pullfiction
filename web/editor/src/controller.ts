@@ -485,6 +485,7 @@ export class EditorController {
     geometry?: ReplayFloorGeometry;
     models: object;
     smooth: boolean;
+    filtered: boolean;
     hints: Map<string, number>;
     seeds: Map<string, number>;
   } | null = null;
@@ -4996,27 +4997,29 @@ export class EditorController {
   }
   private replayFloors(replay: Replay, lookupPose: typeof poseAt = poseAt) {
     const geometry = this.loadedFloors.get(replay.map),
-      cached = this.floorHintCache;
+      cached = this.floorHintCache,
+      filtered = !!this.state.replay && this.state.workspaceMode === "analyse";
     if (
       cached &&
       cached.replay === replay &&
       cached.time === this.clockTime &&
       cached.geometry === geometry &&
       cached.smooth === this.state.options.smoothGaps &&
+      cached.filtered === filtered &&
       cached.models === this.models
     )
       return cached.hints;
     const seeds = new Map<string, number>();
+    const candidates = this.presentReplayActors();
     const hints = replayFloorHints(
       replay,
       this.clockTime,
       geometry?.contextCatalog(replay.map, this.models) ?? this.models,
       seeds,
-      this.presentReplayActors() ?? undefined,
+      candidates ?? undefined,
     );
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
-      const candidates = this.presentReplayActors();
       for (const actor of replay.actors) {
         if (candidates && !candidates.has(actor.key)) continue;
         const pose = lookupPose(
@@ -5043,6 +5046,7 @@ export class EditorController {
       geometry,
       models: this.models,
       smooth: this.state.options.smoothGaps,
+      filtered,
       hints,
       seeds,
     };

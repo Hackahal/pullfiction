@@ -3468,6 +3468,72 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
   f.c.stop();
 });
 
+test("paused floor hints follow the effective presence filter in both workspace directions", () => {
+  for (const firstMode of ["analyse", "plan"] as const) {
+    const f = fixture();
+    const replay = f.c.getSnapshot().replay!;
+    const npc = replay.actors.find((a) => a.key === "2:1")!;
+    npc.samples = [[0, 2, 2, null]];
+    npc.deaths = [[0, true]];
+    npc.runLifetime = false;
+    delete npc.spawn;
+    replay.actors = [...replay.actors];
+    const internals = f.c as unknown as {
+      loadedFloors: Map<number, ReplayFloorGeometry>;
+      replayFloors: (value: typeof replay) => Map<string, number>;
+    };
+    internals.loadedFloors.set(
+      replay.map,
+      new ReplayFloorGeometry(
+        [
+          {
+            area: "room",
+            interior: true,
+            vertices: [
+              [0, 0, 37],
+              [10, 0, 37],
+              [0, 10, 37],
+            ],
+            indices: [0, 1, 2],
+          },
+        ],
+        [],
+        [],
+      ),
+    );
+    f.c.seek(500);
+    const modes =
+      firstMode === "analyse"
+        ? (["analyse", "plan", "analyse"] as const)
+        : (["plan", "analyse", "plan"] as const);
+    for (const mode of modes) {
+      f.c.setWorkspaceMode(mode);
+      f.c.render();
+      assert.equal(f.c.getSnapshot().time, 500);
+      assert.equal(f.c.getSnapshot().playing, false);
+      const hints = internals.replayFloors(replay);
+      assert.equal(
+        hints.has(npc.key),
+        mode === "plan",
+        `${firstMode} -> ${mode}`,
+      );
+      if (mode === "plan") {
+        assert.equal(hints.get(npc.key), 37);
+      } else
+        assert.equal(
+          f.frame.some((a) => a.key === npc.key),
+          false,
+        );
+      assert.equal(
+        internals.replayFloors(replay),
+        hints,
+        "unchanged context keeps its cached map",
+      );
+    }
+    f.c.stop();
+  }
+});
+
 test("standalone SoD reference grounding respects its own level hint in stacked rooms", () => {
   const f = fixture(),
     c = f.c;
