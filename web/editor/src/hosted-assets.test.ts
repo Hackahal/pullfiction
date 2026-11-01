@@ -573,3 +573,108 @@ test("native fetch recovers from stalled HTTP headers and a stalled JSON body", 
     }
   }
 });
+
+test("progressing manifest and chunk bodies may exceed the inactivity deadline", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture();
+  const transfers: string[] = [],
+    signals: AbortSignal[] = [];
+  const stream = (bytes: Uint8Array) => {
+    let offset = 0;
+    const step = Math.ceil(bytes.length / 5);
+    return new Response(
+      new ReadableStream({
+        async pull(controller) {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          if (offset >= bytes.length) {
+            controller.close();
+            return;
+          }
+          controller.enqueue(bytes.slice(offset, offset + step));
+          offset += step;
+        },
+      }),
+    );
+  };
+  const operation = (async () => {
+    const reader = await openHostedAssets("https://assets.example", undefined, {
+      cache: null,
+      retries: 0,
+      requestTimeoutMs: 25,
+      fetch: async (url, options) => {
+        transfers.push(String(url));
+        signals.push(options!.signal!);
+        if (String(url).endsWith("manifest.json"))
+          return stream(new TextEncoder().encode(JSON.stringify(f.manifest)));
+        const index = f.hashes.findIndex((h) => String(url).includes(h));
+        assert.ok(index >= 0);
+        return stream(f.zipped[index]);
+      },
+    });
+    try {
+      return [...new Uint8Array((await reader.read("fonts/a.ttf")).bytes)];
+    } finally {
+      reader.close();
+    }
+  })();
+  // Each body's five chunks span at least 50 ms, beyond the 25 ms idle limit.
+  const outcome = operation.then(
+    (value) => ({ value }),
+    (error) => ({ error }),
+  );
+  for (let i = 0; i < 40; i++) {
+    t.mock.timers.tick(10);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  const result = await outcome;
+  assert.ok("value" in result, "error" in result ? String(result.error) : "");
+  assert.deepEqual(result.value, [1, 2, 3, 4]);
+  assert.equal(transfers.length, 3);
+  assert.ok(signals.every((signal) => !signal.aborted));
+});
+
+test("empty body chunks do not count as progress", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let calls = 0;
+  const opening = openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    retries: 0,
+    requestTimeoutMs: 25,
+    fetch: async () => {
+      calls++;
+      return new Response(
+        new ReadableStream({
+          async pull(controller) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            controller.enqueue(new Uint8Array());
+          },
+        }),
+      );
+    },
+  });
+  const outcome = opening.then(
+    () => null,
+    (error) => error,
+  );
+  for (let i = 0; i < 4; i++) {
+    t.mock.timers.tick(10);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.equal((await outcome).name, "TimeoutError");
+  assert.equal(calls, 1);
+});
+
+test("manifest byte limit matches the static upload ceiling without retries", async () => {
+  let calls = 0;
+  await assert.rejects(
+    openHostedAssets("https://assets.example", undefined, {
+      cache: null,
+      fetch: async () => {
+        calls++;
+        return new Response(new Uint8Array(25 * 1024 * 1024));
+      },
+    }),
+    { name: "AssetIntegrityError" },
+  );
+  assert.equal(calls, 1);
+});

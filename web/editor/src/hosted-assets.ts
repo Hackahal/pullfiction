@@ -22,6 +22,7 @@ export interface HostedOptions {
   memoryBytes?: number;
   allowLoopback?: boolean;
   retries?: number;
+  /** Maximum inactivity while waiting for headers or the next body bytes. */
   requestTimeoutMs?: number;
 }
 const hashPattern = /^[a-f0-9]{64}$/;
@@ -179,7 +180,7 @@ export async function openHostedAssets(
   const timeoutMs = options.requestTimeoutMs ?? 60_000;
   if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000)
     throw new RangeError(
-      "Hosted request timeout must be between 1 and 120000 ms",
+      "Hosted request inactivity timeout must be between 1 and 120000 ms",
     );
   const lifetime = new AbortController();
   const abort = () => lifetime.abort(options.signal?.reason);
@@ -195,7 +196,11 @@ export async function openHostedAssets(
   const attempts = Math.max(1, Math.min(5, (options.retries ?? 2) + 1));
   async function request<T>(
     url: URL,
-    consume: (response: Response, attemptSignal: AbortSignal) => Promise<T>,
+    consume: (
+      response: Response,
+      attemptSignal: AbortSignal,
+      progress: () => void,
+    ) => Promise<T>,
   ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       check();
@@ -209,13 +214,19 @@ export async function openHostedAssets(
           rejectAbort = () => reject(attemptSignal.reason);
           attemptSignal.addEventListener("abort", rejectAbort, { once: true });
         });
-        const timer = setTimeout(
-          () =>
-            attemptController.abort(
-              namedError("TimeoutError", "Hosted asset request timed out"),
+        const expire = () =>
+          attemptController.abort(
+            namedError(
+              "TimeoutError",
+              "Hosted asset request timed out while idle",
             ),
-          timeoutMs,
-        );
+          );
+        let timer = setTimeout(expire, timeoutMs);
+        const progress = () => {
+          if (attemptSignal.aborted) return;
+          clearTimeout(timer);
+          timer = setTimeout(expire, timeoutMs);
+        };
         try {
           // Race the entire transfer as well as passing the signal to fetch.
           // A custom transport or a body stream may not honor fetch's signal.
@@ -229,7 +240,9 @@ export async function openHostedAssets(
               void response.body?.cancel().catch(() => {});
               attemptSignal.throwIfAborted();
             }
-            if (response.ok) return await consume(response, attemptSignal);
+            progress();
+            if (response.ok)
+              return await consume(response, attemptSignal, progress);
             void response.body?.cancel().catch(() => {});
             if (
               response.status !== 408 &&
@@ -288,8 +301,28 @@ export async function openHostedAssets(
   let manifest: HostedManifest;
   try {
     manifest = validateHostedManifest(
-      await request(new URL("manifest.json", baseUrl), (response) =>
-        response.json(),
+      await request(
+        new URL("manifest.json", baseUrl),
+        async (response, attemptSignal, progress) => {
+          const decoder = new TextDecoder();
+          let text = "";
+          let length = 0;
+          await readResponse(
+            response,
+            attemptSignal,
+            (value) => {
+              length += value.byteLength;
+              if (length >= maxChunk)
+                throw namedError(
+                  "AssetIntegrityError",
+                  "Hosted manifest exceeds upload size limit",
+                );
+              text += decoder.decode(value, { stream: true });
+            },
+            progress,
+          );
+          return JSON.parse(text + decoder.decode());
+        },
       ),
     );
     check();
@@ -309,29 +342,49 @@ export async function openHostedAssets(
       cache = null;
     }
   }
-  async function compressedBody(
+  async function readResponse(
     response: Response,
-    sha: string,
-    readSignal = signal,
+    readSignal: AbortSignal,
+    receive: (bytes: Uint8Array) => void,
+    progress: () => void = () => {},
   ) {
-    const size = manifest.chunks[sha].bytes;
-    const bytes = new Uint8Array(size);
     if (!response.body)
       throw namedError(
         "AssetIntegrityError",
-        "Hosted chunk integrity check failed",
+        "Hosted asset response has no body",
       );
     const stream = response.body.getReader();
     const cancel = () => {
       void stream.cancel(readSignal.reason).catch(() => {});
     };
     readSignal.addEventListener("abort", cancel, { once: true });
-    let offset = 0;
     try {
       for (;;) {
         readSignal.throwIfAborted();
         const { value, done } = await stream.read();
+        readSignal.throwIfAborted();
         if (done) break;
+        if (value.byteLength) progress();
+        receive(value);
+      }
+    } finally {
+      readSignal.removeEventListener("abort", cancel);
+      void stream.cancel().catch(() => {});
+    }
+  }
+  async function compressedBody(
+    response: Response,
+    sha: string,
+    readSignal = signal,
+    progress?: () => void,
+  ) {
+    const size = manifest.chunks[sha].bytes;
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    await readResponse(
+      response,
+      readSignal,
+      (value) => {
         if (offset + value.length > size)
           throw namedError(
             "AssetIntegrityError",
@@ -339,12 +392,9 @@ export async function openHostedAssets(
           );
         bytes.set(value, offset);
         offset += value.length;
-      }
-    } finally {
-      readSignal.removeEventListener("abort", cancel);
-      void stream.cancel().catch(() => {});
-    }
-    readSignal.throwIfAborted();
+      },
+      progress,
+    );
     if (offset !== size)
       throw namedError(
         "AssetIntegrityError",
@@ -400,8 +450,10 @@ export async function openHostedAssets(
       }
     }
     if (!raw) {
-      const compressed = await request(url, (response, attemptSignal) =>
-        compressedBody(response, sha, attemptSignal),
+      const compressed = await request(
+        url,
+        (response, attemptSignal, progress) =>
+          compressedBody(response, sha, attemptSignal, progress),
       );
       raw = await verifyCompressed(compressed, sha);
       try {

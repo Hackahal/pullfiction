@@ -35,7 +35,17 @@ The pinned Wrangler CLI supports `--use-keyring`. On Linux, install `secret-tool
 
 `wrangler.game-assets.jsonc` deploys the `pullfiction-assets` service at `assets.pullfiction.com`. The script audits the local directory and adds the reviewed CORS and cache headers. Assets are public static responses. Requests do not invoke a Worker script. The `.gz` files use `application/gzip` without `Content-Encoding`; the browser verifies the compressed hash and decompresses them explicitly.
 
-The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases and restore it when using a fresh checkout or another machine. Deployment fails before staging or upload if retention is missing or invalid. For the first generation of a new, empty asset service only, run `HOSTED_ASSETS_FIRST_DEPLOY=1 bash scripts/deploy-game-assets.sh .agent/work/hosted-assets-ready`. The override must be exactly `1` and is rejected when a retained generation already exists. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes. Keep previous manifests locally for recovery. Cloudflare deployment rollback restores the previous asset version.
+The deployment script retains old content-addressed chunks in `.agent/work/hosted-assets/deployed` and includes them in subsequent deployments so open sessions can finish. Preserve that directory between releases and restore it when using a fresh checkout or another machine. Deployment fails before staging or upload if retention is missing or invalid. For the first generation of a new, empty asset service only, run `HOSTED_ASSETS_FIRST_DEPLOY=1 bash scripts/deploy-game-assets.sh .agent/work/hosted-assets-ready`. The override must be exactly `1` and is rejected when a retained generation already exists. The auditor accepts retained chunks only after validating their names, compressed hashes, decompression limits and file sizes.
+
+Before upload, the deployer saves and syncs the complete old-plus-new chunk union and a transaction journal beneath `.agent/work/hosted-assets/`. It serializes deployment and recovery with a POSIX file lock on macOS or Linux. After upload, it installs retention through directory renames and keeps the previous generation in a `previous.*` directory. A pending transaction blocks later uploads, including the first-generation override.
+
+If an upload reports an uncertain failure or local finalization fails, preserve the entire `.agent/work/hosted-assets/` directory and run:
+
+```sh
+bash scripts/deploy-game-assets.sh --recover
+```
+
+Recovery verifies the saved manifest, headers and complete chunk inventory, then finishes the local retention transaction. It never contacts Cloudflare. If recovery reports missing or altered bytes, restore those bytes from the saved generation or a backup before retrying. Do not delete `pending.json` to bypass recovery. After an uncertain upload, check the actual Cloudflare version separately; local recovery preserves chunks for both possible outcomes. Keep previous manifests locally. Cloudflare deployment rollback restores the previous asset version.
 
 ## Release application code
 
@@ -64,6 +74,10 @@ VITE_GAME_ASSET_URL=http://127.0.0.1:8312/ npm run dev --prefix web/editor
 ```
 
 Vite proxies `/archive`, `/metadata`, `/snippets` and `/pullfiction_viewer` to port 8096. Set `PULLFICTION_RUNTIME_ORIGIN` when the runtime uses another origin. The Vite development build permits loopback HTTP asset URLs. Production builds require HTTPS. The asset preview audits its directory before serving and supplies CORS headers.
+
+## Download recovery
+
+Each request uses a 60-second inactivity timeout while waiting for headers or the next nonempty body bytes. Progress refreshes the timer for both manifests and compressed chunks, so a healthy slow transfer can exceed 60 seconds overall. A stalled transfer retries within the bounded attempt budget. User cancellation stops the request without retrying.
 
 ## Verify delivery
 

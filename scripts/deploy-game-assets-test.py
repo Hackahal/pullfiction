@@ -9,6 +9,8 @@ import tempfile
 import unittest
 
 from hosted_assets import ChunkWriter, audit
+import hosted_asset_deployment as deployment
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 BUILD = {'product':'fixture','version':'1','buildKey':'a'*32}
@@ -23,11 +25,8 @@ class DeploymentTests(unittest.TestCase):
         (self.root/'cloudflare').mkdir()
         (self.root/'.gitignore').write_text('.agent/\n')
         subprocess.run(['git','init','-q',str(self.root)],check=True)
-        for name in ('deploy-game-assets.sh','hosted_assets.py'):
+        for name in ('deploy-game-assets.sh','hosted_assets.py','hosted_asset_deployment.py'):
             shutil.copy2(ROOT/'scripts'/name,self.root/'scripts'/name)
-        # Same real pack auditor, without loading unrelated native client tools.
-        (self.root/'scripts/prepare-hosted-assets.py').write_text(
-            'import sys\nfrom hosted_assets import audit\nprint(audit(sys.argv[2]))\n')
         shutil.copy2(ROOT/'cloudflare/game-asset-headers',self.root/'cloudflare/game-asset-headers')
         cli = self.root/'tools/release/node_modules/.bin/wrangler'
         cli.parent.mkdir(parents=True)
@@ -43,12 +42,13 @@ class DeploymentTests(unittest.TestCase):
         writer.add('read:fonts/fixture.ttf',payload)
         writer.finish(appearanceInputs=[])
 
-    def run_script(self,first=None,ci=False):
+    def run_script(self,first=None,ci=False,recover=False):
         env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
         env['WRANGLER_CAPTURE'] = str(self.capture)
         if first is not None: env['HOSTED_ASSETS_FIRST_DEPLOY'] = first
         if ci: env['CI'] = '1'
-        return subprocess.run(['bash',str(self.root/'scripts/deploy-game-assets.sh'),str(self.release)],
+        return subprocess.run(['bash',str(self.root/'scripts/deploy-game-assets.sh'),
+                               *(['--recover'] if recover else [str(self.release)])],
                               cwd=self.root,env=env,text=True,capture_output=True)
 
     def assert_not_uploaded(self,result):
@@ -86,10 +86,8 @@ class DeploymentTests(unittest.TestCase):
         args = self.capture.read_text().splitlines()
         self.assertEqual(args[:3],['deploy','--config','wrangler.game-assets.jsonc'])
         self.assertEqual(args[3],'--assets')
-        stage = self.root/args[4]
-        self.assertEqual(audit(stage)['revision'],audit(self.release)['revision'])
+        self.assertEqual(audit(self.retained)['revision'],audit(self.release)['revision'])
         for name,data in old.items():
-            self.assertEqual((stage/'chunks'/name).read_bytes(),data)
             self.assertEqual((self.retained/'chunks'/name).read_bytes(),data)
         self.assertEqual(len(list((self.retained/'chunks').iterdir())),2)
 
@@ -105,5 +103,97 @@ class DeploymentTests(unittest.TestCase):
         self.assert_not_uploaded(self.run_script())
         self.assert_not_uploaded(self.run_script(first='1',ci=True))
 
+
+
+    def test_published_upload_finalization_failures_block_upload_until_recovered(self):
+        for boundary in ('backup','install','clear'):
+            with self.subTest(boundary=boundary):
+                # Each failure runs in an independent authored fixture.
+                case = DeploymentTests(); case.setUp()
+                try:
+                    case.pack(case.retained,b'old fixture bytes')
+                    old_chunks = {p.name:p.read_bytes() for p in (case.retained/'chunks').iterdir()}
+                    original_replace = deployment.os.replace
+                    def replace(source,destination):
+                        if ((boundary == 'backup' and Path(destination).name.startswith('previous.'))
+                                or (boundary == 'install' and Path(source).name.startswith('upload.')
+                                    and Path(destination).name == 'deployed')):
+                            raise OSError('Injected retention rename failure')
+                        return original_replace(source,destination)
+                    original_clear = deployment.clear_pending
+                    def clear(state):
+                        if boundary == 'clear': raise OSError('Injected journal clear failure')
+                        return original_clear(state)
+                    env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
+                    env['WRANGLER_CAPTURE'] = str(case.capture)
+                    with patch.dict(os.environ,env,clear=True), patch.object(deployment.os,'replace',side_effect=replace), patch.object(deployment,'clear_pending',side_effect=clear):
+                        with self.assertRaises(OSError): deployment.deploy(case.root,case.release)
+                    self.assertTrue(case.capture.exists())  # Stub upload succeeded.
+                    recorded = case.capture.read_bytes()
+                    pending = case.retained.parent/'pending.json'
+                    transaction = json.loads(pending.read_bytes())
+                    complete = case.retained.parent/transaction['stage']
+                    if boundary == 'clear': complete = case.retained
+                    deployment.verify_snapshot(complete,transaction)
+                    self.assertEqual(len(transaction['chunks']),2)
+                    blocked = case.run_script(first='1')
+                    self.assertNotEqual(blocked.returncode,0)
+                    self.assertIn('recovery is pending',blocked.stderr)
+                    self.assertEqual(case.capture.read_bytes(),recorded)
+                    recovered = case.run_script(recover=True)
+                    self.assertEqual(recovered.returncode,0,recovered.stderr)
+                    self.assertEqual(case.capture.read_bytes(),recorded)  # Recovery never uploads.
+                    self.assertFalse(pending.exists())
+                    self.assertEqual(audit(case.retained)['revision'],audit(case.release)['revision'])
+                    for name,data in old_chunks.items():self.assertEqual((case.retained/'chunks'/name).read_bytes(),data)
+                    self.assertEqual(len(list((case.retained/'chunks').iterdir())),2)
+                    self.assertEqual(case.run_script().returncode,0)
+                finally: case.doCleanups()
+
+    def test_uncertain_upload_failure_keeps_durable_recovery_and_blocks_next_upload(self):
+        self.pack(self.retained,b'old fixture bytes')
+        cli = self.root/'tools/release/node_modules/.bin/wrangler'
+        cli.write_text(cli.read_text()+'exit 7\n')
+        result = self.run_script()
+        self.assertNotEqual(result.returncode,0)
+        recorded = self.capture.read_bytes()
+        self.assertTrue((self.retained.parent/'pending.json').exists())
+        self.assertNotEqual(self.run_script().returncode,0)
+        self.assertEqual(self.capture.read_bytes(),recorded)
+        self.assertEqual(self.run_script(recover=True).returncode,0)
+        self.assertEqual(self.capture.read_bytes(),recorded)
+        self.assertEqual(len(list((self.retained/'chunks').iterdir())),2)
+
+
+    def test_recovery_rejects_a_missing_old_extra_chunk_even_when_manifest_audits(self):
+        self.pack(self.retained,b'old fixture bytes')
+        old = next((self.retained/'chunks').iterdir())
+        original = deployment.os.replace
+        def replace(source,destination):
+            if Path(destination).name.startswith('previous.'):
+                raise OSError('Injected post-upload backup failure')
+            return original(source,destination)
+        env = {k:v for k,v in os.environ.items() if k not in ('CI','GITHUB_ACTIONS','HOSTED_ASSETS_FIRST_DEPLOY')}
+        env['WRANGLER_CAPTURE'] = str(self.capture)
+        with patch.dict(os.environ,env,clear=True), patch.object(deployment.os,'replace',side_effect=replace):
+            with self.assertRaises(OSError): deployment.deploy(self.root,self.release)
+        transaction = json.loads((self.retained.parent/'pending.json').read_bytes())
+        stage = self.retained.parent/transaction['stage']
+        staged_old = stage/'chunks'/old.name
+        data = staged_old.read_bytes();staged_old.unlink()
+        self.assertEqual(audit(stage)['revision'],audit(self.release)['revision'])
+        recorded = self.capture.read_bytes()
+        self.assertNotEqual(self.run_script(recover=True).returncode,0)
+        self.assertNotEqual(self.run_script().returncode,0)
+        self.assertEqual(self.capture.read_bytes(),recorded)
+        staged_old.write_bytes(data)
+        self.assertEqual(self.run_script(recover=True).returncode,0)
+        self.assertEqual((self.retained/'chunks'/old.name).read_bytes(),data)
+
+    def test_concurrent_deployment_is_refused_without_staging(self):
+        with deployment.locked(self.retained.parent):
+            result = self.run_script(first='1')
+        self.assert_not_uploaded(result)
+        self.assertIn('Another asset deployment',result.stderr)
 
 if __name__ == '__main__': unittest.main()
