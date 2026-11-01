@@ -838,3 +838,53 @@ test("library rename stays saved without autosave and preserves drawing undo/red
     f.controller.stop();
   }
 });
+
+test("concurrent library metadata updates serialize read-modify-write without losing either change", async () => {
+  const f = setup();
+  try {
+    await f.controller.initializeLibrary();
+    await f.controller.createProject(409, "vanilla", "Original");
+    const id = f.controller.getSnapshot().projectId!;
+    await Promise.all([
+      f.controller.updateProjectMetadata(id, { pinned: true }),
+      f.controller.updateProjectMetadata(id, { name: "Renamed" }),
+      f.controller.updateProjectMetadata(id, { savedRun: false }),
+    ]);
+    const project = (await f.store.get(id))!;
+    assert.equal(project.pinned, true);
+    assert.equal(project.plan.name, "Renamed");
+    assert.equal(project.savedRun, false);
+    assert.equal(f.controller.getSnapshot().dirty, false);
+  } finally {
+    f.controller.stop();
+  }
+});
+
+for (const metadata of [
+  { pinned: true },
+  { name: "Library rename", pinned: true },
+]) {
+  test(`queued metadata and active saves preserve edits and metadata: ${JSON.stringify(metadata)}`, async () => {
+    const f = setup();
+    try {
+      await f.controller.initializeLibrary();
+      await f.controller.createProject(409, "vanilla", "Original");
+      const id = f.controller.getSnapshot().projectId!;
+      const updating = f.controller.updateProjectMetadata(id, metadata);
+      f.controller.updateStep({ notes: "Important new edit" });
+      await Promise.all([updating, f.controller.saveProject()]);
+      const project = (await f.store.get(id))!;
+      assert.equal(project.plan.steps[0].notes, "Important new edit");
+      assert.equal(project.pinned, true);
+      assert.equal(project.plan.name, metadata.name ?? "Original");
+      assert.equal(
+        f.controller.getSnapshot().plan.steps[0].notes,
+        "Important new edit",
+      );
+      assert.equal(f.controller.getSnapshot().dirty, false);
+      assert.equal(f.controller.getSnapshot().saveStatus, "saved");
+    } finally {
+      f.controller.stop();
+    }
+  });
+}

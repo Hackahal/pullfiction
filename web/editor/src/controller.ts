@@ -256,6 +256,15 @@ export class EditorController {
   private undoStack: Plan[] = [];
   private redoStack: Plan[] = [];
   private saved = "";
+  private libraryMetadata = new Map<
+    string,
+    {
+      name?: string;
+      pinned?: boolean;
+      savedRun?: boolean;
+      lastViewedAt?: number;
+    }
+  >();
   private rangeSource: string | null = null;
   private mapDrafts = new Map<
     string,
@@ -1208,9 +1217,24 @@ export class EditorController {
     };
     this.activeProject = project;
     this.patch({ projectId: project.id, saveStatus: "saving" });
-    const serialized = JSON.stringify(plan);
+    const metadataAtSave = this.libraryMetadata.get(project.id);
     const write = async () => {
       try {
+        const metadata = this.libraryMetadata.get(project.id);
+        if (metadata) {
+          for (const key of ["pinned", "savedRun", "lastViewedAt"] as const)
+            if (
+              metadata[key] !== undefined &&
+              metadata[key] !== metadataAtSave?.[key]
+            )
+              Object.assign(project, { [key]: metadata[key] });
+          if (
+            metadata.name !== undefined &&
+            metadata.name !== metadataAtSave?.name
+          )
+            project.plan = { ...project.plan, name: metadata.name };
+        }
+        const serialized = JSON.stringify(project.plan);
         await this.projectStore!.put(project);
         this.patch({
           projects: [
@@ -1430,44 +1454,53 @@ export class EditorController {
         (this.state.dirty || this.state.saveStatus !== "saved")
       )
         await this.flushProject();
-      else await this.projectWrites;
-      const project = await this.projectStore?.get(id);
-      if (!project) return;
-      const { name, ...metadata } = values;
-      const next = {
-        ...project,
-        ...metadata,
-        ...(name !== undefined
-          ? {
-              plan: {
-                ...project.plan,
-                name: name.trim().slice(0, 100) || "Untitled plan",
-              },
-              updatedAt: Date.now(),
+      const write = async () => {
+        const project = await this.projectStore?.get(id);
+        if (!project) return;
+        const { name, ...metadata } = values;
+        const next = {
+          ...project,
+          ...metadata,
+          ...(name !== undefined
+            ? {
+                plan: {
+                  ...project.plan,
+                  name: name.trim().slice(0, 100) || "Untitled plan",
+                },
+                updatedAt: Date.now(),
+              }
+            : {}),
+        };
+        await this.projectStore!.put(next);
+        this.libraryMetadata.set(id, {
+          ...this.libraryMetadata.get(id),
+          ...metadata,
+          ...(name !== undefined ? { name: next.plan.name } : {}),
+        });
+        if (this.activeProject?.id === id) {
+          this.activeProject = next;
+          if (name !== undefined) {
+            this.saved = JSON.stringify(next.plan);
+            const renamed = (plan: Plan): Plan => ({
+              ...plan,
+              name: next.plan.name,
+            });
+            this.undoStack = this.undoStack.map(renamed);
+            this.redoStack = this.redoStack.map(renamed);
+            this.planState(renamed(this.state.plan));
+            if (!this.state.dirty) {
+              clearTimeout(this.autosaveTimer);
+              this.patch({ saveStatus: "saved", savedAt: next.updatedAt });
             }
-          : {}),
-      };
-      await this.projectStore!.put(next);
-      if (this.activeProject?.id === id) {
-        this.activeProject = next;
-        if (name !== undefined) {
-          this.saved = JSON.stringify(next.plan);
-          const renamed = (plan: Plan): Plan => ({
-            ...plan,
-            name: next.plan.name,
-          });
-          this.undoStack = this.undoStack.map(renamed);
-          this.redoStack = this.redoStack.map(renamed);
-          this.planState(renamed(this.state.plan));
-          if (!this.state.dirty) {
-            clearTimeout(this.autosaveTimer);
-            this.patch({ saveStatus: "saved", savedAt: next.updatedAt });
           }
         }
-      }
-      this.patch({
-        projects: this.state.projects.map((p) => (p.id === id ? next : p)),
-      });
+        this.patch({
+          projects: this.state.projects.map((p) => (p.id === id ? next : p)),
+        });
+      };
+      const pending = this.projectWrites.then(write, write);
+      this.projectWrites = pending.catch(() => {});
+      await pending;
     } catch (error) {
       this.patch({
         libraryError: `Could not update library: ${message(error)}`,
