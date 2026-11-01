@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-ayamiss",
+  "ruleset": "sod",
+  "boss": "Ayamiss the Hunter",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100722,
+  "rawEncounterId": 722,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        60,
+        97
+      ],
+      "selectedFightNames": [
+        "Ayamiss the Hunter"
+      ],
+      "matchedNpcTemplateIds": [
+        15369
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-ayamiss"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Ayamiss.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/ayamiss-the-hunter-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Ayamiss.lua",
+      "quality": "Pinned primary Paralyze,70percent phase, Enrage8269 and cloud17742; local source"
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/Ayamiss_the_Hunter_%28Season_of_Discovery%29",
+      "quality": "Indexed exact SoD flight/larva/pustule/Despair account; direct403"
+    },
+    {
+      "id": "official-hotfix",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "date": "2024-12-13",
+      "quality": "Official indexed SoD RuinsNoxiousBurst target selection at detonation and Moam/Ayamiss health reduction"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Airborne and landing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official starts airborne; DBM70percent phase with75percent prewarning",
+      "state": "Airborne and landing",
+      "lifecycle": "Actual flight interval/landing, not instant health-based Z switch",
+      "placement": "Real altitude, landing path and facing",
+      "animation": "Native fly/land sequences when evidenced",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-FLIGHT",
+      "acceptanceCriteria": "AYAMISS-FLIGHT: no floor clamp or global height offset",
+      "sourceRefs": [
+        "official-sod-p6",
+        "dbm",
+        "bigwigs",
+        "sod-wiki"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Stingers",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        25748,
+        25749
+      ],
+      "trigger": "SoD account poison stacks while airborne and raid spray",
+      "state": "Stingers",
+      "lifecycle": "Actual cast/hits/stack removal; no30s spray generator",
+      "placement": "Actual high-threat victim and observed spray targets",
+      "animation": "Native2370/222018 casts and impact222019",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-STING",
+      "acceptanceCriteria": "AYAMISS-STING: preserve targets/variants and flight relation",
+      "sourceRefs": [
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Paralyze and altar",
+      "spellIds": [
+        25725
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addons player Paralyze",
+      "state": "Paralyze and altar",
+      "lifecycle": "Actual10s or early removal; teleport/immobilization independent",
+      "placement": "Observed altar anchor/Z and movement discontinuity",
+      "animation": "Native target6441/222024 and actual restraint",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-ALTAR",
+      "acceptanceCriteria": "AYAMISS-ALTAR: no interpolated teleport or generated marker",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25725
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            30,
+            33,
+            36,
+            51,
+            58
+          ],
+          "BigWigs-source.lua": [
+            33,
+            37,
+            43,
+            44
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          30,
+          33,
+          36,
+          51,
+          58
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Larva pursuit and feeding",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        25724,
+        25721,
+        25726
+      ],
+      "trigger": "Baseline larva approaches immobilized victim",
+      "state": "Larva pursuit and feeding",
+      "lifecycle": "Actual birth/contact/feed/target death or successful larva kill",
+      "placement": "Real larva path and actual destination",
+      "animation": "Native larva and feed effect",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-LARVA",
+      "acceptanceCriteria": "AYAMISS-LARVA: no distance-only scripted death/add",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Swarmers",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        25708,
+        25709,
+        25711
+      ],
+      "trigger": "Baseline airborne swarm descends",
+      "state": "Swarmers",
+      "lifecycle": "Actual independent spawn/teleport/start/death; no assumed20 actors",
+      "placement": "Observed aerial and ground paths",
+      "animation": "Native swarmer actors",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-SWARM",
+      "acceptanceCriteria": "AYAMISS-SWARM: each lifetime and height evidenced",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Enrage and disease cloud",
+      "spellIds": [
+        8269,
+        17742
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "BigWigs aura/cloud damage handling",
+      "state": "Enrage and disease cloud",
+      "lifecycle": "Actual enrage removal and area membership/expiry",
+      "placement": "Boss aura versus independent cloud",
+      "animation": "Native actual enrage and disease cloud",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-CLOUD",
+      "acceptanceCriteria": "AYAMISS-CLOUD: no source/ground conflation",
+      "sourceRefs": [
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          8269,
+          17742
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": [
+            34,
+            35,
+            38,
+            45,
+            47,
+            48,
+            49,
+            101
+          ]
+        },
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "SoD pustules and carryover",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213258,
+        1215202,
+        1220637,
+        1214956
+      ],
+      "trigger": "SoD pustules under players then NoxiousBurst; prior Moam curse",
+      "state": "SoD pustules and carryover",
+      "lifecycle": "Actual application/telegraph/blast/removal; Dec13 victims chosen at detonation",
+      "placement": "Independent drop anchor, actual blast recipients",
+      "animation": "Native220998/221624/221626 versus224007 impact",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-BURST",
+      "acceptanceCriteria": "AYAMISS-BURST: postpatch impact recipients never frozen at application",
+      "sourceRefs": [
+        "sod-wiki",
+        "official-hotfix",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Final death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual final death/wipe",
+      "state": "Final death and reset",
+      "lifecycle": "Larva/player control and swarm retirement only actual edges; Despair carryover distinct",
+      "placement": "No automatic ground snap or fake falling corpse",
+      "animation": "Native death and correct ground/air state",
+      "acceptanceCheck": "sod-aq20-ayamiss/AYAMISS-END",
+      "acceptanceCriteria": "AYAMISS-END: repeated pull has no inherited paralyze/swarm",
+      "sourceRefs": [
+        "guide",
+        "official-sod-p6",
+        "sod-wiki"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    25748,
+    25749,
+    25724,
+    25721,
+    25726,
+    25708,
+    25709,
+    25711,
+    1213258,
+    1215202,
+    1220637,
+    1214956
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD flightZ/land animation and repeated air/ground behavior",
+    "Larva/Swarmer NPC IDs and contact-to-feed ownership",
+    "AQ20 burst/curse source IDs, native area placement and original frames",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 722,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15369",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15369"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

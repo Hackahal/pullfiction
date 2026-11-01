@@ -6,6 +6,7 @@ import {
 } from "./speedrun-world-record";
 import { gameVersion } from "../../planner/game-versions.mjs";
 import { requireRaid, raidForZone } from "../../planner/raids.mjs";
+import { resolveEncounterBounds } from "../../planner/encounter-bounds.mjs";
 import {
   REPORT_QUERY,
   collectEvents,
@@ -15,6 +16,8 @@ import { WclSession } from "./wcl-auth";
 import type { RawReplay } from "./types";
 
 export const REPLAY_STATE_FILTER = [
+  "encounterstart",
+  "encounterend",
   "zonechange",
   "combatantinfo",
   "begincast",
@@ -50,6 +53,8 @@ type Query = (
   version: string,
   signal?: AbortSignal,
 ) => Promise<any>;
+const ENCOUNTER_BOUNDARY_FILTER =
+  "type = 'encounterstart' OR type = 'encounterend'";
 
 export interface LogListing {
   code: string;
@@ -150,6 +155,7 @@ export function browserQuery(
 // All events/resources remain intact for the existing normalizeReplay/enrichCombat pipeline.
 export class BrowserLogs {
   private realmCache = new Map<string, LogRealm[]>();
+  private boundaryCache = new Map<string, any[]>();
   constructor(private query: Query) {}
   speedCategory(version: "vanilla" | "sod", map: number, signal?: AbortSignal) {
     return fetchSpeedCategory(this.query, version, map, signal);
@@ -398,6 +404,64 @@ export class BrowserLogs {
       throw new Error("Invalid Warcraft Logs report.");
     return { ...report, gameVersion: version };
   }
+  private async encounterFight(
+    code: string,
+    report: any,
+    id: number | "run",
+    version: string,
+    map: number | undefined,
+    options: Options,
+  ) {
+    if (id === "run") return fullRunFight(report, map);
+    const fight = report.fights.find((f: any) => f.id === id);
+    if (!fight) throw new Error("Encounter not found in this report.");
+    requireRaid(fight.gameZone, version);
+    options.signal?.throwIfAborted();
+    // Report times are wall-clock milliseconds; event times are report-relative.
+    // Older portable metadata may omit these roots. It cannot earn expansion.
+    const duration = report.endTime - report.startTime;
+    if (
+      !Number.isFinite(report.startTime) ||
+      !Number.isFinite(report.endTime) ||
+      !(duration > 0) ||
+      duration < fight.endTime ||
+      !fight.encounterID
+    )
+      return fight;
+    const key = JSON.stringify([
+      version,
+      code,
+      report.revision,
+      report.segments,
+      report.startTime,
+      report.endTime,
+    ]);
+    const cacheable = Number.isSafeInteger(report.revision);
+    let edges = cacheable ? this.boundaryCache.get(key) : undefined;
+    if (!edges) {
+      edges = await collectEvents(
+        async (start: number) =>
+          (
+            await this.query(
+              "query($code:String!,$start:Float!,$end:Float!,$filter:String!){reportData{report(code:$code){events(startTime:$start,endTime:$end,filterExpression:$filter,limit:10000){data nextPageTimestamp}}}}",
+              { code, start, end: duration, filter: ENCOUNTER_BOUNDARY_FILTER },
+              version,
+              options.signal,
+            )
+          ).events,
+        0,
+        duration,
+        { signal: options.signal },
+      );
+      options.signal?.throwIfAborted();
+      if (cacheable) {
+        this.boundaryCache.set(key, edges);
+        if (this.boundaryCache.size > 16)
+          this.boundaryCache.delete(this.boundaryCache.keys().next().value!);
+      }
+    }
+    return resolveEncounterBounds(report, fight, edges);
+  }
   async replayHeader(
     code: string,
     id: number | "run",
@@ -406,19 +470,27 @@ export class BrowserLogs {
     options: Options = {},
   ): Promise<RawReplay> {
     const report = await this.report(code, version, options);
-    const fight =
-      id === "run"
-        ? fullRunFight(report, map)
-        : report.fights.find((f: any) => f.id === id);
+    const fight = await this.encounterFight(
+      code,
+      report,
+      id,
+      version,
+      map,
+      options,
+    );
     if (!fight) throw new Error("Encounter not found in this report.");
     const raid = requireRaid(fight.gameZone, version);
-    const fights = id === "run" ? fight.chapters.map((f: any) => f.id) : [id];
+    const fights =
+      id === "run"
+        ? fight.chapters.map((f: any) => f.id)
+        : (fight.recordedPrelude?.chapterIds ?? [id]);
     const detail = await this.query(
       `query($code:String!,$fights:[Int]!){reportData{report(code:$code){playerDetails(fightIDs:$fights,includeCombatantInfo:true) masterData{actors{id name type subType gameID petOwner icon server} abilities{gameID name icon type}}}}}`,
       { code, fights },
       version,
       options.signal,
     );
+    options.signal?.throwIfAborted();
     return {
       gameVersion: version as RawReplay["gameVersion"],
       report: {
@@ -491,7 +563,7 @@ export class BrowserLogs {
       end <= start
     )
       throw new Error("Invalid replay section.");
-    const single = raw.fight.id !== "run";
+    const single = raw.fight.id !== "run" && !raw.fight.recordedPrelude;
     const events = await collectEvents(
       async (cursor: number) =>
         (
@@ -534,15 +606,20 @@ export class BrowserLogs {
     if (id !== "run" && (!Number.isInteger(id) || id < 1))
       throw new Error("Choose a valid encounter.");
     const report = await this.report(code, version, options);
-    const fight =
-      id === "run"
-        ? fullRunFight(report, map)
-        : report.fights.find((f: { id: number }) => f.id === id);
+    const fight = await this.encounterFight(
+      code,
+      report,
+      id,
+      version,
+      map,
+      options,
+    );
     if (!fight) throw new Error("Encounter not found in this report.");
     const raid = requireRaid(fight.gameZone, version);
-    const variables = id === "run" ? { code } : { code, fight: id };
-    const selection = id === "run" ? "" : "fightIDs:[$fight],";
-    const declaration = id === "run" ? "" : ",$fight:Int!";
+    const single = id !== "run" && !fight.recordedPrelude;
+    const variables = single ? { code, fight: id } : { code };
+    const selection = single ? "fightIDs:[$fight]," : "";
+    const declaration = single ? ",$fight:Int!" : "";
     const events = await collectEvents(
       async (start: number) =>
         (
@@ -559,7 +636,9 @@ export class BrowserLogs {
     );
     options.signal?.throwIfAborted();
     const fights =
-      id === "run" ? fight.chapters.map((f: { id: number }) => f.id) : [id];
+      id === "run"
+        ? fight.chapters.map((f: { id: number }) => f.id)
+        : (fight.recordedPrelude?.chapterIds ?? [id]);
     const detail = await this.query(
       `query($code:String!,$fights:[Int]!){reportData{report(code:$code){
       playerDetails(fightIDs:$fights,includeCombatantInfo:true)
@@ -577,9 +656,21 @@ export class BrowserLogs {
             return !f.completeRaid && other && other.map !== raid.map;
           })
         : [];
+    const selectedEvents = fight.recordedPrelude
+      ? events.filter(
+          (e: any) =>
+            Number.isFinite(e.timestamp) &&
+            e.timestamp >= fight.startTime &&
+            e.timestamp <= fight.endTime,
+        )
+      : events;
     return {
-      gameVersion: version,
-      report: { code, title: report.title, gameVersion: version },
+      gameVersion: version as RawReplay["gameVersion"],
+      report: {
+        code,
+        title: report.title,
+        gameVersion: version as RawReplay["gameVersion"],
+      },
       fight,
       actors: detail.masterData?.actors ?? report.masterData.actors,
       abilities: detail.masterData?.abilities ?? [],
@@ -587,14 +678,14 @@ export class BrowserLogs {
       // Missing NPC-entry/display associations stay unresolved. Never scrape or proxy game art.
       models: {},
       events: foreign.length
-        ? events.filter(
+        ? selectedEvents.filter(
             (e: any) =>
               !foreign.some(
                 (f: any) =>
                   e.timestamp >= f.startTime && e.timestamp <= f.endTime,
               ),
           )
-        : events,
+        : selectedEvents,
     };
   }
 }

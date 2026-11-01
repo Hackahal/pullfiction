@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-mc-gehennas",
+  "ruleset": "vanilla",
+  "boss": "Gehennas",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 50665,
+  "rawEncounterId": 665,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-mc-gehennas"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Gehennas.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/gehennas-molten-core-strategy-wow-classic",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Curse and Shadow Bolt",
+      "spellIds": [
+        19716,
+        19728
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast and per-recipient curse/result",
+      "state": "Healing-reduction curse and targeted damage remain separate",
+      "lifecycle": "Exact removal/interrupt/result, no nominal timers",
+      "placement": "Actual source and recipient positions",
+      "animation": "Exact baseline IDs, no SoD461232 substitution",
+      "acceptanceCheck": "vanilla-mc-gehennas/V-MC-GEH-CURSE",
+      "acceptanceCriteria": "V-MC-GEH-CURSE: decurse one recipient without changing unrelated buffs; interrupted bolt has no invented hit",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Rain of Fire",
+      "spellIds": [
+        19717
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual ground cast and contact/damage",
+      "state": "World rain persists independently of contact aura",
+      "lifecycle": "Area start/end requires actual evidence; do not clear area on one recipient exit",
+      "placement": "Known target/center only; contact position is not proven center",
+      "animation": "Authored rain/ground kit distinct from body contact",
+      "acceptanceCheck": "vanilla-mc-gehennas/V-MC-GEH-RAIN",
+      "acceptanceCriteria": "V-MC-GEH-RAIN: concurrent rain instances remain distinct and seeks retain known age",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Two guards and stun",
+      "spellIds": [
+        20277
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline two Flamewakers and actual Fist applications",
+      "state": "Independent living guards and per-target stun",
+      "lifecycle": "Each guard dies independently; no linked-revival rule",
+      "placement": "Observed facing and recipients, no guessed stun radius",
+      "animation": "Strike and stun use true source-instance identity",
+      "acceptanceCheck": "vanilla-mc-gehennas/V-MC-GEH-GUARDS",
+      "acceptanceCriteria": "V-MC-GEH-GUARDS: two baseline guards, independent deaths and exact stun boundaries",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-mc-gehennas/V-MC-GEH-END",
+      "acceptanceCriteria": "V-MC-GEH-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Actual area start/end/center and post-death contact continuation require additional cache coverage/area evidence.",
+    "No linked revival or heat-specific guard behavior inferred.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      12259
+    ],
+    "baselineScope": "Baseline two guards, healing-reduction Curse and ground rain. SoD four-guard/linked-revive and461232 variant are excluded; add cadence is not scheduled from addon bars."
+  }
+}

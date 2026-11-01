@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-sunken-temple-jammalan-ogom",
+  "ruleset": "sod",
+  "boss": "Jammal'an and Ogom",
+  "raid": "Sunken Temple",
+  "mapId": 109,
+  "encounterId": 2957,
+  "rawEncounterId": 2957,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "reportRevision": 1,
+      "reportResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "provenanceResponseSha256": "9a1db24aafb73e6581fb9aa4dc5f88661af0739d755d68d83cc3053595bb41d1",
+      "providerZoneId": 2009,
+      "discoveryPartitions": [
+        "Discovery P3"
+      ],
+      "selectedMapId": 109,
+      "selectedFightIds": [
+        10,
+        13
+      ],
+      "selectedFightNames": [
+        "Jammal'an and Ogom"
+      ],
+      "matchedNpcTemplateIds": [
+        218718,
+        218721
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "de55052960ec5fb36f71f32651b5755fe404e54f43e7e1598382ba75c862e3ce"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-sunken-temple-jammalan-ogom"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/SunkenTemple_Classic/JammalanAndOgom.lua",
+      "quality": "Primary addon author source; explicit SoD module identity and observed event registration, not server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/sunken-temple-raid/jammalan-and-ogom-strategy",
+      "quality": "Authored exact SoD Phase3 encounter guide; historical tuning and timers need pull verification"
+    },
+    {
+      "id": "consecration-db",
+      "url": "https://www.wowhead.com/classic/spell=437884/consecration",
+      "quality": "Client database: Create Area Trigger 32280; duration one minute"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "MrXpNgqw3f4KnQhD",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Survivor branch and corpse interaction",
+      "spellIds": [
+        437995,
+        437951
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Ogom death leads to Jammalan Draining 437995; guide also describes reverse Eating 437951 branch",
+      "state": "Ogom death leads to Jammalan Draining 437995; guide also describes reverse Eating 437951 branch",
+      "lifecycle": "First death starts intermission, not fight end; survivor transforms/replenishes after actual completion",
+      "placement": "Survivor travels to actual corpse; no invented travel path",
+      "animation": "Inspect body procedures/texture/attachments before assuming display replacement",
+      "acceptanceCheck": "sod-sunken-temple-jammalan-ogom/ST-JO-BRANCH",
+      "acceptanceCriteria": "ST-JO-BRANCH: each observed branch retains corpse and survivor; seek before/during/after consumption deterministic",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Holy Nova and disease/magic casts",
+      "spellIds": [
+        437817,
+        437809,
+        437868,
+        437847
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual registered first-stage cast or target aura",
+      "state": "Individual registered first-stage cast or target aura",
+      "lifecycle": "Repeated floor nova explosions separate from player aura expiry",
+      "placement": "Actual ground positions; player target not automatically nova center",
+      "animation": "Current kit stage support is distinct from persistent floor ownership",
+      "acceptanceCheck": "sod-sunken-temple-jammalan-ogom/ST-JO-NOVA",
+      "acceptanceCriteria": "ST-JO-NOVA: preserve concurrent nova age and correct dispel recipient",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Shadow survivor",
+      "spellIds": [
+        437927,
+        437921,
+        437930,
+        437928
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Draining completion then actual shadow-stage events",
+      "state": "Draining completion then actual shadow-stage events",
+      "lifecycle": "Fear and pain close on removal; Penance channel tracks actual end; shield dispel closes only matching aura",
+      "placement": "Actual targets and facing",
+      "animation": "Use authored shadow casts, channel and shield without forced mesh swap",
+      "acceptanceCheck": "sod-sunken-temple-jammalan-ogom/ST-JO-SHADOW",
+      "acceptanceCriteria": "ST-JO-SHADOW: no channel completion after cancellation; shield state seeks match dispel",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Ogom survivor",
+      "spellIds": [
+        437884,
+        437920,
+        437915,
+        437891
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Guide-linked Consecration, Divine Storm, Hammers and Holy Strike",
+      "state": "Guide-linked Consecration, Divine Storm, Hammers and Holy Strike",
+      "lifecycle": "Consecration is a one-minute world area; Storm pull and player stun are independent",
+      "placement": "Area stays at creation position as boss moves; Storm pulls toward actual caster",
+      "animation": "Stun and displacement must match actual actor state",
+      "acceptanceCheck": "sod-sunken-temple-jammalan-ogom/ST-JO-OGOM",
+      "acceptanceCriteria": "ST-JO-OGOM: moving boss does not drag old Consecration; seek restores area age",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Final death and wipe",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Second required death or verified reset",
+      "state": "Second required death or verified reset",
+      "lifecycle": "Close encounter areas and channels on actual end",
+      "placement": "Individual corpse state independent",
+      "animation": "Do not erase survivor on first death",
+      "acceptanceCheck": "sod-sunken-temple-jammalan-ogom/ST-JO-END",
+      "acceptanceCriteria": "ST-JO-END: repeated pulls do not retain old floor effects",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Reverse Ogom branch current availability: guide describes weekly rotation, pinned module covers Jammalan only",
+    "Actual Draining/Eating visual form route and replenish timing",
+    "Nova creation coordinates and removal; current tuning across patches",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "218721, 218718"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

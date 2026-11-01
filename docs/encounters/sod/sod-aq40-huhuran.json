@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-huhuran",
+  "ruleset": "sod",
+  "boss": "Princess Huhuran",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100714,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-huhuran"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "sod-overview",
+      "url": "https://warcraft.wiki.gg/wiki/Princess_Huhuran_%28Season_of_Discovery%29",
+      "quality": "SoD-specific secondary mechanics/optional curse overview; exact numerical scripts not assumed"
+    },
+    {
+      "id": "baseline-guide",
+      "url": "https://www.wowhead.com/classic/guide/princess-huhuran-temple-of-ahnqiraj-strategy",
+      "quality": "authored baseline guide; nearest15 not valid for observed SoD Berserk variant"
+    },
+    {
+      "id": "official-reset-hotfix",
+      "url": "https://eu.forums.blizzard.com/en/wow/t/season-of-discovery-hotfixes-25-june/495964/441",
+      "author": "Linxy / Blizzard",
+      "published": "2025-02-14",
+      "quality": "primary: Frenzy stacks must not survive wipe"
+    },
+    {
+      "id": "retained-events",
+      "quality": "matching SoD fight15;18099 events;98135ms",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "current-client-graph",
+      "quality": "fresh converter graph; client1.15.9.70576 build5604ce35a8644bdcf0e26c1daf979c15",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Wasp body and motion",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Encounter actor and observed samples",
+      "state": "Encounter actor and observed samples",
+      "lifecycle": "Present until recorded death/reset",
+      "placement": "Native wasp scale/facing/wing animation; no fixed global lift or inferred flight altitude",
+      "animation": "Native wasp scale/facing/wing animation; no fixed global lift or inferred flight altitude",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-BODY",
+      "acceptanceCriteria": "HUHURAN-BODY: native wasp and recorded movement/facing remain stable",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Acid Spit",
+      "spellIds": [
+        1215757,
+        26050
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Cast/result and tank target stack aura",
+      "state": "Cast/result and tank target stack aura",
+      "lifecycle": "Stacks/refresh until removal; swap from observed target identity",
+      "placement": "Target poison visual and actual impact timing; no simulated tank selection",
+      "animation": "Target poison visual and actual impact timing; no simulated tank selection",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-ACID",
+      "acceptanceCriteria": "HUHURAN-ACID: correct target and stack state after seek",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Noxious Poison",
+      "spellIds": [
+        1215752,
+        26053
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss cast and victim/splash results",
+      "state": "Boss cast and victim/splash results",
+      "lifecycle": "Target silence/DoT until removal",
+      "placement": "Separate primary and splash target ownership; attached poison must not become a persistent ground pool",
+      "animation": "Separate primary and splash target ownership; attached poison must not become a persistent ground pool",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-NOXIOUS",
+      "acceptanceCriteria": "HUHURAN-NOXIOUS: real target effects and cleanup",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Wyvern Sting",
+      "spellIds": [
+        1215753,
+        26233
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Boss cast and sleep application/dispel/damage",
+      "state": "Boss cast and sleep application/dispel/damage",
+      "lifecycle": "Sleep ends on actual removal; extra removal damage only if logged",
+      "placement": "Correct target native sleep; no forced freezing of whole raid or fabricated dispel damage",
+      "animation": "Correct target native sleep; no forced freezing of whole raid or fabricated dispel damage",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-SLEEP",
+      "acceptanceCriteria": "HUHURAN-SLEEP: recorded sleeping targets and end events agree",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Frenzy",
+      "spellIds": [
+        1215755,
+        1215756,
+        1218134
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Self aura/stack and Tranq/dispel events",
+      "state": "Self aura/stack and Tranq/dispel events",
+      "lifecycle": "Acquire/change stacks; ends on actual removal; reset cannot carry it forward",
+      "placement": "Authored self visual and supported animation-rate semantics; do not infer wing rate from haste alone",
+      "animation": "Authored self visual and supported animation-rate semantics; do not infer wing rate from haste alone",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-FRENZY",
+      "acceptanceCriteria": "HUHURAN-FRENZY: state, stack changes and dispel timing seek consistently",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Berserk/enrage",
+      "spellIds": [
+        1215885
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded lowHP self aura or actual timer event",
+      "state": "Recorded lowHP self aura or actual timer event",
+      "lifecycle": "Distinct from Frenzy; stays until removal/death/reset",
+      "placement": "Native authored model/body effect, no arbitrary scale/red tint",
+      "animation": "Native authored model/body effect, no arbitrary scale/red tint",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-BERSERK",
+      "acceptanceCriteria": "HUHURAN-BERSERK: exact observed trigger and cleanup",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Poison volley",
+      "spellIds": [
+        26052,
+        1215888
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Successful cast and direct target impacts",
+      "state": "Successful cast and direct target impacts",
+      "lifecycle": "One launch per cast/target relation, periodic results chart-only",
+      "placement": "Native missiles from actual wasp to real targets, no simulated nearest15 allocation",
+      "animation": "Native missiles from actual wasp to real targets, no simulated nearest15 allocation",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-VOLLEY",
+      "acceptanceCriteria": "HUHURAN-VOLLEY: full target set and direct timing without repeated DoT missiles",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "SoD carried curses and optional effects",
+      "spellIds": [
+        1213257,
+        1213256,
+        1214956
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Snapshot-only/observed curse states, including player-self-source effects",
+      "state": "Snapshot-only/observed curse states, including player-self-source effects",
+      "lifecycle": "Curse persists per log, periodic damage where observed, stop/rebuild on reset",
+      "placement": "Attached native visuals with recorded provenance; do not omit because source is player",
+      "animation": "Attached native visuals with recorded provenance; do not omit because source is player",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-MADNESS",
+      "acceptanceCriteria": "HUHURAN-MADNESS: expectation inventory includes exact curse IDs without granting visual acceptance",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Death/reset",
+      "spellIds": [
+        1215755,
+        1215756,
+        1215885
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "ZeroHP/death/encounter boundaries",
+      "state": "ZeroHP/death/encounter boundaries",
+      "lifecycle": "Stop casts/effects; rewind restores state; no residual Frenzy from previous pull",
+      "placement": "Corpse state only when observed; no fabricated fall/wing death motion",
+      "animation": "Corpse state only when observed; no fabricated fall/wing death motion",
+      "acceptanceCheck": "sod-aq40-huhuran/HUHURAN-END",
+      "acceptanceCriteria": "HUHURAN-END: clean end and direct seek without stale state",
+      "sourceRefs": [
+        "sod-overview",
+        "retained-events",
+        "current-client-graph",
+        "official-reset-hotfix"
+      ],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact visual wing/body animation/facing acceptance and missing Z",
+    "Damage-only projectile launch timing/path",
+    "Frenzyprocedure2 semantics and native attack-speed rendering",
+    "Exact30percent Berserk threshold versus observed28.7percent snapshot",
+    "Post-wipe Frenzy reset not exercised by this singlekill",
+    "Postkill player poison/curse removals beyond clip"
+  ],
+  "researchContext": {
+    "gameVersion": "sod"
+  }
+}

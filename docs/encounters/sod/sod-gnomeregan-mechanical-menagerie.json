@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-gnomeregan-mechanical-menagerie",
+  "ruleset": "sod",
+  "boss": "Mechanical Menagerie",
+  "raid": "Gnomeregan",
+  "mapId": 90,
+  "encounterId": 2935,
+  "rawEncounterId": 2935,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "reportRevision": 1,
+      "reportResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "provenanceResponseSha256": "cd936355f7ba845a387d06859891a01144ef13b972ac30fcd4c8258ad416d341",
+      "providerZoneId": 2008,
+      "discoveryPartitions": [
+        "Discovery P2"
+      ],
+      "selectedMapId": 90,
+      "selectedFightIds": [
+        20
+      ],
+      "selectedFightNames": [
+        "Mechanical Menagerie"
+      ],
+      "matchedNpcTemplateIds": [
+        218242,
+        218243,
+        218244,
+        218245
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established.",
+      "upstreamMetadataReceiptSha256": "fec9778188bde7a9db3ea27bb0d6e375219db5858e464d9f710693ccec5b0781"
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-gnomeregan-mechanical-menagerie"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/gnomeregan/mechanical-menagerie-strategy",
+      "date": "2024-02-20",
+      "quality": "exact SoD authored guide; spell links verified"
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaSoD_Gnomeregan/MechanicalMenagerie.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD event/NPC mapping"
+    },
+    {
+      "id": "client",
+      "quality": "fresh client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24057474/hotfixes-may-6-2024",
+      "quality": "official February2024 fix: encounter now resets while boss self-repairing"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "J8BpfQtwmgbVYCLj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Four independent repairable bosses",
+      "spellIds": [
+        440073
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded near-death Self Repair cast per source",
+      "state": "disabled/repairing versus finally dead; all four at 1 HP ends encounter",
+      "lifecycle": "20s client cast; cancel on actual encounter completion/reset or observed interruption; successful repair heals roughly31% per guide",
+      "placement": "retain each model at its own last observed coordinates",
+      "animation": "Caster precast/cast; downed pose needs native model evidence",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M01",
+      "acceptanceCriteria": "repair two actors at different times; complete one repair; cancel another when all four down; random seek before/after reset",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Chicken eggs, Cluck and Peck",
+      "spellIds": [
+        436692,
+        436570,
+        436691
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual casts and egg summon",
+      "state": "egg NPC218344 independently targetable; allies get recorded Cluck recipients",
+      "lifecycle": "egg death/despawn observed, not boss death; client egg duration60s is not proof of NPC lifetime",
+      "placement": "egg at observed summon XY, not chase boss; Cluck proximity versus actual recipients",
+      "animation": "egg Area impact; Peck impact and Cluck TargetAura",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M02",
+      "acceptanceCriteria": "kill one egg, expire another; no early appearance; Cluck appears on actual targets only",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Squirrel volley and fortress",
+      "spellIds": [
+        436833,
+        436836,
+        436837
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual volley cast or fortress creation",
+      "state": "interruptible volley; persistent area grants boss damage-reduction aura",
+      "lifecycle": "2s volley;3s fortress cast/30s client area; indefinite victim aura ends at removal",
+      "placement": "fortress remains at creation position while bosses leave; not actor-following victim aura",
+      "animation": "fortress AreaTriggerStart Area; volley/recipient aura no declared visual",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M03",
+      "acceptanceCriteria": "interrupted volley produces no success; bosses enter/exit a fixed shield; repeated seeks preserve age",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Sheep reflect, silence and stun",
+      "spellIds": [
+        436824,
+        436825,
+        436828,
+        436829
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual source cast and recipients",
+      "state": "Frayed Wiring reflect may affect any boss; Binary Bleat recipient silence; Static Fleece stun",
+      "lifecycle": "3s reflect cast/15s aura,2s bleat/10s recipient duration; actual removals win",
+      "placement": "sheep approaches observed player; eight-yard bleat researched; do not invent chase path",
+      "animation": "reflect caster cast versus TargetAura; Bleat TargetAura/impact; StaticFleece lacks route",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M04",
+      "acceptanceCriteria": "reflect on non-sheep survives source targeting changes; no silence beyond actual victims; stun motion follows observations",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Whelp breath and Overheat",
+      "spellIds": [
+        436816,
+        436695,
+        436741
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual breath cast and buff recipients; guide reports quarter-health triggers",
+      "state": "frontal breath, then actor-centered heat pulses on actual buffed bosses",
+      "lifecycle": "3s breath/5s client state;3s Overheat/15s victim aura; no synthetic threshold casts",
+      "placement": "breath heading requires observed facing; heat center follows each buff recipient",
+      "animation": "breath Caster precast/aura; Overheat cast distinct from target aura",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M05",
+      "acceptanceCriteria": "turn during breath, Overheat on different boss, aura removed early; random seek correct recipient/heading/age",
+      "sourceRefs": [
+        "guide",
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Slag Embers and arena objects",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "source-backed fire patches and clickable red pillar buttons",
+      "state": "ground fire is stationary; buttons exchange health for mana and bridge to next fight",
+      "lifecycle": "actual create/remove and interactions required; no guessed timer",
+      "placement": "octagonal room, shared buttons must not disappear at Menagerie kill",
+      "animation": "same-name client candidates436821/436822/436823, only436822 has AreaTriggerStart; relation unobserved",
+      "acceptanceCheck": "sod-gnomeregan-mechanical-menagerie/M06",
+      "acceptanceCriteria": "obtain cast→area relation and exact object IDs; verify patch remains when whelp moves and pillar persists across chapters",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    436821,
+    436822,
+    436823,
+    436693
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "repair result encoding and downed animation",
+    "guide30s versus primary/client20s repair; current client20s authoritative for cast duration, actual runtime unverified",
+    "egg lifespan and despawn relation",
+    "Slag Embers exact event IDs",
+    "Widget Fortress Area center/duration",
+    "Nutty Shield reduction exact ID not verified",
+    "button IDs and retained interaction support"
+  ],
+  "researchContext": {
+    "npcIds": [
+      218245,
+      218244,
+      218243,
+      218242
+    ],
+    "npcNames": {
+      "218245": "STX-37/CN Chicken",
+      "218244": "STX-25/NB Squirrel",
+      "218243": "STX-13/LL Sheep",
+      "218242": "STX-04/BD Whelp"
+    },
+    "supportLimits": [
+      "18 client spell records and24 kits mapped; no retained-log/native execution credit",
+      "same-name Slag Embers and egg436693 are candidates only, not observed trigger relations",
+      "generic poseAt death does not prove repair/downed state machine; health1 is not death",
+      "AreaTrigger visual requires destination, explicit lifetime and seek age; aura on moving boss does not establish stationary center",
+      "generic channel reconstruction supports self-aura removal but Self Repair cast is a20s cast record, requiring actual cancel/reset evidence"
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

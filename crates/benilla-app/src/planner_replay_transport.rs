@@ -136,6 +136,7 @@ fn patch(actor: &mut ReplayUnit, fields: Map<String, Value>) -> Result<(), Strin
             "channel_target" => update!(value, channel_target),
             "cast" => update!(value, cast),
             "auras" => update!(value, auras),
+            "self_auras" => update!(value, self_auras),
             _ => return Err(format!("Unknown replay field: {key}")),
         }
     }
@@ -203,6 +204,45 @@ mod tests {
             decoder.decode(&packet(false, vec!["a"], vec![])).unwrap()[0].health,
             Some(7)
         );
+    }
+    #[test]
+    fn self_aura_deltas_hold_clear_and_reject_malformed_updates() {
+        let mut decoder = FrameDecoder::default();
+        decoder
+            .decode(&packet(true, vec!["a"], vec![row("a")]))
+            .unwrap();
+        let frame = decoder
+            .decode(&packet(
+                false,
+                vec!["a"],
+                vec![serde_json::json!({"key":"a","auras":[10,20],"self_auras":[20]})],
+            ))
+            .unwrap();
+        assert_eq!(frame[0].self_auras, vec![20]);
+        assert_eq!(
+            decoder.decode(&packet(false, vec!["a"], vec![])).unwrap()[0].self_auras,
+            vec![20]
+        );
+        assert!(decoder
+            .decode(&packet(
+                false,
+                vec!["a"],
+                vec![serde_json::json!({"key":"a","self_auras":"invalid"})]
+            ))
+            .is_err());
+        assert_eq!(
+            decoder.decode(&packet(false, vec!["a"], vec![])).unwrap()[0].self_auras,
+            vec![20]
+        );
+        let cleared = decoder
+            .decode(&packet(
+                false,
+                vec!["a"],
+                vec![serde_json::json!({"key":"a","self_auras":[]})],
+            ))
+            .unwrap();
+        assert!(cleared[0].self_auras.is_empty());
+        assert_eq!(cleared[0].auras, vec![10, 20]);
     }
     #[test]
     fn invalid_changes_and_source_replacements_are_transactional() {

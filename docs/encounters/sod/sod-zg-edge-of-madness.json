@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-edge-of-madness",
+  "ruleset": "sod",
+  "boss": "Edge of Madness: Gri'lek, Renataki, Hazza'rah, Wushoolay",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": null,
+  "rawEncounterId": 788,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "Raw addon or game identity does not establish a provider encounter ID. Map against an actual report before audit use."
+  },
+  "bossUnits": [
+    "sod-zg-edge-of-madness"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/EdgeOfMadness.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/edge-of-madness-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=2627s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "43:47 Gri'lek",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
+      "quality": "Authored exact SoD guide indexed search content; direct fetch403; supports chosen Edge boss, not Classic calendar"
+    },
+    {
+      "id": "original-wushoolay",
+      "url": "https://www.youtube.com/watch?v=8yOPLmFa0hc&t=2311s",
+      "date": "2024-10-08",
+      "quality": "Original SoD clear chapter38:31 Wushoolay; metadata only, frames uninspected"
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Selection and summons",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "SoD authored overview allows choosing Edge boss each reset; actual selected tablet/brazier activation",
+      "state": "Selection and summons",
+      "lifecycle": "Separate chosen NPC identity; do not simulate rotation calendar",
+      "placement": "Actual altar spawn",
+      "animation": "Native chosen actor only",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-SELECT",
+      "acceptanceCriteria": "EOM-SELECT: four variants never merged",
+      "sourceRefs": [
+        "sod-overview",
+        "official-sod-p5"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Gri'lek Avatar",
+      "spellIds": [
+        24646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM Avatar success; baseline pursuit",
+      "state": "Gri'lek Avatar",
+      "lifecycle": "Actual15s buff or true end; size/speed/target state",
+      "placement": "Real slow pursuit, no generated random target",
+      "animation": "Native body enlargement requires server-scale evidence",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-GRILEK",
+      "acceptanceCriteria": "EOM-GRILEK: scale/pursuit/removal seek correctly",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24646
+        ],
+        "addonSourceLines": [
+          30,
+          43,
+          47,
+          57
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Renataki Vanish",
+      "spellIds": [
+        24699
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM vanish; baseline reappearance/ambush",
+      "state": "Renataki Vanish",
+      "lifecycle": "Visibility interval and actual break/attack",
+      "placement": "Real hidden trajectory remains unknown",
+      "animation": "Native stealth representation and ambush",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-RENATAKI",
+      "acceptanceCriteria": "EOM-RENATAKI: vanish is not corpse; earlier break ends it",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24699
+        ],
+        "addonSourceLines": [
+          30,
+          31,
+          40,
+          52,
+          68
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Hazza'rah sleep and chain burn",
+      "spellIds": [
+        24664,
+        24684
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM sleep/burn",
+      "state": "Hazza'rah sleep and chain burn",
+      "lifecycle": "Actual sleep breaks and real chain hits",
+      "placement": "Real targets; no mana-driven cast generator",
+      "animation": "Native sleep and shadow chain",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-HAZZA",
+      "acceptanceCriteria": "EOM-HAZZA: break-on-damage and targets stable",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24664,
+          24684
+        ],
+        "addonSourceLines": [
+          30,
+          31,
+          37,
+          38,
+          45,
+          50,
+          65
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Hazza'rah illusions",
+      "spellIds": [
+        24728
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM summon NightmareIllusions",
+      "state": "Hazza'rah illusions",
+      "lifecycle": "Actual births/contact/deaths independent of summon flash",
+      "placement": "Actual illusion routes",
+      "animation": "Native independent illusion models",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-ILLUSION",
+      "acceptanceCriteria": "EOM-ILLUSION: no assumed three spawns absent events",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24728
+        ],
+        "addonSourceLines": [
+          32,
+          36,
+          74
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Wushoolay lightning and cleanup",
+      "spellIds": [
+        24683
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM cloud and baseline frontal lightning",
+      "state": "Wushoolay lightning and cleanup",
+      "lifecycle": "Actual field/channel/end; each variant death/reset",
+      "placement": "Independent cloud center and recorded frontal facing",
+      "animation": "Native lightning/cloud",
+      "acceptanceCheck": "sod-zg-edge-of-madness/EOM-WUSH",
+      "acceptanceCriteria": "EOM-WUSH: no cross-variant cloud or stale body state",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24683
+        ],
+        "addonSourceLines": [
+          30,
+          32,
+          41,
+          46,
+          54,
+          76
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Primary SoD raw encounter IDs for all four variants: shared DBM declares only788/NPC15083",
+    "Illusion contact rules, Avatar target swaps and early Vanish break",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity",
+    "Actual selected tablet/activation and per-variant encounter IDs; no Classic rotation schedule"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdScope": "788 is shared module declaration, not verified all-four SoD encounters",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "15083"
+  },
+  "variants": [
+    {
+      "name": "Gri'lek",
+      "baselineNpcId": 15082,
+      "source": "https://www.wowhead.com/classic/npc=15082",
+      "SoDRetainedVerified": false,
+      "verification": "unverified"
+    },
+    {
+      "name": "Hazza'rah",
+      "baselineNpcId": 15083,
+      "source": "https://www.wowhead.com/classic/npc=15083",
+      "SoDRetainedVerified": false,
+      "verification": "unverified"
+    },
+    {
+      "name": "Renataki",
+      "baselineNpcId": 15084,
+      "source": "https://www.wowhead.com/classic/npc=15084",
+      "SoDRetainedVerified": false,
+      "verification": "unverified"
+    },
+    {
+      "name": "Wushoolay",
+      "baselineNpcId": 15085,
+      "source": "https://www.wowhead.com/classic/npc=15085",
+      "SoDRetainedVerified": false,
+      "verification": "unverified"
+    }
+  ]
+}

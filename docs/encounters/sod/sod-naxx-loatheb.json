@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-naxx-loatheb",
+  "ruleset": "sod",
+  "boss": "Loatheb",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 201115,
+  "rawEncounterId": 1115,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "reportRevision": 1,
+      "reportResponseSha256": "01a6f7c79826523083e5e85c336a9941a7b76b78657cbbbd5e26b7f1e600fab7",
+      "provenanceResponseSha256": "1e2a0581b66eb4732bca52471680a56f3e8abb335e1898536ef11b8e4ca5efce",
+      "providerZoneId": 2017,
+      "discoveryPartitions": [
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 533,
+      "selectedFightIds": [
+        19
+      ],
+      "selectedFightNames": [
+        "Loatheb"
+      ],
+      "matchedNpcTemplateIds": [
+        16011
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-naxx-loatheb"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Loatheb.lua",
+      "quality": "Primary addon author source for map533; shared Classic modules are not independently SoD timing proof. Use explicit ruleset branches where present; no retained event/server execution credit",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Loatheb_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; quarter and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "spore-hotfix",
+      "url": "https://news.blizzard.com/en-gb/article/24148555/hotfixes-february-21-2025",
+      "quality": "Official February21 2025: Spore buff no longer contributes to specified dodge/set-bonus calculations"
+    },
+    {
+      "id": "naxx-live-notes",
+      "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-phase-7-patch-notes/2052277",
+      "quality": "Primary January28 2025 live patch notes: five-player pylon channel, quarter mechanics and global difficulty; Sanctified/Seal capped benefit"
+    },
+    {
+      "id": "naxx-overview",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/naxxramas-overview",
+      "quality": "Authored exact SoD overview February26 2025; quarter effects useful, Seal ranks8-10 section superseded by March10 cap"
+    },
+    {
+      "id": "seal-cap",
+      "url": "https://www.bluetracker.gg/wow/topic/us-en/2074031-seal-of-the-dawn-capped-march-10/",
+      "quality": "Kaivax March10 2025 official statement mirrored verbatim by BlueTracker; Seal capped at7"
+    },
+    {
+      "id": "construct-primary",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Trash.lua",
+      "quality": "Explicit SoD-only primary addon registers Overcharged1219235 application/removal across Construct bosses"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "V1yL8CDp2GfbHwPt",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "SoD Necrotic Aura healing windows",
+      "spellIds": [
+        1225419
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual per-player aura application/removal and casts",
+      "state": "Actual per-player aura application/removal and casts",
+      "lifecycle": "Healing restriction follows actual lifetime; do not import Classic class-specific60-second Corrupted Mind lockout",
+      "placement": "Actual recipients; missing application not supplied from nominal21-second addon recast",
+      "animation": "Exact aura kit/body state separate from healing-rule semantics",
+      "acceptanceCheck": "sod-naxx-loatheb/NAX-LOAT-NECROTIC",
+      "acceptanceCriteria": "NAX-LOAT-NECROTIC: before/exact/after removal and healing impacts agree; no Classic healer-rotation status synthesized",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Native spores and Fungal Bloom",
+      "spellIds": [
+        29234,
+        29232
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Summon Spore, separate spore actor/death and recipient buff",
+      "state": "Actual Summon Spore, separate spore actor/death and recipient buff",
+      "lifecycle": "Independent spore life/death-to-buff relation; recipient cap not derived from visual proximity alone",
+      "placement": "Actual spore death and affected players",
+      "animation": "Native spore/pop body effect distinct from empowered mushroom growth/explosion",
+      "acceptanceCheck": "sod-naxx-loatheb/NAX-LOAT-SPORES",
+      "acceptanceCriteria": "NAX-LOAT-SPORES: no cross-link to1219150; active native buff retains age after spore dies",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Doom, poison and boss decurse",
+      "spellIds": [
+        29204,
+        29865,
+        30281
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Doom cast/application/impact, poison and Remove Curse events",
+      "state": "Actual Doom cast/application/impact, poison and Remove Curse events",
+      "lifecycle": "Delayed Doom needs actual impact; target-only removal and death cancellation distinct; decurse actual boss auras only",
+      "placement": "Actual recipients and source; no generated global damage schedule",
+      "animation": "Poison, delayed Doom and curse dispel separate",
+      "acceptanceCheck": "sod-naxx-loatheb/NAX-LOAT-DOOM",
+      "acceptanceCriteria": "NAX-LOAT-DOOM: no late fabricated hit from dispelled/dead target or addon timer; retain actual impacts",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death, buff continuation and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss/spore/player life/end",
+      "state": "Actual boss/spore/player life/end",
+      "lifecycle": "Native buff and quarter objects close only on verified removal/ownership; no automatic wipe of all player auras",
+      "placement": "No lastSeen timeout",
+      "animation": "Corpse and lingering buff separate",
+      "acceptanceCheck": "sod-naxx-loatheb/NAX-LOAT-END",
+      "acceptanceCriteria": "NAX-LOAT-END: seek past death preserves explicitly surviving Fungal Bloom and closes proven owned effects",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "SoD empowered Plague mushrooms",
+      "spellIds": [
+        1219150
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual mushroom spawn and Bolstering Spores proximity application",
+      "state": "Haste and Nature vulnerability buff separate from each mushroom object and native boss effects",
+      "lifecycle": "Grow, mature/explode; player proximity aura removal is not object destruction",
+      "placement": "Actual mushroom anchors, proximity footprint and knockback; no invented geometry",
+      "animation": "Growth and explosion need original-game reference",
+      "acceptanceCheck": "sod-naxx-loatheb/SOD-MUSHROOMS",
+      "acceptanceCriteria": "SOD-MUSHROOMS: separate empowered mushrooms from Loatheb's native spores; seek preserves growth age",
+      "sourceRefs": [
+        "naxx-live-notes",
+        "naxx-overview"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact healing restriction SpellEffect semantics and actual recipient windows",
+    "Native spore template and death-to-buff causal edges",
+    "Doom impact IDs, actual aura continuations and empowered mushroom geometry",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "16011",
+    "empowermentContext": "Per-encounter quarter state and Seal of Dawn effect required; no default empowerment or HP multiplier assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

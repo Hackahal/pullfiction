@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-jindo",
+  "ruleset": "sod",
+  "boss": "Jin'do the Hexxer",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 100792,
+  "rawEncounterId": 792,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "reportRevision": 1,
+      "reportResponseSha256": "2200f0f1f8688bf21158dd629f66653bb35a9b4c591d651ef740680631d2cb39",
+      "provenanceResponseSha256": "0e9f58d0a8e576c227602da0f7eee5b3bfb22b8d834a5c856049527073e03df1",
+      "providerZoneId": 2014,
+      "discoveryPartitions": [
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 309,
+      "selectedFightIds": [
+        9
+      ],
+      "selectedFightNames": [
+        "Jin'do the Hexxer"
+      ],
+      "matchedNpcTemplateIds": [
+        11380
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-zg-jindo"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Jindo.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/jindo-the-hexxer-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=1464s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "24:24",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Delusions and shade visibility",
+      "spellIds": [
+        24306
+      ],
+      "clientCandidateSpellIds": [
+        24308,
+        24313
+      ],
+      "trigger": "DBM curse application; baseline only cursed can see/damage shades",
+      "state": "Delusions and shade visibility",
+      "lifecycle": "Actual curse membership and shade birth/death independent",
+      "placement": "Per-viewer visibility, not global despawn",
+      "animation": "Native ghost body and actual aura",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-SHADE",
+      "acceptanceCriteria": "JINDO-SHADE: cursed/uncursed views and seek membership",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24306
+        ],
+        "addonSourceLines": [
+          31,
+          32,
+          37,
+          44,
+          47,
+          55,
+          74
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Healing Ward",
+      "spellIds": [
+        24309
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM hostile ward summon",
+      "state": "Healing Ward",
+      "lifecycle": "Actual independent ward birth/heal/death ends effect",
+      "placement": "Real ward anchor",
+      "animation": "Native ward model, not heal puff actor substitute",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-WARD",
+      "acceptanceCriteria": "JINDO-WARD: owner and death stop healing effect",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24309
+        ],
+        "addonSourceLines": [
+          34,
+          42,
+          86
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Brain Wash",
+      "spellIds": [
+        24262,
+        24261
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM totem summon and control aura",
+      "state": "Brain Wash",
+      "lifecycle": "Actual totem/control dependency; real target and early end",
+      "placement": "Independent totem and controlled player motion",
+      "animation": "Native totem/control tether",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-CONTROL",
+      "acceptanceCriteria": "JINDO-CONTROL: retain player identity and actual end",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24262,
+          24261
+        ],
+        "addonSourceLines": [
+          31,
+          34,
+          39,
+          43,
+          48,
+          66,
+          89
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Hex",
+      "spellIds": [
+        17172
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM player Hex applied",
+      "state": "Hex",
+      "lifecycle": "Actual polymorph/dispel/removal, control and target switch",
+      "placement": "Actual target body, no player-as-NPC identity rewrite",
+      "animation": "Native frog form requires display evidence",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-HEX",
+      "acceptanceCriteria": "JINDO-HEX: transformed body restored on dispel",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          17172
+        ],
+        "addonSourceLines": [
+          31,
+          32,
+          38,
+          46,
+          63,
+          72
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Pit teleport and skeletons",
+      "spellIds": [
+        24466
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM hostile Banish success; baseline pit teleport relation",
+      "state": "Pit teleport and skeletons",
+      "lifecycle": "Actual discontinuity and independent skeleton births",
+      "placement": "Recorded pit anchor/Z; no straight interpolated flight",
+      "animation": "Native teleport and skeletons",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-PIT",
+      "acceptanceCriteria": "JINDO-PIT: correct jump and no prebirth skeletons",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24466
+        ],
+        "addonSourceLines": [
+          33,
+          40,
+          80
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Reset and death",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death or wipe",
+      "state": "Reset and death",
+      "lifecycle": "Shades/totems/control cleanup only actual known edges",
+      "placement": "Retain surviving actors when evidenced",
+      "animation": "Native final death, no global fake corpse",
+      "acceptanceCheck": "sod-zg-jindo/JINDO-END",
+      "acceptanceCriteria": "JINDO-END: no leftover curse view/control after reset",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    24308,
+    24313
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD shade visibility/attackability and native ghost opacity",
+    "Banish24466 association with actual teleport/skeleton events",
+    "Totem death/control release and Hex displayIDs",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "11380"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

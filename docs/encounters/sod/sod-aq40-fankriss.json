@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-fankriss",
+  "ruleset": "sod",
+  "boss": "Fankriss the Unyielding",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100712,
+  "rawEncounterId": 712,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-fankriss"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "quality": "official SoD tuning",
+      "scope": "2024-12-10 Fankriss/Spawn health anddamage reduction",
+      "id": "source-01"
+    },
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "quality": "official optional hardmode",
+      "id": "source-02"
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Fankriss_the_Unyielding_%28Season_of_Discovery%29",
+      "quality": "SoD secondary",
+      "scope": "Decay toxic pools andinherited Despair",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/guide/fankriss-the-unyielding-temple-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline",
+      "caveat": "no automaticSoD20s enrage",
+      "id": "source-04"
+    },
+    {
+      "url": "https://www.icy-veins.com/wow-classic/fankriss-the-unyielding-guide-strategy-abilities-loot",
+      "quality": "authored baseline",
+      "caveat": "SoD changes section coversloot,not mechanicalparity",
+      "id": "source-05"
+    },
+    {
+      "quality": "primary",
+      "id": "source-06",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "current client graph",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-07",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "F01",
+      "mechanic": "Mortal Wound",
+      "spellIds": [
+        25646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "boss120 casts",
+      "state": "Mortal Wound stacks remain attached to their actual recipient across target changes.",
+      "lifecycle": "recorded stacks/removal",
+      "placement": "actual recipient and bossfacing",
+      "animation": "visual39 cast324/impact437;no aura model",
+      "acceptanceCheck": "sod-aq40-fankriss/F01",
+      "acceptanceCriteria": "F01",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "F02",
+      "mechanic": "Entangle teleport/root",
+      "spellIds": [
+        731,
+        1121
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "NPC15510 application to pet24",
+      "state": "Entangle relocates and roots its actual recipient. The retained example affects a pet, so it must not be generalized to a player-only rule.",
+      "lifecycle": "13.146–21.129;34.161–42.152s",
+      "placement": "two recorded relocations;delayed destination unknown exactZ",
+      "animation": "visual7298 aura6392;teleport movement boundary missing",
+      "acceptanceCheck": "sod-aq40-fankriss/F02",
+      "acceptanceCriteria": "F02",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client+researched teleport",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "F03",
+      "mechanic": "Hatchling instances",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "observed actors121/122 NPC15962",
+      "state": "Hatchlings retain their own actor, template and instance identity. Participating trash is not automatically a new Hatchling.",
+      "lifecycle": "no summon;death/positivehealth reuse;4 continue into fight11",
+      "placement": "8 target-only121 lackXY;8 observed122",
+      "animation": "preserve true entry/instance;native unrun",
+      "acceptanceCheck": "sod-aq40-fankriss/F03",
+      "acceptanceCriteria": "F03",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary actor lifecycle",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "F04",
+      "mechanic": "Spawn summons",
+      "spellIds": [
+        518,
+        25831,
+        25832
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "6 explicit boss summons",
+      "state": "Spawn worms have independent summon, motion, target and enrage evidence. A baseline timer does not generate Berserk.",
+      "lifecycle": "recorded creation/deaths;no self-Berserk observed",
+      "placement": "firstXY delayed7–11s in some instances",
+      "animation": "no declared summon visuals",
+      "acceptanceCheck": "sod-aq40-fankriss/F04",
+      "acceptanceCriteria": "F04",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client;baseline enrage not inferred",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "F05",
+      "mechanic": "Toxic Pool",
+      "spellIds": [
+        1215421
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Environment recipient contact events",
+      "state": "Toxic Pool is an optional hazard whose source, creation position and lifetime need evidence. Contact damage is not a new pool.",
+      "lifecycle": "67apply/68remove/74damage;pool lifetime unknown",
+      "placement": "victimXY not poolcenter",
+      "animation": "visual150380 Target aura216651;no ground-spawn evidence",
+      "acceptanceCheck": "sod-aq40-fankriss/F05",
+      "acceptanceCriteria": "F05",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "SoD secondary+primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "F06",
+      "mechanic": "Despair progression/periodic",
+      "spellIds": [
+        1213256,
+        1214956
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "20 initialsnapshot1213256;selfevents1214956",
+      "state": "Despair progression and its periodic form include player-sourced self events. Snapshot state differs from a new application.",
+      "lifecycle": "recorded target state",
+      "placement": "player recipient",
+      "animation": "no declared visuals",
+      "acceptanceCheck": "sod-aq40-fankriss/F06",
+      "acceptanceCriteria": "F06",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary snapshot+events",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "F07",
+      "mechanic": "completion and seek",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "reportkill and rawboundary712",
+      "state": "Boss completion does not establish the death of every surviving Hatchling or hazard.",
+      "lifecycle": "boss lacks death;Hatchlings survive",
+      "placement": "root-relative fullrun chapters100712",
+      "animation": "activation-age/nativecleanup unresolved",
+      "acceptanceCheck": "sod-aq40-fankriss/F07",
+      "acceptanceCriteria": "F07",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+CPU",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "F08",
+      "mechanic": "associated trash Frenzy",
+      "spellIds": [
+        25801
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Soldier108 foreign-source aura",
+      "state": "A Soldier’s foreign-source Frenzy is separate from a Spawn worm’s self-enrage.",
+      "lifecycle": "recorded apply/remove;not Spawn selfenrage",
+      "placement": "recipient NPC identity",
+      "animation": "visual152;no aura route declared",
+      "acceptanceCheck": "sod-aq40-fankriss/F08",
+      "acceptanceCriteria": "F08",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "attribution": "primary+client",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "exact tunnelarrivalXY/Z at application",
+    "ground ToxicPool center/radius/spawn/lifetime",
+    "unobserved Spawn selfBerserk identity/timing",
+    "Hatchling121 placement",
+    "delayed Spawn origin placement",
+    "native absoluteeffectage anddeathcleanup"
+  ]
+}

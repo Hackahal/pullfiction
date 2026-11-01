@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-mc-gehennas",
+  "ruleset": "sod",
+  "boss": "Gehennas",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 100665,
+  "rawEncounterId": 665,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 409,
+      "selectedFightIds": [
+        12
+      ],
+      "selectedFightNames": [
+        "Gehennas"
+      ],
+      "matchedNpcTemplateIds": [
+        228431
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-mc-gehennas"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/Gehennas.lua",
+      "quality": "Primary addon author source; explicit SoD enable identities/registrations within potentially shared Classic module; not observed retained events or server implementation",
+      "revision": "2cc8e655144c096c6c0a070ecb0a1dd9157f81ef"
+    },
+    {
+      "id": "guide",
+      "url": "https://warcraft.wiki.gg/wiki/Gehennas_%28Season_of_Discovery%29",
+      "quality": "Boss-specific reference; heat and patch qualification required; not pixel parity"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Curse recipient state",
+      "spellIds": [
+        19716,
+        461232
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual curse cast/application/removal",
+      "state": "Actual curse cast/application/removal",
+      "lifecycle": "Keep heal-reduction aura per recipient and exact ID; source-free removal must not erase other spells",
+      "placement": "Actual recipients; no range guess",
+      "animation": "Exact curse aura visual only",
+      "acceptanceCheck": "sod-mc-gehennas/MC-GEH-CURSE",
+      "acceptanceCriteria": "MC-GEH-CURSE: decurse removes one matching recipient aura and seeks agree",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Rain of Fire",
+      "spellIds": [
+        19717
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual fire contact aura/periodic event",
+      "state": "Actual fire contact aura/periodic event",
+      "lifecycle": "Ground rain persists independently of contact; creation/termination needs separate evidence",
+      "placement": "Do not use harmed player as exact area center; preserve actual patch footprint",
+      "animation": "Authored rain, ground and contact effects checked separately",
+      "acceptanceCheck": "sod-mc-gehennas/MC-GEH-RAIN",
+      "acceptanceCriteria": "MC-GEH-RAIN: multiple simultaneous areas remain distinct; direct seek retains correct age",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Heat-specific guards and linked revival",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Community Molten Heat description: four guards with joint death requirement",
+      "state": "Community Molten Heat description: four guards with joint death requirement",
+      "lifecycle": "Independent deaths/revivals and target stuns; despawn on proven boss end",
+      "placement": "Actual add anchors; no copied Era spawn layout",
+      "animation": "Guard strike/stun, corpse and revival require actual events",
+      "acceptanceCheck": "sod-mc-gehennas/MC-GEH-GUARDS",
+      "acceptanceCriteria": "MC-GEH-GUARDS: positive-HP revival restores living state; no guessed resurrection grace window",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/reset",
+      "state": "Actual boss death/reset",
+      "lifecycle": "Close verified owned guards/rain; retain player debuffs that actually continue",
+      "placement": "No lastSeen timeout",
+      "animation": "Separate corpse/reset from guard resurrection",
+      "acceptanceCheck": "sod-mc-gehennas/MC-GEH-END",
+      "acceptanceCriteria": "MC-GEH-END: seek across boss end clears only documented ownership",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Curse variant-to-heat mapping",
+    "Guard template IDs, Fist of Ragnaros/Sunder/Strike IDs and exact resurrection trigger",
+    "Rain creation coordinates, radius and cleanup",
+    "No retained pull: phase occurrence, actor instances, target-only continuation and wipe timing unobserved",
+    "Addon cooldown timers are advisory and must never become a replay schedule",
+    "Missing Z remains unknown; exact client appearance and server movement need separate evidence"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdBasis": "Pinned BigWigs SoD SetEncounterID; WCL report ID not verified and no offset assumed",
+    "registeredEnableMobs": "12259, 228431",
+    "heatContext": "Per-encounter recorded selection required; no default heat assigned"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

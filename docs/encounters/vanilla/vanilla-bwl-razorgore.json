@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-bwl-razorgore",
+  "ruleset": "vanilla",
+  "boss": "Razorgore the Untamed",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 50610,
+  "rawEncounterId": 610,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-bwl-razorgore"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Razorgore.lua",
+      "retrieved": "2026-11-01",
+      "quality": "Pinned primary addon baseline branch; explicit guesswork annotation and invalid encounterend warning retained. Bogus99999 detection sentinel is not an NPC."
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/razorgore-the-untamed-blackwing-lair-strategy",
+      "author": "Neryssa",
+      "date": "2025-03-11",
+      "retrieved": "2026-11-01",
+      "patch": "Page1.15.8; historical server build unresolved",
+      "quality": "Authored baseline Classic guide. No SoD BlackDrake/trials imported."
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/object=177808/orb-of-domination",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=19873/destroy-egg",
+        "https://www.wowhead.com/classic/spell=19872/calm-dragonkin",
+        "https://www.wowhead.com/classic/spell=19632/cleave",
+        "https://www.wowhead.com/classic/spell=23958/mind-exhaustion",
+        "https://www.wowhead.com/classic/npc=12557/grethok-the-controller"
+      ],
+      "quality": "Resolved Classic guide object/spell/NPC links; object/owner/lifetime still needs actual evidence."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID6, cachedRevision10001, liveRevision10001; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Orb possession and exhaustion",
+      "spellIds": [
+        23958
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Orb177808/control and priest/player ownership evidence",
+      "state": "Controlled Razorgore and stationary controller retain separate identities",
+      "lifecycle": "Actual release/break and exhaustion; no forced90second control",
+      "placement": "Orb platform and possessed NPC anchors separate; missing Z unknown",
+      "animation": "Controller channel, host body and controlled movement distinct",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Destroy Eggs and last-egg transition",
+      "spellIds": [
+        19873,
+        23040
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual DestroyEgg and phase-transition casts",
+      "state": "Egg objects require independent identity;30 casts do not identify30 objects",
+      "lifecycle": "Actual object destruction and control release; no generated egg count or invulnerability reset",
+      "placement": "Recorded object anchors absent from ordinary victim samples",
+      "animation": "Object break and boss transition animation separate",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Controller guards and add waves",
+      "spellIds": [
+        19872
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual Grethok12557/guards and wave NPC activity",
+      "state": "Mages, legionnaires and dragonspawn distinct; Calm Dragonkin recipients explicit",
+      "lifecycle": "Per-instance life, fleeing and CC removal; no fixed47second waves or52add generation",
+      "placement": "Observed kite/platform paths only",
+      "animation": "Do not invent aerial jumps, speed or summon animation",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Phase2 combat and Conflagration",
+      "spellIds": [
+        22425,
+        19632,
+        23023
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual volley, cleave and target aura",
+      "state": "Living hostile boss differs from possessed phase1 host",
+      "lifecycle": "Actual casts/removals/death; exclude SoD drake466277",
+      "placement": "Facing/LOS and victims do not prove complete cone or room geometry",
+      "animation": "Cast, target DoT and melee animation distinct",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Early boss death versus victory",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual death, phase and surviving-player evidence",
+      "state": "Phase1 boss death may be wipe; encounterend alone may be invalid per primary addon",
+      "lifecycle": "Never infer victory or all-add cleanup from one boundary alone",
+      "placement": "Actual boss/egg/add state required",
+      "animation": "Wipe explosion versus phase2 corpse separate",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-bwl-razorgore/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      12435,
+      12557
+    ]
+  }
+}

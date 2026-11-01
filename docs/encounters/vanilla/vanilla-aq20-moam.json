@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq20-moam",
+  "ruleset": "vanilla",
+  "boss": "Moam",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": null,
+  "rawEncounterId": 720,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-aq20-moam"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Moam.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/moam-ruins-of-ahnqiraj-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Moam.lua",
+      "quality": "pinned primary addon baseline branch"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
+      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Mana drain and eruption",
+      "spellIds": [
+        25671,
+        25676,
+        25672
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official mana-stealing encounter; baseline full mana eruption",
+      "state": "Mana drain and eruption",
+      "lifecycle": "Actual resource samples, casts and damage/knockup; no mana simulation",
+      "placement": "Real drained victims and actual airborne paths",
+      "animation": "Native drain and eruption",
+      "acceptanceCheck": "vanilla-aq20-moam/MOAM-MANA",
+      "acceptanceCriteria": "MOAM-MANA: no fabricated fullmana cast",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Energize stone mode",
+      "spellIds": [
+        25685
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons Energize apply/remove",
+      "state": "Energize stone mode",
+      "lifecycle": "Actual aura edges; client7day duration and addon90s prediction not authoritative expiry",
+      "placement": "Actual immobilized body and phase transitions",
+      "animation": "Native stone appearance/idle if evidence supports",
+      "acceptanceCheck": "vanilla-aq20-moam/MOAM-STONE",
+      "acceptanceCriteria": "MOAM-STONE: actual early end and repeated mode seek",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Mana Fiends",
+      "spellIds": [
+        25681,
+        25682,
+        25683,
+        25684
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline fiends summoned at stone phase; client summon candidates",
+      "state": "Mana Fiends",
+      "lifecycle": "Independent actual births/CC/deaths and channel ends",
+      "placement": "Separate real fiends and positions",
+      "animation": "Native fiend bodies and actual spells",
+      "acceptanceCheck": "vanilla-aq20-moam/MOAM-FIENDS",
+      "acceptanceCriteria": "MOAM-FIENDS: no fixed3spawn recipe without events",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Trample and fiend spells",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline melee Trample and fiend ArcaneExplosion/Counterspell",
+      "state": "Trample and fiend spells",
+      "lifecycle": "Actual source-sensitive damage/control",
+      "placement": "Moam versus fiend target ownership",
+      "animation": "Native actual strike and spell paths",
+      "acceptanceCheck": "vanilla-aq20-moam/MOAM-SOURCE",
+      "acceptanceCriteria": "MOAM-SOURCE: no boss/fiend explosion conflation",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and independent actor cleanup",
+      "state": "Boss, adds and control remain separate",
+      "lifecycle": "Only actual lifetime/removal edges; no checkpoint, inherited curse or automatic add retirement",
+      "placement": "Actual spawn/return anchors and surviving actor positions",
+      "animation": "Native death/reset/object state only when established",
+      "acceptanceCheck": "vanilla-aq20-moam/VANILLA-MOAM-RESET",
+      "acceptanceCriteria": "VANILLA-MOAM-RESET: repeated pull, surviving adds and exact cleanup without synthesized actors",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15340
+    ]
+  }
+}

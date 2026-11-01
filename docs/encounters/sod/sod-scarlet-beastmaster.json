@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-scarlet-beastmaster",
+  "ruleset": "sod",
+  "boss": "Alexei the Beastlord and Sir Dornel",
+  "raid": "Scarlet Enclave",
+  "mapId": 2856,
+  "encounterId": 3196,
+  "rawEncounterId": null,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-scarlet-beastmaster"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/raids/alexei-the-beastlord-scarlet-enclave-strategy",
+      "author": "Jurdi",
+      "updated": "2025-05-04",
+      "ruleset": "SoD1.15.8",
+      "quality": "authored mechanics guide; no exact frame geometry acceptance",
+      "id": "source-01"
+    },
+    {
+      "url": "https://yttrium-tyclief.github.io/sod-guides/enclave/boss5.html",
+      "author": "Kim",
+      "updated": "2025-05-09",
+      "ruleset": "SoD",
+      "quality": "authored mechanics/strategy; roof and post-pull patrol possibilities unverified in retained clip",
+      "id": "source-02"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/spell=1230105/wild-aperture",
+      "quality": "client spell record; server-side dummy script; placement algorithm absent",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=0O0OGPf3KME",
+      "quality": "original SoD gameplay candidate found in search; frames not inspected; no acceptance credit",
+      "id": "source-04"
+    },
+    {
+      "quality": "current converter; client1.15.9.70576 build5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-05",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "retained October6 fight9;65031ms;25002 events",
+      "id": "source-06",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Alexei and Sir Dornel",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded boss identities/engagement",
+      "state": "Recorded boss identities/engagement",
+      "lifecycle": "Both independently active with shared encounter health semantics; death/reset at evidence",
+      "placement": "Separate recorded positions/facing/scale, bear must not become a player hunter pet",
+      "animation": "Separate recorded positions/facing/scale, bear must not become a player hunter pet",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-DUO",
+      "acceptanceCriteria": "ALEXEI-DUO: both actors, observed movement and individual cast owners preserved",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Enkindle and Enervate",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded boss cast and target aura/stack events",
+      "state": "Recorded boss cast and target aura/stack events",
+      "lifecycle": "Per-target stacks refresh/drop from events; no simulated nearest-five reassignment",
+      "placement": "Fire/nature attached effects and recorded markers; retain cast owner and target",
+      "animation": "Fire/nature attached effects and recorded markers; retain cast owner and target",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-BRANDS",
+      "acceptanceCriteria": "ALEXEI-BRANDS: cast targets/stacks/removal agree on direct seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Rending Slash and Open Wound",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Hunter cleave cast/impact, primary-target bleed",
+      "state": "Hunter cleave cast/impact, primary-target bleed",
+      "lifecycle": "Strike and bleed independent; bleed ends on removal",
+      "placement": "Frontal native animation and impact only from graph; actual facing determines pose",
+      "animation": "Frontal native animation and impact only from graph; actual facing determines pose",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-SLASH",
+      "acceptanceCriteria": "ALEXEI-SLASH: correct owner/primary target and bleed cleanup",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Entangling Shot",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Hunter windup and targeted projectile/summon",
+      "state": "Hunter windup and targeted projectile/summon",
+      "lifecycle": "Cast to landing to persistent trap/control; roots/DoT until recorded removal; trap independently expires",
+      "placement": "Destination frozen at placement; attached roots follow victim, trap stays fixed; unknown Z stays unknown",
+      "animation": "Destination frozen at placement; attached roots follow victim, trap stays fixed; unknown Z stays unknown",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-ROOT",
+      "acceptanceCriteria": "ALEXEI-ROOT: three shots retain independent object identity, owner, position and cleanup",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Wild Aperture / fissures",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Bear windup and successful cast",
+      "state": "Bear windup and successful cast",
+      "lifecycle": "Ground warning pattern precedes eruptions; each segment has explicit birth/impact/end",
+      "placement": "Directional ground pattern needs spell/script evidence; target position is not sufficient to invent exact geometry",
+      "animation": "Directional ground pattern needs spell/script evidence; target position is not sufficient to invent exact geometry",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-FISSURE",
+      "acceptanceCriteria": "ALEXEI-FISSURE: all supported warning segments and eruptions seek with correct age",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Fiery Eruption",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Exact matching trap/spell/object observation",
+      "state": "Exact matching trap/spell/object observation",
+      "lifecycle": "Trap warning, impact and ground lifecycle only if observed",
+      "placement": "Do not substitute Entangling Shot or another fire spell by appearance/name",
+      "animation": "Do not substitute Entangling Shot or another fire spell by appearance/name",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-FIRE",
+      "acceptanceCriteria": "ALEXEI-FIRE: no fabricated ability in a run without matching records",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Stomp",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Bear windup/cast, self buff and player stun/damage",
+      "state": "Bear windup/cast, self buff and player stun/damage",
+      "lifecycle": "Cast and self/target aura states end independently",
+      "placement": "Bear native cast, target stun graphics; no invented jump/charge or lift",
+      "animation": "Bear native cast, target stun graphics; no invented jump/charge or lift",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-STOMP",
+      "acceptanceCriteria": "ALEXEI-STOMP: correct caster and stun targets; self/target kits follow provenance",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M08",
+      "mechanic": "Player controls and movement",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Root/stun/taunt and sampled displacement",
+      "state": "Root/stun/taunt and sampled displacement",
+      "lifecycle": "Only recorded control intervals; sampled swaps do not imply a forced boss swap script",
+      "placement": "Preserve facing and sampled movement; no fake charge/path from tactics",
+      "animation": "Preserve facing and sampled movement; no fake charge/path from tactics",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-MOVEMENT",
+      "acceptanceCriteria": "ALEXEI-MOVEMENT: root/stun and movement state remain consistent across seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    },
+    {
+      "id": "M09",
+      "mechanic": "Defeat and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded zeroHP/death and encounter boundaries",
+      "state": "Recorded zeroHP/death and encounter boundaries",
+      "lifecycle": "End pending casts/ground hazards; rewind restores both actors; no post-pull patrol scheduling",
+      "placement": "Corpse only where observed; patrol requires separate post-pull samples",
+      "animation": "Corpse only where observed; patrol requires separate post-pull samples",
+      "acceptanceCheck": "sod-scarlet-beastmaster/ALEXEI-END",
+      "acceptanceCriteria": "ALEXEI-END: no stale traps/brands/casts after cleanup and direct seek",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "mappingStatus": "unresolved: upstream research did not supply an associated spell mapping"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Wild Fissure segment count/transforms, warning/eruption lifetime and original gameplay shape",
+    "Third root landing coordinate and all trap expiry/destruction behavior",
+    "Unobserved infinite trap aura1230279 relationship",
+    "Fiery Eruption occurrence in this kill",
+    "Root positioner113 and AnimKit32968/32969 semantics",
+    "Brand type13 body effect semantics",
+    "Post-pull patrol and post-kill brand expiry outside retained clip",
+    "Roof/ground altitude and original client animation parity"
+  ]
+}

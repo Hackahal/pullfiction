@@ -28,7 +28,8 @@ export function prepareMovement(actor) {
 export function movementBetween(actor, a, b, time) {
   const gap = b[0] - a[0];
   const blinks = actor.movement?.blinks ?? [];
-  const next = blinks[upper(blinks, a[0])];
+  const index=upper(blinks,a[0]),atDeparture=actor.movement?.departureJumps?.includes(a[0]);
+  const next = atDeparture&&blinks[index-1]?.[0]===a[0]?blinks[index-1]:blinks[index];
   // A destination sampled later is only an estimate of the landing. Never animate a walk
   // across the jump, including when the observed displacement is below the teleport cutoff.
   if (next && next[0] <= b[0]) return { blink: true, after: time >= next[0] };

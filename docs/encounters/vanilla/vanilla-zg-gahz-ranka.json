@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-gahz-ranka",
+  "ruleset": "vanilla",
+  "boss": "Gahz'ranka",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50790,
+  "rawEncounterId": 790,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-gahz-ranka"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Gahzranka.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/gahzranka-zul-gurub-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Lure and emergence",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline lure summons optional hydra",
+      "state": "Lure and emergence",
+      "lifecycle": "Actual birth/activation, no assumed pre-pull body",
+      "placement": "PaglePointe water position and actual emergence",
+      "animation": "Native hydra and emergence only if evidenced",
+      "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-BIRTH",
+      "acceptanceCriteria": "GAHZ-BIRTH: no first-sample backfill before birth",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Frost Breath",
+      "spellIds": [
+        16099
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon2s breath cast",
+      "state": "Frost Breath",
+      "lifecycle": "Actual completion/interruption then10s target slow/mana results",
+      "placement": "Caster facing and actual cone victims",
+      "animation": "Native caster2610 breath and impact68",
+      "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-BREATH",
+      "acceptanceCriteria": "GAHZ-BREATH: correct facing and actual targets",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Slam",
+      "spellIds": [
+        24326
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline slam; exact guide-linked name/client record",
+      "state": "Slam",
+      "lifecycle": "Actual hit and displacement interval",
+      "placement": "Observed victim knockback, missingZ unknown",
+      "animation": "Native strike/knockback",
+      "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-SLAM",
+      "acceptanceCriteria": "GAHZ-SLAM: no damage-as-position inference",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Massive Geyser",
+      "spellIds": [
+        22421
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon1.5s cast",
+      "state": "Massive Geyser",
+      "lifecycle": "Actual impact, launch, landing and threat continuation",
+      "placement": "Real airborneZ and water landing; no fixed jump parabola",
+      "animation": "Native area impact152390 and actual motion",
+      "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-GEYSER",
+      "acceptanceCriteria": "GAHZ-GEYSER: source/hazard center and airborne interval correct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded hydra death or wipe",
+      "state": "Death and reset",
+      "lifecycle": "Actual corpse/despawn and reused summon instance",
+      "placement": "No snapped river-floor return",
+      "animation": "Native death/water state",
+      "acceptanceCheck": "vanilla-zg-gahz-ranka/GAHZ-END",
+      "acceptanceCriteria": "GAHZ-END: no lingering geyser or pre-resummon hydra",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15114
+    ]
+  }
+}

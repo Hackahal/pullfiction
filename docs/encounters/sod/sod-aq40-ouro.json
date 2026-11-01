@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq40-ouro",
+  "ruleset": "sod",
+  "boss": "Ouro",
+  "raid": "Temple of Ahn'Qiraj",
+  "mapId": 531,
+  "encounterId": 100716,
+  "rawEncounterId": 716,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Selected SoD report metadata identifies this encounter."
+  },
+  "bossUnits": [
+    "sod-aq40-ouro"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Private retained events were available for research. They are omitted here; no current implementation acceptance is transferred."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "quality": "official SoD Phase6",
+      "scope": "optional Descent into Madness",
+      "id": "source-01"
+    },
+    {
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148555/hotfixes-november-22-2024",
+      "quality": "official hotfix archive",
+      "scope": "burrow respawn and eye hardmode restriction",
+      "id": "source-02"
+    },
+    {
+      "url": "https://www.wowhead.com/classic/guide/ouro-temple-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline",
+      "date": "2025-07-05",
+      "caveat": "unobserved SoD cycles not assumed",
+      "id": "source-03"
+    },
+    {
+      "url": "https://www.icy-veins.com/wow-classic/ouro-guide-strategy-abilities-loot",
+      "quality": "authored Classic baseline",
+      "caveat": "not SoD patch proof",
+      "id": "source-04"
+    },
+    {
+      "url": "https://warcraft.wiki.gg/wiki/Ouro_%28Season_of_Discovery%29",
+      "quality": "SoD secondary,indexed content",
+      "caveat": "direct open403",
+      "id": "source-05"
+    },
+    {
+      "quality": "primary retained events",
+      "id": "source-06",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "quality": "fresh current client graph",
+      "version": "1.15.9.70576",
+      "build": "5604ce35a8644bdcf0e26c1daf979c15",
+      "id": "source-07",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "O01",
+      "mechanic": "submerge",
+      "spellIds": [
+        26063,
+        26058,
+        26061
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "baseline;unobserved26063",
+      "state": "recorded submerge/state evidence must control visibility, targetability and animation. A missing combat interval alone cannot establish burrow. Encounter respawn/reappearance is not a player resurrection.",
+      "lifecycle": "no midfight interval asserted",
+      "placement": "stationary boss XY;underground newposition unobserved",
+      "animation": "client26063 kit5090 LoopAnim202 unexecuted",
+      "acceptanceCheck": "sod-aq40-ouro/O01",
+      "acceptanceCriteria": "O01",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "official SoD hotfix+baseline+primary absence",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O02",
+      "mechanic": "emergence",
+      "spellIds": [
+        26100
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "26100 initial3 hits",
+      "state": "preserve recorded new XY/actor identity, emergence effects and rupture impacts. Do not move a visible worm through underground travel or hardcode a new position.",
+      "lifecycle": "near1.816s;exact birth unknown",
+      "placement": "boss single XY only",
+      "animation": "no declared rupture visual;server animation missing",
+      "acceptanceCheck": "sod-aq40-ouro/O02",
+      "acceptanceCriteria": "O02",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "primary damage+baseline",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O03",
+      "mechanic": "mound/scarabs",
+      "spellIds": [
+        26093,
+        26060
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "26093 and postkill26060",
+      "state": "distinct recorded identities and observed motion/lifecycle; quakes belong to mounds, not the boss torso. Scarab existence or45s despawn must be independently verified for SoD before use.",
+      "lifecycle": "mound85.021→114.021s observed;scarabs summon114.020 deaths121.616/122.806/123.786",
+      "placement": "moving mound15712 and3 scarabs15718;Z unknown",
+      "animation": "Quake visual155208 kit6466",
+      "acceptanceCheck": "sod-aq40-ouro/O03",
+      "acceptanceCriteria": "O03",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "primary full-run continuation",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O04",
+      "mechanic": "Sand Blast/Sweep",
+      "spellIds": [
+        26102,
+        26103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "26102/26103 casts",
+      "state": "cast-to-impact timing, facing, recorded recipients and control removal are separate from a full threat simulation. No threat table is reconstructed from victim damage alone.",
+      "lifecycle": "3 each with recorded result times",
+      "placement": "boss frontal/facing,recipient states",
+      "animation": "visual7431/7432;native unrun",
+      "acceptanceCheck": "sod-aq40-ouro/O04",
+      "acceptanceCriteria": "O04",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "primary+current graph",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O05",
+      "mechanic": "Berserk",
+      "spellIds": [
+        26615
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "26615 self aura",
+      "state": "use logged aura/state, not guessed health threshold timestamps. Final-phase quake activity can coexist with a surfaced Ouro.",
+      "lifecycle": "72.662–88.418s",
+      "placement": "boss15517",
+      "animation": "visual5301 kit108 procedure2",
+      "acceptanceCheck": "sod-aq40-ouro/O05",
+      "acceptanceCriteria": "O05",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "primary+current graph",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O06",
+      "mechanic": "SoD hardmode",
+      "spellIds": [
+        1213256,
+        1213257,
+        1213261,
+        1214956,
+        1215744,
+        1215745
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "1213261 curses;eye165:1/2 and1215744/5",
+      "state": "eyes/curse targets and lifecycles derive from active hard-mode evidence. Do not add eyes to every Ouro replay. Curse, gaze, fear and damage are distinct observable states.",
+      "lifecycle": "two eye activity windows29.471–34.487 and60.229–65.309",
+      "placement": "eye position unrecorded;recipients known",
+      "animation": "target1215744 aura4031;eye host animation unmeasured",
+      "acceptanceCheck": "sod-aq40-ouro/O06",
+      "acceptanceCriteria": "O06",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "primary+official optional hardmode+SoD secondary guide",
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O07",
+      "mechanic": "seek and end",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "forward/backward,end,continuation",
+      "state": "identical timeline state on random and reverse seek; explicit lifecycle boundaries beat interpolation; missing Z stays unknown; cleanup does not invent deaths or remove independently surviving actors.",
+      "lifecycle": "exact recipient state;post-kill adds persist",
+      "placement": "no Z substitution",
+      "animation": "absoluteFXage contract missing",
+      "acceptanceCheck": "sod-aq40-ouro/O07",
+      "acceptanceCriteria": "O07",
+      "sourceRefs": [],
+      "verification": "unverified",
+      "researchScope": "Informed by one retained example. Sample actor numbers and elapsed times in the research are illustrative, not portable identity bindings or schedules.",
+      "bibliographyRefs": [
+        "source-01",
+        "source-02",
+        "source-03",
+        "source-04",
+        "source-05",
+        "source-06",
+        "source-07"
+      ],
+      "attributionLimit": "Only encounter-level bibliography was supplied. Claim-level source attribution remains unresolved.",
+      "spellIdEvidence": {
+        "spellIdEvidence": "current client graph; observed event identity where present; O01 IDs unobserved in selected fight",
+        "attribution": "CPU and consumer inspection",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "exact initial emergence animation/visibility",
+    "actual SoD submerge/reappearance/newposition outside this retained sample",
+    "eye spatial origin,animation,spawn/despawn",
+    "mound exact spawn/despawn despite observed continuation",
+    "native frontal/Quake geometry and authored procedural effects",
+    "complete threat ledger unavailable",
+    "effect age and native wipe/end cleanup"
+  ]
+}

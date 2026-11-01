@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-mc-baron-geddon",
+  "ruleset": "vanilla",
+  "boss": "Baron Geddon",
+  "raid": "Molten Core",
+  "mapId": 409,
+  "encounterId": 50668,
+  "rawEncounterId": 668,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-mc-baron-geddon"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://github.com/BigWigsMods/BigWigs_Classic/blob/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/MoltenCore/BaronGeddon.lua",
+      "quality": "Pinned primary addon; use baseline registrations, exclude explicit seasonal branches; bars are advisory"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/baron-geddon-molten-core-strategy-wow-classic",
+      "quality": "Retrieved Classic baseline guide; expected mechanics, not original-game pixel proof"
+    },
+    {
+      "id": "cache",
+      "quality": "Live-qualified Vanilla identity; cached completeness unverified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Living Bomb",
+      "spellIds": [
+        20475
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Individual aura application/removal and actual explosion result",
+      "state": "Bombed recipient owns warning; explosion is separate",
+      "lifecycle": "Immunity/death/removal alone never proves detonation; retain post-boss result if logged",
+      "placement": "Actual bombed actor and explosion anchor; no guessed upward arc",
+      "animation": "Body warning, source explosion and victim impacts separate",
+      "acceptanceCheck": "vanilla-mc-baron-geddon/V-MC-GED-BOMB",
+      "acceptanceCriteria": "V-MC-GED-BOMB: independent recipient window, real detonation only, exact seek before/at/after removal",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Inferno",
+      "spellIds": [
+        19695
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast/self aura and periodic damage",
+      "state": "Stationary boss Inferno while active",
+      "lifecycle": "Actual removal/cancel/end bounds, not8-second bar scheduler",
+      "placement": "Observed caster center and victims; no fabricated persistent fallout",
+      "animation": "Native hold and impact routes separate",
+      "acceptanceCheck": "vanilla-mc-baron-geddon/V-MC-GED-INFERNO",
+      "acceptanceCriteria": "V-MC-GED-INFERNO: exact hold age and cancellation; do not import SoD ground patches",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Ignite Mana",
+      "spellIds": [
+        19659
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual aura, drain and damage",
+      "state": "Recipient mana burn independent of warning filtering",
+      "lifecycle": "Per-recipient removal; keep logged non-mana/pet recipients",
+      "placement": "Actual actors, no all-raid synthetic targets",
+      "animation": "Aura rendering does not simulate resource damage",
+      "acceptanceCheck": "vanilla-mc-baron-geddon/V-MC-GED-MANA",
+      "acceptanceCriteria": "V-MC-GED-MANA: mana snapshots and aura removal align without guessed damage",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Armageddon",
+      "spellIds": [
+        20478
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual terminal cast/application and recorded completion/impact",
+      "state": "End-stage cast separate from boss death",
+      "lifecycle": "Cancelled/defeated boss does not create an assumed explosion",
+      "placement": "Actual caster/result anchors, missing height unknown",
+      "animation": "Cast/aura state and detonation distinct",
+      "acceptanceCheck": "vanilla-mc-baron-geddon/V-MC-GED-ARMAGEDDON",
+      "acceptanceCriteria": "V-MC-GED-ARMAGEDDON: killed-before-result never gains scheduled burst",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Death, wipe and continuation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual life, completion and continuation evidence",
+      "state": "Living, defeated, dead, absent and reset remain distinct",
+      "lifecycle": "Close only proven encounter-owned state; retain observed target continuations and raw outcome contradictions",
+      "placement": "Observed actor-instance anchors; missing Z stays unknown",
+      "animation": "Death and despawn are separate; no fixed reset animation",
+      "acceptanceCheck": "vanilla-mc-baron-geddon/V-MC-GED-END",
+      "acceptanceCriteria": "V-MC-GED-END: seek across boundaries preserves life/ownership; no lastSeen expiry or kill-to-death shortcut",
+      "sourceRefs": [
+        "addon",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Bomb warning/explosion/marker ownership, Inferno hold, Armageddon cancellation and airborne movement cannot receive observed credit from this pull.",
+    "Igni​​te Mana may continue beyond chapter; complete cache coverage has not been certified.",
+    "Cached coverage is unverified; absence is not proof that a mechanic did not occur.",
+    "Realm seasonID6 retained without assigning Hardcore/Fresh subtype.",
+    "No native/GPU/browser or actual-game visual acceptance. Missing Z is unknown."
+  ],
+  "researchContext": {
+    "npcIds": [
+      12056
+    ],
+    "baselineScope": "Baseline20475/19695/20478 IDs; exclude SoD heat bomb variants465725/461090/461105, ground Fallout and heat-specific timing. Guide/advisory8seconds does not authorize a detonation schedule."
+  }
+}

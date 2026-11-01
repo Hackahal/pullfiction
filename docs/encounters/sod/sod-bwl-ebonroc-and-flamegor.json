@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-bwl-ebonroc-and-flamegor",
+  "ruleset": "sod",
+  "boss": "Ebonroc and Flamegor",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 100631,
+  "rawEncounterId": 2566,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 469,
+      "selectedFightIds": [
+        123
+      ],
+      "selectedFightNames": [
+        "Flamegor"
+      ],
+      "matchedNpcTemplateIds": [
+        11981,
+        14601
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-bwl-ebonroc",
+    "sod-bwl-flamegor"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "ebonroc:primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Ebonroc_and_Flamegor.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "ebonroc:baseline",
+      "url": "https://www.wowhead.com/classic/guide/ebonroc-blackwing-lair-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "ebonroc:client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "ebonroc:trials-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/SoDTrials.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD trial event code"
+    },
+    {
+      "id": "ebonroc:trials-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackwing-lair-dragonflight-trials-hard-modes-overview",
+      "date": "2024-10-10",
+      "quality": "authored live SoD guide, distinct from September PTR"
+    },
+    {
+      "id": "ebonroc:official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24143779/nerub-ar-palace-raid-finder-wing-3-and-season-of-discovery-phase-5-are-now-live-october-trading-post-and-mor",
+      "date": "2024-09-27",
+      "quality": "official phase5:20-player tuning/up to40, selectable dragonflight effects"
+    },
+    {
+      "id": "flamegor:primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Ebonroc_and_Flamegor.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "flamegor:baseline",
+      "url": "https://www.wowhead.com/classic/guide/flamegor-blackwing-lair-strategy",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "flamegor:client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "flamegor:trials-primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/SoDTrials.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary SoD trial event code"
+    },
+    {
+      "id": "flamegor:trials-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/blackwing-lair-dragonflight-trials-hard-modes-overview",
+      "date": "2024-10-10",
+      "quality": "authored live SoD guide, distinct from September PTR"
+    },
+    {
+      "id": "flamegor:official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24143779/nerub-ar-palace-raid-finder-wing-3-and-season-of-discovery-phase-5-are-now-live-october-trading-post-and-mor",
+      "date": "2024-09-27",
+      "quality": "official phase5:20-player tuning/up to40, selectable dragonflight effects"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "ebonroc:E01",
+      "mechanic": "Paired encounter and independent actor life",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual linked engage for both drakes",
+      "state": "paired SoD fight; independent health/death, tank targets and surviving partner",
+      "lifecycle": "first death not automatic encounter end; reset both only at actual reset",
+      "placement": "observed separate positions on laboratory ramps; Z unknown if absent",
+      "animation": "independent model clips, no single merged host",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/ebonroc:E01-acceptance",
+      "acceptanceCriteria": "kill one drake first, other continues; repull/reset/partial event buffers; no premature hide",
+      "sourceRefs": [
+        "ebonroc:primary",
+        "ebonroc:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "ebonroc:E02",
+      "mechanic": "Shadow, healing and Brand of Shadow",
+      "spellIds": [
+        23340,
+        368515
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual recipient curse/brand plus melee/heal results",
+      "state": "Ebonroc debuffed victim can trigger healing; stacked brand separate",
+      "lifecycle": "8s baseline shadow versus recorded removal; no predicted heal",
+      "placement": "recipient state independent of current target after taunt",
+      "animation": "target aura and actual heal visuals only",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/ebonroc:E02-acceptance",
+      "acceptanceCriteria": "taunt during curse, heal only actual event; brand stacks/refresh and random seek",
+      "sourceRefs": [
+        "ebonroc:primary",
+        "ebonroc:baseline",
+        "ebonroc:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "ebonroc:E03",
+      "mechanic": "Paired breath and instant buffet variants",
+      "spellIds": [
+        22539,
+        368941,
+        369080,
+        369105,
+        369103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual source instance cast/success/results",
+      "state": "linked attacks occur on each actual source; generic23339 cast not substituted",
+      "lifecycle": "instant seasonal buffet variants differ from baseline cast; no fabricated paired event",
+      "placement": "actual facing and displacement, wall/upper-floor context",
+      "animation": "source comments contradictory about actor mapping; derive from actual sourceNPC not spell name",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/ebonroc:E03-acceptance",
+      "acceptanceCriteria": "two simultaneous attacks, one missing source event, knockback and target switch; no duplicate launch",
+      "sourceRefs": [
+        "ebonroc:primary",
+        "ebonroc:baseline",
+        "ebonroc:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "ebonroc:E04",
+      "mechanic": "Black Stop and Go",
+      "spellIds": [
+        467732,
+        467764
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual black state and aura",
+      "state": "movement versus stationary damage conditions",
+      "lifecycle": "actual interval/removal, not20s guessed lower-bound timer",
+      "placement": "measured movement; guide strafe caveat unresolved in retained data",
+      "animation": "no guessed animation or speed rule from displacement alone",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/ebonroc:E04-acceptance",
+      "acceptanceCriteria": "standing, strafing and forward/backward with same aura; actual damage recipients only",
+      "sourceRefs": [
+        "ebonroc:primary",
+        "ebonroc:trials-guide",
+        "ebonroc:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "ebonroc:TRIAL",
+      "mechanic": "Observed trial selection and cross-chapter trial effects",
+      "spellIds": [
+        466357,
+        466435,
+        466448,
+        466071,
+        466261,
+        466277,
+        466416,
+        467047
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual selection aura, recipient aura/pulse and pool creation; never infer from WCL difficulty label alone",
+      "state": "blue soak, green placement, bronze rate changes, red injury damage and black encounter modifier independently active",
+      "lifecycle": "actual enable/remove/reset; primary says blue/green loops span boss/trash, with week3 unsynchronized timing; do not synthesize47.36s schedule",
+      "placement": "blue on actual recipient; green pool at creation destination, not moving aura victim; missing Z unknown",
+      "animation": "current authored route only; global aura has no invented cosmetic equivalent",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/ebonroc:trial-cross-chapter-seek",
+      "acceptanceCriteria": "record blue/green same and different recipients across boss/trash, independently timed bombs, disabled trial and soft reset; seek twice/randomly with exact age; no synthetic events",
+      "sourceRefs": [
+        "ebonroc:trials-primary",
+        "ebonroc:trials-guide",
+        "ebonroc:client",
+        "ebonroc:official"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "flamegor:FL01",
+      "mechanic": "Frenzy, dispel and Brand of Flame",
+      "spellIds": [
+        23342,
+        368521,
+        19801,
+        23462
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual Frenzy/brand and dispel events",
+      "state": "Flamegor self-enrage versus recipient flame stacks; Fire Nova23462 occurs during frenzy, Hunter19801 is a player-source dispel",
+      "lifecycle": "10s baseline enrage; early Tranquilizing Shot removal wins, no guaranteed full duration",
+      "placement": "self visual stays Flamegor; recipients separate from current tank",
+      "animation": "authored self aura not cast onto hunter dispeller",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/flamegor:FL01-acceptance",
+      "acceptanceCriteria": "frenzy removed early/failed dispel; source missing from snapshot; brand tank switch and repeated seek",
+      "sourceRefs": [
+        "flamegor:primary",
+        "flamegor:baseline",
+        "flamegor:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "flamegor:FL02",
+      "mechanic": "Separate life in linked pair",
+      "spellIds": [
+        22539,
+        368941,
+        369080,
+        369105,
+        369103
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual shared engage and source-specific attack",
+      "state": "Flamegor remains independently alive/dead and targets differ from Ebonroc",
+      "lifecycle": "do not end at Ebonroc death; missing linked partner attack stays unknown",
+      "placement": "actual separate drake origins/facing/elevation",
+      "animation": "do not collapse simultaneous spellIDs into one model",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/flamegor:FL02-acceptance",
+      "acceptanceCriteria": "Ebonroc dies first; Flamegor frenzies afterward, then actual paired end; no stale other actor",
+      "sourceRefs": [
+        "flamegor:primary",
+        "flamegor:baseline",
+        "flamegor:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "flamegor:FL03",
+      "mechanic": "Black Stop and Go",
+      "spellIds": [
+        467732,
+        467764
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual recipient aura with observed black trial",
+      "state": "movement-dependent damage",
+      "lifecycle": "recorded intervals, not approximate20s schedule",
+      "placement": "actual moving/stationary participants; no inferred forward direction from XY speed",
+      "animation": "authored effects only",
+      "acceptanceCheck": "sod-bwl-ebonroc-and-flamegor/flamegor:FL03-acceptance",
+      "acceptanceCriteria": "aura persists over first partner death; no double activation when two NPC sources present",
+      "sourceRefs": [
+        "flamegor:primary",
+        "flamegor:trials-guide",
+        "flamegor:client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Shared encounter group Ebonroc-and-Flamegor; primary registers raw IDs614,615,2566. Publication uses combined-group candidate2566; provider mapping unverified.",
+    "Primary paired module retains legacy SoM comments and inconsistent spell→NPC labels for buffet variants; actual actor source must decide.",
+    "Stop/Go movement semantics including strafing are guide claims, not inferable from simple sampled speed.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted",
+    "Shared encounter group Ebonroc-and-Flamegor, raw primary candidates614/615/2566; provider ID unverified.",
+    "Baseline standalone Flamegor is not imported as an independent SoD fight.",
+    "Paired module explicitly registers368521 Brand of Flame and23342 Frenzy; early enrage dispel must be retained even if player sourced."
+  ],
+  "researchContext": {
+    "encounterGroup": {
+      "key": "sod-bwl-ebonroc-and-flamegor",
+      "rawEncounterIdCandidates": [
+        614,
+        615,
+        2566
+      ],
+      "providerEncounterId": null,
+      "publicationGroupId": 2566,
+      "verifiedProviderMapping": false
+    },
+    "npcIds": [
+      14601,
+      11981
+    ],
+    "sourceFindings": [
+      "Shared encounter group Ebonroc-and-Flamegor; primary registers raw IDs614,615,2566. Publication uses combined-group candidate2566; provider mapping unverified.",
+      "Primary paired module retains legacy SoM comments and inconsistent spell→NPC labels for buffet variants; actual actor source must decide.",
+      "Stop/Go movement semantics including strafing are guide claims, not inferable from simple sampled speed.",
+      "Shared encounter group Ebonroc-and-Flamegor, raw primary candidates614/615/2566; provider ID unverified.",
+      "Baseline standalone Flamegor is not imported as an independent SoD fight.",
+      "Paired module explicitly registers368521 Brand of Flame and23342 Frenzy; early enrage dispel must be retained even if player sourced."
+    ],
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "Retained SoD pull unavailable; ruleset-unknown older BWL cache excluded. No observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "group": {
+    "name": "Ebonroc and Flamegor",
+    "members": [
+      "sod-bwl-ebonroc",
+      "sod-bwl-flamegor"
+    ],
+    "rawEncounterIdCandidates": [
+      614,
+      615,
+      2566
+    ],
+    "providerMapping": "mapped-from-selected-report-metadata",
+    "note": "Selected report fight is named Flamegor and includes both NPC 14601 and NPC 11981. Raw candidates 614, 615 and 2566 remain source identities, with no numeric offset. Import this paired file once.",
+    "providerEncounterId": 100631
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

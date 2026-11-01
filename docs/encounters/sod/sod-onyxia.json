@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-onyxia",
+  "ruleset": "sod",
+  "boss": "Onyxia",
+  "raid": "Onyxia’s Lair",
+  "mapId": 249,
+  "encounterId": 151084,
+  "rawEncounterId": 1084,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "zZaycN9xBn2CK4vA",
+      "reportRevision": 1,
+      "reportResponseSha256": "80c7c400f959557ea239677aa5b0ca4b7ea86502f266853c6ca0614f4a3618d5",
+      "provenanceResponseSha256": "db829883035063d40eda9a8d067d06bbd46284d9592100969a6c47f51e85164c",
+      "providerZoneId": 2011,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 249,
+      "selectedFightIds": [
+        3,
+        5,
+        6
+      ],
+      "selectedFightNames": [
+        "Onyxia"
+      ],
+      "matchedNpcTemplateIds": [
+        10184
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-onyxia"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "primary",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaOnyxia/Onyxia.lua",
+      "commit": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon code; inspect seasonal branches, not proof of gameplay pixels"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/onyxia-onyxias-lair-strategy-wow-classic",
+      "quality": "authored baseline guide; not authority for SoD changes"
+    },
+    {
+      "id": "client",
+      "quality": "current client1.15.9.70576",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24111477/season-of-discovery-phase-4-now-live",
+      "quality": "official live phase4 overview;40 or fewer, loot adjustments"
+    },
+    {
+      "id": "sod-guide",
+      "url": "https://www.wowhead.com/classic/guide/season-of-discovery/onyxias-lair-overview-loot",
+      "date": "2024-07-26",
+      "quality": "exact SoD overview; tuning ambiguity and baseline phases"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "zZaycN9xBn2CK4vA",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "O01",
+      "mechanic": "Ground→air→ground state and actual elevation",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "recorded phase yell/flight state and touchdown evidence",
+      "state": "three researched phases,65% takeoff and40% landing expected; actual transition evidence wins",
+      "lifecycle": "primary70/45% are prewarnings; not flight state; no fixed duration or vertical curve",
+      "placement": "actual Z and floor context; walk-center/takeoff separate from airborne; missing Z remains unknown",
+      "animation": "native takeoff/hover/flight/landing clips need event provenance, no ground-only animation assumption",
+      "acceptanceCheck": "sod-onyxia/O01-acceptance",
+      "acceptanceCriteria": "seek just before takeoff, high hover, descent and touchdown; partial buffers; no universal floor lift or path synthesis",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "sod-guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "O02",
+      "mechanic": "SoD scripted initial Deep Breath",
+      "spellIds": [
+        17086,
+        18351,
+        18564,
+        18576,
+        18584,
+        18596,
+        18609,
+        18617
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual directional breath cast; primary original SoD traces support first warningaround29.1s after phase yell",
+      "state": "eight directional variants and five-second windup",
+      "lifecycle": "timing source does not authorize synthetic cast; actual cancel/death/end; no scheduled future effect",
+      "placement": "recorded origin/destination/facing and swept corridor; no generic circle or invented orbit",
+      "animation": "client effects may contain missiles but server sweep motion not encoded by cast duration",
+      "acceptanceCheck": "sod-onyxia/O02-acceptance",
+      "acceptanceCriteria": "phase2 ends before expected breath; two different directions; warning→impact progression; random seek middle cannot redraw whole corridor at once",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O03",
+      "mechanic": "Air fireball and whelp lifecycle",
+      "spellIds": [
+        18392,
+        17646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual fireball cast/impact and independent whelp summon",
+      "state": "splash at actual victim; multiple whelp instances; source target-only continuation matters",
+      "lifecycle": "actual whelp death/despawn;17646 client120s spell duration not summon lifespan",
+      "placement": "missile starts at observed flying bossZ, lands at victim; eggs/pits ground positions explicit",
+      "animation": "no Wrath guardianNPC36561/68959 imported; no fabricated guardian waves",
+      "acceptanceCheck": "sod-onyxia/O03-acceptance",
+      "acceptanceCriteria": "fireball target changes midtravel; splash multiple targets, whelp survives landing and boss death; no future host visible at pull",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O04",
+      "mechanic": "Ground directional hits and knockback",
+      "spellIds": [
+        18435,
+        18500,
+        19633,
+        15847
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual breath/buffet/knockaway/tail results",
+      "state": "front and rear attacks distinct, wall interactions and threat switches",
+      "lifecycle": "client2s flame breath/1s buffet; instant knockaway/tail actualresults",
+      "placement": "actual yaw, displacement and hatchery edges; no ballistic arc without anchors",
+      "animation": "model attack clip is not proof of actual knockback trajectory",
+      "acceptanceCheck": "sod-onyxia/O04-acceptance",
+      "acceptanceCriteria": "back-wall knockback, tail sends player into eggpit, cast canceled during takeoff; repeated seeks retain exact stage",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "O05",
+      "mechanic": "Landing fear and fissure eruptions",
+      "spellIds": [
+        18431
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "actual phase3 roar and ground hazard pulses",
+      "state": "fear, cracks and independent whelps",
+      "lifecycle": "1.5s client roar/3s fear, actual remove/immunity; no periodic lava timer",
+      "placement": "cracks are world geometry, not generic disc at each player; actual eruption source/destination required",
+      "animation": "Eruption17731 name candidate only; exact SoD relation and ground-fire animation unresolved",
+      "acceptanceCheck": "sod-onyxia/O05-acceptance",
+      "acceptanceCriteria": "fear immune recipient, movement toward hatchery, simultaneous distinct crack pulses, death/reset cleanup; no inferredZ",
+      "sourceRefs": [
+        "primary",
+        "baseline",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    17731
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Official July2024 says40 or fewer players; it does not establish exact20-player tuning for Onyxia. The SoD overview explicitly calls that interpretation uncertain.",
+    "Primary SoD branch retains original timestamp snippets for first Deep Breath29.12–29.20s after phase2 yell; useful expectation, not our observed/runtime evidence.",
+    "No BWL trial effects or MC heat modes are imported into Onyxia. No Wrath Lair Guards/10-or25-player assumptions.",
+    "Primary map249/raw encounter1084/NPC10184; provider normalization unverified.",
+    "exact retained SoD fight/version/provider identity",
+    "area destinations, model animation and effect age after seek remain unexecuted"
+  ],
+  "researchContext": {
+    "npcIds": [
+      10184
+    ],
+    "sourceFindings": [
+      "Official July2024 says40 or fewer players; it does not establish exact20-player tuning for Onyxia. The SoD overview explicitly calls that interpretation uncertain.",
+      "Primary SoD branch retains original timestamp snippets for first Deep Breath29.12–29.20s after phase2 yell; useful expectation, not our observed/runtime evidence.",
+      "No BWL trial effects or MC heat modes are imported into Onyxia. No Wrath Lair Guards/10-or25-player assumptions.",
+      "Primary map249/raw encounter1084/NPC10184; provider normalization unverified."
+    ],
+    "summonedNpcCandidates": [
+      {
+        "id": 11262,
+        "name": "Onyxian Whelp",
+        "source": "baseline linked NPC; actual SoD retained instance unverified"
+      }
+    ],
+    "identityEvidence": "raw primary addon encounter ID; provider-normalized ID unresolved without report, do not assume100000 offset",
+    "encounterIdAuthority": "primary_addon_raw_unverified_provider",
+    "supportLimits": [
+      "Retained SoD pull unavailable; ruleset-unknown older BWL cache excluded. No observed/native/visual/seek credit.",
+      "normalizeReplay retains actual instances/life/death; poseAt holds NPC positions without retirement evidence and interpolates sampled motion subject to discontinuities.",
+      "replay-actions.mjs buildVisualEvents associates same-source/same-spell launch/results within30s; it does not infer server phases, chain topology, area creation or model scripts.",
+      "modern.rs maps Caster/Target cast, impact, aura and channel stages; AreaTriggerStart/Area and AuraStart/Area absent from its route table. Legacy area_kit fallback exists in creature_anim/spell_visual.rs; do not equate graph routes to visible execution.",
+      "controller.ts derives geometry floor hints independently; missing logged Z is unknown."
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

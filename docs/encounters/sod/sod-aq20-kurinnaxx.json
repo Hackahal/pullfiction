@@ -1,0 +1,388 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-kurinnaxx",
+  "ruleset": "sod",
+  "boss": "Kurinnaxx",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100718,
+  "rawEncounterId": 718,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        38,
+        77
+      ],
+      "selectedFightNames": [
+        "Kurinnaxx"
+      ],
+      "matchedNpcTemplateIds": [
+        15348
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-kurinnaxx"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Kurinnaxx.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/kurinnaxx-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/Kurinnaxx_%28Season_of_Discovery%29",
+      "quality": "Exact SoD mechanics from indexed source; direct403, no native frame proof"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Kurinnaxx.lua",
+      "quality": "Independent pinned primary addon matches player-source SPELL_CREATE25648; local complete source"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Mortal Wound and facing",
+      "spellIds": [
+        25646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM wound applies/stacks; baseline frontal cleave",
+      "state": "Mortal Wound and facing",
+      "lifecycle": "Real15s refresh/end and actual tank swaps",
+      "placement": "Real boss facing and victim instances",
+      "animation": "Native strike and target wound state",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-WOUND",
+      "acceptanceCriteria": "KURINNAXX-WOUND: stack/refresh/remove stable",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25646
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            30,
+            31,
+            34,
+            40,
+            41,
+            43,
+            64,
+            87
+          ],
+          "BigWigs-source.lua": [
+            26,
+            35,
+            36,
+            37
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          30,
+          31,
+          34,
+          40,
+          41,
+          43,
+          64,
+          87
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Sand Trap creation",
+      "spellIds": [
+        25648
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM SPELL_CREATE attributed to source player",
+      "state": "Sand Trap creation",
+      "lifecycle": "Actual gameobject/trap birth, placement and expiry",
+      "placement": "Independent snapshot of creating player; not permanent attachment",
+      "animation": "Native trap object/ground model when identified",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-CREATE",
+      "acceptanceCriteria": "KURINNAXX-CREATE: player-source trap retained and anchored",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25648
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            28,
+            51
+          ],
+          "BigWigs-source.lua": [
+            16,
+            17,
+            27,
+            38,
+            44
+          ]
+        },
+        "addonSourceLines": [
+          28,
+          51
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Sand Trap explosion",
+      "spellIds": [
+        25656
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline delayed growing trap detonates",
+      "state": "Sand Trap explosion",
+      "lifecycle": "Actual explosion and20s silence/hit penalty, early cleanup",
+      "placement": "Real trap center and affected players",
+      "animation": "Native growth/explosion; no timed cosmetic circle",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-TRAP",
+      "acceptanceCriteria": "KURINNAXX-TRAP: creation, telegraph and blast distinct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25656
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            35,
+            38,
+            39,
+            44
+          ],
+          "BigWigs-source.lua": [
+            16
+          ]
+        },
+        "addonSourceLines": [
+          35,
+          38,
+          39,
+          44
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Enrage",
+      "spellIds": [
+        26527
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM aura; baseline30percent",
+      "state": "Enrage",
+      "lifecycle": "Actual apply/remove, no threshold-generated buff",
+      "placement": "Boss body",
+      "animation": "Native enrage668 and actual speed state",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-ENRAGE",
+      "acceptanceCriteria": "KURINNAXX-ENRAGE: correct source and true end",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          26527
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            29,
+            36,
+            80
+          ],
+          "BigWigs-source.lua": [
+            28,
+            30,
+            39,
+            84
+          ]
+        },
+        "addonSourceLines": [
+          29,
+          36,
+          80
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "SoD Despair ghosts",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213254,
+        1214777,
+        1214871
+      ],
+      "trigger": "SoD wiki ghosts spawn under players and cast IllusionaryShatter",
+      "state": "SoD Despair ghosts",
+      "lifecycle": "Actual mode, births, cast/impact/end;30s guide is not replay generator",
+      "placement": "Independent ground centers; no moving victim anchor",
+      "animation": "Native ghost and arcane blast only after identification",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-MADNESS",
+      "acceptanceCriteria": "KURINNAXX-MADNESS: unknown source variants remain unknown",
+      "sourceRefs": [
+        "official-sod-p6",
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Death, obelisk and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual final death/evade and mode choices",
+      "state": "Death, obelisk and reset",
+      "lifecycle": "Trap/ghost cleanup only actual edges; checkpoint state independent",
+      "placement": "Real arena/obelisk anchors",
+      "animation": "Native corpse/object behavior",
+      "acceptanceCheck": "sod-aq20-kurinnaxx/KURINNAXX-END",
+      "acceptanceCriteria": "KURINNAXX-END: repeat pull no stale hazards",
+      "sourceRefs": [
+        "official-sod-p6",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    1213254,
+    1214777,
+    1214871
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD trap gameobject ID/growth radius/expiration and creation-to-explosion relation",
+    "AQ20-specific Despair/Shatter IDs and ghost NPC instances",
+    "True death/evade cleanup and obelisk mode activation",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 718,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15348",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15348"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

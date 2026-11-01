@@ -1235,6 +1235,11 @@ pub(super) fn route_cast_visuals(
 const AURA_WATCH_BASE: u16 = benilla_protocol::field::FIELD_UNIT_AURA;
 const AURA_WATCH_SPAN: u16 = 54;
 
+/// Replay-only provenance. Missing/unknown sources never authorize Caster aura
+/// kits on a victim. The ordinary network client keeps its existing state path.
+#[derive(Component, Default, PartialEq, Eq)]
+pub(crate) struct RecordedSelfAuras(pub Vec<u32>);
+
 /// Arm and reap each aura's state kit (stage 2) off the unit's `UNIT_AURA` slots: a spell entering
 /// the slots begins its kit's models persistent, also on a unit streamed in mid-aura, and leaving
 /// reaps them (`0x604d00` → `0x5ff350`; remove `0x612320` → `0x614150(spellId, force=1)`). The add
@@ -1248,8 +1253,9 @@ pub(crate) fn arm_aura_state_fx(
     mut commands: Commands,
     // Re-run on an edge inside the aura watch span and on first sight (a standing aura is a
     // state); the full sweep runs once per DBC-resource arrival.
-    units: Query<(Entity, &ObjectStore), Without<ItemObject>>,
+    units: Query<(Entity, &ObjectStore, Option<&RecordedSelfAuras>), Without<ItemObject>>,
     arrived: Query<Entity, (Added<ObjectStore>, Without<ItemObject>)>,
+    source_changes: Query<Entity, Changed<RecordedSelfAuras>>,
     mut edges: MessageReader<FieldChanged>,
     visuals: Option<Res<SpellVisuals>>,
     spells: Option<Res<crate::ui_action::Spells>>,
@@ -1257,7 +1263,7 @@ pub(crate) fn arm_aura_state_fx(
     mut procs: MessageWriter<AuraProc>,
     mut sounds: MessageWriter<SpellKitSound>,
     mut recomputes: MessageWriter<BaseAnimRecompute>,
-    mut armed: Local<EntityHashMap<Vec<u32>>>,
+    mut armed: Local<EntityHashMap<Vec<(u32, u32)>>>,
     // Each unit's live pins, newest first, mirrored onto its `StateKitPins` on a change.
     mut pinned: Local<EntityHashMap<Vec<(u32, u16)>>>,
 ) {
@@ -1270,6 +1276,7 @@ pub(crate) fn arm_aura_state_fx(
         units.iter().collect::<Vec<_>>()
     } else {
         let mut due: EntityHashSet = arrived.iter().collect();
+        due.extend(source_changes.iter());
         due.extend(
             edges
                 .read()
@@ -1281,7 +1288,7 @@ pub(crate) fn arm_aura_state_fx(
         );
         due.into_iter().filter_map(|e| units.get(e).ok()).collect()
     };
-    for (entity, store) in scan {
+    for (entity, store, self_auras) in scan {
         let prev = armed.entry(entity).or_default();
         let pins = pinned.entry(entity).or_default();
         let pins_before = pins.clone();
@@ -1294,14 +1301,21 @@ pub(crate) fn arm_aura_state_fx(
         // effect of that spell on the unit (`0x614150(spell, 1)` at `0x5ff2d2`, and its procs
         // through `0x60d150` and `0x5ff320`), even while another slot holds the same spell: it
         // drops a visual the server says still holds.
-        let mut cur: Vec<u32> = Vec::new();
+        let mut cur: Vec<(u32, u32)> = Vec::new();
         for a in store.0.unit_auras() {
-            if !cur.contains(&a.spell_id) {
-                cur.push(a.spell_id);
+            let self_cast = self_auras.is_some_and(|s| s.0.contains(&a.spell_id));
+            if let Some(kit_id) = resolve_stages(spells, &visuals.0, a.spell_id, || None)
+                .map(|s| if self_cast { s.state_self } else { s.state })
+                .filter(|&id| id != 0 && visuals.0.kit(id).is_some())
+            {
+                let key = (a.spell_id, kit_id);
+                if !cur.contains(&key) {
+                    cur.push(key);
+                }
             }
         }
-        for &spell_id in prev.iter() {
-            if !cur.contains(&spell_id) {
+        for &(spell_id, kit_id) in prev.iter() {
+            if !cur.contains(&(spell_id, kit_id)) {
                 fx.write(SpellKitFx::Reap {
                     entity,
                     spell_id,
@@ -1312,21 +1326,18 @@ pub(crate) fn arm_aura_state_fx(
                 // The forced stop takes the 0x1000 effect too (`0x614179`).
                 pins.retain(|&(s, _)| s != spell_id);
                 // A looping state-kit sound dies with the aura (`0x614150`, 0.15 s fade).
-                if let Some(kit_sound) =
-                    resolve_kit(spells, &visuals.0, spell_id, |s| s.state, || None)
-                        .and_then(|k| k.sound)
-                {
+                if let Some(kit_sound) = visuals.0.kit(kit_id).and_then(|k| k.sound) {
                     sounds.write(SpellKitSound::StopKit { entity, kit_sound });
                 }
             }
         }
         let mut next = Vec::with_capacity(prev.len());
-        for &spell_id in &cur {
-            if prev.contains(&spell_id) {
-                next.push(spell_id); // still armed
+        for &(spell_id, kit_id) in &cur {
+            if prev.contains(&(spell_id, kit_id)) {
+                next.push((spell_id, kit_id)); // still armed
                 continue;
             }
-            let Some(kit) = resolve_kit(spells, &visuals.0, spell_id, |s| s.state, || None) else {
+            let Some(kit) = visuals.0.kit(kit_id) else {
                 continue; // no state kit
             };
             let effects = resolve_kit_effects(&visuals.0, &kit);
@@ -1377,7 +1388,7 @@ pub(crate) fn arm_aura_state_fx(
                     pins.insert(0, (spell_id, pin));
                 }
             }
-            next.push(spell_id);
+            next.push((spell_id, kit_id));
         }
         *prev = next;
         if *pins != pins_before {

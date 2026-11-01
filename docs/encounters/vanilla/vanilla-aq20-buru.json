@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-aq20-buru",
+  "ruleset": "vanilla",
+  "boss": "Buru the Gorger",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": null,
+  "rawEncounterId": 721,
+  "providerMapping": {
+    "status": "unresolved",
+    "basis": "No qualified retained boss identity; addon declarations and client candidates are not provider IDs."
+  },
+  "bossUnits": [
+    "vanilla-aq20-buru"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "Baseline source/client research only; no confirmed retained pull. Synthetic probes grant no observed, native or visual credit."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Buru.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/buru-the-gorger-ruins-of-ahnqiraj-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Buru.lua",
+      "quality": "pinned primary addon baseline branch"
+    },
+    {
+      "id": "official",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/23493335",
+      "quality": "official2020 baseline overview retrieved via search index; direct403, optional Moam/Buru/Ayamiss differ from SoD all-six rule"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Pursuit and acceleration",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons parse pursuit emote; no known Classic pursuit spell",
+      "state": "Pursuit and acceleration",
+      "lifecycle": "Actual target switches and speed reset on egg hit",
+      "placement": "Observed route, facing, water/terrain; no chasing interpolated player",
+      "animation": "Native run state; no62374 spell substitution",
+      "acceptanceCheck": "vanilla-aq20-buru/BURU-PURSUE",
+      "acceptanceCriteria": "BURU-PURSUE: target-emote and actual route seek",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Egg destruction",
+      "spellIds": [
+        26646
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Official eggs weaken boss; BuruEggTrigger candidate",
+      "state": "Egg destruction",
+      "lifecycle": "Actual egg health/death/explosion/stun and hatchling birth",
+      "placement": "Independent fixed eggs and actual boss proximity",
+      "animation": "Native egg model/break blast",
+      "acceptanceCheck": "vanilla-aq20-buru/BURU-EGG",
+      "acceptanceCriteria": "BURU-EGG: do not infer blast success from proximity alone",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Dismember",
+      "spellIds": [
+        96
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon10s bleed apply/dose/remove",
+      "state": "Dismember",
+      "lifecycle": "Actual caught-target bleed stacks/end",
+      "placement": "Exact victim, not necessarily tank",
+      "animation": "Native hit/bleed state",
+      "acceptanceCheck": "vanilla-aq20-buru/BURU-BLEED",
+      "acceptanceCriteria": "BURU-BLEED: exact target and cleanup",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Carapace loss and phase2",
+      "spellIds": [
+        25640,
+        24721
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "BigWigs phase from Thorns removal; baseline20percent",
+      "state": "Carapace loss and phase2",
+      "lifecycle": "Real removal/transform and actual pursuit ending",
+      "placement": "Same boss body with actual movement",
+      "animation": "Native shell-break/persistent form; not impact puff",
+      "acceptanceCheck": "vanilla-aq20-buru/BURU-FORM",
+      "acceptanceCriteria": "BURU-FORM: phase and true death distinct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Creeping Plague",
+      "spellIds": [
+        20512,
+        27027
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline phase2 raid DoT; cancel candidate",
+      "state": "Creeping Plague",
+      "lifecycle": "Actual ticks/stacks/remove and known death cleanup",
+      "placement": "Actual player targets",
+      "animation": "Native plague effects, no predicted damage",
+      "acceptanceCheck": "vanilla-aq20-buru/BURU-PLAGUE",
+      "acceptanceCriteria": "BURU-PLAGUE: death clears actual aura, not carryover curse",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Death and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual boss death/wipe and independent actor cleanup",
+      "state": "Boss, adds and control remain separate",
+      "lifecycle": "Only actual lifetime/removal edges; no checkpoint, inherited curse or automatic add retirement",
+      "placement": "Actual spawn/return anchors and surviving actor positions",
+      "animation": "Native death/reset/object state only when established",
+      "acceptanceCheck": "vanilla-aq20-buru/VANILLA-BURU-RESET",
+      "acceptanceCriteria": "VANILLA-BURU-RESET: repeated pull, surviving adds and exact cleanup without synthesized actors",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "bigwigs",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15370,
+      15514,
+      15521,
+      15964
+    ]
+  }
+}

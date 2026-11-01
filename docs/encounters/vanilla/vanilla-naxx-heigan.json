@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-naxx-heigan",
+  "ruleset": "vanilla",
+  "boss": "Heigan the Unclean",
+  "raid": "Naxxramas",
+  "mapId": 533,
+  "encounterId": 51112,
+  "rawEncounterId": 1112,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-naxx-heigan"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/Naxxramas_Classic/Heigan.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/heigan-the-unclean-naxxramas-raid-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-09-07",
+      "patch": "Page patch1.15.8; actual report/server build not established",
+      "author": "Rokman"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=29371/eruption",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=14033/mana-burn",
+        "https://www.wowhead.com/classic/spell=4801/teleport"
+      ],
+      "quality": "Resolved guide links. Generic ManaBurn/Teleport links do not establish exact encounter spell identity; held as candidates only."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained Classic non-Discovery source, realmseason6, cached/live revision24; coverage not independently certified",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Decrepit Fever",
+      "spellIds": [
+        29998
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded disease applications and removals",
+      "state": "Actual victims and health-reduction state",
+      "lifecycle": "Cleanse/removal authoritative; absent later phases unverified",
+      "placement": "Observed recipients; no invented range circle",
+      "animation": "Aura age and damage independent",
+      "acceptanceCheck": "vanilla-naxx-heigan/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Eruption floor sections",
+      "spellIds": [
+        29371
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded eruption/area evidence",
+      "state": "Safe floor sections and active hazardous sections are distinct",
+      "lifecycle": "Actual pulses and creation/end required; no addon dance schedule",
+      "placement": "Damage victims cannot define full floor footprint or safe zones",
+      "animation": "Floor animation needs authored geometry and native timing",
+      "acceptanceCheck": "vanilla-naxx-heigan/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Platform dance phase",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded teleport/yell/unit-state where retained",
+      "state": "Ground and platform boss state differ",
+      "lifecycle": "Primary90/45second timer is not a recorded transition/channel",
+      "placement": "Measured vertical platform position; Z unknown",
+      "animation": "No forced45second hold from guide alone",
+      "acceptanceCheck": "vanilla-naxx-heigan/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Tunnel teleport and nearby mana effect",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual relocation/impact evidence",
+      "state": "Selected players differ from boss platform transition",
+      "lifecycle": "Observed player return and actual debuff removal",
+      "placement": "Tunnel and platform anchors separate; generic guide links unresolved",
+      "animation": "Teleport must break interpolation; no invented tunnel path",
+      "acceptanceCheck": "vanilla-naxx-heigan/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-naxx-heigan/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached event coverage unknown despite matching report revision24 and live non-Discovery identity.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes only selected pull(s) and 5seconds before/after. Longer continuation outside this retained probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      15936
+    ]
+  }
+}

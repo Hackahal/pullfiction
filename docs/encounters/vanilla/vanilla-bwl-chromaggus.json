@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-bwl-chromaggus",
+  "ruleset": "vanilla",
+  "boss": "Chromaggus",
+  "raid": "Blackwing Lair",
+  "mapId": 469,
+  "encounterId": 50616,
+  "rawEncounterId": 616,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-bwl-chromaggus"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/BWL/Chromaggus.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/chromaggus-blackwing-lair-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-03-12",
+      "author": "Neryssa",
+      "patch": "Page patch1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "breath-links",
+      "url": "https://www.wowhead.com/classic/spell=23316/ignite-flesh",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=23310/time-lapse",
+        "https://www.wowhead.com/classic/spell=23187/frost-burn",
+        "https://www.wowhead.com/classic/spell=23313/corrosive-acid",
+        "https://www.wowhead.com/classic/spell=23309/incinerate",
+        "https://www.wowhead.com/classic/npc=14302/chromatic-drakonid"
+      ],
+      "quality": "Resolved baseline guide identities; primary multi-version alternate IDs not aliased, one pull cannot exercise all breath pairs."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID6, cachedRevision10001, liveRevision10001; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Two selected breaths among five",
+      "spellIds": [
+        23316,
+        23310,
+        23187,
+        23313,
+        23309,
+        23314,
+        23308
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual breath casts and impacts",
+      "state": "Only the observed pair is selected for this pull; other reset variants remain unverified",
+      "lifecycle": "Actual cast/auras/interrupts; no30second generated breaths",
+      "placement": "Actual LOS and anchors; no assigned safe room footprint",
+      "animation": "Breath hold, damage/DoT and delayed release separate",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Five Brood Afflictions",
+      "spellIds": [
+        23155,
+        23169,
+        23153,
+        23154,
+        23170
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual per-player applications, refreshes and removal",
+      "state": "Disease, poison, magic, curse and Bronze proc state distinct",
+      "lifecycle": "Actual dispel/item/removal; do not infer removal from any Hourglass action",
+      "placement": "Host on actual player, no generated range",
+      "animation": "Aura/stun age and owner retained across seeks",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Mutation and allegiance",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual transformed unit/model/control evidence",
+      "state": "Player identity versus hostile Drakonid14302 appearance distinct",
+      "lifecycle": "Never synthesize mutation from five debuff counts alone",
+      "placement": "Actual player path and target; no new fabricated NPC",
+      "animation": "Morph/model and aura removal need native evidence",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Frenzy and low-health enrage",
+      "spellIds": [
+        23128,
+        23537
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual self auras and removals",
+      "state": "Frenzy differs from low-health enrage",
+      "lifecycle": "Actual tranq/dispel/end; no timer- or HP-generated state",
+      "placement": "Boss host",
+      "animation": "Body procedure, host scale and attack cadence separate",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Vulnerability and lever activation",
+      "spellIds": [
+        22277,
+        22278,
+        22281
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual lever/encounter/unit aura evidence",
+      "state": "Encounterstart may precede actual combat; weakness changes need evidence",
+      "lifecycle": "No damage-derived school state or fixed20second rotation",
+      "placement": "Observed boss anchors; lever destination independent",
+      "animation": "No SoD Fetch467884/RollOver468199 visual/script",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline",
+        "cache",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-bwl-chromaggus/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Primary23174 is warning context, not a registered observed mutation cast; actual mutation needs unit/appearance evidence.",
+    "Primary vulnerability table is explicitly SoD-labelled; Classic vulnerability state is not inferred from damage numbers.",
+    "Guide FrostBurn80percent differs from spell-page attack-delay400percent. No tuning chosen from this disagreement.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5seconds before and5000ms after. Longer continuation outside this probe remains untested.",
+    "Actual Classic aura evidence establishes22277/22278/22281 despite seasonal-labelled addon comment. Remaining vulnerability IDs not observed; source variants and school tuning remain separate."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14020,
+      14302
+    ]
+  }
+}

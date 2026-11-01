@@ -1,0 +1,389 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-aq20-buru",
+  "ruleset": "sod",
+  "boss": "Buru the Gorger",
+  "raid": "Ruins of Ahn'Qiraj",
+  "mapId": 509,
+  "encounterId": 100721,
+  "rawEncounterId": 721,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "reportRevision": 1,
+      "reportResponseSha256": "3b89935107b9ac8dd06eb65d916d648ee80c0281851fe188b9657394a40a9e62",
+      "provenanceResponseSha256": "69688f28c0bbbcf7a9e314f6de10bd830d5438b2b33777fe37943c063096b87e",
+      "providerZoneId": 2012,
+      "discoveryPartitions": [
+        "Discovery P4",
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 509,
+      "selectedFightIds": [
+        51,
+        89
+      ],
+      "selectedFightNames": [
+        "Buru the Gorger"
+      ],
+      "matchedNpcTemplateIds": [
+        15370
+      ],
+      "archiveStatus": {
+        "isArchived": false,
+        "isAccessible": true
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-aq20-buru"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "A later qualified SoD recording was audited after the original source research. Raw events are omitted. Expected contracts remain unverified; acquisition, CPU checks, native execution and visual acceptance are separate evidence."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p6",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24148556",
+      "date": "2024-12-06",
+      "supports": "Official SoD Ruins10+ and optional DescentIntoMadness; all six bosses mandatory. General per-boss mechanics/locations, not exact spell IDs or native appearance.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/AQ20/Buru.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared AQ20 module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/buru-the-gorger-ruins-of-ahnqiraj-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "bigwigs",
+      "url": "https://raw.githubusercontent.com/BigWigsMods/BigWigs_Classic/2cc8e655144c096c6c0a070ecb0a1dd9157f81ef/AQ20/Buru.lua",
+      "quality": "Pinned primary emote target and Thorns25640 removal phase trigger"
+    },
+    {
+      "id": "sod-wiki",
+      "url": "https://warcraft.wiki.gg/wiki/Buru_the_Gorger_%28Season_of_Discovery%29",
+      "quality": "Indexed exact SoD pool and inherited MoamDespair; direct403"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "1RTF2zfK4k9xHCnj",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Pursuit and acceleration",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Both primary addons parse pursuit emote; no known Classic pursuit spell",
+      "state": "Pursuit and acceleration",
+      "lifecycle": "Actual target switches and speed reset on egg hit",
+      "placement": "Observed route, facing, water/terrain; no chasing interpolated player",
+      "animation": "Native run state; no62374 spell substitution",
+      "acceptanceCheck": "sod-aq20-buru/BURU-PURSUE",
+      "acceptanceCriteria": "BURU-PURSUE: target-emote and actual route seek",
+      "sourceRefs": [
+        "dbm",
+        "bigwigs",
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Egg destruction",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        26646
+      ],
+      "trigger": "Official eggs weaken boss; BuruEggTrigger candidate",
+      "state": "Egg destruction",
+      "lifecycle": "Actual egg health/death/explosion/stun and hatchling birth",
+      "placement": "Independent fixed eggs and actual boss proximity",
+      "animation": "Native egg model/break blast",
+      "acceptanceCheck": "sod-aq20-buru/BURU-EGG",
+      "acceptanceCriteria": "BURU-EGG: do not infer blast success from proximity alone",
+      "sourceRefs": [
+        "official-sod-p6",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Dismember",
+      "spellIds": [
+        96
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM10s bleed apply/dose/remove",
+      "state": "Dismember",
+      "lifecycle": "Actual caught-target bleed stacks/end",
+      "placement": "Exact victim, not necessarily tank",
+      "animation": "Native hit/bleed state",
+      "acceptanceCheck": "sod-aq20-buru/BURU-BLEED",
+      "acceptanceCriteria": "BURU-BLEED: exact target and cleanup",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "guideLinkedSpellIds": [
+          96
+        ],
+        "addonReferencedSpellIds": [
+          96
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [
+            32,
+            35,
+            36,
+            39,
+            44,
+            45,
+            46,
+            56,
+            77
+          ],
+          "BigWigs-source.lua": []
+        },
+        "addonSourceLines": [
+          32,
+          35,
+          36,
+          39,
+          44,
+          45,
+          46,
+          56,
+          77
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Carapace loss and phase2",
+      "spellIds": [
+        25640
+      ],
+      "clientCandidateSpellIds": [
+        24721
+      ],
+      "trigger": "BigWigs phase from Thorns removal; baseline20percent",
+      "state": "Carapace loss and phase2",
+      "lifecycle": "Real removal/transform and actual pursuit ending",
+      "placement": "Same boss body with actual movement",
+      "animation": "Native shell-break/persistent form; not impact puff",
+      "acceptanceCheck": "sod-aq20-buru/BURU-FORM",
+      "acceptanceCriteria": "BURU-FORM: phase and true death distinct",
+      "sourceRefs": [
+        "bigwigs",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "addonReferencedSpellIds": [
+          25640
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": [
+            35
+          ]
+        },
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Creeping Plague",
+      "spellIds": [
+        20512
+      ],
+      "clientCandidateSpellIds": [
+        27027
+      ],
+      "trigger": "Baseline phase2 raid DoT; cancel candidate",
+      "state": "Creeping Plague",
+      "lifecycle": "Actual ticks/stacks/remove and known death cleanup",
+      "placement": "Actual player targets",
+      "animation": "Native plague effects, no predicted damage",
+      "acceptanceCheck": "sod-aq20-buru/BURU-PLAGUE",
+      "acceptanceCriteria": "BURU-PLAGUE: death clears actual aura, not carryover curse",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "guideLinkedSpellIds": [
+          20512
+        ],
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "SoD pools and inherited Despair",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        1213257,
+        1215421,
+        1214956
+      ],
+      "trigger": "SoD wiki player-location pools plus prior Moam curse",
+      "state": "SoD pools and inherited Despair",
+      "lifecycle": "Actual independent pool spawn/expiry and inherited aura continuation",
+      "placement": "Fixed drop center; no victim-carried pool",
+      "animation": "Native pool and actual curse only",
+      "acceptanceCheck": "sod-aq20-buru/BURU-MADNESS",
+      "acceptanceCriteria": "BURU-MADNESS: retain independent placements and real crossboss state",
+      "sourceRefs": [
+        "sod-wiki",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Hatchlings and reset",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline egg hatchlings and phase2 adds",
+      "state": "Hatchlings and reset",
+      "lifecycle": "Actual births/CC/deaths; wipe reset distinct from final kill",
+      "placement": "Independent true instances and routes",
+      "animation": "Native hatchling actors",
+      "acceptanceCheck": "sod-aq20-buru/BURU-END",
+      "acceptanceCriteria": "BURU-END: no prebirth actors or blind retire-all",
+      "sourceRefs": [
+        "guide",
+        "sod-wiki"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references prove intended shared-module behavior, not SoD occurrence; warning-only references remain source roles, not casts. Client candidates are exact record names, not verified boss usage or aliases.",
+        "sourceLinesByFile": {
+          "DBM-source.lua": [],
+          "BigWigs-source.lua": []
+        },
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    26646,
+    24721,
+    27027,
+    1213257,
+    1215421,
+    1214956
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "Exact SoD egg NPC/gameobject, hatchling and transform events",
+    "Pursuit emote retention and actual speed/egg-hit reset",
+    "AQ20 ToxicPool and inherited curse IDs/cleanup",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "encounterIdentity": {
+      "rawAddonDeclaration": 721,
+      "rawEvidence": "Pinned shared DBM SetEncounterID and BigWigs where retained; SoD pull identity unverified",
+      "providerEncounterId": null,
+      "providerMapping": "unverified; no arithmetic offset applied",
+      "npcDeclaration": "15370",
+      "mapId": 509
+    },
+    "addonCreatureDeclaration": "15370",
+    "baselineGuideNpcIds": [
+      {
+        "npcId": 15514,
+        "name": "Buru Egg",
+        "source": "https://www.wowhead.com/classic/npc=15514/buru-egg"
+      },
+      {
+        "npcId": 15521,
+        "name": "Hive'Zara Hatchling",
+        "source": "https://www.wowhead.com/classic/npc=15521/hivezara-hatchling"
+      }
+    ]
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "acquired-not-inspected",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}

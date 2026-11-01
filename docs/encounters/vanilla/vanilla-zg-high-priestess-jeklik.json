@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-high-priestess-jeklik",
+  "ruleset": "vanilla",
+  "boss": "High Priestess Jeklik",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50785,
+  "rawEncounterId": 785,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-high-priestess-jeklik"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "addon",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Jeklik.lua",
+      "quality": "Pinned primary Classic addon; baseline branch/event registration checked before cache audit. No native or gameplay-pixel credit.",
+      "retrieved": "2026-11-01"
+    },
+    {
+      "id": "baseline",
+      "url": "https://www.wowhead.com/classic/guide/high-priestess-jeklik-zul-gurub-strategy",
+      "quality": "Authored Classic baseline guide; version/patch scope retained, no SoD/Wrath transfer. Mechanic spell IDs from explicit primary registrations or resolved guide links.",
+      "retrieved": "2026-11-01",
+      "date": "2025-04-23",
+      "author": "Neryssa",
+      "patch": "Page patch1.15.8; historical server/client build not established"
+    },
+    {
+      "id": "guide-links",
+      "url": "https://www.wowhead.com/classic/spell=23953/mind-flay",
+      "urls": [
+        "https://www.wowhead.com/classic/spell=25807/great-heal",
+        "https://www.wowhead.com/classic/spell=28306/great-heal",
+        "https://www.wowhead.com/classic/spell=26044/mind-flay"
+      ],
+      "quality": "Guide internally links two Heal and two MindFlay IDs. Primary Heal23954 retained; other guide variants are candidates, no aliases.23953 page authored10s channel is not an observed end."
+    },
+    {
+      "id": "cache",
+      "quality": "Indexed retained non-Discovery Classic metadata: realmSeasonID2, cachedRevisionNone, liveRevision1; coverage unknown",
+      "kind": "retained-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "client",
+      "quality": "Fresh current converter graph; client1.15.9.70576/build5604ce35a8644bdcf0e26c1daf979c15. Record availability is not native execution.",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "consumers",
+      "quality": "Current production source; CPU and authored routes distinct from native execution",
+      "kind": "research-evidence",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Bat to Troll phase",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual morph/unit evidence; researched50percent threshold",
+      "state": "One boss identity with separate bat and Troll appearance/combat roles",
+      "lifecycle": "No HP-only morph or timer-driven phase",
+      "placement": "Actual hill/platform anchors with unknown Z",
+      "animation": "Bat flight, Troll model and takeoff/landing require native evidence",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M01-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Sonic Burst, charge and bat swarm",
+      "spellIds": [
+        23918
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual silence/charge and add activity",
+      "state": "Actual victim and independent bat instances",
+      "lifecycle": "No assigned bait target,6–8 generated bats or minute timer",
+      "placement": "Measured charge endpoints; reject sparse inferred travel",
+      "animation": "Boss dash, silence and bat emergence separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M02-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Great Heal and Mind Flay",
+      "spellIds": [
+        23954,
+        23953
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual begin/cast/channel/interrupt/removal",
+      "state": "Heal result and channel victims differ",
+      "lifecycle": "Recorded interrupt/death/aura removal caps; no full10s hold from client",
+      "placement": "Actual channel target; no chain geometry inferred",
+      "animation": "Precast/heal versus channel beam/pulses separate",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M03-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Troll fear and Pain",
+      "spellIds": [
+        22884,
+        23952
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual cast/auras and removal",
+      "state": "Fear recipients and magic DoT owners distinct",
+      "lifecycle": "Actual removal/expiry; no fixed4/18second timers",
+      "placement": "Actual victim anchors",
+      "animation": "Fear locomotion versus persistent aura",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M04-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Bat bomber fire patches",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Actual bomber/launch/impact/area evidence",
+      "state": "Flying bomber, bomb projectile and ground fire distinct",
+      "lifecycle": "No guessed2second impact or fire lifetime",
+      "placement": "Destination and flight Z unknown without actual anchors",
+      "animation": "Ground area route and airborne host/trajectory separately checked",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M05-before-active-terminal-rewind",
+      "acceptanceCriteria": "Seek before, during and after this recorded state in forward, reverse and repeated/random order. Preserve instance/source/target ownership and actual cleanup. Absent observation remains unverified.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "M-END",
+      "mechanic": "Death, reset and seek continuity",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Recorded death/destroy/resurrect, interruption or new encounter start",
+      "state": "Boss, surviving adds, hazards and pending results retain independent ownership",
+      "lifecycle": "Encounterend alone is not an interrupt or child despawn",
+      "placement": "Do not infer height, teleport endpoints or hazard destinations from damage targets",
+      "animation": "Corpse/reset/active effects retain actual age; no SoD Empowerment/Seal or Wrath scripts",
+      "acceptanceCheck": "vanilla-zg-high-priestess-jeklik/M-END-fullrun-context-rewind",
+      "acceptanceCriteria": "Compare standalone and bounded full-run context at recorded boundaries and repeated/random seek times; distinguish unknown coverage from absence.",
+      "sourceRefs": [
+        "addon",
+        "baseline"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Cached coverage unknown. Live and cached revision identities are retained without filling absent cache metadata.",
+    "Current client graph build is not proof of the historical server build.",
+    "No SoD Empowerment, Seal of Dawn, seasonal mechanics, Wrath control orbs or Wrath Horseman replacement imported.",
+    "No rendered/native visual acceptance; ground geometry, height, facing and animation need independent gameplay/client validation.",
+    "Cached revision absent; live revision1 stays separate and does not certify cache completeness.",
+    "Guide spell links conflict internally and with primary Heal23954; exact observed variants take precedence.",
+    "Bat/Troll models, bomb flight height and fire patch ownership are not recoverable from HP percentage alone.",
+    "Short kills do not exercise every researched phase; absent spells do not prove baseline mechanics absent.",
+    "Stable random/reverse seeks prove repeatability only. Unknown actor paths, host animations, hazard footprints and vertical movement retain no fidelity credit.",
+    "Bounded full-run context includes selected pull(s),5seconds before and5000ms after. Longer continuation outside this probe remains untested."
+  ],
+  "researchContext": {
+    "npcIds": [
+      14517
+    ]
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "unitId": "vanilla-zg-bloodlord-mandokir",
+  "ruleset": "vanilla",
+  "boss": "Bloodlord Mandokir",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 50787,
+  "rawEncounterId": 787,
+  "providerMapping": {
+    "status": "mapped-from-retained-report",
+    "basis": "Direct qualified baseline report identity; raw and provider identities kept separate."
+  },
+  "bossUnits": [
+    "vanilla-zg-bloodlord-mandokir"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": true,
+    "scope": "Retained baseline events were audited; cached event completeness is unknown. Public metadata qualifies the baseline ruleset; exact realm subtype is not inferred. No native/visual acceptance transfers."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Bloodlord.lua",
+      "quality": "pinned primary addon; Vanilla branch only, prediction timers not server events",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa"
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/bloodlord-mandokir-zul-gurub-strategy",
+      "quality": "authored baseline Classic strategy; not source of observed coverage or native pixels"
+    },
+    {
+      "id": "client",
+      "quality": "current production converter graph, not historical Vanilla client/pixel proof",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "C01",
+      "mechanic": "Speaker, mounted approach and Ohgan",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline speaker death engages rider and Ohgan",
+      "state": "Speaker, mounted approach and Ohgan",
+      "lifecycle": "Independent actual actors, dismount and deaths",
+      "placement": "Stairs/arena paths need XY/Z",
+      "animation": "Native rider/raptor bodies and actual movement",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-PULL",
+      "acceptanceCriteria": "MANDOKIR-PULL: no identity merge or premature activation",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "No associated spell identity established; do not invent one."
+      }
+    },
+    {
+      "id": "C02",
+      "mechanic": "Threatening Gaze",
+      "spellIds": [
+        24314
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon yell target precedes logged aura",
+      "state": "Threatening Gaze",
+      "lifecycle": "Preserve warning onset separate from actual6s aura interval",
+      "placement": "Exact watched player, optional observed raid marker",
+      "animation": "Native target6376; no invented marker",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-GAZE",
+      "acceptanceCriteria": "MANDOKIR-GAZE: warning and aura timing distinct",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C03",
+      "mechanic": "Punishment and charge",
+      "spellIds": [
+        24315
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline actions during watch provoke charge; client candidate",
+      "state": "Punishment and charge",
+      "lifecycle": "Actual launch/path/result; never simulate player disobedience",
+      "placement": "Observed route/target/facing",
+      "animation": "Native charge motion",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-CHARGE",
+      "acceptanceCriteria": "MANDOKIR-CHARGE: only evidence-selected target",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C04",
+      "mechanic": "Ohgan death enrage",
+      "spellIds": [
+        24318
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon enrage aura, guide Ohgan death relation",
+      "state": "Ohgan death enrage",
+      "lifecycle": "Actual end; baseline60s versus client90s conflict",
+      "placement": "Boss body aura distinct from Ohgan corpse",
+      "animation": "Native enrage668",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-ENRAGE",
+      "acceptanceCriteria": "MANDOKIR-ENRAGE: true removal overrides candidate duration",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C05",
+      "mechanic": "Spirits, resurrection and level up",
+      "spellIds": [
+        24312
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline chained spirits resurrect and deaths empower boss; client candidate",
+      "state": "Spirits, resurrection and level up",
+      "lifecycle": "Actual deaths/resurrection/level applications",
+      "placement": "Independent spirits and actor alive-state",
+      "animation": "Native levelup and real scale changes",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-LEVEL",
+      "acceptanceCriteria": "MANDOKIR-LEVEL: no death-count simulated growth",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    },
+    {
+      "id": "C06",
+      "mechanic": "Mortal, melee controls and reset",
+      "spellIds": [
+        16856
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "Primary addon MortalStrike, baseline fear/whirlwind",
+      "state": "Mortal, melee controls and reset",
+      "lifecycle": "Actual control/casts and final death/wipe cleanup",
+      "placement": "Real targets and facing",
+      "animation": "Native strikes and actual sequences",
+      "acceptanceCheck": "vanilla-zg-bloodlord-mandokir/MANDOKIR-END",
+      "acceptanceCriteria": "MANDOKIR-END: no stale gaze or enrage on reused pull",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "mappingStatus": "Research-associated identities; occurrence and native behavior remain independently unverified."
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [],
+  "candidateLimit": "Client candidates are separate from observed usage and do not authorize aliases, schedules or coordinates.",
+  "unresolved": [
+    "Retained cache completeness unknown unless a coverage receipt is established.",
+    "No source-only schedule, ID alias, height, actor birth or world destination is generated.",
+    "No Era/SoM/Hardcore subtype is guessed from realmSeasonID2.",
+    "Current source consumers and cached CPU outcomes are separate from a certified complete report and historical visual fidelity."
+  ],
+  "researchContext": {
+    "npcIds": [
+      11382,
+      14988
+    ]
+  }
+}

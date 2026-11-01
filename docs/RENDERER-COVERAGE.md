@@ -3,6 +3,8 @@
 Use this workflow to find shared rendering defects across a selected client. It
 checks the same adapters, Rust readers and shader code that the browser uses.
 Log reconstruction and official-client visual parity are separate tasks.
+Use the [encounter fidelity workflow](ENCOUNTER-FIDELITY.md) to join a recorded
+boss pull to this inventory and check its replay state.
 The [retained-client checkpoint](RENDERER-STATUS.md) records the current measured
 denominators and remaining implementation gaps.
 

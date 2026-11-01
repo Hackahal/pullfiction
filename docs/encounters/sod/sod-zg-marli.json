@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 1,
+  "unitId": "sod-zg-marli",
+  "ruleset": "sod",
+  "boss": "High Priestess Mar'li",
+  "raid": "Zul'Gurub",
+  "mapId": 309,
+  "encounterId": 100786,
+  "rawEncounterId": 786,
+  "providerMapping": {
+    "status": "mapped-from-report-metadata",
+    "basis": "Exact selected map, fight name and NPC template identity, with Discovery partitions and matching report revision. No numeric offset.",
+    "metadataReceipt": {
+      "kind": "immutable-metadata-identity-receipt",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "reportRevision": 1,
+      "reportResponseSha256": "2200f0f1f8688bf21158dd629f66653bb35a9b4c591d651ef740680631d2cb39",
+      "provenanceResponseSha256": "0e9f58d0a8e576c227602da0f7eee5b3bfb22b8d834a5c856049527073e03df1",
+      "providerZoneId": 2014,
+      "discoveryPartitions": [
+        "Discovery P5",
+        "Discovery P6",
+        "Discovery P7",
+        "Discovery P8"
+      ],
+      "selectedMapId": 309,
+      "selectedFightIds": [
+        22
+      ],
+      "selectedFightNames": [
+        "High Priestess Mar'li"
+      ],
+      "matchedNpcTemplateIds": [
+        14510
+      ],
+      "archiveStatus": {
+        "isArchived": true,
+        "isAccessible": false
+      },
+      "proofBoundary": "Provider identity only. No mechanic event, runtime, native output or visual acceptance is established."
+    },
+    "sourceRef": "provider-identity-metadata"
+  },
+  "bossUnits": [
+    "sod-zg-marli"
+  ],
+  "researchEvidence": {
+    "retainedCombatEventsAvailable": false,
+    "scope": "No confirmed retained SoD pull was available. Older caches without an explicit ruleset were excluded. Subsequent immutable metadata establishes provider identity only; mechanics were not reaudited."
+  },
+  "verification": "unverified",
+  "sources": [
+    {
+      "id": "official-sod-p5",
+      "url": "https://worldofwarcraft.blizzard.com/en-gb/news/24139952",
+      "date": "2024-09-26",
+      "supports": "SoD ZG tuned10/max20; new Hakkar mechanics with priests alive; defeated priests grant loa buffs. Does not verify every baseline boss mechanic.",
+      "quality": "Quality was not supplied in the upstream research; corroboration is required."
+    },
+    {
+      "id": "dbm",
+      "url": "https://raw.githubusercontent.com/DeadlyBossMods/DBM-Vanilla/973df0cc511f0ef67bc6bb5576e3d55743e31ffa/DBM-Raids-Vanilla/VanillaZG/Marli.lua",
+      "revision": "973df0cc511f0ef67bc6bb5576e3d55743e31ffa",
+      "quality": "primary addon shared VanillaZG module, not a captured SoD pull. Event IDs prove addon intent; timers are predictions, not server replay facts."
+    },
+    {
+      "id": "guide",
+      "url": "https://www.wowhead.com/classic/guide/high-priestess-marli-zul-gurub-strategy",
+      "quality": "authored Classic baseline guide; transfer to SoD remains partial unless primary addon or explicit SoD source corroborates"
+    },
+    {
+      "id": "client",
+      "quality": "fresh production converter graph; existence is not encounter use or native execution",
+      "kind": "client-reference",
+      "availability": "Referenced by the research. Local evidence and assets are omitted from this library."
+    },
+    {
+      "id": "original-full-clear",
+      "url": "https://www.youtube.com/watch?v=vZF484skTLI&t=3220s",
+      "date": "2024-09-29",
+      "author": "SimonizeShow TV",
+      "chapter": "53:40",
+      "quality": "Original SoD full-clear chapter metadata inspected; video frames uninspected; no movement/timing/pixel acceptance"
+    },
+    {
+      "id": "sod-overview",
+      "url": "https://www.warcrafttavern.com/wow-classic-sod/guides/zulgurub/",
+      "quality": "Exact SoD authored overview indexed content; direct fetch403; supports postdeath loa spirit and exclusive selectable blessing"
+    },
+    {
+      "id": "provider-identity-metadata",
+      "url": "https://sod.warcraftlogs.com/api/v2/client",
+      "quality": "Immutable provider report metadata and Discovery provenance. Identity only; no mechanic or visual acceptance.",
+      "reportCode": "pm8aZFJGxCjqDh9k",
+      "revision": 1
+    }
+  ],
+  "expectedMechanics": [
+    {
+      "id": "M01",
+      "mechanic": "Alternating troll and spider",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        24084,
+        24110
+      ],
+      "trigger": "Baseline transforms repeatedly, webs nearby targets",
+      "state": "Alternating troll and spider",
+      "lifecycle": "Actual form interval, threat switch and root/silence removals",
+      "placement": "Actual boss movement to new tank; no generated charge",
+      "animation": "Native spider/troll form and web",
+      "acceptanceCheck": "sod-zg-marli/MARLI-FORM",
+      "acceptanceCriteria": "MARLI-FORM: repeated/reverse form and root seek",
+      "sourceRefs": [
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M02",
+      "mechanic": "Spider eggs and spawns",
+      "spellIds": [
+        24083
+      ],
+      "clientCandidateSpellIds": [
+        24081,
+        24082
+      ],
+      "trigger": "DBM24083 success and baseline spider spawning",
+      "state": "Spider eggs and spawns",
+      "lifecycle": "Actual egg/hatch/birth/death; no periodic fabricated spawn",
+      "placement": "Independent eggs and spider instances",
+      "animation": "Native eggs/spiders; impact is not birth",
+      "acceptanceCheck": "sod-zg-marli/MARLI-SPAWN",
+      "acceptanceCriteria": "MARLI-SPAWN: each birth and instance ends correctly",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24083
+        ],
+        "addonSourceLines": [
+          33,
+          37,
+          74
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M03",
+      "mechanic": "Enlarge",
+      "spellIds": [
+        24109
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM Enlarge target aura",
+      "state": "Enlarge",
+      "lifecycle": "Actual application/dispel/death; growth amount unknown",
+      "placement": "Body scale on actual target",
+      "animation": "Native scale transformation if evidenced",
+      "acceptanceCheck": "sod-zg-marli/MARLI-GROW",
+      "acceptanceCriteria": "MARLI-GROW: scale and aura removed on reset",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24109
+        ],
+        "addonSourceLines": [
+          31,
+          41,
+          43,
+          55
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M04",
+      "mechanic": "Drain Life",
+      "spellIds": [
+        24300
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM player drain aura and baseline channel",
+      "state": "Drain Life",
+      "lifecycle": "Real ticks/channel interrupt/removal",
+      "placement": "Correct caster-target tether",
+      "animation": "Native channel6581 and aura6580",
+      "acceptanceCheck": "sod-zg-marli/MARLI-DRAIN",
+      "acceptanceCriteria": "MARLI-DRAIN: interruption clears tether and aura",
+      "sourceRefs": [
+        "dbm",
+        "guide",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24300
+        ],
+        "addonSourceLines": [
+          31,
+          32,
+          39,
+          45,
+          52,
+          68
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M05",
+      "mechanic": "Poison",
+      "spellIds": [
+        24099,
+        24111
+      ],
+      "clientCandidateSpellIds": [],
+      "trigger": "DBM volley success and corrosive aura",
+      "state": "Poison",
+      "lifecycle": "Actual targets/ticks/poison cleanse",
+      "placement": "Target instances independent of volley source",
+      "animation": "Native poison and effects",
+      "acceptanceCheck": "sod-zg-marli/MARLI-POISON",
+      "acceptanceCriteria": "MARLI-POISON: no inferred raid-wide hits",
+      "sourceRefs": [
+        "dbm",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "addonReferencedSpellIds": [
+          24099,
+          24111
+        ],
+        "addonSourceLines": [
+          31,
+          32,
+          33,
+          38,
+          40,
+          46,
+          49,
+          66,
+          76
+        ],
+        "mappingStatus": "research-associated identity; occurrence, variant applicability and runtime remain unverified"
+      }
+    },
+    {
+      "id": "M06",
+      "mechanic": "Speaker and end",
+      "spellIds": [],
+      "clientCandidateSpellIds": [],
+      "trigger": "Baseline WitherbarkSpeaker and optional player control",
+      "state": "Speaker and end",
+      "lifecycle": "Independent actual control/death and boss reset",
+      "placement": "Actual speaker route, no scripted player choice",
+      "animation": "Native speaker/control/death",
+      "acceptanceCheck": "sod-zg-marli/MARLI-END",
+      "acceptanceCriteria": "MARLI-END: no controlled corpse or post-wipe form",
+      "sourceRefs": [
+        "guide"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "IDs must be traced to source lines/client record; any baseline-only or client candidate is explicitly qualified. Zero retained SoD occurrences.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    },
+    {
+      "id": "M07",
+      "mechanic": "Postdeath loa and blessing",
+      "spellIds": [],
+      "clientCandidateSpellIds": [
+        467259,
+        467269
+      ],
+      "trigger": "SoD defeated priest produces selectable loa spirit; actual player blessing application",
+      "state": "Shadra blessing",
+      "lifecycle": "One selected priest blessing at a time; observed apply/replace/remove and actual spirit spawn/despawn, not generated on boss death",
+      "placement": "Spirit at actual anchor; player aura/proc uses actual owner and targets",
+      "animation": "Native loa/spell assets only when identities established; Attacks/spells can summon friendly spawns",
+      "acceptanceCheck": "sod-zg-marli/MARLI-LOA",
+      "acceptanceCriteria": "MARLI-LOA: postboss spirit, exclusive blessing and actual proc/cleanup survive seeks",
+      "sourceRefs": [
+        "official-sod-p5",
+        "sod-overview",
+        "client"
+      ],
+      "verification": "unverified",
+      "spellIdEvidence": {
+        "spellIdEvidence": "Exact-name client candidates for identified SoD blessing; no guide-linked IDs, addon event or retained occurrence credit.",
+        "identityBoundary": "Addon references include warning-only/comment/phase-unit logic as source lines show, not blanket observed event registration. Client candidates are not aliases. All SoD usage remains unobserved.",
+        "mappingStatus": "no associated spell ID established; use the state contract without inventing one"
+      }
+    }
+  ],
+  "clientCandidateSpellIds": [
+    24084,
+    24110,
+    24081,
+    24082,
+    467259,
+    467269
+  ],
+  "candidateLimit": "Client candidates are record/name matches or unassigned inventory IDs. They are not aliases or confirmed boss usage.",
+  "unresolved": [
+    "SoD applicability of baseline transform cadence and exact web/transform use",
+    "Native spider growth magnitude and reset semantics",
+    "Speaker/egg/spawn NPC identities",
+    "Exact SoD variant and pull date; baseline mechanics not blanket verified",
+    "Real actor IDs/instances, XY/Z/facing and all lifecycle edges",
+    "Native asset/procedure pixels and original gameplay parity"
+  ],
+  "researchContext": {
+    "gameVersion": "sod",
+    "rawEncounterIdEvidence": "Pinned shared VanillaZG addon declaration; not a retained SoD encounter identity. EdgeOfMadness module ID applies only to its declared boss until separately verified.",
+    "addonCreatureDeclaration": "14510"
+  },
+  "sourceContextUpdate": {
+    "scope": "Identity-only update after the original mechanics research. Original researchContext and unresolved notes retain their historical scope.",
+    "eventAvailability": "archived-inaccessible",
+    "mechanicsReaudited": false,
+    "verification": "unverified"
+  }
+}
