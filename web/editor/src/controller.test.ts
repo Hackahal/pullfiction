@@ -4796,3 +4796,78 @@ test("speculative asset warming cannot block native playback preparation", () =>
   f.c.receive("playbackPrepared", JSON.stringify({ token: requests.at(-1) }));
   assert.equal(f.c.getSnapshot().playing, true);
 });
+
+test("playback target changes invalidate pending native acknowledgements", () => {
+  for (const change of ["plan", "reset", "raid", "pending-switch"] as const) {
+    const f = fixture();
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.c.toggle();
+    const token = requests.at(-1)!;
+    assert.equal(f.c.getSnapshot().playPreparing, true);
+    if (change === "plan") f.c.setWorkspaceMode("plan");
+    else if (change === "reset") (f.c as any).resetProject(null);
+    else {
+      if (change === "pending-switch") {
+        (f.c as any).projectStore = {};
+        (f.c as any).activeProject = { id: "pending" };
+        (f.c as any).flushProject = () => new Promise<void>(() => {});
+      }
+      f.c.selectRaid(469, true);
+    }
+    assert.equal(f.c.getSnapshot().playPreparing, false, change);
+    assert.equal(requests.at(-1), 0, change);
+    f.c.receive("playbackPrepared", JSON.stringify({ token }));
+    assert.equal(f.c.getSnapshot().playing, false, change);
+    f.c.stop();
+  }
+});
+
+test("native preparation still completes when started with a replay in plan mode", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.setWorkspaceMode("plan");
+  f.c.toggle();
+  const token = requests.at(-1)!;
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  f.c.receive("playbackPrepared", JSON.stringify({ token }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  f.c.stop();
+});
+
+test("rejected selected trajectories terminate preparation and invalidate late readiness", () => {
+  for (const timing of ["before", "during", "sync"] as const) {
+    const { f, actor, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    if (timing === "sync") {
+      f.engine.submit_replay_trajectory = () => {
+        throw Error("Invalid canonical sample");
+      };
+      f.c.toggle();
+    } else {
+      f.c.seek(500);
+      const identity = { ...player().trajectory!, actor: actor.key };
+      if (timing === "during") f.c.toggle();
+      f.c.receive(
+        "trajectoryError",
+        JSON.stringify({ ...identity, message: "Invalid canonical sample" }),
+      );
+      if (timing === "before") f.c.toggle();
+    }
+    const token = requests.find((v) => v > 0);
+    assert.equal(f.c.getSnapshot().playPreparing, false, timing);
+    assert.equal(f.c.getSnapshot().playing, false, timing);
+    assert.equal(requests.at(-1), 0, timing);
+    assert.match(f.c.getSnapshot().notice, /Movement could not be prepared/);
+    if (token !== undefined) {
+      f.c.receive("playbackPrepared", JSON.stringify({ token }));
+      assert.equal(f.c.getSnapshot().playing, false, timing);
+    }
+    f.c.stop();
+  }
+});

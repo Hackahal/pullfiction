@@ -127,7 +127,7 @@ export function App({ controller }: { controller: EditorController }) {
     state.projectId,
   ]);
   function openLibrary(tab: "projects" | "logs") {
-    if (state.playing) controller.toggle();
+    if (state.playing || state.playPreparing) controller.toggle();
     if (state.projectId || state.dirty) void controller.saveProject();
     setLibrary(tab);
   }

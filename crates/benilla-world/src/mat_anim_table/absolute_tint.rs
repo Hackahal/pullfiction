@@ -6,6 +6,10 @@ use bevy::asset::AssetId;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
+// Particle colours can use the exact uniform fallback. UV animation and UI clipping cannot,
+// so do not let a large particle pool consume their entire shared allocation space.
+const MAX_PARTICLE_TINT_SLOTS: usize = super::MAX_MAT_ANIM_SLOTS / 2;
+
 /// Owns animation rows for changing model-particle colours. The material is touched only when
 /// selecting its row, or when the bounded table is full and the original uniform path is needed.
 #[derive(Resource, Default)]
@@ -48,6 +52,9 @@ fn set_sample<A: Asset>(
     };
     let (old_tint, selector) = fields(material);
     let slot = slots.get(&id).copied().or_else(|| {
+        if slots.len() >= MAX_PARTICLE_TINT_SLOTS {
+            return None;
+        }
         let slot = table.alloc()?;
         slots.insert(id, slot);
         Some(slot)
@@ -168,6 +175,46 @@ mod tests {
         let before = slots.len();
         sample(&mut app, &mut slots, &mut table, a.id(), first);
         assert_eq!(slots.len(), before, "a missing material allocates nothing");
+    }
+
+    #[test]
+    fn particle_tints_leave_half_the_table_available_for_other_lanes() {
+        let mut materials = Assets::<TintFixture>::default();
+        let mut table = MatAnimTable::default();
+        let mut slots = HashMap::default();
+        let handles: Vec<_> = (0..super::super::MAX_MAT_ANIM_SLOTS)
+            .map(|_| {
+                materials.add(TintFixture {
+                    tint: Vec4::ONE,
+                    selector: 0.0,
+                })
+            })
+            .collect();
+        let tint = Vec4::new(0.12345679, 0.2, 0.3, 1.0);
+        for handle in &handles {
+            set_sample(
+                &mut slots,
+                &mut table,
+                &mut materials,
+                handle.id(),
+                tint,
+                |m| (m.tint, m.selector),
+                |m, slot, tint| match slot {
+                    Some(slot) => m.selector = -f32::from(slot),
+                    None => m.tint = tint,
+                },
+            );
+        }
+        assert_eq!(slots.len(), super::super::MAX_MAT_ANIM_SLOTS / 2);
+        let fallback = materials.get(handles.last().unwrap()).unwrap();
+        assert_eq!(fallback.selector, 0.0);
+        assert_eq!(fallback.tint, tint);
+        let reserved: Vec<_> = std::iter::from_fn(|| table.alloc()).collect();
+        assert_eq!(
+            reserved.len(),
+            super::super::MAX_MAT_ANIM_SLOTS - 1 - slots.len()
+        );
+        assert!(reserved.len() >= slots.len() - 1);
     }
 
     #[test]

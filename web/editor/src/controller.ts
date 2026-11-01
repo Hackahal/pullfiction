@@ -390,7 +390,52 @@ export class EditorController {
     }
     return index;
   }
-  private publishReplayFrame(frame: readonly { key: string }[]) {
+  private publishReplayFrame(
+    frame: readonly {
+      key: string;
+      trajectory?: NativeTrajectoryReference;
+      trajectory_bridge?: {
+        from: NativeTrajectoryReference;
+        to: NativeTrajectoryReference;
+      };
+    }[],
+  ) {
+    if (this.state.playPreparing) {
+      for (const unit of frame) {
+        // Background preparation is optional; only references needed by the selected pose
+        // can make the current Play request fail.
+        const required = [
+          unit.trajectory,
+          unit.trajectory_bridge?.from,
+          unit.trajectory_bridge?.to,
+        ];
+        const failed = required.find(
+          (ref) =>
+            ref &&
+            this.trajectoryRejected.has(
+              this.trajectoryPacketKey(
+                ref.source,
+                unit.key,
+                ref.component,
+                ref.content,
+              ),
+            ),
+        );
+        if (failed) {
+          const reason = this.trajectoryRejected.get(
+            this.trajectoryPacketKey(
+              failed.source,
+              unit.key,
+              failed.component,
+              failed.content,
+            ),
+          );
+          this.cancelPlayPreparation();
+          this.notify(`Movement could not be prepared: ${reason}`);
+          break;
+        }
+      }
+    }
     const engine = this.engine!;
     if (this.frameTransportEngine !== engine) {
       this.frameTransport.reset();
@@ -450,7 +495,7 @@ export class EditorController {
   private trajectorySource = "";
   private trajectoryEngine: Engine | null = null;
   private trajectorySent = new Set<string>();
-  private trajectoryRejected = new Set<string>();
+  private trajectoryRejected = new Map<string, string>();
   private trajectoryDemands = new Set<string>();
   private trajectoryRetries = new Map<
     string,
@@ -1216,6 +1261,7 @@ export class EditorController {
     project: LocalProject | null,
     source: ProjectSource | null = null,
   ) {
+    this.cancelPlayPreparation();
     this.replayBuffer?.close();
     this.replayBuffer = null;
     this.bufferRequest++;
@@ -1907,7 +1953,11 @@ export class EditorController {
   setWorkspaceMode(workspaceMode: "plan" | "analyse") {
     if (workspaceMode === "plan") this.projectKind = "plan";
     this.cancelDrawing();
-    if (workspaceMode === "plan" && this.state.playing) this.toggle();
+    if (
+      workspaceMode === "plan" &&
+      (this.state.playing || this.state.playPreparing)
+    )
+      this.toggle();
     this.patch({
       workspaceMode,
       planning: workspaceMode === "plan",
@@ -3836,6 +3886,7 @@ export class EditorController {
     if (!raid) throw new Error("Unsupported raid map for this game version");
     if (this.state.plan.mapId === map && this.state.gameVersion === version)
       return;
+    if (clearReplay) this.cancelPlayPreparation();
     if (
       this.projectStore &&
       !this.restoringProject &&
@@ -4117,6 +4168,12 @@ export class EditorController {
       this.encounterWarmer.cancel();
       this.patch({ playPreparing: true });
       this.render();
+      if (
+        !this.state.playPreparing ||
+        token !== this.playPreparationToken ||
+        this.engine !== engine
+      )
+        return;
       // Native readiness includes required scene collision. Optional model/spell
       // prefetch must never delay its acknowledgement or compete with demand reads.
       engine.prepare_replay_playback(token);
@@ -5569,10 +5626,11 @@ export class EditorController {
         } else if (!this.trajectoryRejected.has(key)) {
           this.trajectoryRetries.delete(key);
           this.armTrajectoryRetry();
-          this.trajectoryRejected.add(key);
+          this.trajectoryRejected.set(key, String(row.message).slice(0, 240));
           this.notify(
             `Movement could not be prepared: ${String(row.message).slice(0, 240)}`,
           );
+          if (this.state.playPreparing) this.sendPositions();
         }
       } catch {
         /* Optional diagnostics cannot interrupt playback. */
@@ -6671,7 +6729,7 @@ export class EditorController {
               this.retryTrajectoryCapacity(key);
             } else {
               this.trajectoryRetries.delete(key);
-              this.trajectoryRejected.add(key);
+              this.trajectoryRejected.set(key, text);
               this.notify(`Movement could not be prepared: ${text}`);
             }
           }

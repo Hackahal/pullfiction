@@ -198,6 +198,172 @@ mod tests {
     struct TintFixture(Vec4);
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn model_particle_caller_writes_exact_tint_rows_and_selects_them() {
+        use benilla_assets::{materials::WowModelExt, ModelEmitter};
+        use bevy::ecs::system::RunSystemOnce;
+        use bevy::render::renderer::RenderDevice;
+        let (gpu, _) = wgpu::Device::noop(&default());
+        let device = RenderDevice::from(gpu);
+        let light = crate::lighting::new_shared_light_buffer(&device);
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<M2Model>()
+            .init_asset::<Mesh>()
+            .init_asset::<WowModelMaterial>()
+            .init_resource::<crate::model_forms::ModelForms>()
+            .init_resource::<crate::mat_anim_table::MatAnimTable>()
+            .init_resource::<crate::mat_anim_table::AbsoluteTintMaterials>();
+        let model = app
+            .world_mut()
+            .resource_mut::<Assets<M2Model>>()
+            .add(M2Model {
+                submeshes: vec![],
+                bounds: None,
+                collision: None,
+                emitters: vec![],
+                ribbons: vec![],
+                lights: vec![],
+                skeleton: default(),
+                inverse_bindposes: default(),
+                animations: None,
+                first_seq_span: None,
+                sequences: vec![],
+                attachments: vec![],
+                markers: vec![],
+                portrait_camera: None,
+                cameras: vec![],
+                string_anchors: None,
+                cch_marker: None,
+                global_flags: 0,
+            });
+        let material = app
+            .world_mut()
+            .resource_mut::<Assets<WowModelMaterial>>()
+            .add(WowModelMaterial {
+                base: default(),
+                extension: WowModelExt {
+                    clutter_fade: Vec4::ZERO,
+                    model_flags: Vec4::ZERO,
+                    sun_scale: Vec4::ZERO,
+                    tint: Vec4::ONE,
+                    sidn: Vec4::ZERO,
+                    anim_slots: Vec4::ZERO,
+                    stage1: Vec4::ZERO,
+                    stage1_uv: Vec4::ZERO,
+                    texture_weights: Vec4::ZERO,
+                    stage1_texture: None,
+                    third_texture: None,
+                    light_buf: light.0.clone(),
+                },
+            });
+        app.insert_resource(light);
+        let draw = app
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                GlobalTransform::IDENTITY,
+                Visibility::Hidden,
+                MeshTag(0),
+                ChildDraw,
+            ))
+            .id();
+        let rgb = [0.12345679, 0.2, 0.3, 0.25];
+        let mut def = crate::testing::plain_particle_def();
+        def.over_life.color = [rgb; 3];
+        let emitter = ModelEmitter {
+            def,
+            texture: None,
+            extra_textures: None,
+            bone_pivot: [0.; 3],
+            billboard: None,
+            recursion: None,
+            geometry: Some(model),
+            owner_reach: 0.,
+            water_bound: (Vec3::ZERO, 0.),
+            idle_seq: 0,
+        };
+        let root = app
+            .world_mut()
+            .run_system_once(move |mut commands: Commands| {
+                super::super::spawn_emitter(
+                    &mut commands,
+                    &emitter,
+                    Transform::IDENTITY,
+                    default(),
+                    super::super::EmitClock::Pinned,
+                )
+            })
+            .unwrap()
+            .unwrap();
+        {
+            let mut emitter = app.world_mut().get_mut::<ParticleEmitter>(root).unwrap();
+            emitter.particles.push(super::super::Particle {
+                pos: Vec3::ZERO,
+                vel: Vec3::ZERO,
+                age: 0.5,
+                life: 1.,
+                phase: 0,
+                fresh: false,
+                quat: Quat::IDENTITY,
+                angvel: Vec3::ZERO,
+            });
+            emitter.model_instances.push(ModelInstance {
+                meshes: vec![(draw, material.clone())],
+            });
+        }
+        app.world_mut()
+            .run_system_once(update_model_particles)
+            .unwrap();
+        let selector = app
+            .world()
+            .resource::<Assets<WowModelMaterial>>()
+            .get(&material)
+            .unwrap()
+            .extension
+            .anim_slots
+            .y;
+        assert!(selector < 0.0);
+        let slot = (-selector) as u16;
+        assert_eq!(
+            app.world()
+                .resource::<crate::mat_anim_table::MatAnimTable>()
+                .row(slot),
+            [rgb[0], rgb[1], rgb[2], 1.]
+        );
+        assert_eq!(
+            *app.world().get::<Visibility>(draw).unwrap(),
+            Visibility::Inherited
+        );
+        let next = f32::from_bits(rgb[0].to_bits() + 1);
+        app.world_mut()
+            .get_mut::<ParticleEmitter>(root)
+            .unwrap()
+            .def
+            .over_life
+            .color = [[next, rgb[1], rgb[2], rgb[3]]; 3];
+        app.world_mut()
+            .run_system_once(update_model_particles)
+            .unwrap();
+        assert_eq!(
+            app.world()
+                .resource::<Assets<WowModelMaterial>>()
+                .get(&material)
+                .unwrap()
+                .extension
+                .anim_slots
+                .y,
+            selector
+        );
+        assert_eq!(
+            app.world()
+                .resource::<crate::mat_anim_table::MatAnimTable>()
+                .row(slot),
+            [next, rgb[1], rgb[2], 1.]
+        );
+    }
+
+    #[test]
     fn particle_write_gate_emits_modified_only_for_exact_rgb_changes() {
         let mut app = App::new();
         app.add_plugins((MinimalPlugins, AssetPlugin::default()))
