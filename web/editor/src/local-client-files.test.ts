@@ -271,3 +271,86 @@ test("streamed invalid, unavailable and absent files preserve retry and absence 
   assert.equal(files.containsSync("world/a.wmo"), false);
   assert.equal(files.preparedBytes, 0);
 });
+
+test("cancelling one read lease preserves other consumers and the final lease aborts its source", async () => {
+  const signals: AbortSignal[] = [];
+  let resolve!: (bytes: Uint8Array) => void;
+  const files = new LocalClientFiles(
+    {
+      read: (_name, signal) => {
+        signals.push(signal!);
+        return new Promise((r) => {
+          resolve = r;
+        });
+      },
+    },
+    "leases",
+  );
+  const abort = new AbortController();
+  const a = files.readStreaming("a.blp", abort.signal);
+  const b = files.readStreaming("a.blp");
+  await Promise.resolve();
+  abort.abort();
+  await assert.rejects(a, { name: "AbortError" });
+  assert.equal(signals[0].aborted, false);
+  resolve(new Uint8Array([7]));
+  assert.deepEqual([...(await b)], [7]);
+  const next = new AbortController();
+  const c = files.read("a.blp", next.signal);
+  await Promise.resolve();
+  next.abort();
+  await assert.rejects(c, { name: "AbortError" });
+  assert.equal(signals[1].aborted, true);
+  resolve(new Uint8Array([8]));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(files.preparedBytes, 0);
+  // A source which ignores AbortSignal cannot poison a later retry or cache.
+  const d = files.readStreaming("a.blp");
+  await Promise.resolve();
+  resolve(new Uint8Array([9]));
+  assert.deepEqual([...(await d)], [9]);
+  assert.equal(signals.length, 3);
+});
+
+test("source close aborts all underlying streaming leases", async () => {
+  let sourceSignal!: AbortSignal;
+  const files = new LocalClientFiles(
+    {
+      read: (_name, signal) => {
+        sourceSignal = signal!;
+        return new Promise((_resolve, reject) =>
+          signal!.addEventListener("abort", () =>
+            reject(new Error("closed source")),
+          ),
+        );
+      },
+    },
+    "close",
+  );
+  const pending = files.readStreaming("a.blp");
+  await Promise.resolve();
+  files.close();
+  assert.equal(sourceSignal.aborted, true);
+  await assert.rejects(pending, /closed/);
+});
+
+test("closing a client promptly releases consumers even when its source ignores cancellation", async () => {
+  let release!: (bytes: Uint8Array) => void;
+  const files = new LocalClientFiles(
+    {
+      read: () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    },
+    "ignores-abort",
+  );
+  const pending = files.read("a.blp");
+  await Promise.resolve();
+  files.close();
+  await assert.rejects(pending, /closed/);
+  release(new Uint8Array([1]));
+  await Promise.resolve();
+  assert.equal(files.preparedBytes, 0);
+});

@@ -11,7 +11,7 @@ mod payload;
 pub(crate) use payload::UiPayload;
 #[path = "planner_raid_serialization.rs"]
 mod serialization;
-use serialization::{quote, AuraInput, RaidSerialization};
+use serialization::{decimal, literal_value, quote, AuraInput, RaidSerialization};
 
 const UI: &str = include_str!("planner_raid.lua");
 pub(crate) fn install(app: &mut App) {
@@ -52,7 +52,7 @@ fn drive(
 ) {
     vm.turn(|mut script,mut world|{
     let Some(script)=script.as_mut()else{last_update.clear();serialized.clear();return;};
-    if !script.eval::<bool>("return WorldFrame ~= nil").unwrap_or(false){last_update.clear();serialized.clear();return;}
+    if !script.lua().globals().get::<benilla_ui::mlua::Value>("WorldFrame").is_ok_and(|v| !v.is_nil()){last_update.clear();serialized.clear();return;}
     if *session!=Some(script.session()){
         last_update.clear();serialized.clear();
         if let Err(e)=script.run(UI){warn!("raid UI: {e}");return;}
@@ -64,7 +64,10 @@ fn drive(
         else if key.is_empty(){let _=script.run("ClearTarget()");}
     }
     world.control.selected_key=world.units.iter().find(|(_,_,guid,..)|Some(guid.0)==world.selection.guid).map(|(_,body,..)|body.key.clone());
-    if let Ok(key)=script.eval::<String>("local k=PullFictionRaidFocus; PullFictionRaidFocus=nil; return k or ''"){
+    let globals=script.lua().globals();
+    let focus=globals.get::<Option<String>>("PullFictionRaidFocus");
+    let _=globals.set("PullFictionRaidFocus",benilla_ui::mlua::Value::Nil);
+    if let Ok(Some(key))=focus{
         if let Ok(guid)=key.parse::<u64>(){if let Some((_,body,..))=world.units.iter().find(|(_,_,g,..)|g.0==guid){world.control.focus_actor=Some(body.key.clone());}}
     }
     let mut units:Vec<_>=world.units.iter().filter(|(_,b,..)|b.raid).collect();units.sort_by(|a,b|a.1.key.cmp(&b.1.key));units.truncate(40);
@@ -92,6 +95,38 @@ fn drive(
     let w=if bounds[0]>0. {bounds[0]}else{724.};let h=if bounds[1]>0. {bounds[1]}else{276.};
     let layout=crate::planner_raid_layout::layout(units.len(),w.min((width-24.).max(80.)),h.min((height-24.).max(80.)));
     let update=format!("PullFictionRaid_Update({{{rows}}},{},{:.5},{},{:.5})",world.control.raid_frames,1./seam,layout.rows,layout.scale);
-    if let Err(e)=last_update.run(script.session(),update,|code|script.run(code)){serialized.clear();warn!("raid update: {e}");}
+    // Keep the complete, quantized payload as the memo key. It includes fields the Lua
+    // consumer currently ignores, so a later visual change cannot silently miss an update.
+    // Only a changed payload allocates Lua tables; data is never compiled as source.
+    if let Err(e)=last_update.run(script.session(),update,|_| {
+        let lua=script.lua();
+        let rows=lua.create_table()?;
+        for (i,(_,body,guid,store,_)) in units.iter().enumerate() {
+            let row=serialized.table(guid.0,lua)?;
+            row.set("class",store.0.unit_class().unwrap_or(0))?;
+            row.set("hp",store.0.unit_health().unwrap_or(0))?;
+            row.set("max",store.0.unit_max_health().unwrap_or(1).max(1))?;
+            row.set("known",body.health_known)?;
+            row.set("power",store.0.unit_power(store.0.unit_power_type()).unwrap_or(0))?;
+            row.set("maxpower",store.0.unit_max_power(store.0.unit_power_type()).unwrap_or(0))?;
+            row.set("powertype",store.0.unit_power_type())?;
+            row.set("powerknown",body.power_known)?;
+            row.set("selected",world.selection.guid==Some(guid.0))?;
+            if let Some(c)=&body.plate_cast {
+                let cast=lua.create_table()?;
+                cast.set("name",literal_value(&c.name))?;
+                cast.set("progress",decimal(c.progress.clamp(0.,1.),4))?;
+                cast.set("remaining",format!("{:.1}",c.remaining.max(0.)))?;
+                row.set("cast",cast)?;
+            }
+            rows.set(i+1,row)?;
+        }
+        let function=lua.globals().get::<benilla_ui::mlua::Function>("PullFictionRaid_Update")?;
+        script.call_function::<()>(&function,(rows,world.control.raid_frames,decimal(1./seam,5),layout.rows,decimal(layout.scale,5)))
+    }){serialized.clear();warn!("raid update: {e}");}
  });
 }
+
+#[cfg(test)]
+#[path = "planner_raid_render_tests.rs"]
+mod render_tests;

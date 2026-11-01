@@ -84,12 +84,36 @@ pub(crate) fn tick_fx_tint(
         return;
     }
     let now = time.elapsed_secs();
-    reg.0.retain(|id, (anim, origin)| {
-        let Some(mat) = materials.get_mut(*id) else {
+    sample_fx_tints(
+        now,
+        &mut reg.0,
+        &mut materials,
+        |mat| mat.extension.tint,
+        |mat, tint| mat.extension.tint = tint,
+    );
+}
+
+fn sample_fx_tints<A: Asset>(
+    now: f32,
+    registry: &mut HashMap<
+        bevy::asset::AssetId<A>,
+        (std::sync::Arc<benilla_formats::RgbAnim>, f32),
+    >,
+    materials: &mut Assets<A>,
+    tint_of: impl Fn(&A) -> Vec4,
+    set_tint: impl Fn(&mut A, Vec4),
+) {
+    registry.retain(|id, (anim, origin)| {
+        let Some(mat) = materials.get(*id) else {
             return false; // the instance despawned, and its clone with it
         };
         let rgb = anim.sample(now - *origin);
-        mat.extension.tint = Vec4::new(rgb[0], rgb[1], rgb[2], 1.0);
+        let tint = Vec4::new(rgb[0], rgb[1], rgb[2], 1.0);
+        if tint_of(mat) != tint {
+            if let Some(mat) = materials.get_mut(*id) {
+                set_tint(mat, tint);
+            }
+        }
         true
     });
 }
@@ -1001,6 +1025,95 @@ mod tests {
     use super::*;
     use bevy::asset::AssetPlugin;
     use bevy::mesh::skinning::SkinnedMeshInverseBindposes;
+
+    #[derive(Asset, TypePath)]
+    struct TintFixture(Vec4);
+
+    #[test]
+    fn exact_tint_guard_preserves_instance_phase_and_reaps_missing_materials() {
+        use bevy::asset::{AssetEvent, AssetId};
+        use bevy::ecs::message::MessageCursor;
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+            .init_asset::<TintFixture>();
+        let red = [0.12345679, 0.0, 0.0];
+        let green = [0.0, 0.7654321, 0.0];
+        let tint = |rgb: [f32; 3]| Vec4::new(rgb[0], rgb[1], rgb[2], 1.0);
+        let (first, second) = {
+            let mut assets = app.world_mut().resource_mut::<Assets<TintFixture>>();
+            (
+                assets.add(TintFixture(tint(red))),
+                assets.add(TintFixture(tint(red))),
+            )
+        };
+        let anim = std::sync::Arc::new(benilla_formats::RgbAnim {
+            period: 4.0,
+            step: true,
+            wrap: true,
+            gseq: false,
+            keys: vec![(0.0, red), (1.0, green)],
+        });
+        let mut registry = HashMap::from([
+            (first.id(), (anim.clone(), 0.0)),
+            (second.id(), (anim, 0.5)),
+        ]);
+        let mut cursor = MessageCursor::<AssetEvent<TintFixture>>::default();
+        let sample = |app: &mut App, registry: &mut HashMap<AssetId<TintFixture>, _>, now| {
+            sample_fx_tints(
+                now,
+                registry,
+                &mut app.world_mut().resource_mut::<Assets<TintFixture>>(),
+                |m| m.0,
+                |m, tint| m.0 = tint,
+            );
+            app.update();
+        };
+        let modified = |app: &App, cursor: &mut MessageCursor<AssetEvent<TintFixture>>| {
+            cursor
+                .read(app.world().resource::<Messages<AssetEvent<TintFixture>>>())
+                .filter_map(|event| match event {
+                    AssetEvent::Modified { id } => Some(*id),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        sample(&mut app, &mut registry, 0.75);
+        assert!(
+            modified(&app, &mut cursor).is_empty(),
+            "an unchanged sampled RGB must not dirty the material"
+        );
+        sample(&mut app, &mut registry, 1.25);
+        assert_eq!(modified(&app, &mut cursor), [first.id()]);
+        let assets = app.world().resource::<Assets<TintFixture>>();
+        assert_eq!(assets.get(&first).unwrap().0, tint(green));
+        assert_eq!(
+            assets.get(&second).unwrap().0,
+            tint(red),
+            "each clone retains its attach-time phase"
+        );
+        sample(&mut app, &mut registry, 1.25);
+        assert!(
+            modified(&app, &mut cursor).is_empty(),
+            "a repeated tick must emit no Modified event"
+        );
+        sample(&mut app, &mut registry, 1.75);
+        assert_eq!(modified(&app, &mut cursor), [second.id()]);
+        assert_eq!(
+            app.world()
+                .resource::<Assets<TintFixture>>()
+                .get(&second)
+                .unwrap()
+                .0,
+            tint(green)
+        );
+        app.world_mut()
+            .resource_mut::<Assets<TintFixture>>()
+            .remove(first.id());
+        sample(&mut app, &mut registry, 1.75);
+        assert!(!registry.contains_key(&first.id()));
+        assert!(registry.contains_key(&second.id()));
+        assert!(modified(&app, &mut cursor).is_empty());
+    }
 
     /// One spawned instance of Ice Barrier's state model.
     fn instance(root: Entity, persistent: bool) -> FxInstance {

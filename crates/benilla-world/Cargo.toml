@@ -57,3 +57,7 @@ objc2 = "0.5"
 # already carries it transitively (`default_platform` bundles it for every target), but named
 # explicitly on the wasm32 target table per the plan's feature-unification note — this crate and
 # `benilla-app` must resolve `bevy` to the SAME feature set or cargo builds two copies.
+
+# Native ECS caller tests need buffer identities, not a physical GPU or render backend.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+wgpu = { workspace = true, features = ["noop"] }

@@ -372,6 +372,8 @@ export interface Engine {
   ): void;
   pick_map(x: number, y: number, height: number): void;
   set_replay_frame(json: string): void;
+  set_replay_frame_delta?(json: string): void;
+  prepare_replay_playback?(token: number): void;
   request_portraits?(json: string): void;
   replay_clock?(time: number, rate: number, playing: boolean): void;
   replay_events(json: string, reset: boolean): void;
@@ -412,6 +414,7 @@ export interface Snapshot {
   buffering?: boolean;
   bufferError?: string | null;
   movementPreparing?: boolean;
+  playPreparing?: boolean;
   movementConflicted?: boolean;
   downloadingReplay?: boolean;
   browserPlates: import("./browser-plates").BrowserPlate[];

@@ -1,4 +1,7 @@
 //! Offline log actors and combat edges, reusing the game's model, equipment and spell pipelines.
+#[path = "planner_replay_transport.rs"]
+pub mod transport;
+
 use crate::{
     creature_anim::{
         CastEvent, CastEventKind, Casting, MovementState, PlaySeq, SpellGoTargets, SwingMessage,
@@ -14,6 +17,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 #[path = "planner_replay_readiness.rs"]
 mod readiness;
+pub use readiness::PlaybackPreparation;
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ReplayTrajectoryReference {
@@ -437,6 +441,8 @@ pub struct ReplayUnit {
     #[serde(default)]
     pub trajectory: Option<ReplayTrajectoryReference>,
     #[serde(default)]
+    pub trajectory_prepare: Option<ReplayTrajectoryReference>,
+    #[serde(default)]
     pub trajectory_bridge: Option<ReplayTrajectoryBridge>,
     pub dead: bool,
     #[serde(default)]
@@ -717,6 +723,7 @@ pub(crate) fn apply(
     }
     let reset = std::mem::take(&mut control.reset);
     if reset {
+        plans.begin_seek();
         ground_cache.clear();
         routes.clear();
         control.generation += 1;
@@ -826,6 +833,19 @@ pub(crate) fn apply(
         canonical
             .holds
             .retain(|key, _| active_references.contains(key));
+        for unit in batch {
+            if let Some(reference) = &unit.trajectory_prepare {
+                if let Some(time) = reference.at {
+                    plans.prepare(
+                        &reference.source,
+                        &unit.key,
+                        &reference.component,
+                        &reference.content,
+                        time,
+                    );
+                }
+            }
+        }
         let mut trajectory_status = ReplayTrajectoryStatus::default();
         let mut trajectory_missing = Vec::new();
         // A paused retry can reflect newly ready floor assets/placements without

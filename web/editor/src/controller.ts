@@ -1,3 +1,7 @@
+import { IncrementalReplayNormalizer } from "./incremental-replay";
+import { EncounterAssetWarmer } from "./encounter-assets";
+import { ReplayPresenceIndex } from "./replay-presence-index";
+import { ReplayFrameTransport } from "./replay-frame-transport";
 import { resetLocalMaps } from "./local-map";
 import {
   recordedTransferEvidence,
@@ -48,7 +52,7 @@ import { parseBrowserPlates } from "./browser-plates";
 import { BROWSER_ASSETS } from "./browser-mode";
 import {
   installLocalClientFiles,
-  type LocalClientFiles,
+  LocalClientFiles,
 } from "./local-client-files";
 import {
   originalClientFiles,
@@ -258,6 +262,195 @@ export class EditorController {
   private standaloneFrame = false;
   private portraits = new Map<number, string>();
   private frame: NativeFrame[] = [];
+  private readonly replayNormalizer = new IncrementalReplayNormalizer();
+  private readonly encounterWarmer = new EncounterAssetWarmer();
+  private warmedEncounter = "";
+  private encounterWarmEpoch = 0;
+  private encounterWarmJob?: Promise<void>;
+  private playPreparationToken = 0;
+  private replayMetadata?: {
+    models: object;
+    rawModels: object | undefined;
+    creatures: object;
+    items: object;
+    modernItems: object;
+    browser: boolean;
+    sod: boolean;
+    renderModels: Record<string, unknown>;
+    itemModels: Record<string, unknown>;
+  };
+  private warmEncounter() {
+    // Speculative conversions use idle time; demand loading owns playback bandwidth.
+    if (this.state.playing || this.state.playPreparing) return;
+    const replay = this.state.replay,
+      bridge = this.browserBridge,
+      files = this.localFiles;
+    if (!replay || !bridge || !files) return this.encounterWarmJob;
+    const chapter = replay.chapters.findIndex(
+      (entry) => entry.end >= this.clockTime,
+    );
+    const key = `${replayIdentity(replay)}:${this.trajectoryEpoch}:${this.appliedBufferRevision}:${chapter}`;
+    if (this.warmedEncounter === key) return this.encounterWarmJob;
+    this.warmedEncounter = key;
+    const epoch = ++this.encounterWarmEpoch;
+    this.encounterWarmJob = this.encounterWarmer
+      .prepare(
+        replay,
+        this.clockTime,
+        {
+          geometry: (map, signal) => this.prepareFloorGeometry(map, signal),
+          units: async (actors, signal) => {
+            const catalog = await bridge.catalog("creatures");
+            signal.throwIfAborted();
+            const paths = new Set<string>();
+            for (const actor of actors) {
+              const display = this.appearance(actor).display ?? actor.displayID;
+              const model =
+                catalog.models?.[catalog.displays?.[display ?? 0]?.modelID];
+              if (
+                Number.isSafeInteger(model?.fileDataID) &&
+                model.fileDataID > 0
+              )
+                paths.add(`__classic/${model.fileDataID}.m2`);
+            }
+            // Conversion warms the bounded on-disk cache; source buffers are released here.
+            for (const path of paths) {
+              signal.throwIfAborted();
+              try {
+                await files.readStreaming(path, signal);
+              } catch (error) {
+                signal.throwIfAborted(); /* Ordinary loader retains retry/error reporting. */
+              }
+            }
+          },
+          spells: async (ids, signal) => {
+            // Invalid or unavailable optional effects must not cancel the rest of the warmup.
+            for (const id of ids) {
+              signal.throwIfAborted();
+              const temporary = new LocalClientFiles(
+                { read: (name) => files.readStreaming(name, signal) },
+                `${files.identity}:warm:${id}`,
+                32 * 1024 * 1024,
+              );
+              try {
+                await prepareOriginalSpellEffects(
+                  temporary,
+                  bridge,
+                  [id],
+                  signal,
+                );
+              } catch (error) {
+                signal.throwIfAborted();
+              } finally {
+                temporary.close();
+              }
+            }
+          },
+        },
+        { adjacent: 1 },
+      )
+      .then(() => {})
+      .catch(() => {
+        if (
+          epoch === this.encounterWarmEpoch &&
+          this.state.replay === replay &&
+          this.browserBridge === bridge
+        )
+          this.warmedEncounter = "";
+      });
+    return this.encounterWarmJob;
+  }
+  private readonly frameTransport = new ReplayFrameTransport();
+  private frameTransportEngine: Engine | null = null;
+  private readonly presenceIndexes = new WeakMap<
+    Actor[],
+    ReplayPresenceIndex
+  >();
+  private presentReplayActors(lookahead = 0) {
+    const replay = this.state.replay;
+    if (!replay || this.state.workspaceMode !== "analyse") return null;
+    let index = this.presenceIndexes.get(replay.actors);
+    if (!index) {
+      index = new ReplayPresenceIndex(replay.actors);
+      this.presenceIndexes.set(replay.actors, index);
+    }
+    return index.between(this.clockTime, this.clockTime + lookahead);
+  }
+  private readonly actorIndexes = new WeakMap<Actor[], Map<string, Actor>>();
+  private indexActors(actors: Actor[]) {
+    let index = this.actorIndexes.get(actors);
+    if (!index) {
+      index = new Map(actors.map((actor) => [actor.key, actor]));
+      this.actorIndexes.set(actors, index);
+    }
+    return index;
+  }
+  private publishReplayFrame(
+    frame: readonly {
+      key: string;
+      trajectory?: NativeTrajectoryReference;
+      trajectory_bridge?: {
+        from: NativeTrajectoryReference;
+        to: NativeTrajectoryReference;
+      };
+    }[],
+  ) {
+    if (this.state.playPreparing) {
+      for (const unit of frame) {
+        // Background preparation is optional; only references needed by the selected pose
+        // can make the current Play request fail.
+        const required = [
+          unit.trajectory,
+          unit.trajectory_bridge?.from,
+          unit.trajectory_bridge?.to,
+        ];
+        const failed = required.find(
+          (ref) =>
+            ref &&
+            this.trajectoryRejected.has(
+              this.trajectoryPacketKey(
+                ref.source,
+                unit.key,
+                ref.component,
+                ref.content,
+              ),
+            ),
+        );
+        if (failed) {
+          const reason = this.trajectoryRejected.get(
+            this.trajectoryPacketKey(
+              failed.source,
+              unit.key,
+              failed.component,
+              failed.content,
+            ),
+          );
+          this.cancelPlayPreparation();
+          this.notify(`Movement could not be prepared: ${reason}`);
+          break;
+        }
+      }
+    }
+    const engine = this.engine!;
+    if (this.frameTransportEngine !== engine) {
+      this.frameTransport.reset();
+      this.frameTransportEngine = engine;
+    }
+    if (
+      Object.hasOwn(engine, "set_replay_frame_delta") &&
+      engine.set_replay_frame_delta &&
+      this.state.replay
+    ) {
+      this.frameTransport.send(
+        `${this.trajectorySource || replayIdentity(this.state.replay)}:frame-${this.trajectoryEpoch}`,
+        frame,
+        (json) => engine.set_replay_frame_delta!(json),
+      );
+    } else {
+      this.frameTransport.reset();
+      engine.set_replay_frame(JSON.stringify(frame));
+    }
+  }
   private inspectionRequest = 0;
   private appearanceRequests = new Map<string, number>();
   private pendingAppearances = new Map<string, Appearance>();
@@ -287,6 +480,7 @@ export class EditorController {
     geometry?: ReplayFloorGeometry;
     models: object;
     smooth: boolean;
+    filtered: boolean;
     hints: Map<string, number>;
     seeds: Map<string, number>;
   } | null = null;
@@ -297,7 +491,7 @@ export class EditorController {
   private trajectorySource = "";
   private trajectoryEngine: Engine | null = null;
   private trajectorySent = new Set<string>();
-  private trajectoryRejected = new Set<string>();
+  private trajectoryRejected = new Map<string, string>();
   private trajectoryDemands = new Set<string>();
   private trajectoryRetries = new Map<
     string,
@@ -1061,6 +1255,7 @@ export class EditorController {
     project: LocalProject | null,
     source: ProjectSource | null = null,
   ) {
+    this.cancelPlayPreparation();
     this.replayBuffer?.close();
     this.replayBuffer = null;
     this.bufferRequest++;
@@ -1081,6 +1276,7 @@ export class EditorController {
     this.previousEventTime = null;
     this.resetEvents = true;
     this.lastChapter = null;
+    this.frameTransport.reset();
     this.engine?.set_replay_frame("[]");
     this.engine?.replay_events("[]", true);
     this.patch({
@@ -1749,7 +1945,11 @@ export class EditorController {
   setWorkspaceMode(workspaceMode: "plan" | "analyse") {
     if (workspaceMode === "plan") this.projectKind = "plan";
     this.cancelDrawing();
-    if (workspaceMode === "plan" && this.state.playing) this.toggle();
+    if (
+      workspaceMode === "plan" &&
+      (this.state.playing || this.state.playPreparing)
+    )
+      this.toggle();
     this.patch({
       workspaceMode,
       planning: workspaceMode === "plan",
@@ -3678,6 +3878,7 @@ export class EditorController {
     if (!raid) throw new Error("Unsupported raid map for this game version");
     if (this.state.plan.mapId === map && this.state.gameVersion === version)
       return;
+    this.cancelPlayPreparation();
     if (
       this.projectStore &&
       !this.restoringProject &&
@@ -3792,6 +3993,7 @@ export class EditorController {
             this.notify(`Raid models unavailable: ${message(error)}`),
           );
       this.engine.load_raid(map);
+      this.frameTransport.reset();
       this.engine.set_replay_frame("[]");
       this.engine.replay_events("[]", true);
       this.waitForScene();
@@ -3801,6 +4003,7 @@ export class EditorController {
     clearTimeout(this.sceneTimer);
     const map = this.state.plan.mapId;
     this.sceneTimer = setTimeout(() => {
+      this.sceneTimer = undefined;
       if (this.state.plan.mapId === map && !this.state.sceneReady)
         this.fail(`${raidByMap(map)?.name ?? "Raid"} did not finish loading`);
     }, 90000);
@@ -3932,24 +4135,61 @@ export class EditorController {
       ? Math.max(duration, ...this.state.plan.steps.map((s) => s.end ?? 0))
       : duration;
   }
+  private cancelPlayPreparation() {
+    this.playPreparationToken++;
+    if (Object.hasOwn(this.engine ?? {}, "prepare_replay_playback"))
+      this.engine?.prepare_replay_playback?.(0);
+    if (this.state.playPreparing) this.patch({ playPreparing: false });
+  }
   toggle() {
     if (!this.state.replay && this.state.workspaceMode !== "plan") return;
     if (this.clockTime >= this.duration())
       this.clockTime = this.state.loop?.[0] ?? 0;
     if (!this.state.playing) this.trajectoryCoverageBlocked = false;
+    if (this.state.playPreparing) {
+      this.cancelPlayPreparation();
+      return;
+    }
+    const engine = this.engine;
+    if (
+      !this.state.playing &&
+      this.state.replay &&
+      Object.hasOwn(engine ?? {}, "prepare_replay_playback") &&
+      engine?.prepare_replay_playback
+    ) {
+      const token = ++this.playPreparationToken;
+      this.encounterWarmer.cancel();
+      this.patch({ playPreparing: true, error: null });
+      if (!this.state.sceneReady && !this.sceneTimer) this.waitForScene();
+      this.render();
+      if (
+        !this.state.playPreparing ||
+        token !== this.playPreparationToken ||
+        this.engine !== engine
+      )
+        return;
+      // Native readiness includes required scene collision. Optional model/spell
+      // prefetch must never delay its acknowledgement or compete with demand reads.
+      engine.prepare_replay_playback(token);
+      return;
+    }
     this.patch({ playing: !this.state.playing });
     this.render();
     if (this.activeProject && !this.state.playing) this.scheduleAutosave();
   }
   seek(time: number) {
     if (!Number.isFinite(time)) return;
+    this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
     if (this.state.downloadingReplay) this.cancelReplayDownload();
     this.trajectoryCoverageBlocked = false;
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
     this.clockTime = Math.max(0, Math.min(this.duration(), time));
     this.resetEvents = true;
     this.patch({ playing: false, time: this.clockTime });
     if (this.replayBuffer) void this.ensureBuffered(this.clockTime);
+    this.warmEncounter();
     this.render();
     if (this.activeProject) this.scheduleAutosave();
   }
@@ -4621,19 +4861,37 @@ export class EditorController {
     const models = this.state.browserAssets
       ? this.browserModels[version]
       : this.models;
-    const renderModels = this.state.browserAssets
-      ? replayNpcModels(models, raw.models, this.browserCreatures)
-      : { ...models, ...raw.models };
-    const replay = enrichCombat(
-      normalizeReplay(input, renderModels),
-      raw.gameVersion === "sod" || raw.report?.gameVersion === "sod"
-        ? { ...this.items, ...this.modernItems }
-        : this.items,
-      this.state.browserAssets ||
-        raw.gameVersion === "sod" ||
-        raw.report?.gameVersion === "sod"
-        ? this.modernSpells
-        : this.spells,
+    const sod = raw.gameVersion === "sod" || raw.report?.gameVersion === "sod";
+    let metadata = this.replayMetadata;
+    if (
+      !metadata ||
+      metadata.models !== models ||
+      metadata.rawModels !== raw.models ||
+      metadata.creatures !== this.browserCreatures ||
+      metadata.items !== this.items ||
+      metadata.modernItems !== this.modernItems ||
+      metadata.browser !== this.state.browserAssets ||
+      metadata.sod !== sod
+    ) {
+      metadata = this.replayMetadata = {
+        models,
+        rawModels: raw.models,
+        creatures: this.browserCreatures,
+        items: this.items,
+        modernItems: this.modernItems,
+        browser: this.state.browserAssets,
+        sod,
+        renderModels: this.state.browserAssets
+          ? replayNpcModels(models, raw.models, this.browserCreatures)
+          : { ...models, ...raw.models },
+        itemModels: sod ? { ...this.items, ...this.modernItems } : this.items,
+      };
+    }
+    const replay = this.replayNormalizer.normalize(
+      input,
+      metadata.renderModels,
+      metadata.itemModels,
+      this.state.browserAssets || sod ? this.modernSpells : this.spells,
     );
     replay.raw = raw;
     if (raw.stream)
@@ -4728,26 +4986,31 @@ export class EditorController {
   }
   private replayFloors(replay: Replay, lookupPose: typeof poseAt = poseAt) {
     const geometry = this.loadedFloors.get(replay.map),
-      cached = this.floorHintCache;
+      cached = this.floorHintCache,
+      filtered = !!this.state.replay && this.state.workspaceMode === "analyse";
     if (
       cached &&
       cached.replay === replay &&
       cached.time === this.clockTime &&
       cached.geometry === geometry &&
       cached.smooth === this.state.options.smoothGaps &&
+      cached.filtered === filtered &&
       cached.models === this.models
     )
       return cached.hints;
     const seeds = new Map<string, number>();
+    const candidates = this.presentReplayActors();
     const hints = replayFloorHints(
       replay,
       this.clockTime,
       geometry?.contextCatalog(replay.map, this.models) ?? this.models,
       seeds,
+      candidates ?? undefined,
     );
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
       for (const actor of replay.actors) {
+        if (candidates && !candidates.has(actor.key)) continue;
         const pose = lookupPose(
           actor,
           this.clockTime,
@@ -4772,6 +5035,7 @@ export class EditorController {
       geometry,
       models: this.models,
       smooth: this.state.options.smoothGaps,
+      filtered,
       hints,
       seeds,
     };
@@ -4809,6 +5073,10 @@ export class EditorController {
     prepared?: { replay: Replay; models: Record<string, unknown> },
     buffer?: ReplayBuffer,
   ) {
+    this.cancelPlayPreparation();
+    this.encounterWarmEpoch++;
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
     this.clearTrajectoryRetries();
     this.trajectoryEpoch++;
     this.trajectoryCoverageBlocked = false;
@@ -4939,7 +5207,12 @@ export class EditorController {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   attachEngine(engine: Engine) {
+    this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
+    this.replayNormalizer.reset();
+    this.replayMetadata = undefined;
     this.trajectoryEpoch++; // Late notifications from a previous installation are stale.
     this.trajectoryRetryStopped = false;
     this.engine = engine;
@@ -5234,6 +5507,7 @@ export class EditorController {
       )
         return;
       clearTimeout(this.sceneTimer);
+      this.sceneTimer = undefined;
       const first = !this.state.sceneReady;
       this.patch({
         sceneReady: true,
@@ -5251,6 +5525,17 @@ export class EditorController {
       } catch {
         this.movementDiagnostics = null;
       }
+    } else if (kind === "playbackPrepared") {
+      try {
+        const result = JSON.parse(value);
+        if (
+          this.state.playPreparing &&
+          result.token === this.playPreparationToken
+        ) {
+          this.patch({ playPreparing: false, playing: true });
+          this.render();
+        }
+      } catch {}
     } else if (kind === "movementPreparation") {
       try {
         const status = JSON.parse(value);
@@ -5335,14 +5620,19 @@ export class EditorController {
         } else if (!this.trajectoryRejected.has(key)) {
           this.trajectoryRetries.delete(key);
           this.armTrajectoryRetry();
-          this.trajectoryRejected.add(key);
+          this.trajectoryRejected.set(key, String(row.message).slice(0, 240));
           this.notify(
             `Movement could not be prepared: ${String(row.message).slice(0, 240)}`,
           );
+          if (this.state.playPreparing) this.sendPositions();
         }
       } catch {
         /* Optional diagnostics cannot interrupt playback. */
       }
+    } else if (kind === "trajectoryCache") {
+      try {
+        this.trajectoryDiagnostics = JSON.parse(value);
+      } catch {}
     } else if (kind === "trajectoryProbe") {
       try {
         this.trajectoryDiagnostics = JSON.parse(value);
@@ -5912,6 +6202,8 @@ export class EditorController {
   }
   fail(error: string) {
     clearTimeout(this.sceneTimer);
+    this.sceneTimer = undefined;
+    this.cancelPlayPreparation();
     this.patch({ error, playing: false });
   }
   start() {
@@ -5949,6 +6241,12 @@ export class EditorController {
     this.raf = requestAnimationFrame(tick);
   }
   stop() {
+    this.cancelPlayPreparation();
+    this.encounterWarmEpoch++;
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
+    this.replayNormalizer.reset();
+    this.replayMetadata = undefined;
     this.clearTrajectoryRetries();
     this.trajectoryRetryStopped = true;
     this.prefetchAbort?.abort();
@@ -5984,6 +6282,7 @@ export class EditorController {
     this.previousTick = 0;
     clearTimeout(this.noticeTimer);
     clearTimeout(this.sceneTimer);
+    this.sceneTimer = undefined;
   }
   advance(delta: number) {
     if (!this.state.playing) return;
@@ -6058,73 +6357,81 @@ export class EditorController {
         this.focusCurrent();
     }
     const friendly = new Set(replay.fight.friendlyPlayers);
-    this.frame = this.sceneActors().map((actor) => {
-      const state = combatStateAt(actor, this.clockTime),
-        appearance = this.appearance(actor);
-      return {
-        key: actor.key,
-        name: actor.name,
-        player: actor.type === "Player",
-        raid:
-          actor.type === "Player" &&
-          ((!!this.snapshot() && this.state.workspaceMode === "plan") ||
-            friendly.has(actor.id)),
-        class: classIDs[actor.class] ?? 1,
-        entry: actor.gameID || 0,
-        display: appearance.display ?? actor.displayID,
-        scale: actor.scale,
-        position: null,
-        ground: true,
-        facing: 0,
-        speed: 0,
-        dead: false,
-        estimated: false,
-        friendly: actor.type === "Pet",
-        nameplate: actorNameplateEnabled(actor, options),
-        race: appearance.race ?? actor.race,
-        sex: appearance.sex ?? actor.sex,
-        look: appearance.look ?? [0, 0, 0, 0, 0],
-        gear: actor.gear
-          .filter((g) => g.model)
-          .map((g) => ({
-            id: g.id,
-            slot: g.slot,
-            ...g.model,
-            name: g.name ?? g.model?.name ?? `Item ${g.id}`,
-            quality: g.quality ?? g.model?.quality ?? 0,
-            enchant: g.permanentEnchant ?? 0,
-            temporary: g.temporaryEnchant ?? 0,
+    this.warmEncounter();
+    // Keep actors entering before the next possible full update. advance() caps
+    // a delayed frame at 250ms and supported playback rates at four times.
+    const candidates = this.presentReplayActors(1000);
+    this.frame = this.sceneActors()
+      .filter((actor) => !candidates || candidates.has(actor.key))
+      .map((actor) => {
+        const state = combatStateAt(actor, this.clockTime),
+          appearance = this.appearance(actor);
+        return {
+          key: actor.key,
+          name: actor.name,
+          player: actor.type === "Player",
+          raid:
+            actor.type === "Player" &&
+            ((!!this.snapshot() && this.state.workspaceMode === "plan") ||
+              friendly.has(actor.id)),
+          class: classIDs[actor.class] ?? 1,
+          entry: actor.gameID || 0,
+          display: appearance.display ?? actor.displayID,
+          scale: actor.scale,
+          position: null,
+          ground: true,
+          facing: 0,
+          speed: 0,
+          dead: false,
+          estimated: false,
+          friendly: actor.type === "Pet",
+          nameplate: actorNameplateEnabled(actor, options),
+          race: appearance.race ?? actor.race,
+          sex: appearance.sex ?? actor.sex,
+          look: appearance.look ?? [0, 0, 0, 0, 0],
+          gear: actor.gear
+            .filter((g) => g.model)
+            .map((g) => ({
+              id: g.id,
+              slot: g.slot,
+              ...g.model,
+              name: g.name ?? g.model?.name ?? `Item ${g.id}`,
+              quality: g.quality ?? g.model?.quality ?? 0,
+              enchant: g.permanentEnchant ?? 0,
+              temporary: g.temporaryEnchant ?? 0,
+            })),
+          health: state.health?.current ?? null,
+          max_health: state.health?.max ?? null,
+          power: state.power?.current ?? null,
+          max_power: state.power?.max ?? null,
+          power_type: state.power?.type ?? 0,
+          plate_cast:
+            state.cast && !state.cast.instant
+              ? {
+                  name: state.cast.name,
+                  icon: state.cast.icon ?? "",
+                  progress: state.cast.progress ?? 0,
+                  remaining: (state.cast.end - this.clockTime) / 1000,
+                }
+              : null,
+          plate_auras: state.auras.slice(0, 48).map((a) => ({
+            spell: a.spell,
+            name:
+              replay.abilities.get(a.spell)?.name ??
+              a.name ??
+              `Spell ${a.spell}`,
+            icon: replay.abilities.get(a.spell)?.icon ?? a.icon ?? "",
+            stack: a.stack ?? 1,
+            debuff: !!a.debuff,
           })),
-        health: state.health?.current ?? null,
-        max_health: state.health?.max ?? null,
-        power: state.power?.current ?? null,
-        max_power: state.power?.max ?? null,
-        power_type: state.power?.type ?? 0,
-        plate_cast:
-          state.cast && !state.cast.instant
-            ? {
-                name: state.cast.name,
-                icon: state.cast.icon ?? "",
-                progress: state.cast.progress ?? 0,
-                remaining: (state.cast.end - this.clockTime) / 1000,
-              }
+          channel: !!state.cast?.channel,
+          channel_target: state.cast?.channel
+            ? (state.cast.target ?? null)
             : null,
-        plate_auras: state.auras.slice(0, 48).map((a) => ({
-          spell: a.spell,
-          name:
-            replay.abilities.get(a.spell)?.name ?? a.name ?? `Spell ${a.spell}`,
-          icon: replay.abilities.get(a.spell)?.icon ?? a.icon ?? "",
-          stack: a.stack ?? 1,
-          debuff: !!a.debuff,
-        })),
-        channel: !!state.cast?.channel,
-        channel_target: state.cast?.channel
-          ? (state.cast.target ?? null)
-          : null,
-        cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
-        auras: state.auras.slice(0, 48).map((a) => a.spell),
-      };
-    });
+          cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
+          auras: state.auras.slice(0, 48).map((a) => a.spell),
+        };
+      });
     this.sendPositions();
     this.sendActions();
     this.patch({ time: this.clockTime });
@@ -6303,6 +6610,7 @@ export class EditorController {
     > | null,
   ): {
     trajectory?: NativeTrajectoryReference;
+    trajectory_prepare?: NativeTrajectoryReference;
     trajectory_bridge?: {
       from: NativeTrajectoryReference;
       to: NativeTrajectoryReference;
@@ -6424,7 +6732,7 @@ export class EditorController {
               this.retryTrajectoryCapacity(key);
             } else {
               this.trajectoryRetries.delete(key);
-              this.trajectoryRejected.add(key);
+              this.trajectoryRejected.set(key, text);
               this.notify(`Movement could not be prepared: ${text}`);
             }
           }
@@ -6492,6 +6800,20 @@ export class EditorController {
         ...(hold ? { hold: true } : {}),
       };
     };
+    // Prepare the next chronological component before crossing its boundary.
+    // It remains a background demand; native selected poses always take priority.
+    const upcoming =
+      Object.hasOwn(this.engine!, "set_replay_frame_delta") &&
+      !pose.movement?.unrestricted
+        ? cached.index.components.find(
+            (component) =>
+              component.firstTime > this.clockTime &&
+              component.firstTime <= this.clockTime + 8000,
+          )
+        : undefined;
+    const trajectory_prepare = upcoming
+      ? reference(upcoming.id, upcoming.firstTime)
+      : undefined;
     const interval = lookup.interval;
     if (interval && interval.fromComponentId !== interval.toComponentId) {
       const from = actor.samples[interval.fromIndex],
@@ -6508,12 +6830,14 @@ export class EditorController {
         (Math.hypot(pose.pos[0] - to[1], pose.pos[1] - to[2]) < 0.00001 &&
           Math.hypot(pose.pos[0] - from[1], pose.pos[1] - from[2]) >= 0.00001);
       return {
+        trajectory_prepare,
         trajectory: atDestination
           ? reference(interval.toComponentId, to[0], true)
           : reference(interval.fromComponentId, from[0], true),
       };
     }
     return {
+      trajectory_prepare,
       trajectory: reference(
         lookup.observation.componentId,
         interval ? undefined : lookup.observation.raw[0],
@@ -6543,6 +6867,7 @@ export class EditorController {
         : [];
       if (!actors.length && !this.standaloneFrame) return;
       this.standaloneFrame = actors.length > 0;
+      this.frameTransport.reset();
       this.engine.set_replay_frame(
         JSON.stringify(
           actors.map((a) => ({
@@ -6585,103 +6910,107 @@ export class EditorController {
     const { replay, options } = this.state;
     withReplayPoses((lookupPose) => {
       const floorHints = this.replayFloors(replay, lookupPose);
-      const actors = new Map(this.sceneActors().map((a) => [a.key, a]));
-      const loggedActors = new Map(replay.actors.map((a) => [a.key, a]));
-      const frame = this.frame.map((unit, i) => {
-        const actor = actors.get(unit.key);
-        const pose =
-          options.actors && actor ? this.actorPose(actor, lookupPose) : null;
-        const movement = pose?.movement;
-        const hint = floorHints.get(unit.key);
-        const geometry = this.loadedFloors.get(replay.map);
-        const seed = this.floorHintCache?.seeds.get(unit.key);
-        const endpointHeight = (
-          point: number[] | undefined,
-          cache: ReplayHeightCache,
-        ) =>
-          point?.[2] ??
-          (actor && geometry && point
-            ? (cache.height(
-                actor,
-                geometry,
-                point[0],
-                point[1],
-                seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
-                seed === undefined,
-              ) ?? hint)
-            : hint);
-        const fromHeight = endpointHeight(
-          movement?.from as number[] | undefined,
-          this.fromFloorHeights,
-        );
-        const toHeight = endpointHeight(
-          movement?.to as number[] | undefined,
-          this.toFloorHeights,
-        );
-        const nativeMovement =
-          movement &&
-          typeof fromHeight === "number" &&
-          Number.isFinite(fromHeight) &&
-          typeof toHeight === "number" &&
-          Number.isFinite(toHeight)
-            ? {
-                ...movement,
-                from: [movement.from[0], movement.from[1], fromHeight],
-                to: [movement.to[0], movement.to[1], toHeight],
-                from_inferred: movement.from[2] == null && seed === undefined,
-                to_inferred: movement.to[2] == null && seed === undefined,
-                floor_candidates: geometry
-                  ? movementFloorCandidates(
-                      geometry,
-                      movement.from as number[],
-                      movement.to as number[],
-                      fromHeight,
-                      toHeight,
-                      movement.from[2] == null && seed === undefined,
-                      movement.to[2] == null && seed === undefined,
-                    )
-                  : [],
-              }
-            : null;
-        // Unknown route endpoints are not permission to draw a line through walls.
-        const holding = !!movement && !nativeMovement;
-        const trajectory = this.trajectoryBinding(
-          loggedActors.get(unit.key),
-          pose,
-        );
-        return {
-          ...unit,
-          ...trajectory,
-          position:
-            pose && !pose.dead
-              ? holding
-                ? [
-                    movement!.from[0],
-                    movement!.from[1],
-                    fromHeight ?? movement!.from[2] ?? 0,
-                  ]
-                : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
-              : null,
-          ground:
-            !!(this.state.workspaceMode === "plan" && this.displaySnapshot()) ||
-            pose?.pos[2] == null,
-          floor_hint:
-            (holding ? fromHeight : undefined) ??
-            (this.state.workspaceMode === "plan" && this.displaySnapshot()
-              ? pose?.pos[2]
-              : undefined) ??
-            floorHints.get(unit.key) ??
-            null,
-          movement: nativeMovement,
-          facing: pose?.facing ?? 0,
-          speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
-          dead: pose?.dead ?? false,
-          estimated: !!pose?.estimated || holding,
-          wisp: !!pose?.wisp,
-          plate_auras: options.auras ? unit.plate_auras : [],
-          auras: options.auras ? unit.auras : [],
-        };
-      });
+      const actors = this.indexActors(this.sceneActors());
+      const loggedActors = this.indexActors(replay.actors);
+      const present = this.presentReplayActors();
+      const frame = this.frame
+        .filter((unit) => !present || present.has(unit.key))
+        .map((unit) => {
+          const actor = actors.get(unit.key);
+          const pose =
+            options.actors && actor ? this.actorPose(actor, lookupPose) : null;
+          const movement = pose?.movement;
+          const hint = floorHints.get(unit.key);
+          const geometry = this.loadedFloors.get(replay.map);
+          const seed = this.floorHintCache?.seeds.get(unit.key);
+          const endpointHeight = (
+            point: number[] | undefined,
+            cache: ReplayHeightCache,
+          ) =>
+            point?.[2] ??
+            (actor && geometry && point
+              ? (cache.height(
+                  actor,
+                  geometry,
+                  point[0],
+                  point[1],
+                  seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
+                  seed === undefined,
+                ) ?? hint)
+              : hint);
+          const fromHeight = endpointHeight(
+            movement?.from as number[] | undefined,
+            this.fromFloorHeights,
+          );
+          const toHeight = endpointHeight(
+            movement?.to as number[] | undefined,
+            this.toFloorHeights,
+          );
+          const nativeMovement =
+            movement &&
+            typeof fromHeight === "number" &&
+            Number.isFinite(fromHeight) &&
+            typeof toHeight === "number" &&
+            Number.isFinite(toHeight)
+              ? {
+                  ...movement,
+                  from: [movement.from[0], movement.from[1], fromHeight],
+                  to: [movement.to[0], movement.to[1], toHeight],
+                  from_inferred: movement.from[2] == null && seed === undefined,
+                  to_inferred: movement.to[2] == null && seed === undefined,
+                  floor_candidates: geometry
+                    ? movementFloorCandidates(
+                        geometry,
+                        movement.from as number[],
+                        movement.to as number[],
+                        fromHeight,
+                        toHeight,
+                        movement.from[2] == null && seed === undefined,
+                        movement.to[2] == null && seed === undefined,
+                      )
+                    : [],
+                }
+              : null;
+          // Unknown route endpoints are not permission to draw a line through walls.
+          const holding = !!movement && !nativeMovement;
+          const trajectory = this.trajectoryBinding(
+            loggedActors.get(unit.key),
+            pose,
+          );
+          return {
+            ...unit,
+            ...trajectory,
+            position:
+              pose && !pose.dead
+                ? holding
+                  ? [
+                      movement!.from[0],
+                      movement!.from[1],
+                      fromHeight ?? movement!.from[2] ?? 0,
+                    ]
+                  : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
+                : null,
+            ground:
+              !!(
+                this.state.workspaceMode === "plan" && this.displaySnapshot()
+              ) || pose?.pos[2] == null,
+            floor_hint:
+              (holding ? fromHeight : undefined) ??
+              (this.state.workspaceMode === "plan" && this.displaySnapshot()
+                ? pose?.pos[2]
+                : undefined) ??
+              floorHints.get(unit.key) ??
+              null,
+            movement: nativeMovement,
+            facing: pose?.facing ?? 0,
+            speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
+            dead: pose?.dead ?? false,
+            estimated: !!pose?.estimated || holding,
+            wisp: !!pose?.wisp,
+            plate_auras: options.auras ? unit.plate_auras : [],
+            auras: options.auras ? unit.auras : [],
+          };
+        });
       this.engine!.configure_replay_camera?.(
         this.state.cameraMaxDistance,
         options.lockCamera ? (this.state.selected ?? "") : "",
@@ -6747,9 +7076,7 @@ export class EditorController {
           cameraKeys.push(locked.key);
       }
       this.engine!.set_replay_camera?.(JSON.stringify(cameraKeys));
-      this.engine!.set_replay_frame(
-        JSON.stringify(frame.filter((a) => a.player || a.position)),
-      );
+      this.publishReplayFrame(frame.filter((a) => a.player || a.position));
     });
     for (const key of this.trajectoryRetries.keys()) {
       if (!this.trajectoryDemands.has(key)) this.trajectoryRetries.delete(key);

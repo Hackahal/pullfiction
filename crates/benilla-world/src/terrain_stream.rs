@@ -65,6 +65,42 @@ pub use residency::TerrainResidency;
 /// uncapped, a cold start spawns the whole ring at once and blocks the main thread for seconds.
 const SPAWN_BUDGET: Duration = Duration::from_millis(4);
 
+/// Collision preparation may retain a bounded set of terrain tiles independently of the camera.
+/// Map/source owners replace the complete request set; ordinary streaming and collision gates apply.
+#[derive(Resource, Default, Clone, PartialEq, Eq)]
+pub struct TrajectoryTerrainRequests {
+    pub map: Option<u32>,
+    pub tiles: Vec<(i32, i32)>,
+}
+pub const MAX_TRAJECTORY_TERRAIN_TILES: usize = 64;
+impl TrajectoryTerrainRequests {
+    fn for_map(&self, map: u32) -> Vec<(i32, i32)> {
+        if self.map != Some(map) {
+            return Vec::new();
+        }
+        let mut tiles: Vec<_> = self
+            .tiles
+            .iter()
+            .copied()
+            .filter(|&(x, y)| (0..64).contains(&x) && (0..64).contains(&y))
+            .collect();
+        tiles.sort_unstable();
+        tiles.dedup();
+        tiles.truncate(MAX_TRAJECTORY_TERRAIN_TILES);
+        tiles
+    }
+}
+fn requested_terrain(window: &StreamWindow, pins: &[(i32, i32)]) -> Vec<(i32, i32)> {
+    let mut desired = window.wanted_tiles();
+    desired.extend_from_slice(pins);
+    desired.sort_unstable();
+    desired.dedup();
+    desired
+}
+fn keep_terrain(window: &StreamWindow, tile: (i32, i32), pins: &[(i32, i32)]) -> bool {
+    window.keeps(tile) || pins.contains(&tile)
+}
+
 /// The streamer's residency state: the loaded tiles and the entity each spawned as.
 #[derive(Resource, Default)]
 pub struct TerrainStreamer {
@@ -79,6 +115,7 @@ pub struct TerrainStreamer {
     /// The window last streamed around, focus chunk included: the idle skip's key
     /// ([`Self::streamed`]).
     window: Option<StreamWindow>,
+    trajectory_tiles: Vec<(i32, i32)>,
     /// The map's WDT tile index: ADT requests wait for it and consult its `MAIN` grid.
     wdt: Option<Handle<WdtIndex>>,
     /// The WDT failed to load: stream every tile ungated rather than show no world.
@@ -243,6 +280,8 @@ pub struct WorldLoadProgress {
     /// The focus tile and its 8 neighbours are up with every placement they reference; consumers
     /// read [`Self::presentable`], which adds the backlogs.
     pub scene_ready: bool,
+    /// All retained trajectory tiles and their placed collision owners are furnished.
+    pub trajectory_ready: bool,
     /// Outstanding collider attaches, from `finish_colliders`.
     pub colliders_pending: usize,
     /// Unflushed static-merge accumulators (`WOW_STATIC_MERGE`), holes the reveal must not show.
@@ -465,6 +504,7 @@ impl Plugin for TerrainPlugin {
             .init_resource::<WorldLoadProgress>()
             .init_resource::<TerrainStreamer>()
             .init_resource::<TerrainResidency>()
+            .init_resource::<TrajectoryTerrainRequests>()
             .init_resource::<StreamActivity>()
             .init_resource::<Placements>()
             .init_resource::<HullWelds>()
@@ -556,6 +596,7 @@ fn stream_terrain(
         Option<Res<CurrentMap>>,
         Option<Res<MapCatalogRes>>,
         Res<crate::view::ViewDistance>,
+        Option<Res<TrajectoryTerrainRequests>>,
     ),
     mut load_progress: Option<ResMut<WorldLoadProgress>>,
     // The stream-batch accumulators the map-change drop must clear.
@@ -567,7 +608,7 @@ fn stream_terrain(
     ),
 ) {
     let (mut welds, mut static_merge, mut staticgx) = batchers;
-    let (current_map, map_catalog, view) = location;
+    let (current_map, map_catalog, view, trajectory_requests) = location;
     state.plan = None;
     if !focus.holds_inner() {
         state.inner.clear();
@@ -650,7 +691,22 @@ fn stream_terrain(
     let center = focus.resolve(camera.single().ok().map(|c| c.translation));
     let window = StreamWindow::at(view.farclip, center[0], center[1]);
     let (cx, cy) = window.focus_tile();
-    let same_window = state.streamed(&window);
+    let mut trajectory_tiles = trajectory_requests
+        .as_deref()
+        .map_or_else(Vec::new, |r| r.for_map(map_id));
+    if let Some(w) = wdt_index {
+        trajectory_tiles.retain(|&(x, y)| w.has_tile(x as u32, y as u32));
+    }
+    let pins_changed = state.trajectory_tiles != trajectory_tiles;
+    let same_window = state.streamed(&window) && !pins_changed;
+    if pins_changed {
+        state.settled = false;
+        if let Some(progress) = load_progress.as_mut() {
+            progress.complete = false;
+            progress.trajectory_ready = false;
+        }
+        state.trajectory_tiles = trajectory_tiles.clone();
+    }
     // Skip an unchanged frame only in a paced, complete, presentable world, since the tail it
     // bypasses releases a load; even then the undrawn count stays fresh, so a rebake un-skips it.
     if same_window
@@ -682,7 +738,7 @@ fn stream_terrain(
 
     // Every tile the outer window touches on the 64×64 grid, less those the WDT's `MAIN` bit 0
     // says do not exist, as the reference tests (`0x69863c`).
-    let mut desired = window.wanted_tiles();
+    let mut desired = requested_terrain(&window, &trajectory_tiles);
     if let Some(w) = wdt_index {
         desired.retain(|&(tx, ty)| w.has_tile(tx as u32, ty as u32));
     }
@@ -728,7 +784,7 @@ fn stream_terrain(
             .tiles
             .keys()
             .copied()
-            .filter(|&tile| !window.keeps(tile))
+            .filter(|&tile| !keep_terrain(&window, tile, &trajectory_tiles))
             .collect()
     };
     let stale_empty = stale.is_empty();
@@ -1223,6 +1279,7 @@ fn drop_streamed_world(
         }
     }
     state.inner.clear();
+    state.trajectory_tiles.clear();
     state.window = None;
     state.settled = false;
     if std::mem::take(&mut state.global_wmo) {
@@ -1924,5 +1981,39 @@ mod inner_hold_tests {
             "the outer ring waits: the frame's cap went on the inner tile (got {})",
             outer.next_cell
         );
+    }
+}
+
+#[cfg(test)]
+mod trajectory_terrain_tests {
+    use super::*;
+    #[test]
+    fn far_source_tiles_are_requested_and_kept_without_changing_camera_window() {
+        let window = StreamWindow::at(350., 0., 0.);
+        let original = window.wanted_tiles();
+        let pin = (40, 40);
+        assert!(!window.keeps(pin));
+        let wanted = requested_terrain(&window, &[pin, pin]);
+        assert!(wanted.contains(&pin));
+        for tile in original {
+            assert!(wanted.contains(&tile));
+        }
+        assert_eq!(wanted.iter().filter(|&&tile| tile == pin).count(), 1);
+        assert!(keep_terrain(&window, pin, &[pin]));
+        assert!(!keep_terrain(&window, pin, &[]));
+    }
+    #[test]
+    fn request_sets_are_map_scoped_deduplicated_grid_bounded_and_limited() {
+        let request = TrajectoryTerrainRequests {
+            map: Some(2856),
+            tiles: vec![(40, 40), (40, 40), (-1, 2), (64, 2)],
+        };
+        assert_eq!(request.for_map(2856), vec![(40, 40)]);
+        assert!(request.for_map(409).is_empty());
+        let request = TrajectoryTerrainRequests {
+            map: Some(2856),
+            tiles: (0..64).flat_map(|x| (0..64).map(move |y| (x, y))).collect(),
+        };
+        assert_eq!(request.for_map(2856).len(), MAX_TRAJECTORY_TERRAIN_TILES);
     }
 }

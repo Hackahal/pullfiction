@@ -3468,6 +3468,72 @@ test("nearby NPC floor hints do not pin both route endpoints to the current leve
   f.c.stop();
 });
 
+test("paused floor hints follow the effective presence filter in both workspace directions", () => {
+  for (const firstMode of ["analyse", "plan"] as const) {
+    const f = fixture();
+    const replay = f.c.getSnapshot().replay!;
+    const npc = replay.actors.find((a) => a.key === "2:1")!;
+    npc.samples = [[0, 2, 2, null]];
+    npc.deaths = [[0, true]];
+    npc.runLifetime = false;
+    delete npc.spawn;
+    replay.actors = [...replay.actors];
+    const internals = f.c as unknown as {
+      loadedFloors: Map<number, ReplayFloorGeometry>;
+      replayFloors: (value: typeof replay) => Map<string, number>;
+    };
+    internals.loadedFloors.set(
+      replay.map,
+      new ReplayFloorGeometry(
+        [
+          {
+            area: "room",
+            interior: true,
+            vertices: [
+              [0, 0, 37],
+              [10, 0, 37],
+              [0, 10, 37],
+            ],
+            indices: [0, 1, 2],
+          },
+        ],
+        [],
+        [],
+      ),
+    );
+    f.c.seek(500);
+    const modes =
+      firstMode === "analyse"
+        ? (["analyse", "plan", "analyse"] as const)
+        : (["plan", "analyse", "plan"] as const);
+    for (const mode of modes) {
+      f.c.setWorkspaceMode(mode);
+      f.c.render();
+      assert.equal(f.c.getSnapshot().time, 500);
+      assert.equal(f.c.getSnapshot().playing, false);
+      const hints = internals.replayFloors(replay);
+      assert.equal(
+        hints.has(npc.key),
+        mode === "plan",
+        `${firstMode} -> ${mode}`,
+      );
+      if (mode === "plan") {
+        assert.equal(hints.get(npc.key), 37);
+      } else
+        assert.equal(
+          f.frame.some((a) => a.key === npc.key),
+          false,
+        );
+      assert.equal(
+        internals.replayFloors(replay),
+        hints,
+        "unchanged context keeps its cached map",
+      );
+    }
+    f.c.stop();
+  }
+});
+
 test("standalone SoD reference grounding respects its own level hint in stacked rooms", () => {
   const f = fixture(),
     c = f.c;
@@ -3644,12 +3710,16 @@ test("planned and recorded reference poses share the edge cache and invalidate m
 test("missing optional presentation cues preserve replay preparation but cancellation still aborts", async () => {
   for (const aborted of [false, true]) {
     const f = fixture();
-    const error = new Error(aborted ? "Cancelled" : "Client effect is unavailable");
+    const error = new Error(
+      aborted ? "Cancelled" : "Client effect is unavailable",
+    );
     error.name = aborted ? "AbortError" : "NotFoundError";
     const internals = f.c as unknown as {
       localFiles: unknown;
       browserBridge: unknown;
-      prepareReplayForInstall: (input: RawReplay) => Promise<{replay: {actors: unknown[]}}>;
+      prepareReplayForInstall: (
+        input: RawReplay,
+      ) => Promise<{ replay: { actors: unknown[] } }>;
     };
     internals.localFiles = { prepare: async () => {} };
     internals.browserBridge = {
@@ -3659,12 +3729,24 @@ test("missing optional presentation cues preserve replay preparation but cancell
         return {};
       },
     };
-    const input = { ...raw, actors: [], events: [], abilities: [{gameID: 440802, name: "Frozen Orb"}] };
-    if (aborted) await assert.rejects(internals.prepareReplayForInstall(input), (e: unknown) => e === error);
+    const input = {
+      ...raw,
+      actors: [],
+      events: [],
+      abilities: [{ gameID: 440802, name: "Frozen Orb" }],
+    };
+    if (aborted)
+      await assert.rejects(
+        internals.prepareReplayForInstall(input),
+        (e: unknown) => e === error,
+      );
     else {
       const prepared = await internals.prepareReplayForInstall(input);
       assert.equal(prepared.replay.actors.length, 0);
-      assert.match(f.c.getSnapshot().notice, /Some spell effects are unavailable/);
+      assert.match(
+        f.c.getSnapshot().notice,
+        /Some spell effects are unavailable/,
+      );
     }
     f.c.stop();
   }
@@ -4043,6 +4125,136 @@ test("permanent trajectory errors remain rejected for synchronous and asynchrono
       1,
       `${kind} malformed or oversized content must not loop`,
     );
+    f.c.stop();
+  }
+});
+
+test("same-component Play retries recover transient pressure before accepting current native readiness", (t) => {
+  trajectoryRetryTimers(t);
+  for (const pressure of ["queue", "active-cache"] as const) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    const submissions: unknown[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.engine.submit_replay_trajectory = (json) => {
+      submissions.push(JSON.parse(json));
+      if (pressure === "queue" && submissions.length === 1)
+        throw Error("Too many queued trajectory components");
+      packets.push(JSON.parse(json));
+    };
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    if (pressure === "active-cache")
+      f.c.receive(
+        "trajectoryError",
+        JSON.stringify({
+          ...identity,
+          message: "Canonical active cache capacity exceeded",
+        }),
+      );
+    f.c.toggle();
+    const first = requests.at(-1)!;
+    assert.ok(first > 0);
+    assert.equal(f.c.getSnapshot().playPreparing, true, pressure);
+    t.mock.timers.tick(99);
+    assert.equal(submissions.length, 1);
+    assert.equal(f.c.getSnapshot().playing, false);
+    t.mock.timers.tick(1);
+    assert.equal(submissions.length, 2);
+    assert.deepEqual(
+      submissions[1],
+      submissions[0],
+      "recovery resubmits the identical required component",
+    );
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "submission alone cannot start the clock",
+    );
+    f.c.receive(
+      "movementPreparation",
+      JSON.stringify({ ready: 1, pending: 0, conflict: 0 }),
+    );
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "status alone cannot acknowledge Play",
+    );
+    f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+    assert.equal(f.c.getSnapshot().playing, true);
+
+    f.c.seek(600);
+    assert.equal(player().trajectory!.content, identity.content);
+    assert.equal(
+      submissions.length,
+      2,
+      "accepted content remains deduplicated across the same-component seek",
+    );
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({
+        ...identity,
+        source: "stale-installation",
+        message: "Invalid canonical sample",
+      }),
+    );
+    f.c.toggle();
+    const second = requests.at(-1)!;
+    assert.notEqual(second, first);
+    assert.equal(f.c.getSnapshot().playPreparing, true);
+    f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+    assert.equal(
+      f.c.getSnapshot().playing,
+      false,
+      "old acknowledgements cannot start a new attempt",
+    );
+    f.c.receive("playbackPrepared", JSON.stringify({ token: second }));
+    assert.equal(f.c.getSnapshot().playing, true);
+    f.c.stop();
+  }
+});
+
+test("permanent required content remains terminal across Play retries and same-component seeks", async () => {
+  for (const reason of [
+    "Canonical input capacity exceeded",
+    "Invalid canonical sample",
+  ]) {
+    const { f, actor, packets, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.c.seek(500);
+    const identity = { ...player().trajectory!, actor: actor.key };
+    f.c.toggle();
+    const stale = requests.at(-1)!;
+    f.c.receive(
+      "trajectoryError",
+      JSON.stringify({ ...identity, message: reason }),
+    );
+    const submitted = packets.length;
+    for (const time of [600, 500, 600]) {
+      f.c.seek(time);
+      assert.equal(player().trajectory!.content, identity.content);
+      f.c.receive("trajectoryMissing", JSON.stringify([identity]));
+      await Promise.resolve();
+      f.c.toggle();
+      assert.equal(f.c.getSnapshot().playPreparing, false, reason);
+      assert.equal(f.c.getSnapshot().playing, false, reason);
+      assert.equal(requests.at(-1), 0);
+      assert.match(f.c.getSnapshot().notice, /Movement could not be prepared/);
+      assert.equal(
+        packets.length,
+        submitted,
+        "immutable rejected content is not silently resubmitted",
+      );
+      f.c.receive("playbackPrepared", JSON.stringify({ token: stale }));
+      assert.equal(f.c.getSnapshot().playing, false);
+    }
     f.c.stop();
   }
 });
@@ -4709,4 +4921,232 @@ test("buffering a known transfer holds its ordinary interpretation until complet
   assert.equal(after.source, before.source);
   assert.notEqual(after.content, before.content);
   f.c.stop();
+});
+
+test("delta publication reconstructs the same complete frames through seeks and source reinstalls", () => {
+  const f = fixture();
+  const expected = new Map<number, unknown>();
+  for (const time of [1000, 6000, 9500, 1000]) {
+    f.c.seek(time);
+    expected.set(time, structuredClone(f.frame));
+  }
+  let rows = new Map<string, Record<string, unknown>>();
+  let reconstructed: unknown[] = [];
+  const payloads: any[] = [];
+  f.engine.set_replay_frame_delta = (json) => {
+    const packet = JSON.parse(json);
+    payloads.push(packet);
+    if (packet.reset) rows.clear();
+    for (const actor of packet.updates)
+      rows.set(actor.key, { ...rows.get(actor.key), ...actor });
+    rows = new Map(packet.order.map((key: string) => [key, rows.get(key)!]));
+    reconstructed = [...rows.values()];
+  };
+  for (const time of [1000, 6000, 9500, 1000]) {
+    f.c.seek(time);
+    assert.deepEqual(reconstructed, expected.get(time));
+  }
+  assert.equal(payloads[0].reset, true);
+  assert.ok(payloads.slice(1).every((packet) => !packet.reset));
+  f.c.installReplay(structuredClone(raw) as RawReplay);
+  assert.equal(payloads.at(-1).reset, true);
+});
+
+test("playback waits for native preparation and ignores cancelled or stale acknowledgements", async () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  await Promise.resolve();
+  const first = requests.at(-1)!;
+  assert.ok(first > 0);
+  f.c.seek(1000);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: first }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.toggle();
+  await Promise.resolve();
+  const second = requests.at(-1)!;
+  assert.notEqual(first, second);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: second }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  f.c.toggle();
+  f.c.toggle();
+  await Promise.resolve();
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(requests.at(-1), 0);
+});
+
+test("speculative asset warming cannot block native playback preparation", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  // A model/spell prefetch may be slow or unavailable while current-scene collision is ready.
+  (f.c as any).warmEncounter = () => new Promise<void>(() => {});
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.ok(requests.at(-1)! > 0);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: requests.at(-1) }));
+  assert.equal(f.c.getSnapshot().playing, true);
+});
+
+test("initial scene deadline cancels playback preparation and a healthy retry can complete", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  assert.equal(f.c.getSnapshot().sceneReady, false);
+  f.c.toggle();
+  const expired = requests.at(-1)!;
+  t.mock.timers.tick(89999);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  assert.equal(f.c.getSnapshot().playing, false);
+  t.mock.timers.tick(1);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(f.c.getSnapshot().playing, false);
+  assert.match(f.c.getSnapshot().error!, /did not finish loading/);
+  assert.equal(requests.at(-1), 0);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: expired }));
+  assert.equal(f.c.getSnapshot().playing, false);
+
+  f.c.toggle();
+  const retry = requests.at(-1)!;
+  assert.notEqual(retry, expired);
+  assert.equal(f.c.getSnapshot().error, null);
+  t.mock.timers.tick(89999);
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  f.c.receive("playbackPrepared", JSON.stringify({ token: expired }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.receive("scene", "409");
+  f.c.receive("playbackPrepared", JSON.stringify({ token: retry }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  t.mock.timers.tick(100000);
+  assert.equal(f.c.getSnapshot().error, null);
+  assert.equal(f.c.getSnapshot().playing, true);
+  f.c.stop();
+});
+
+test("scene failure cancels native preparation and invalidates late readiness", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.toggle();
+  const token = requests.at(-1)!;
+  f.c.fail("Required scene load failed");
+  assert.equal(requests.at(-1), 0);
+  assert.equal(f.c.getSnapshot().playPreparing, false);
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.receive("playbackPrepared", JSON.stringify({ token }));
+  assert.equal(f.c.getSnapshot().playing, false);
+  f.c.stop();
+});
+
+test("Play preserves an existing boot or raid-load scene deadline", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  for (const load of ["boot", "raid"] as const) {
+    const f = fixture();
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    if (load === "boot")
+      (f.c as unknown as { waitForScene: () => void }).waitForScene();
+    else f.c.selectRaid(469, false);
+    t.mock.timers.tick(89000);
+    f.c.toggle();
+    const token = requests.at(-1)!;
+    t.mock.timers.tick(999);
+    assert.equal(f.c.getSnapshot().playPreparing, true, load);
+    t.mock.timers.tick(1);
+    assert.equal(f.c.getSnapshot().playPreparing, false, load);
+    assert.equal(f.c.getSnapshot().playing, false, load);
+    assert.match(f.c.getSnapshot().error!, /did not finish loading/);
+    assert.equal(requests.at(-1), 0, load);
+    f.c.receive("playbackPrepared", JSON.stringify({ token }));
+    assert.equal(f.c.getSnapshot().playing, false, load);
+    f.c.stop();
+  }
+});
+
+test("playback target changes invalidate pending native acknowledgements", () => {
+  for (const change of [
+    "plan",
+    "reset",
+    "raid",
+    "retained-replay-raid",
+    "pending-switch",
+  ] as const) {
+    const f = fixture();
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    f.c.toggle();
+    const token = requests.at(-1)!;
+    assert.equal(f.c.getSnapshot().playPreparing, true);
+    if (change === "plan") f.c.setWorkspaceMode("plan");
+    else if (change === "reset") (f.c as any).resetProject(null);
+    else {
+      if (change === "pending-switch") {
+        (f.c as any).projectStore = {};
+        (f.c as any).activeProject = { id: "pending" };
+        (f.c as any).flushProject = () => new Promise<void>(() => {});
+      }
+      f.c.selectRaid(469, change !== "retained-replay-raid");
+    }
+    assert.equal(f.c.getSnapshot().playPreparing, false, change);
+    assert.equal(requests.at(-1), 0, change);
+    f.c.receive("playbackPrepared", JSON.stringify({ token }));
+    assert.equal(f.c.getSnapshot().playing, false, change);
+    f.c.stop();
+  }
+});
+
+test("native preparation still completes when started with a replay in plan mode", () => {
+  const f = fixture();
+  const requests: number[] = [];
+  f.engine.prepare_replay_playback = (token) => requests.push(token);
+  f.c.setWorkspaceMode("plan");
+  f.c.toggle();
+  const token = requests.at(-1)!;
+  assert.equal(f.c.getSnapshot().playPreparing, true);
+  f.c.receive("playbackPrepared", JSON.stringify({ token }));
+  assert.equal(f.c.getSnapshot().playing, true);
+  f.c.stop();
+});
+
+test("rejected selected trajectories terminate preparation and invalidate late readiness", () => {
+  for (const timing of ["before", "during", "sync"] as const) {
+    const { f, actor, player } = canonicalTransportFixture([
+      [0, 2, -1, 0],
+      [1000, 8, -1, null],
+    ]);
+    const requests: number[] = [];
+    f.engine.prepare_replay_playback = (token) => requests.push(token);
+    if (timing === "sync") {
+      f.engine.submit_replay_trajectory = () => {
+        throw Error("Invalid canonical sample");
+      };
+      f.c.toggle();
+    } else {
+      f.c.seek(500);
+      const identity = { ...player().trajectory!, actor: actor.key };
+      if (timing === "during") f.c.toggle();
+      f.c.receive(
+        "trajectoryError",
+        JSON.stringify({ ...identity, message: "Invalid canonical sample" }),
+      );
+      if (timing === "before") f.c.toggle();
+    }
+    const token = requests.find((v) => v > 0);
+    assert.equal(f.c.getSnapshot().playPreparing, false, timing);
+    assert.equal(f.c.getSnapshot().playing, false, timing);
+    assert.equal(requests.at(-1), 0, timing);
+    assert.match(f.c.getSnapshot().notice, /Movement could not be prepared/);
+    if (token !== undefined) {
+      f.c.receive("playbackPrepared", JSON.stringify({ token }));
+      assert.equal(f.c.getSnapshot().playing, false, timing);
+    }
+    f.c.stop();
+  }
 });

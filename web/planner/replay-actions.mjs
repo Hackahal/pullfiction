@@ -3,7 +3,7 @@ const spellOf = (e) => {
   const id = e.abilityGameID ?? e.ability?.guid ?? 0;
   return id === -4 ? 1 : Math.max(0, id);
 };
-export function reconstructCasts(replay, metadata = {}) {
+export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
   const actors = new Map(replay.actors.map((a) => [a.key, a]));
   const events = replay.raw.events
     .map((e, id) => ({
@@ -74,7 +74,7 @@ export function reconstructCasts(replay, metadata = {}) {
     }
     map.delete(k);
   };
-  for (const a of actors.values()) a.casts = [];
+  for (const a of actors.values()) if (!reused.has(a.key)) a.casts = [];
   for (const { event: e, id, t } of events) {
     const k = key(e, "source"),
       tk = key(e, "target"),
@@ -98,7 +98,7 @@ export function reconstructCasts(replay, metadata = {}) {
         if (!extra || map.get(tk)?.spell === extra)
           close(map, tk, t, "interrupted", true);
     }
-    if (!a) continue;
+    if (!a || reused.has(a.key)) continue;
     if (e.type === "begincast") {
       close(pending, k, t, "superseded");
       close(channels, k, t, "superseded");
@@ -164,7 +164,7 @@ export function reconstructCasts(replay, metadata = {}) {
     }
   }
   for (const a of actors.values())
-    a.casts.sort((a, b) => a.start - b.start || a.id - b.id);
+    if (!reused.has(a.key)) a.casts.sort((a, b) => a.start - b.start || a.id - b.id);
 }
 
 // Build once per import, not once per rendered frame. Each recorded direct result

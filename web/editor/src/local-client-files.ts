@@ -1,7 +1,7 @@
 // The original client has both synchronous Chain readers and asynchronous Bevy readers.
 // Preparation fills this cache before synchronous consumers run; a cache miss is never 404.
 export interface LocalFileSource {
-  read(name: string): Promise<Uint8Array>;
+  read(name: string, signal?: AbortSignal): Promise<Uint8Array>;
 }
 
 export class LocalFileNotReady extends Error {
@@ -35,7 +35,10 @@ export function localFileKey(name: string): string {
 export class LocalClientFiles {
   private readonly bytes = new Map<string, Uint8Array>();
   private readonly missing = new Set<string>();
-  private readonly pending = new Map<string, Promise<Uint8Array>>();
+  private readonly pending = new Map<
+    string,
+    { promise: Promise<Uint8Array>; abort: AbortController; users: number }
+  >();
   private readonly unprepared = new Set<string>();
   private closed = false;
   private size = 0;
@@ -87,13 +90,15 @@ export class LocalClientFiles {
     throw new Error("A complete local client name index has not been prepared");
   }
 
-  async read(name: string): Promise<Uint8Array> {
+  async read(name: string, signal?: AbortSignal): Promise<Uint8Array> {
+    signal?.throwIfAborted();
     this.assertOpen();
     const key = localFileKey(name);
     const prepared = this.bytes.get(key);
     if (prepared) return prepared.slice();
     if (this.missing.has(key)) throw new LocalFileMissing(name);
-    const bytes = await this.load(name, key);
+    const bytes = await this.load(name, key, signal);
+    signal?.throwIfAborted();
     this.assertOpen();
     const existing = this.bytes.get(key);
     if (existing) return existing.slice();
@@ -108,31 +113,43 @@ export class LocalClientFiles {
 
   // Bevy owns the decoded asset after an async load. Retaining every source buffer here
   // duplicates that ownership and eventually exhausts the synchronous preparation budget.
-  async readStreaming(name: string): Promise<Uint8Array> {
+  async readStreaming(name: string, signal?: AbortSignal): Promise<Uint8Array> {
+    signal?.throwIfAborted();
     this.assertOpen();
     const key = localFileKey(name),
       prepared = this.bytes.get(key);
     if (prepared) return prepared.slice();
     if (this.missing.has(key)) throw new LocalFileMissing(name);
-    const bytes = await this.load(name, key);
+    const bytes = await this.load(name, key, signal);
+    signal?.throwIfAborted();
     this.assertOpen();
     return bytes.slice();
   }
 
-  private load(name: string, key: string): Promise<Uint8Array> {
+  private load(
+    name: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<Uint8Array> {
+    signal?.throwIfAborted();
     let request = this.pending.get(key);
     if (!request) {
-      request = Promise.resolve().then(async () => {
+      const abort = new AbortController();
+      const job = { abort, users: 0, promise: null! as Promise<Uint8Array> };
+      job.promise = Promise.resolve().then(async () => {
         try {
-          const bytes = await this.source.read(key);
           this.assertOpen();
+          abort.signal.throwIfAborted();
+          const bytes = await this.source.read(key, abort.signal);
+          this.assertOpen();
+          abort.signal.throwIfAborted();
           if (!(bytes instanceof Uint8Array))
             throw new Error(`Invalid local client bytes: ${name}`);
           return bytes;
         } catch (error) {
-          // Incomplete downloads, conversion errors and cancellation are retryable failures.
           if (
             !this.closed &&
+            !abort.signal.aborted &&
             error instanceof Error &&
             error.name === "NotFoundError"
           ) {
@@ -141,24 +158,65 @@ export class LocalClientFiles {
           }
           throw error;
         } finally {
-          this.pending.delete(key);
+          if (this.pending.get(key) === job) this.pending.delete(key);
         }
       });
-      this.pending.set(key, request);
+      request = job;
+      this.pending.set(key, job);
     }
-    return request;
+    const job = request;
+    job.users++;
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const finish = () => {
+        if (done) return false;
+        done = true;
+        signal?.removeEventListener("abort", cancel);
+        job.abort.signal.removeEventListener("abort", sourceCancelled);
+        if (--job.users === 0 && this.pending.get(key) === job) {
+          this.pending.delete(key);
+          job.abort.abort();
+        }
+        return true;
+      };
+      const cancel = () => {
+        if (finish()) reject(signal!.reason);
+      };
+      const sourceCancelled = () => {
+        if (finish())
+          reject(
+            this.closed
+              ? new Error("Local client files are closed")
+              : job.abort.signal.reason,
+          );
+      };
+      signal?.addEventListener("abort", cancel, { once: true });
+      job.abort.signal.addEventListener("abort", sourceCancelled, {
+        once: true,
+      });
+      job.promise.then(
+        (bytes) => {
+          if (finish()) resolve(bytes);
+        },
+        (error) => {
+          if (finish()) reject(error);
+        },
+      );
+    });
   }
 
   async prepare(names: readonly string[], signal?: AbortSignal): Promise<void> {
     for (const name of names) {
       signal?.throwIfAborted();
-      await this.read(name);
+      await this.read(name, signal);
     }
     signal?.throwIfAborted();
   }
 
   close() {
     this.closed = true;
+    for (const job of this.pending.values()) job.abort.abort();
+    this.pending.clear();
     this.bytes.clear();
     this.missing.clear();
     this.unprepared.clear();
