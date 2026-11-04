@@ -1439,6 +1439,23 @@ export class EditorController {
         await this.preparePlanAssets(project.plan, signal);
       signal.throwIfAborted();
       if (epoch !== this.request) return false;
+      const prepared =
+        raw &&
+        (!this.state.browserAssets || this.state.clientStatus === "ready")
+          ? await this.prepareReplayForInstall(
+              raw,
+              signal,
+              () => epoch === this.request,
+            )
+          : null;
+      signal.throwIfAborted();
+      if (epoch !== this.request) return false;
+      if (raw && project.source)
+        project.source = {
+          ...project.source,
+          summary: summarizeRun(raw, project.plan.mapId),
+        };
+      // Keep the previous project active until all cancellable work succeeds.
       restore(() => {
         this.mapDrafts.clear();
         this.selectRaid(
@@ -1447,11 +1464,6 @@ export class EditorController {
           project.plan.gameVersion,
           true,
         );
-        if (raw && project.source)
-          project.source = {
-            ...project.source,
-            summary: summarizeRun(raw, project.plan.mapId),
-          };
         this.resetProject(project);
         this.saved = JSON.stringify(project.plan);
         this.undoStack = [];
@@ -1463,39 +1475,27 @@ export class EditorController {
           selectedMarks: [],
           selectedActors: [],
         });
-      });
-      if (
-        raw &&
-        (!this.state.browserAssets || this.state.clientStatus === "ready")
-      ) {
-        const prepared = await this.prepareReplayForInstall(
-          raw,
-          signal,
-          () => epoch === this.request,
-        );
-        signal.throwIfAborted();
-        if (epoch !== this.request) return false;
-        restore(() => {
+        if (raw && prepared) {
           this.installReplay(raw, prepared);
           this.seek(project.time);
           this.patch({ sourceStatus: "cached" });
-        });
-      } else if (raw) {
-        this.pendingProjectReplay = {
-          raw,
-          time: project.time,
-          mode: project.mode,
-        };
-        this.patch({ sourceStatus: "cached" });
-      } else {
-        this.clockTime = project.time;
-        this.patch({ time: project.time });
-        if (project.source)
-          this.notify(
-            "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
-          );
-      }
-      restore(() => this.setWorkspaceMode(project.mode));
+        } else if (raw) {
+          this.pendingProjectReplay = {
+            raw,
+            time: project.time,
+            mode: project.mode,
+          };
+          this.patch({ sourceStatus: "cached" });
+        } else {
+          this.clockTime = project.time;
+          this.patch({ time: project.time });
+          if (project.source)
+            this.notify(
+              "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
+            );
+        }
+        this.setWorkspaceMode(project.mode);
+      });
       await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
       return true;
     } catch (error) {

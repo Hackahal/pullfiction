@@ -5565,7 +5565,13 @@ test("cancelling a file import prevents its delayed replay from installing", asy
 
 test("a cancelled project load cannot clear a newer file import's progress", async () => {
   const store = new IndexedProjectStore(new IDBFactory());
-  const project = newProject(emptyPlan(409), replaySource(raw, 409));
+  const project = {
+    ...newProject(emptyPlan(409), replaySource(raw, 409)),
+    time: 4500,
+    mode: "analyse" as const,
+  };
+  const previous = newProject(emptyPlan(409));
+  await store.put(previous);
   await store.putReplay(project.source!.cacheKey, raw);
   await store.put(project);
   const c = new EditorController(undefined, {
@@ -5573,6 +5579,7 @@ test("a cancelled project load cannot clear a newer file import's progress", asy
     clientCache: null,
     clientFolders: null,
   });
+  assert.equal(await c.openProject(previous.id), true);
   const internals = c as unknown as {
     loadCatalogs(): Promise<void>;
     prepareReplayForInstall(
@@ -5586,6 +5593,7 @@ test("a cancelled project load cannot clear a newer file import's progress", asy
   const preparing = new Promise<void>((resolve) => {
     ready = resolve;
   });
+  const prepare = internals.prepareReplayForInstall.bind(c);
   internals.prepareReplayForInstall = (_input, signal) => {
     oldSignal = signal;
     return new Promise((_, reject) => {
@@ -5595,7 +5603,9 @@ test("a cancelled project load cannot clear a newer file import's progress", asy
   };
   const old = c.openProject(project.id);
   await preparing;
+  assert.equal(c.getSnapshot().projectId, previous.id);
   c.cancelImport();
+  assert.equal(c.getSnapshot().projectId, previous.id);
   assert.equal(oldSignal.aborted, true);
   let reading!: () => void, finishRead!: (text: string) => void;
   const read = new Promise<void>((resolve) => {
@@ -5623,6 +5633,13 @@ test("a cancelled project load cannot clear a newer file import's progress", asy
   c.cancelImport();
   finishRead("{}");
   await next;
+  const saved = await store.get(project.id);
+  assert.equal(saved?.time, 4500);
+  assert.equal(saved?.mode, "analyse");
+  internals.prepareReplayForInstall = prepare;
+  assert.equal(await c.openProject(project.id), true);
+  assert.equal(c.getSnapshot().time, 4500);
+  assert.equal(c.getSnapshot().workspaceMode, "analyse");
   c.stop();
 });
 
