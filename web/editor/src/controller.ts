@@ -7727,107 +7727,110 @@ export class EditorController {
       const actors = this.indexActors(this.sceneActors());
       const loggedActors = this.indexActors(replay.actors);
       const present = this.presentReplayActors();
-      const frame = this.frame
-        .filter((unit) => !present || present.has(unit.key))
-        .map((unit) => {
-          const actor = actors.get(unit.key);
-          const pose =
-            options.actors && actor ? this.actorPose(actor, lookupPose) : null;
-          const movement = pose?.movement;
-          const hint = floorHints.get(unit.key);
-          const geometry = this.loadedFloors.get(replay.map);
-          const seed = this.floorHintCache?.seeds.get(unit.key);
-          const endpointHeight = (
-            point: number[] | undefined,
-            cache: ReplayHeightCache,
-          ) =>
-            point?.[2] ??
-            (actor && geometry && point
-              ? (cache.height(
-                  actor,
-                  geometry,
-                  point[0],
-                  point[1],
-                  seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
-                  seed === undefined,
-                ) ?? hint)
-              : hint);
-          const fromHeight = endpointHeight(
-            movement?.from as number[] | undefined,
-            this.fromFloorHeights,
-          );
-          const toHeight = endpointHeight(
-            movement?.to as number[] | undefined,
-            this.toFloorHeights,
-          );
-          const nativeMovement =
-            movement &&
-            typeof fromHeight === "number" &&
-            Number.isFinite(fromHeight) &&
-            typeof toHeight === "number" &&
-            Number.isFinite(toHeight)
-              ? {
-                  ...movement,
-                  from: [movement.from[0], movement.from[1], fromHeight],
-                  to: [movement.to[0], movement.to[1], toHeight],
-                  from_inferred: movement.from[2] == null && seed === undefined,
-                  to_inferred: movement.to[2] == null && seed === undefined,
-                  floor_candidates:
-                    geometry && actor
-                      ? this.movementFloors.candidates(
-                          actor,
-                          geometry,
-                          movement.from as number[],
-                          movement.to as number[],
-                          fromHeight,
-                          toHeight,
-                          movement.from[2] == null && seed === undefined,
-                          movement.to[2] == null && seed === undefined,
-                        )
-                      : [],
-                }
-              : null;
-          // Unknown route endpoints are not permission to draw a line through walls.
-          const holding = !!movement && !nativeMovement;
-          const trajectory = this.trajectoryBinding(
-            loggedActors.get(unit.key),
-            pose,
-          );
-          return {
-            ...unit,
-            ...trajectory,
-            position:
-              pose && !pose.dead
-                ? holding
-                  ? [
-                      movement!.from[0],
-                      movement!.from[1],
-                      fromHeight ?? movement!.from[2] ?? 0,
-                    ]
-                  : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
-                : null,
-            ground:
-              !!(
-                this.state.workspaceMode === "plan" && this.displaySnapshot()
-              ) || pose?.pos[2] == null,
-            floor_hint:
-              (holding ? fromHeight : undefined) ??
-              (this.state.workspaceMode === "plan" && this.displaySnapshot()
-                ? pose?.pos[2]
-                : undefined) ??
-              floorHints.get(unit.key) ??
-              null,
-            movement: nativeMovement,
-            facing: pose?.facing ?? 0,
-            speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
-            dead: pose?.dead ?? false,
-            estimated: !!pose?.estimated || holding,
-            wisp: !!pose?.wisp,
-            plate_auras: options.auras ? unit.plate_auras : [],
-            auras: options.auras ? unit.auras : [],
-            self_auras: options.auras ? unit.self_auras : [],
-          };
-        });
+      const frame: (NativeFrame &
+        ReturnType<EditorController["trajectoryBinding"]>)[] = [];
+      for (const unit of this.frame) {
+        if (present && !present.has(unit.key)) continue;
+        const actor = actors.get(unit.key);
+        const pose =
+          options.actors && actor ? this.actorPose(actor, lookupPose) : null;
+        const movement = pose?.movement;
+        const hint = floorHints.get(unit.key);
+        const geometry = this.loadedFloors.get(replay.map);
+        const seed = this.floorHintCache?.seeds.get(unit.key);
+        const endpointHeight = (
+          point: number[] | undefined,
+          cache: ReplayHeightCache,
+        ) =>
+          point?.[2] ??
+          (actor && geometry && point
+            ? (cache.height(
+                actor,
+                geometry,
+                point[0],
+                point[1],
+                seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
+                seed === undefined,
+              ) ?? hint)
+            : hint);
+        const fromHeight = endpointHeight(
+          movement?.from as number[] | undefined,
+          this.fromFloorHeights,
+        );
+        const toHeight = endpointHeight(
+          movement?.to as number[] | undefined,
+          this.toFloorHeights,
+        );
+        const nativeMovement =
+          movement &&
+          typeof fromHeight === "number" &&
+          Number.isFinite(fromHeight) &&
+          typeof toHeight === "number" &&
+          Number.isFinite(toHeight)
+            ? {
+                ...movement,
+                from: [movement.from[0], movement.from[1], fromHeight],
+                to: [movement.to[0], movement.to[1], toHeight],
+                from_inferred: movement.from[2] == null && seed === undefined,
+                to_inferred: movement.to[2] == null && seed === undefined,
+                floor_candidates:
+                  geometry && actor
+                    ? this.movementFloors.candidates(
+                        actor,
+                        geometry,
+                        movement.from as number[],
+                        movement.to as number[],
+                        fromHeight,
+                        toHeight,
+                        movement.from[2] == null && seed === undefined,
+                        movement.to[2] == null && seed === undefined,
+                      )
+                    : [],
+              }
+            : null;
+        // Unknown route endpoints are not permission to draw a line through walls.
+        const holding = !!movement && !nativeMovement;
+        const trajectory = this.trajectoryBinding(
+          loggedActors.get(unit.key),
+          pose,
+        );
+        const position: NativeFrame["position"] =
+          pose && !pose.dead
+            ? holding
+              ? [
+                  movement!.from[0],
+                  movement!.from[1],
+                  fromHeight ?? movement!.from[2] ?? 0,
+                ]
+              : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
+            : null;
+        if (!unit.player && !position) continue;
+        const row = {
+          ...unit,
+          ...trajectory,
+          position,
+          ground:
+            !!(this.state.workspaceMode === "plan" && this.displaySnapshot()) ||
+            pose?.pos[2] == null,
+          floor_hint:
+            (holding ? fromHeight : undefined) ??
+            (this.state.workspaceMode === "plan" && this.displaySnapshot()
+              ? pose?.pos[2]
+              : undefined) ??
+            floorHints.get(unit.key) ??
+            null,
+          movement: nativeMovement,
+          facing: pose?.facing ?? 0,
+          speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
+          dead: pose?.dead ?? false,
+          estimated: !!pose?.estimated || holding,
+          wisp: !!pose?.wisp,
+          plate_auras: options.auras ? unit.plate_auras : [],
+          auras: options.auras ? unit.auras : [],
+          self_auras: options.auras ? unit.self_auras : [],
+        };
+        frame.push(row);
+      }
       this.engine!.configure_replay_camera?.(
         this.state.cameraMaxDistance,
         options.lockCamera ? (this.state.selected ?? "") : "",
@@ -7893,7 +7896,7 @@ export class EditorController {
           cameraKeys.push(locked.key);
       }
       this.engine!.set_replay_camera?.(JSON.stringify(cameraKeys));
-      this.publishReplayFrame(frame.filter((a) => a.player || a.position));
+      this.publishReplayFrame(frame);
     });
     for (const key of this.trajectoryRetries.keys()) {
       if (!this.trajectoryDemands.has(key)) this.trajectoryRetries.delete(key);
