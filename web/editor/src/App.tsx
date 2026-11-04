@@ -1204,6 +1204,17 @@ function Viewport({
   focus: boolean;
   closeFocus: () => void;
 }) {
+  const showGameAssets =
+    state.browserAssets &&
+    (state.clientStatus !== "ready" ||
+      (state.clientNeedsFiles && !state.clientPromptHidden));
+  const showReplayPreparation =
+    !showGameAssets &&
+    state.sceneReady &&
+    state.busy &&
+    state.replayPreparation;
+  const showBuffer =
+    !showGameAssets && state.sceneReady && !state.busy && state.buffering;
   const canvas = useRef<HTMLCanvasElement>(null);
   const [map, setMap] = useState(false);
   const [inspectionOpen, setInspectionOpen] = useState(false);
@@ -1892,10 +1903,12 @@ function Viewport({
                 : hint}
           </div>
         )}
-        {state.browserAssets &&
-        (state.clientStatus !== "ready" ||
-          (state.clientNeedsFiles && !state.clientPromptHidden)) ? (
-          <BrowserClient state={state} controller={controller} />
+        {showGameAssets ? (
+          <BrowserClient
+            state={state}
+            controller={controller}
+            onCancel={state.busy ? () => controller.cancelImport() : undefined}
+          />
         ) : !map && !state.sceneReady ? (
           <div className="scene-loading loading-surface" role="status">
             <GameIcon name="Spell_Fire_Immolation" />
@@ -1919,16 +1932,16 @@ function Viewport({
             )}
           </div>
         ) : null}
-        {state.sceneReady && state.busy && state.replayPreparation && (
+        {showReplayPreparation && (
           <div className="scene-loading loading-surface" role="status">
-            <strong>{state.replayPreparation.message}</strong>
-            <PreparationProgress progress={state.replayPreparation} />
+            <strong>{showReplayPreparation.message}</strong>
+            <PreparationProgress progress={showReplayPreparation} />
             <button onClick={() => controller.cancelImport()}>
               Cancel loading
             </button>
           </div>
         )}
-        {state.sceneReady && !state.busy && state.buffering && (
+        {showBuffer && (
           <div className="scene-loading loading-surface" role="status">
             <strong>
               {state.bufferError ??
@@ -1949,6 +1962,9 @@ function Viewport({
           </div>
         )}
         {!map &&
+          !showGameAssets &&
+          !showReplayPreparation &&
+          !showBuffer &&
           state.replay &&
           state.sceneReady &&
           !(state.workspaceMode === "plan" && controller.displaySnapshot()) &&

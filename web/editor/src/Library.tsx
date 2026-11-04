@@ -88,6 +88,13 @@ export function Library({
   const previewIntent = useRef(0);
   const activeProject = state.projects.find((p) => p.id === state.projectId);
   const disabled = state.busy || opening;
+  const showReconnect =
+    state.browserAssets && state.clientNeedsFiles && !state.clientPromptHidden;
+  const cancelLoading = () => {
+    controller.cancelImport();
+    if (opening && state.clientStatus !== "ready") controller.cancelClient();
+    setOpening(false);
+  };
   const allPlans = state.projects.filter(
     (p) => !p.deletedAt && p.kind === "plan",
   );
@@ -616,7 +623,7 @@ export function Library({
               Load game assets
             </button>
           )}
-          {(state.busy || opening) && (
+          {(state.busy || opening) && !showReconnect && (
             <div
               className="library-loading library-loading-overlay"
               role="status"
@@ -639,16 +646,7 @@ export function Library({
                 />
               )}
               {(state.busy || state.clientStatus !== "ready") && (
-                <button
-                  onClick={() => {
-                    controller.cancelImport();
-                    if (opening && state.clientStatus !== "ready")
-                      controller.cancelClient();
-                    setOpening(false);
-                  }}
-                >
-                  Cancel loading
-                </button>
+                <button onClick={cancelLoading}>Cancel loading</button>
               )}
             </div>
           )}
@@ -1149,11 +1147,13 @@ export function Library({
           </main>
         </div>
       )}
-      {state.browserAssets &&
-        state.clientNeedsFiles &&
-        !state.clientPromptHidden && (
-          <BrowserClient state={state} controller={controller} />
-        )}
+      {showReconnect && (
+        <BrowserClient
+          state={state}
+          controller={controller}
+          onCancel={state.busy || opening ? cancelLoading : undefined}
+        />
+      )}
       <input
         hidden
         type="file"

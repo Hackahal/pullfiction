@@ -5,9 +5,11 @@ import type { Snapshot } from "./types";
 export function BrowserClient({
   state,
   controller,
+  onCancel,
 }: {
   state: Snapshot;
   controller: EditorController;
+  onCancel?: () => void;
 }) {
   const opening = state.clientStatus === "opening";
   return (
@@ -29,6 +31,7 @@ export function BrowserClient({
           Retry download
         </button>
       )}
+      {onCancel && <button onClick={onCancel}>Cancel loading</button>}
     </section>
   );
 }
