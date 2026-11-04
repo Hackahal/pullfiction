@@ -2886,15 +2886,6 @@ a {
   pointer-events: none;
   z-index: 3;
 }
-.page-layer-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.page-layer-picker select {
-  flex: 1;
-  min-width: 0;
-}
 .viewport-modes > [role="group"] {
   display: flex;
   flex-wrap: wrap;
@@ -3751,15 +3742,6 @@ select:hover:not(:disabled) {
   box-sizing: border-box;
   padding: 7px;
 }
-.page-properties .page-layer-picker {
-  align-items: stretch;
-}
-.page-properties .page-layer-picker select {
-  width: 100%;
-}
-.page-properties .plan-form-row {
-  flex-wrap: wrap;
-}
 .page-properties .planning-actions {
   flex-wrap: wrap;
 }
@@ -4420,9 +4402,6 @@ a.inspect-rune-entry:focus-visible {
 .planning-advanced { margin: 10px 0; padding: 9px 0; border-top: 1px solid #ffffff17; border-bottom: 1px solid #ffffff17; }
 .planning-advanced > summary { color: #c4bdac; font-size: 12px; cursor: pointer; }
 .planning-advanced[open] > summary { margin-bottom: 12px; }
-.planning-timing-state { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff17; }
-.planning-timing-state strong { font-size: 12px; color: #ded1ae; }
-.planning-timing-state p { margin: 6px 0 8px; font-size: 12px; color: #c2bcae; line-height: 1.5; }
 
 .chart-table[data-details="false"] :is(td, th):nth-child(n + 5) { display: none; }
 .chart-table .chart-columns { padding: 3px 6px; border: 1px solid #8e78454a; color: #e1d0a2; font-size: 11px; }

@@ -26,7 +26,7 @@ test("Timeline page details can select empty and notes-only pages", () => {
     }),
   );
   const selector = markup.match(
-    /<select[^>]*aria-label="Plan page"[^>]*>[\s\S]*?<\/select>/,
+    /<select[^>]*aria-label="Current page"[^>]*>[\s\S]*?<\/select>/,
   )?.[0];
   assert.ok(selector);
   assert.match(selector, />Empty page<\/option>/);

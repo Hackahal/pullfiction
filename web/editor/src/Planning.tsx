@@ -46,12 +46,39 @@ export function PageProperties({
       aria-label="Page properties"
     >
       <header className="page-identity">
-        <h3>Plan page</h3>
+        <label className="page-navigation">
+          <span>Current page</span>
+          <select
+            aria-label="Current page"
+            value={step.id}
+            onChange={(e) => controller.setActiveStep(e.target.value, false)}
+          >
+            {state.plan.layers.map((layer) => (
+              <optgroup key={layer.id} label={layer.name}>
+                {state.plan.steps
+                  .filter((page) => page.layerId === layer.id)
+                  .map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
         {step.snapshot && (
-          <p className="snapshot-source">
-            Captured at <time>{preciseTime(step.snapshot.time)}</time>
-            <span> · {step.snapshot.actors.length} recorded placements</span>
-          </p>
+          <dl className="page-source-facts" aria-label="Recorded capture">
+            <div>
+              <dt>Captured at</dt>
+              <dd>
+                <time>{preciseTime(step.snapshot.time)}</time>
+              </dd>
+            </div>
+            <div>
+              <dt>Recorded placements</dt>
+              <dd>{step.snapshot.actors.length.toLocaleString()}</dd>
+            </div>
+          </dl>
         )}
       </header>
       <div className="page-name-fields">
@@ -80,30 +107,7 @@ export function PageProperties({
             ))}
           </select>
         </label>
-      </div>
-      <details className="planning-advanced page-routing">
-        <summary>Page and layer</summary>
-        <label className="page-layer-picker">
-          Switch page
-          <select
-            aria-label="Plan page"
-            value={step.id}
-            onChange={(e) => controller.setActiveStep(e.target.value, false)}
-          >
-            {state.plan.layers.map((layer) => (
-              <optgroup key={layer.id} label={layer.name}>
-                {state.plan.steps
-                  .filter((page) => page.layerId === layer.id)
-                  .map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-        <label className="page-layer-picker">
+        <label>
           Layer
           <select
             aria-label="Page layer"
@@ -117,91 +121,104 @@ export function PageProperties({
             ))}
           </select>
         </label>
-      </details>
+      </div>
       {state.replay && (
-        <>
-          <div className="planning-timing-state">
-            <strong>Replay timing</strong>
-            <p>
-              {step.start === null && step.end === null
-                ? "Always visible"
-                : `${step.start === null ? "From the beginning" : `From ${preciseTime(step.start)}`} · ${step.end === null ? "until the end" : `to ${preciseTime(step.end)}`}`}
-            </p>
-          </div>
-          <div className="plan-form-row">
-            <button
-              title="Set step start to playhead"
-              disabled={!state.replay}
-              onClick={() =>
-                controller.updateStep({
-                  start: state.time,
-                  end:
-                    step.end !== null && step.end <= state.time
-                      ? null
-                      : step.end,
-                })
-              }
-            >
-              Set start at playhead
-            </button>
-            <button
-              title="Set step end to playhead"
-              disabled={!state.replay || state.time <= (step.start ?? 0)}
-              onClick={() => controller.updateStep({ end: state.time })}
-            >
-              Set end at playhead
-            </button>
-            <button
-              title="Remove time link"
-              onClick={() => controller.updateStep({ start: null, end: null })}
-            >
-              Clear timing
-            </button>
-          </div>
-          <details className="planning-advanced">
-            <summary>Exact timing in seconds</summary>
-            <div className="plan-form-row">
+        <details className="page-timing">
+          <summary>
+            <span>
+              <strong>Replay timing</strong>
+              <span className="page-timing-range">
+                {step.start === null && step.end === null
+                  ? "Always visible"
+                  : `${step.start === null ? "Beginning" : preciseTime(step.start)} – ${step.end === null ? "End" : preciseTime(step.end)}`}
+              </span>
+            </span>
+            <EditorIcon name="down" />
+          </summary>
+          <div className="page-timing-editor">
+            <div className="page-timing-fields">
               <label>
-                Start · seconds
+                Start (seconds)
                 <input
                   aria-label="Step start seconds"
                   type="number"
                   min="0"
-                  step=".1"
+                  step=".001"
                   value={step.start === null ? "" : step.start / 1000}
                   onChange={(e) => {
-                    const n = Number(e.target.value) * 1000;
+                    if (e.currentTarget.validity.badInput) return;
+                    const raw = e.currentTarget.value;
+                    const n = Math.round(Number(raw) * 1000);
                     if (
-                      Number.isFinite(n) &&
-                      n >= 0 &&
-                      (step.end === null || n < step.end)
+                      raw === "" ||
+                      (Number.isFinite(n) &&
+                        n >= 0 &&
+                        (step.end === null || n < step.end))
                     )
                       controller.updateStep({
-                        start: e.target.value === "" ? null : n,
+                        start: raw === "" ? null : n,
                       });
                   }}
                 />
               </label>
               <label>
-                End · seconds
+                End (seconds)
                 <input
                   aria-label="Step end seconds"
                   type="number"
                   min="0"
-                  step=".1"
+                  step=".001"
                   value={step.end === null ? "" : step.end / 1000}
                   onChange={(e) => {
-                    const n = Number(e.target.value) * 1000;
-                    if (Number.isFinite(n) && n > (step.start ?? 0))
+                    if (e.currentTarget.validity.badInput) return;
+                    const raw = e.currentTarget.value;
+                    const n = Math.round(Number(raw) * 1000);
+                    if (
+                      raw === "" ||
+                      (Number.isFinite(n) && n > (step.start ?? 0))
+                    )
                       controller.updateStep({
-                        end: e.target.value === "" ? null : n,
+                        end: raw === "" ? null : n,
                       });
                   }}
                 />
               </label>
             </div>
-          </details>
-        </>
+            <div className="page-timing-actions">
+              <button
+                title="Set step start to playhead"
+                disabled={!state.replay}
+                onClick={() =>
+                  controller.updateStep({
+                    start: state.time,
+                    end:
+                      step.end !== null && step.end <= state.time
+                        ? null
+                        : step.end,
+                  })
+                }
+              >
+                Set start at playhead
+              </button>
+              <button
+                title="Set step end to playhead"
+                disabled={!state.replay || state.time <= (step.start ?? 0)}
+                onClick={() => controller.updateStep({ end: state.time })}
+              >
+                Set end at playhead
+              </button>
+              <button
+                title="Remove time link"
+                disabled={step.start === null && step.end === null}
+                onClick={() =>
+                  controller.updateStep({ start: null, end: null })
+                }
+              >
+                Clear timing
+              </button>
+            </div>
+          </div>
+        </details>
       )}
       <label className="page-notes">
         Notes
