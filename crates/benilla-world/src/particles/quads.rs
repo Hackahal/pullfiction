@@ -7,7 +7,7 @@ use benilla_formats::ParticleEmitterDef;
 use bevy::prelude::*;
 
 use super::buffer::{EffectQuads, EffectVertex, ParticleVertexData};
-use super::{Particle, rand01};
+use super::{rand01, Particle};
 
 /// The 128-entry twinkle noise table, uniform in [0, 1) like the reference's `0xcf58f0` (filled at
 /// startup by `0x706790`); a fixed seed, so the distribution matches but not the stream.
@@ -343,7 +343,7 @@ fn expand_quads_inner(
 
 #[cfg(test)]
 mod tests {
-    use super::{CamBasis, DrawFrame, Particle, expand_quads, spin_angle};
+    use super::{expand_quads, spin_angle, CamBasis, DrawFrame, Particle};
     use bevy::prelude::{Quat, Transform, Vec3};
 
     #[test]

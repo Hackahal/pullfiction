@@ -1126,11 +1126,13 @@ pub(crate) fn apply(
                             ),
                         );
                     }
-                    for (field, old, new) in crate::planner_replay_identity::write_replay_value_pairs(
-                        &mut store,
-                        &mut descriptor_scratch,
-                        fields,
-                    ) {
+                    for (field, old, new) in
+                        crate::planner_replay_identity::write_replay_value_pairs(
+                            &mut store,
+                            &mut descriptor_scratch,
+                            fields,
+                        )
+                    {
                         changes.write(net::FieldChanged {
                             at: crate::lanes::stamp(),
                             entity: *entity,

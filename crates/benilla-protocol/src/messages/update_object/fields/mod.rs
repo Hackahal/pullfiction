@@ -652,11 +652,7 @@ impl ObjectFields {
         }
     }
 
-    fn merge_values_diff(
-        &mut self,
-        delta: &ObjectFields,
-        mut changed: impl FnMut(u16, u32, u32),
-    ) {
+    fn merge_values_diff(&mut self, delta: &ObjectFields, mut changed: impl FnMut(u16, u32, u32)) {
         for (index, value) in delta.raw_fields() {
             let previous = self.get_raw(index);
             if previous == Some(value) {
@@ -699,18 +695,21 @@ impl ObjectFields {
     }
     /// Every carried `(index, value)` pair in ascending order, for debugging and probes.
     pub fn raw_fields(&self) -> impl Iterator<Item = (u16, u32)> + '_ {
-        self.present.iter().enumerate().flat_map(move |(word, &mask)| {
-            let mut remaining = mask;
-            std::iter::from_fn(move || {
-                if remaining == 0 {
-                    return None;
-                }
-                let bit = remaining.trailing_zeros() as u16;
-                remaining &= remaining - 1;
-                let index = word as u16 * 32 + bit;
-                Some((index, self.values[usize::from(index)]))
+        self.present
+            .iter()
+            .enumerate()
+            .flat_map(move |(word, &mask)| {
+                let mut remaining = mask;
+                std::iter::from_fn(move || {
+                    if remaining == 0 {
+                        return None;
+                    }
+                    let bit = remaining.trailing_zeros() as u16;
+                    remaining &= remaining - 1;
+                    let index = word as u16 * 32 + bit;
+                    Some((index, self.values[usize::from(index)]))
+                })
             })
-        })
     }
 }
 
