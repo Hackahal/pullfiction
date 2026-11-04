@@ -1,7 +1,7 @@
 import {hakkarSnapshotPreservations} from './encounters/vanilla-hakkar.mjs';
 import {prepareMovement,movementBetween,runProgress} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
-import {reconstructCasts,buildVisualEvents} from './replay-actions.mjs';
+import {reconstructCastSteps,buildVisualEventSteps} from './replay-actions.mjs';
 import {applyCouncilPresentation} from './encounters/sod-reborn-council.mjs';
 import {applyMasonPresentation} from './encounters/sod-mason.mjs';
 import {applyAq40IllusionPresentation} from './encounters/sod-aq40-illusions.mjs';
@@ -15,7 +15,17 @@ export {reportSource} from './game-versions.mjs';
 export function reportCode(value) {return reportSource(value).code;}
 
 export const CLASS_COLORS = { Warrior:'#c79c6e',Paladin:'#f58cba',Hunter:'#abd473',Rogue:'#fff569',Priest:'#ffffff',Shaman:'#0070de',Mage:'#69ccf0',Warlock:'#9482c9',Druid:'#ff7d0a' };
+function finishSteps(steps) {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 export function normalizeReplay(raw, models = {}, reused = new Map()) {
+  return finishSteps(normalizeReplaySteps(raw, models, reused));
+}
+
+export function* normalizeReplaySteps(raw, models = {}, reused = new Map()) {
   const { report, fight, actors, events } = raw;
   const ruleset=gameVersion(raw.gameVersion??report?.gameVersion??'vanilla').id;
   if(raw.gameVersion&&report?.gameVersion&&raw.gameVersion!==report.gameVersion)throw new Error('Replay game versions disagree.');
@@ -38,6 +48,7 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   const positionBreaks = [];
   let chronological = true;
   for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
     const event=events[i];
     if (event.type==='zonechange' && Number.isFinite(event.timestamp)) positionBreaks.push(event.timestamp-fight.startTime);
     if (i && !(event.timestamp-events[i-1].timestamp>=0)) chronological=false;
@@ -80,7 +91,10 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   }
   for (const id of fight.friendlyPlayers ?? []) track(id);
   if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
-  for (const event of chronological ? events : [...events].sort((a,b)=>a.timestamp-b.timestamp)) {
+  const sorted=chronological ? events : [...events].sort((a,b)=>a.timestamp-b.timestamp);
+  for (let i=0;i<sorted.length;i++) {
+    if((i&255)===0)yield;
+    const event=sorted[i];
     if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
     const t = event.timestamp - fight.startTime;
     // Current WCL events flatten resources onto the event: 1=source, 2=target.
@@ -88,6 +102,7 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     record(track(event.targetID,event.targetInstance),event,t,true,event.targetResources??(event.resourceActor===2?event:null));
   }
   for (const actor of tracks.values()) {
+    yield;
     if(reused.has(actor.key))continue;
     actor.activity=[...new Set(actor.activity)].sort((a,b)=>a-b);
     actor.samples.sort((a,b) => a[0]-b[0]);
@@ -127,9 +142,17 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     }
   }
   const gaps=chapters.slice(1).map((next,i)=>({start:chapters[i].end,end:next.start})).filter(g=>g.end>g.start);
-  for(const gap of gaps)gap.hasEvents=events.some(e=>e.timestamp>fight.startTime+gap.start&&e.timestamp<fight.startTime+gap.end);
+  for(const gap of gaps){
+    yield;
+    gap.hasEvents=events.some(e=>e.timestamp>fight.startTime+gap.start&&e.timestamp<fight.startTime+gap.end);
+  }
   const replay={ version:1, gameVersion:ruleset, map:raid.map, report, fight, duration: fight.endTime-fight.startTime, chapters, gaps, actors:[...tracks.values()], raw };
-  return applyViscidusPresentation(applyAq40IllusionPresentation(applyCouncilPresentation(replay)));
+  yield;
+  const council=applyCouncilPresentation(replay);
+  yield;
+  const illusions=applyAq40IllusionPresentation(council);
+  yield;
+  return applyViscidusPresentation(illusions);
 }
 // Activity is independent of positional confidence. Real casts and combat observations
 // keep the character model even when its location must be interpolated.
@@ -264,6 +287,10 @@ function recordCombatResources(actor,t,r) {
   if(p)actor.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
 }
 export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
+  return finishSteps(enrichCombatSteps(replay, itemModels, spellMetadata, reused));
+}
+
+export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
   const {raw}=replay;
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
   const abilities=new Map((raw.abilities??[]).map(a=>[a.gameID,a]));
@@ -271,6 +298,7 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   const events=raw.events, info=new Map();
   let chronological=true;
   for(let i=0;i<events.length;i++){
+    if((i&255)===0)yield;
     const e=events[i];
     if(e.type==='combatantinfo')info.set(e.sourceID,e);
     if(i&&!(e.timestamp-events[i-1].timestamp>=0))chronological=false;
@@ -291,9 +319,11 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     a.icon=raw.actors.find(x=>x.id===a.id)?.icon??null;
     if(a.type==='Pet'&&!a.displayID&&a.gameID>100000){a.displayID=447;a.petModelSource='Representative wolf; original model not recorded';}
   }
+  yield;
   const snapshotPreservations=hakkarSnapshotPreservations(raw);
   const combat=[],auraSources=new Map(all.map(a=>[a.key,new Map()]));
   for(let j=0;j<events.length;j++){
+    if((j&255)===0)yield;
     const i=order?.[j]??j,e=events[i];
     const t=e.timestamp-raw.fight.startTime;if(t<0||t>replay.duration)continue;
     const source=index.get(`${e.sourceID}:${e.sourceInstance||1}`), target=index.get(`${e.targetID}:${e.targetInstance||1}`);
@@ -333,10 +363,11 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     if(target&&(e.type==='damage'||e.type==='heal'))combat.push({id:i,t,kind:e.type,source:source?.key??null,target:target.key,spell,name:ability.name,amount:e.amount??0,melee:!!e.melee||spell===1,tick:!!e.tick,
       environmental:e.sourceID===-1&&ability.name==='Falling'});
   }
-  for(const a of all){if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
+  for(const a of all){yield;if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
-  reconstructCasts(replay,spellMetadata,reused);
-  for(const actor of all)if(!reused.has(actor.key))prepareMovement(actor);
+  yield* reconstructCastSteps(replay,spellMetadata,reused);
+  for(const actor of all){yield;if(!reused.has(actor.key))prepareMovement(actor);}
+  yield;
   for(const [key,events]of encounterJumpEvents(replay)){
     // Reused actors already carry these derived boundaries; never append twice.
     if(reused.has(key))continue;
@@ -347,7 +378,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   }
   // Stream reuse promises immutable prior actor derivations.
   applyMasonPresentation(reused.size?{...replay,actors:all.filter(a=>!reused.has(a.key))}:replay);
-  replay.visualEvents=buildVisualEvents(replay);
+  yield;
+  replay.visualEvents=yield* buildVisualEventSteps(replay);
   return replay;
 }
 const combatIndexes = new WeakMap();

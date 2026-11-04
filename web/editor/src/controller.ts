@@ -1,4 +1,8 @@
 import { readReplayFile } from "./replay-file";
+import {
+  prepareWholeReplay,
+  SLICED_IMPORT_MIN_EVENTS,
+} from "./replay-preparation";
 import { assetProgress } from "./loading-progress";
 import { framePerformance, type FramePerformance } from "./frame-performance";
 import {
@@ -5177,7 +5181,7 @@ export class EditorController {
       throw new Error("Connect Warcraft Logs or import a replay JSON file.");
     return this.browserLogs;
   }
-  private replayForInstall(raw: RawReplay) {
+  private replayInput(raw: RawReplay) {
     const context = raw.stream
       ? { ...raw, events: normalizationEvents(raw) }
       : raw;
@@ -5216,12 +5220,30 @@ export class EditorController {
         itemModels: sod ? { ...this.items, ...this.modernItems } : this.items,
       };
     }
+    return {
+      input,
+      models,
+      renderModels: metadata.renderModels,
+      itemModels: metadata.itemModels,
+      spells: this.state.browserAssets || sod ? this.modernSpells : this.spells,
+    };
+  }
+  private replayForInstall(raw: RawReplay) {
+    const { input, models, renderModels, itemModels, spells } =
+      this.replayInput(raw);
     const replay = this.replayNormalizer.normalize(
       input,
-      metadata.renderModels,
-      metadata.itemModels,
-      this.state.browserAssets || sod ? this.modernSpells : this.spells,
+      renderModels,
+      itemModels,
+      spells,
     );
+    return this.completeReplayForInstall(raw, replay, models);
+  }
+  private completeReplayForInstall(
+    raw: RawReplay,
+    replay: Replay,
+    models: Record<string, unknown>,
+  ) {
     replay.raw = raw;
     if (raw.stream)
       for (const actor of replay.actors) actor.bufferedRanges = raw.stream.full;
@@ -5236,8 +5258,9 @@ export class EditorController {
     visible = () => true,
     progressField:
       "replayPreparation" | "bufferPreparation" = "replayPreparation",
+    derived?: ReturnType<EditorController["replayForInstall"]>,
   ) {
-    const prepared = this.replayForInstall(raw);
+    const prepared = derived ?? this.replayForInstall(raw);
     if (this.localFiles && this.browserBridge) {
       const epoch = visible() ? ++this.preparationEpochs[progressField] : null;
       const reportable = () =>
@@ -5600,13 +5623,43 @@ export class EditorController {
           total: 0,
         },
       });
+      let derived: ReturnType<EditorController["replayForInstall"]> | undefined;
+      if (
+        !raw.stream &&
+        Array.isArray(raw.events) &&
+        raw.events.length >= SLICED_IMPORT_MIN_EVENTS
+      ) {
+        const { input, models, renderModels, itemModels, spells } =
+          this.replayInput(raw);
+        const replay = await prepareWholeReplay(
+          input,
+          renderModels,
+          itemModels,
+          spells,
+          signal,
+          (message) => {
+            if (request === this.request && !signal.aborted)
+              this.patch({
+                replayPreparation: { message, completed: 0, total: 0 },
+              });
+          },
+        );
+        signal.throwIfAborted();
+        if (request !== this.request) return;
+        derived = this.completeReplayForInstall(raw, replay, models);
+      }
       const prepared = await this.prepareReplayForInstall(
         raw,
         signal,
         () => request === this.request,
+        "replayPreparation",
+        derived,
       );
       signal.throwIfAborted();
-      if (request === this.request) this.installReplay(raw, prepared);
+      if (request === this.request) {
+        if (derived) this.replayNormalizer.reset();
+        this.installReplay(raw, prepared);
+      }
     } catch (e) {
       if (!signal.aborted && request === this.request) this.notify(message(e));
     } finally {

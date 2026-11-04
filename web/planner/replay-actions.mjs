@@ -8,16 +8,20 @@ const spellOf = (e) => {
   const id = e.abilityGameID ?? e.ability?.guid ?? 0;
   return id === -4 ? 1 : Math.max(0, id);
 };
-export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
+export function* reconstructCastSteps(replay, metadata = {}, reused = new Map()) {
   const actors = new Map(replay.actors.map((a) => [a.key, a]));
-  const events = replay.raw.events
-    .map((e, id) => ({
-      event: e,
-      id,
-      t: e.timestamp - replay.raw.fight.startTime,
-    }))
-    .filter((e) => e.t >= 0 && e.t <= replay.duration)
-    .sort((a, b) => a.t - b.t || a.id - b.id);
+  const rawEvents=replay.raw.events, events=[];
+  const start=replay.raw.fight.startTime;
+  let ordered=true;
+  for(let id=0;id<rawEvents.length;id++){
+    if((id&255)===0)yield;
+    const event=rawEvents[id],t=event.timestamp-start;
+    if(t>=0&&t<=replay.duration){
+      if(events.length&&events.at(-1).t>t)ordered=false;
+      events.push({event,id,t});
+    }
+  }
+  if(!ordered)events.sort((a,b)=>a.t-b.t||a.id-b.id);
   const pending = new Map(),
     channels = new Map(),
     observed = new Map();
@@ -58,7 +62,9 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
   // First pass measures this actor's successfully paired casts. A missing end must
   // never inherit the next encounter's completion, nor a different spell's proc.
   const starts = new Map();
-  for (const { event: e, id, t } of events) {
+  for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
+    const { event: e, id, t }=events[i];
     const k = key(e, "source"),
       spell = spellOf(e);
     if (e.type === "begincast") starts.set(k, { spell, t });
@@ -111,7 +117,9 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
     map.delete(k);
   };
   for (const a of actors.values()) if (!reused.has(a.key)) a.casts = [];
-  for (const { event: e, id, t } of events) {
+  for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
+    const { event: e, id, t }=events[i];
     const k = key(e, "source"),
       tk = key(e, "target"),
       a = actors.get(k),
@@ -215,11 +223,13 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
 
 // Build once per import, not once per rendered frame. Each recorded direct result
 // is emitted once; periodic ticks remain available to charts without replaying a missile.
-export function buildVisualEvents(replay) {
+export function* buildVisualEventSteps(replay) {
   const auraTargets=recordedOssirianTargets(replay);
   const visual = [],
     launches = new Map(), areaPulses = new WeakSet();
-  for (const e of replay.combat) {
+  for (let i=0;i<replay.combat.length;i++) {
+    if((i&255)===0)yield;
+    const e=replay.combat[i];
     if (e.kind === "summon-cue") {
       visual.push(e);
     } else if (e.kind === "go") {

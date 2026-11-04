@@ -5459,3 +5459,82 @@ test("opening a cached replay on another raid keeps its own load request", async
   assert.equal(c.getSnapshot().busy, false);
   c.stop();
 });
+
+test("large whole-file import can be cancelled during combat preparation", async () => {
+  const c = new EditorController(undefined, {
+    projectStore: null,
+    clientCache: null,
+    clientFolders: null,
+  });
+  (c as unknown as { loadCatalogs(): Promise<void> }).loadCatalogs =
+    async () => {};
+  const events = Array.from({ length: 60_000 }, (_, i) => ({
+    timestamp: 1000 + Math.floor(i / 6),
+    type: "damage",
+    sourceID: 1,
+    targetID: 2,
+    amount: 2,
+  }));
+  const text = JSON.stringify({ ...raw, events });
+  let cancelled = false;
+  let next: Promise<void> | undefined;
+  let finishNext!: (text: string) => void;
+  let readingNext!: () => void;
+  const readNext = new Promise<void>((resolve) => {
+    readingNext = resolve;
+  });
+  let scheduled = false;
+  const phases = new Set<string>();
+  const unsubscribe = c.subscribe(() => {
+    const phase = c.getSnapshot().replayPreparation?.message;
+    if (!phase) return;
+    phases.add(phase);
+    if (phase === "Reconstructing combat events…" && !scheduled) {
+      scheduled = true;
+      // The first timer runs before the phase's initial task yield. The
+      // second can cancel only after combat preparation has started yielding.
+      setTimeout(
+        () =>
+          setTimeout(() => {
+            cancelled = true;
+            c.cancelImport();
+            next = c.importFile(
+              {
+                size: 1,
+                text: () =>
+                  new Promise<string>((resolve) => {
+                    finishNext = resolve;
+                    readingNext();
+                  }),
+              } as File,
+              "replay",
+            );
+          }, 0),
+        0,
+      );
+    }
+  });
+  try {
+    await c.importFile(
+      { size: text.length, text: async () => text } as File,
+      "replay",
+    );
+    assert.equal(cancelled, true);
+    assert.equal(phases.has("Preparing movement tracks…"), true);
+    assert.equal(c.getSnapshot().replay, null);
+    await readNext;
+    assert.match(
+      c.getSnapshot().replayPreparation!.message,
+      /Reading replay file/,
+    );
+    assert.equal(c.getSnapshot().busy, true);
+    c.cancelImport();
+    finishNext("{}");
+    await next;
+    assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(c.getSnapshot().busy, false);
+  } finally {
+    unsubscribe();
+    c.stop();
+  }
+});
