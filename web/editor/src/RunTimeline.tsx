@@ -179,10 +179,6 @@ export function RunTimeline({
     if (t % step !== 0) minorTicks.push(t);
   const portrait = (segment: RunSegment) =>
     segment.actor ? controller.portraitUrl(segment.actor) : undefined;
-  const segmentStyle = (segment: RunSegment) => ({
-    left: `${Math.max(0, percent(segment.start))}%`,
-    width: `${Math.max(0.2, Math.min(100, percent(segment.end)) - Math.max(0, percent(segment.start)))}%`,
-  });
   if (!replay && state.workspaceMode !== "plan") return null;
   return (
     <section
@@ -674,28 +670,64 @@ export function RunTimeline({
                   )}
                 </div>
                 <div className="run-mobs">
-                  {mobs.map((s, i) => (
-                    <div
-                      key={s.key}
-                      className="run-segment mob"
-                      style={segmentStyle({
-                        ...s,
-                        end: Math.min(s.end, mobs[i + 1]?.start ?? Infinity),
-                      })}
-                      title={`${s.names}\n${time(s.start)}–${time(s.end)}`}
-                      data-segment={s.key}
-                    >
-                      <GameIcon
-                        source={portrait(s)}
-                        name={
-                          s.actor?.icon?.replace(/^custom-icon-/i, "") ??
-                          "inv_misc_monsterhead_02"
-                        }
-                      />
-                      {s.count > 1 && <b>{s.count}</b>}
-                      <span>{s.names.replaceAll("\n", ", ")}</span>
-                    </div>
-                  ))}
+                  {mobs.map((s, i) => {
+                    const end = Math.min(s.end, mobs[i + 1]?.start ?? Infinity);
+                    const clip = projectRunClip({ start: s.start, end }, view);
+                    if (
+                      !clip &&
+                      (s.start < view.start ||
+                        s.start >= view.start + view.span)
+                    )
+                      return null;
+                    const left = clip?.left ?? percent(s.start);
+                    const extent = clip?.width ?? 0;
+                    const pixels = (extent * width) / 100;
+                    const detail =
+                      pixels >= 125 &&
+                      !(showingFullRun && replay.chapters.length > 1)
+                        ? "names"
+                        : pixels >= 44
+                          ? "count"
+                          : "bar";
+                    const names = detail === "names" ? s.names.split("\n") : [];
+                    const shownNames = pixels >= 300 ? 2 : 1;
+                    const hiddenNames = Math.max(0, names.length - shownNames);
+                    return (
+                      <div
+                        key={s.key}
+                        className="run-segment mob"
+                        data-detail={detail}
+                        style={{
+                          left: `${left}%`,
+                          width: extent ? `${extent}%` : "2px",
+                        }}
+                        title={`${s.count} ${s.count === 1 ? "mob" : "mobs"} · ${preciseTime(s.start)} – ${preciseTime(s.end)}
+${s.names}`}
+                        data-segment={s.key}
+                      >
+                        {detail !== "bar" && (
+                          <>
+                            <GameIcon
+                              source={portrait(s)}
+                              name={
+                                s.actor?.icon?.replace(/^custom-icon-/i, "") ??
+                                "inv_misc_monsterhead_02"
+                              }
+                            />
+                            <b>{s.count}</b>
+                          </>
+                        )}
+                        {detail === "names" && (
+                          <>
+                            <span>{names.slice(0, shownNames).join(", ")}</span>
+                            {hiddenNames > 0 && (
+                              <small>+{hiddenNames} types</small>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 {state.time >= view.start &&
                   state.time <= view.start + view.span && (

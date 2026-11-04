@@ -1717,3 +1717,31 @@
 .edits-browser-view > .plan-add-actor {
   margin: 0 10px 8px;
 }
+
+.editor .run-mobs .run-segment.mob {
+  min-width: 0;
+}
+
+.editor .run-mobs .run-segment.mob[data-detail="bar"] {
+  min-width: 2px;
+  top: 6px;
+  height: 16px;
+  border: 0;
+  background: #5e6973;
+}
+
+@container run-dock (max-height: 140px) {
+  .editor .run-mobs .run-segment.mob[data-detail="bar"] {
+    top: 4px;
+    height: 15px;
+  }
+}
+
+.run-mobs .run-segment.mob > small {
+  flex: 0 0 auto;
+  padding-inline-end: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}

@@ -8,6 +8,7 @@ export interface RunSegment {
   actor?: Actor;
   count: number;
   kill?: boolean;
+  scope?: string;
 }
 export interface RunRange {
   start: number;
@@ -143,7 +144,15 @@ export function runSegments(replay: Replay): {
         group.end = Math.max(group.end, end);
         group.count++;
       } else
-        groups.set(key, { key, name: a.name, start, end, actor: a, count: 1 });
+        groups.set(key, {
+          key,
+          name: a.name,
+          start,
+          end,
+          actor: a,
+          count: 1,
+          scope: String(c.id),
+        });
     }
   }
   return {
@@ -178,6 +187,7 @@ export function runSegments(replay: Replay): {
                 {
                   key: `metadata-${c.id}-${n.id}`,
                   name: metadata.name,
+                  scope: String(c.id),
                   start: c.start,
                   end: c.end,
                   actor,
@@ -205,7 +215,11 @@ export function visibleRunMobs(
     const pixel = (t: number) =>
       Math.max(0, ((t - range.start) / range.span) * width);
     const description = `${mob.name}${mob.count > 1 ? ` ×${mob.count}` : ""}`;
-    if (old && pixel(mob.start) - pixel(old.start) < 46) {
+    if (
+      old &&
+      old.scope === mob.scope &&
+      pixel(mob.start) - pixel(old.start) < 46
+    ) {
       old.end = Math.max(old.end, mob.end);
       old.count += mob.count;
       old.names += `\n${description}`;

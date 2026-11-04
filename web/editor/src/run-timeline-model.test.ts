@@ -173,3 +173,18 @@ test("Boss clips show recorded duration and clip to the visible time window", ()
   assert.equal(projectRunClip({ start: 0, end: 1000 }, view), null);
   assert.equal(projectRunClip({ start: 11000, end: 12000 }, view), null);
 });
+
+test("Nearby mobs from different encounters remain separate in the overview", () => {
+  const mobs = [
+    { key: "a", name: "Hound", start: 10000, end: 12000, count: 2, scope: "1" },
+    { key: "b", name: "Giant", start: 13000, end: 14000, count: 4, scope: "2" },
+  ];
+  const visible = visibleRunMobs(mobs, { start: 0, span: 60000 }, 300);
+  assert.deepEqual(
+    visible.map(({ count, start, end }) => [count, start, end]),
+    [
+      [2, 10000, 12000],
+      [4, 13000, 14000],
+    ],
+  );
+});
