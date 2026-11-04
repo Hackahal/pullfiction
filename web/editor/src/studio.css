@@ -75,13 +75,6 @@
   flex-wrap: wrap;
 }
 
-.transport .transport-report {
-  min-width: 0;
-  max-width: 14ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .transport .play {
   color: var(--text);
 }
@@ -147,11 +140,7 @@
   min-width: 15ch;
 }
 
-.transport-report > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+
 
 .analysis-tools {
   border-top: 1px solid var(--studio-edge);
@@ -1162,36 +1151,96 @@
   container: replay-scene / inline-size;
 }
 
-.transport .transport-report > svg,
 .transport .plan-label-compact {
   display: none;
 }
 
+.transport .transport-context {
+  flex: 0 1 20ch;
+}
+
+.transport .transport-context select {
+  max-width: 100%;
+}
+
+.transport .current-encounter {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transport .transport-options .panel-settings-trigger.has-label {
+  width: auto;
+  flex: 0 0 auto;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.transport-options[data-looping="true"] .panel-settings-trigger::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.playback-option-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.playback-option-fields > label,
+.playback-option-fields > button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.playback-option-fields > label:has(select) {
+  justify-content: space-between;
+}
+
+.scene-frame-selection > svg,
+.playback-encounter-actions {
+  display: none;
+}
+
 @container replay-scene (max-width: 740px) {
-  .editor .transport:not([hidden]) {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr) auto;
-    gap: 4px 6px;
+  .editor .transport {
+    gap: 4px 5px;
+    padding-inline: 6px;
   }
 
   .transport .transport-core {
-    grid-column: 1 / -1;
+    flex-wrap: nowrap;
   }
 
-  .transport .transport-context select {
-    max-width: 100%;
+  .transport .transport-core > button {
+    padding-inline: 4px;
   }
 
-  .transport .transport-report {
-    display: inline-flex;
-    padding-inline: 5px;
+  .transport .transport-context {
+    flex: 1 1 0;
+    min-width: min(110px, 100%);
   }
 
-  .transport .transport-report > svg {
-    display: block;
+  .editor .transport .playback-clocks {
+    gap: 3px;
+    padding-inline: 4px;
   }
 
-  .transport :is(.transport-report > span, .plan-label-wide) {
+  .editor .transport .timecode {
+    min-width: 0;
+    gap: 3px;
+    padding-inline: 3px;
+  }
+
+  .transport .timecode b {
+    min-width: 0;
+  }
+
+  .transport .plan-label-wide {
     display: none;
   }
 
@@ -1202,20 +1251,55 @@
   .transport .plan-from-moment {
     padding-inline: 7px;
   }
+
+  .editor .scene-frame-selection > svg {
+    display: block;
+  }
+
+  .scene-frame-selection > span {
+    display: none;
+  }
 }
 
-@container replay-scene (max-width: 400px) {
-  .editor .transport .playback-clocks {
-    gap: 3px;
+@container replay-scene (max-width: 620px) {
+  .playback-clocks .timecode > .transport-duration {
+    display: none;
+  }
+}
+
+@container replay-scene (max-width: 540px) {
+  .transport .transport-skip {
+    display: none;
   }
 
-  .editor .transport .timecode {
-    min-width: 0;
-    gap: 3px;
-    padding-inline: 3px;
+  .playback-encounter-actions {
+    display: grid;
+    gap: 4px;
   }
 
-  .transport .timecode b {
+  .playback-encounter-actions button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .transport .transport-options .panel-settings-trigger.has-label {
+    gap: 3px;
+    padding-inline: 4px;
+  }
+}
+
+@container replay-scene (max-width: 375px) {
+  .editor .transport:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .transport .transport-core {
+    grid-column: 1 / -1;
+  }
+
+  .transport .transport-context {
     min-width: 0;
   }
 }

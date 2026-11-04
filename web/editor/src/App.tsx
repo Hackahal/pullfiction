@@ -1359,10 +1359,13 @@ function Viewport({
             )}
           </select>
           <button
+            className="scene-frame-selection"
+            aria-label="Frame selection"
             onClick={() => controller.frameSelection()}
             title="Frame selection (F)"
           >
-            Frame selection
+            <EditorIcon name="focus" />
+            <span>Frame selection</span>
           </button>
           {!map &&
             ((state.replay && state.options.followRaid) ||

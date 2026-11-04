@@ -1,4 +1,5 @@
 import { EditorIcon } from "./EditorIcon";
+import { PanelSettings } from "./PanelSettings";
 import { chapterAt, preciseTime, pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
@@ -30,6 +31,7 @@ export function ReplayTransport({
     >
       <div className="transport-core">
         <button
+          className="transport-skip"
           aria-label="Previous encounter"
           title="Previous encounter"
           disabled={!state.replay}
@@ -54,6 +56,7 @@ export function ReplayTransport({
           />
         </button>
         <button
+          className="transport-skip"
           aria-label="Next encounter"
           title="Next encounter"
           disabled={!state.replay}
@@ -77,30 +80,9 @@ export function ReplayTransport({
                   : "Run"}
             </span>{" "}
             <b>{preciseTime(state.time)}</b>
-            <span> / {time(duration)}</span>
+            <span className="transport-duration"> / {time(duration)}</span>
           </span>
         </div>
-      </div>
-      <div className="transport-options">
-        <select
-          aria-label="Playback speed"
-          value={state.rate}
-          onChange={(e) => controller.setRate(Number(e.target.value))}
-        >
-          {[0.5, 1, 2, 4].map((v) => (
-            <option key={v} value={v}>
-              {v}×
-            </option>
-          ))}
-        </select>
-        <button
-          aria-pressed={Boolean(state.loop)}
-          title="Loop current encounter"
-          disabled={!state.replay}
-          onClick={() => controller.toggleLoop()}
-        >
-          Loop
-        </button>
       </div>
       <div className="transport-context">
         {state.replay?.chapters.length ? (
@@ -127,15 +109,6 @@ export function ReplayTransport({
       </div>
       <div className="transport-actions">
         {state.busy && <span className="busy-dot" />}
-        <button
-          className="transport-report"
-          aria-label="Open replay log"
-          title={state.replay?.report.title ?? "Open log"}
-          onClick={onOpenLog}
-        >
-          <EditorIcon name="logs" />
-          <span>{state.replay?.report.title ?? "Open log"}</span>
-        </button>
         {state.replay && state.workspaceMode === "analyse" && (
           <button
             className="plan-from-moment"
@@ -147,6 +120,59 @@ export function ReplayTransport({
             <span className="plan-label-compact">Plan</span>
           </button>
         )}
+        <div className="transport-options" data-looping={Boolean(state.loop)}>
+          <PanelSettings
+            title="Playback options"
+            triggerLabel={`Playback options: ${state.rate}×${state.loop ? ", looping" : ""}`}
+            label={`${state.rate}×`}
+            width={260}
+          >
+            <div className="playback-option-fields">
+              <label>
+                Speed
+                <select
+                  aria-label="Playback speed"
+                  value={state.rate}
+                  onChange={(e) => controller.setRate(Number(e.target.value))}
+                >
+                  {[0.5, 1, 2, 4].map((v) => (
+                    <option key={v} value={v}>
+                      {v}×
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={Boolean(state.loop)}
+                  disabled={!state.replay}
+                  onChange={() => controller.toggleLoop()}
+                />
+                Loop current encounter
+              </label>
+              <div className="playback-encounter-actions">
+                <button onClick={() => controller.stepChapter(-1)}>
+                  <EditorIcon name="previous" /> Previous encounter
+                </button>
+                <button onClick={() => controller.stepChapter(1)}>
+                  <EditorIcon name="next" /> Next encounter
+                </button>
+              </div>
+              <button
+                onClick={(event) => {
+                  event.currentTarget
+                    .closest<HTMLElement>("[popover]")
+                    ?.hidePopover();
+                  onOpenLog();
+                }}
+                title={state.replay?.report.title}
+              >
+                <EditorIcon name="logs" /> Open replay log
+              </button>
+            </div>
+          </PanelSettings>
+        </div>
       </div>
     </div>
   );

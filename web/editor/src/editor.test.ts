@@ -113,7 +113,7 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
   assert.match(markup, /Click to select · Drag to draw/);
   assert.doesNotMatch(markup, /Alt-drag to draw|Alt-click to place/);
   assert.doesNotMatch(markup, /Select underneath|scene-selection-menu/);
-  assert.match(markup, /Frame selection<\/button>/);
+  assert.match(markup, /aria-label="Frame selection"/);
   assert.match(markup, /editor-canvas/);
   assert.match(markup, /data-cursor="default"/);
   controller.stop();

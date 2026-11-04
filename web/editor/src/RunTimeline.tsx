@@ -44,6 +44,15 @@ export function RunTimeline({
   const [follow, setFollow] = useState(true);
   const lastHit = useRef<RunSegment | null>(null);
   const view = runRange(range.start, range.span, duration);
+  const fullRange = runRange(0, duration, duration);
+  const pullRange =
+    pull && runRange(pull.start, pull.end - pull.start, duration);
+  const sameRange = (range: typeof view) =>
+    view.start === range.start && view.span === range.span;
+  const showingFullRun = sameRange(fullRange);
+  const showingPull = Boolean(
+    pullRange && !showingFullRun && sameRange(pullRange),
+  );
   const segments = useMemo(
     () => (replay ? runSegments(replay) : { bosses: [], mobs: [] }),
     [replay],
@@ -171,18 +180,19 @@ export function RunTimeline({
               {time(view.start)} – {time(view.start + view.span)}
             </span>
             <button
-              disabled={!pull}
+              disabled={!pullRange}
+              aria-pressed={showingPull}
               title="Zoom this timeline to the current pull without moving the playhead"
               onClick={() => {
-                if (pull)
-                  setRange(
-                    runRange(pull.start, pull.end - pull.start, duration),
-                  );
+                if (pullRange) setRange(pullRange);
               }}
             >
               Fit pull
             </button>
-            <button onClick={() => setRange(runRange(0, duration, duration))}>
+            <button
+              aria-pressed={showingFullRun}
+              onClick={() => setRange(fullRange)}
+            >
               Full run
             </button>
           </>
