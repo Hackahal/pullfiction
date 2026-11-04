@@ -727,6 +727,22 @@ fn merge_diff_retains_explicit_zero_without_notifying() {
 }
 
 #[test]
+fn raw_fields_walk_only_set_bits_in_ascending_order() {
+    let fields = ObjectFields::from_pairs(&[
+        (u16::MAX, 1),
+        (128, 0),
+        (31, 2),
+        (32, 3),
+        (0, 4),
+        (31, 5),
+    ]);
+    assert_eq!(
+        fields.raw_fields().collect::<Vec<_>>(),
+        [(0, 4), (31, 5), (32, 3), (128, 0), (u16::MAX, 1)]
+    );
+}
+
+#[test]
 fn reusable_values_preserve_ascending_edges_and_drop_stale_scratch_fields() {
     let mut scratch = ObjectValuesScratch::default();
     let initial = ObjectFields::from_pairs(&[(22, 100)]).into_created(ObjectType::Player);

@@ -699,13 +699,17 @@ impl ObjectFields {
     }
     /// Every carried `(index, value)` pair in ascending order, for debugging and probes.
     pub fn raw_fields(&self) -> impl Iterator<Item = (u16, u32)> + '_ {
-        self.present.iter().enumerate().flat_map(move |(word, &w)| {
-            (0..32u16)
-                .filter(move |bit| w & (1u32 << bit) != 0)
-                .map(move |bit| {
-                    let index = word as u16 * 32 + bit;
-                    (index, self.values[usize::from(index)])
-                })
+        self.present.iter().enumerate().flat_map(move |(word, &mask)| {
+            let mut remaining = mask;
+            std::iter::from_fn(move || {
+                if remaining == 0 {
+                    return None;
+                }
+                let bit = remaining.trailing_zeros() as u16;
+                remaining &= remaining - 1;
+                let index = word as u16 * 32 + bit;
+                Some((index, self.values[usize::from(index)]))
+            })
         })
     }
 }
