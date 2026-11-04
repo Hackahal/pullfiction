@@ -1,4 +1,5 @@
 import { BROWSER_ASSETS, schematicIcon } from "./browser-mode";
+import type { Actor } from "./types";
 export type MapPoint = [number, number];
 export interface MapCamera {
   x: number;
@@ -152,15 +153,47 @@ export const CLASS_CELLS: Record<string, [number, number]> = {
   Paladin: [0, 2],
 };
 
+export function mapActorIsBoss(actor: Pick<Actor, "type" | "class">) {
+  return actor.type === "NPC" && actor.class === "Boss";
+}
+
+export function mapActorDrawOrder<
+  T extends Pick<Actor, "key" | "type" | "class">,
+>(actors: readonly T[], selected: string | null) {
+  const other: T[] = [],
+    players: T[] = [],
+    bosses: T[] = [],
+    focused: T[] = [];
+  for (const actor of actors) {
+    if (actor.key === selected) focused.push(actor);
+    else if (mapActorIsBoss(actor)) bosses.push(actor);
+    else if (actor.type === "Player") players.push(actor);
+    else other.push(actor);
+  }
+  return other.concat(players, bosses, focused);
+}
+
+export function mapActorZoom(zoom: number) {
+  return Math.max(0.75, Math.min(2, Math.sqrt(Math.max(0.01, zoom))));
+}
+
+export function mapActorRadius(
+  type: Actor["type"],
+  boss: boolean,
+  factor: number,
+) {
+  return (
+    factor * (type === "Player" ? 9 : boss ? 20 : type === "Pet" ? 10 : 12)
+  );
+}
+
 export function mapActorToken(
-  actor: Pick<import("./types").Actor, "type" | "class" | "icon">,
+  actor: Pick<Actor, "type" | "class" | "icon">,
   zoom = 1,
 ) {
-  const boss = actor.type === "NPC" && actor.class === "Boss";
-  const factor = Math.max(0.75, Math.min(2, Math.sqrt(Math.max(0.01, zoom))));
-  const radius =
-    factor *
-    (actor.type === "Player" ? 9 : boss ? 20 : actor.type === "Pet" ? 10 : 12);
+  const boss = mapActorIsBoss(actor);
+  const factor = mapActorZoom(zoom);
+  const radius = mapActorRadius(actor.type, boss, factor);
   const raw = actor.icon?.replace(/^custom-icon-/i, "");
   const stem = raw?.split(/[\\/]/).pop()?.split(".")[0];
   const icon =

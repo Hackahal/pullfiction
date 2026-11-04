@@ -38,7 +38,10 @@ import type { Actor, Snapshot } from "./types";
 import type { EditorController } from "./controller";
 import {
   CLASS_CELLS,
-  mapActorToken,
+  mapActorDrawOrder,
+  mapActorIsBoss,
+  mapActorRadius,
+  mapActorZoom,
   fitMap,
   frameMapSelection,
   mapPoint,
@@ -664,23 +667,14 @@ export function MapView({
         labels.block({ x: x - 9, y: y - 9, width: 18, height: 18 });
       }
     const actors = state.options.actors ? controller.sceneActors() : [];
-    const ordered = [...actors].sort((a, b) => {
-      const rank = (a: Actor) =>
-        a.key === state.selected
-          ? 4
-          : mapActorToken(a).boss
-            ? 3
-            : a.type === "Player"
-              ? 2
-              : 1;
-      return rank(a) - rank(b);
-    });
+    const ordered = mapActorDrawOrder(actors, state.selected);
+    const actorZoom = mapActorZoom(camera.scale / fitScale.current);
     const atlas = images.current.get("/game-ui/class-icons.png");
     for (const actor of ordered) {
       const pose = controller.actorPose(actor);
       if (!pose || (pose.dead && actor.type !== "Player")) continue;
-      const token = mapActorToken(actor, camera.scale / fitScale.current),
-        r = token.radius;
+      const boss = mapActorIsBoss(actor),
+        r = mapActorRadius(actor.type, boss, actorZoom);
       const [x, y] = screen(mapPoint(pose.pos[0], pose.pos[1]));
       if (x < -r || y < -r || x > size.width + r || y > size.height + r)
         continue;
@@ -763,21 +757,21 @@ export function MapView({
           ctx.fillStyle = "#dcc6a3";
           ctx.font = `${r}px sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillText(token.boss ? "☠" : "◆", x, y + r * 0.35);
+          ctx.fillText(boss ? "☠" : "◆", x, y + r * 0.35);
         }
-        ctx.strokeStyle = token.boss
+        ctx.strokeStyle = boss
           ? "#c7a05d"
           : actor.type === "Pet"
             ? "#9cafbd"
             : "#a46c55";
-        ctx.lineWidth = token.boss ? 2 : 1;
+        ctx.lineWidth = boss ? 2 : 1;
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.stroke();
         if (healthBars) {
           const health = combatStateAt(actor, state.time).health,
             w = r * 2 + 4,
-            h = (token.boss ? 5 : 3) * token.factor,
+            h = (boss ? 5 : 3) * actorZoom,
             top = y + r + 4;
           ctx.fillStyle = "#080b0fec";
           ctx.fillRect(x - w / 2 - 1, top - 1, w + 2, h + 2);
@@ -1499,7 +1493,7 @@ export function MapView({
         >
           <strong>
             {hover.actor.name}
-            {mapActorToken(hover.actor).boss ? " · Boss" : ""}
+            {mapActorIsBoss(hover.actor) ? " · Boss" : ""}
           </strong>
           <span>
             {hover.actor.class ?? hover.actor.type} ·{" "}

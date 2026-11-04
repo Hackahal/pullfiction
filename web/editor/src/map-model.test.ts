@@ -10,6 +10,7 @@ import {
   mapScreen,
   screenMap,
   mapBounds,
+  mapActorDrawOrder,
   intersectsMapViewport,
   zoomMap,
   type MapManifest,
@@ -188,4 +189,33 @@ test("viewport culling preserves touching, stroke-padded and unknown bounds", ()
     ]),
     undefined,
   );
+});
+
+test("tactical draw order keeps ties stable and the focused actor on top", () => {
+  const actors = [
+    { key: "boss-1", type: "NPC", class: "Boss" },
+    { key: "player-1", type: "Player", class: "Mage" },
+    { key: "npc-1", type: "NPC", class: "NPC" },
+    { key: "pet-1", type: "Pet", class: "Pet" },
+    { key: "boss-2", type: "NPC", class: "Boss" },
+    { key: "player-2", type: "Player", class: "Priest" },
+  ] as const;
+  const order = (selected: string | null) =>
+    mapActorDrawOrder(actors, selected).map((actor) => actor.key);
+  assert.deepEqual(order(null), [
+    "npc-1",
+    "pet-1",
+    "player-1",
+    "player-2",
+    "boss-1",
+    "boss-2",
+  ]);
+  assert.deepEqual(order("npc-1"), [
+    "pet-1",
+    "player-1",
+    "player-2",
+    "boss-1",
+    "boss-2",
+    "npc-1",
+  ]);
 });
