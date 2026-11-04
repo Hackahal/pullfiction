@@ -12,7 +12,8 @@
     "format:check": "prettier --check src vite.config.ts tsconfig.json package.json",
     "bench:assets": "tsx benchmarks/asset-loading.mts",
     "bench:scrub": "tsx benchmarks/scrubbing.mts",
-    "bench:prepare": "tsx benchmarks/preparation.mts"
+    "bench:prepare": "tsx benchmarks/preparation.mts",
+    "bench:frame": "tsx benchmarks/replay-frame.mts"
   },
   "dependencies": {
     "konva": "^10.9.0",
