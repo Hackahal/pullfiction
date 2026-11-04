@@ -52,8 +52,10 @@ export function Toolbox({
       <span>{shortLabel}</span>
     </button>
   );
-  const panelButton = (p: (typeof panelCatalogue)[number]) => {
-    const visible = open.includes(p.id);
+  const panelButton = (
+    p: (typeof panelCatalogue)[number],
+    visible = open.includes(p.id),
+  ) => {
     const available =
       p.id !== "run" || !!state.replay || state.workspaceMode === "plan";
     return (
@@ -122,37 +124,10 @@ export function Toolbox({
         </div>
       )}
       {state.workspaceMode === "plan" &&
-        (
-          [
-            {
-              id: "playbook",
-              label: "Edits",
-              icon: "pointer",
-              visible: state.planning,
-            },
-          ] as const
-        ).map((panel) => (
-          <button
-            key={panel.id}
-            className="panel-tool"
-            aria-pressed={panel.visible}
-            draggable
-            title={`Show or hide ${panel.label} · Drag to dock`}
-            onClick={() =>
-              panel.visible ? onClose(panel.id) : onOpen(panel.id)
-            }
-            onDragStart={(e) => {
-              e.dataTransfer.setData(PANEL_MIME, panel.id);
-              e.dataTransfer.effectAllowed = "move";
-            }}
-          >
-            <Icon name={panel.icon} />
-            <span>{panel.label}</span>
-            <span className="toolbox-grip" aria-hidden="true">
-              <Icon name="grip" />
-            </span>
-          </button>
-        ))}
+        panelButton(
+          { id: "playbook", label: "Edits", icon: "plan" },
+          state.planning,
+        )}
       {state.workspaceMode === "plan" && (
         <>
           <div className="toolbox-label">Drawing tools</div>
@@ -213,7 +188,11 @@ export function Toolbox({
               ? "Click waypoints · Finish to end"
               : state.tool === "marker"
                 ? "Click to place · Shift-click to select"
-                : "Click to select · Drag to draw"}
+                : state.tool === "label"
+                  ? "Drag to place text"
+                  : state.tool === "explore"
+                    ? "Click to select · Drag a selection box"
+                    : "Drag to draw · Esc to cancel"}
           </p>
           <DrawingDefaults state={state} controller={controller} />
           {panelButton(runPanel)}
@@ -223,12 +202,12 @@ export function Toolbox({
         <>
           <div className="toolbox-label">Replay tools</div>
           <div className="primary-replay-tools">
-            {panelCatalogue.slice(0, 5).map(panelButton)}
+            {panelCatalogue.slice(0, 5).map((panel) => panelButton(panel))}
           </div>
           <details className="analysis-tools">
             <summary>More analysis tools</summary>
             <RangeCheck state={state} controller={controller} />
-            {panelCatalogue.slice(5).map(panelButton)}
+            {panelCatalogue.slice(5).map((panel) => panelButton(panel))}
           </details>
         </>
       )}

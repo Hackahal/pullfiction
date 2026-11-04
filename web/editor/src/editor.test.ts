@@ -116,7 +116,7 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
 
   assert.match(markup, /aria-label="Saved edits"/);
   assert.match(markup, /aria-label="Scene editing controls"/);
-  assert.match(markup, /Click to select · Drag to draw/);
+  assert.match(markup, /Click to select · Drag a selection box/);
   assert.doesNotMatch(markup, /Alt-drag to draw|Alt-click to place/);
   assert.doesNotMatch(markup, /Select underneath|scene-selection-menu/);
   assert.match(markup, /aria-label="Frame selection"/);

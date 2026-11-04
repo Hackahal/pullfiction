@@ -668,8 +668,13 @@
 
 .editor .toolbox .panel-tool[aria-pressed="true"] {
   color: var(--text);
-  background: #ffffff05;
+  background: transparent;
   border-color: transparent;
+}
+
+.editor .toolbox .panel-tool:hover:not(:disabled) {
+  color: var(--text);
+  background: #ffffff09;
 }
 
 .panel-tool .panel-tool-name {
@@ -678,29 +683,36 @@
 }
 
 .panel-tool-status {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: transparent;
+  box-sizing: border-box;
+  width: 9px;
+  height: 8px;
+  flex: 0 0 9px;
+  border: 1px solid transparent;
+  border-radius: 2px;
 }
 
 .panel-tool[aria-pressed="true"] .panel-tool-status {
-  background: var(--accent);
+  border-color: #a5b5cd;
+  box-shadow: inset 3px 0 #a5b5cd;
 }
 
 .editor .toolbox .editor-tools button[aria-pressed="true"] {
-  background: #192d42;
-  border-color: #658cb8;
-  color: #dfecff;
+  background: #324864;
+  border-color: #6889b0;
+  color: #edf4ff;
 }
 
 .editor .toolbox .editor-tools button[aria-pressed="true"] svg {
-  color: var(--accent);
+  color: #c4dcff;
 }
 
 .editor :is(button, input, select, summary):focus-visible {
   outline-color: #b9d8ff;
+}
+
+.editor .toolbox :is(button, summary):focus-visible {
+  outline: 2px solid #f5f7fb;
+  outline-offset: 1px;
 }
 
 .editor .run-fixed-labels .run-encounter-label {
