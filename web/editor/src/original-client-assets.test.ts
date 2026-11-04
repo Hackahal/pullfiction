@@ -88,6 +88,67 @@ test("body atlas preparation matches the last descriptor write for repeated equi
   }
 });
 
+test("optional replay icons fill bounded read slots and count missing files", async () => {
+  const icons = ["one", "two", "three", "four", "five", "six"];
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const reads: string[] = [];
+  let active = 0,
+    peak = 0;
+  const files = new LocalClientFiles(
+    {
+      async read(name) {
+        reads.push(name);
+        peak = Math.max(peak, ++active);
+        await gate;
+        active--;
+        if (name.endsWith("/three.blp")) {
+          const error = new Error("Missing icon");
+          error.name = "NotFoundError";
+          throw error;
+        }
+        return new Uint8Array([1]);
+      },
+    },
+    "optional-icons",
+  );
+  const bridge = { catalog: async () => ({}) } as unknown as Parameters<
+    typeof prepareOriginalUnits
+  >[1];
+  const progress: number[][] = [];
+  const pending = prepareOriginalUnits(
+    files,
+    bridge,
+    [],
+    icons,
+    undefined,
+    (done, total) => progress.push([done, total]),
+  );
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(reads.length, 4);
+    assert.deepEqual(progress, [[0, 6]]);
+  } finally {
+    release();
+  }
+  await pending;
+  assert.equal(peak, 4);
+  assert.equal(reads.length, 6);
+  assert.deepEqual(
+    progress,
+    Array.from({ length: 7 }, (_, n) => [n, 6]),
+  );
+  assert.deepEqual(
+    files.readSync("interface/icons/one.blp"),
+    new Uint8Array([1]),
+  );
+  assert.throws(() => files.readSync("interface/icons/three.blp"), {
+    name: "NotFoundError",
+  });
+});
+
 test("original startup prepares native UI bytes and modern catalogs without requesting old tables", async () => {
   const calls: string[] = [];
   const reader: ClientReader = {

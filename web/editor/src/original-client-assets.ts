@@ -190,20 +190,18 @@ export async function prepareOriginalUnits(
       iconResources.add(`interface/icons/${stem.toLowerCase()}.blp`);
   }
   const total = resources.size + iconResources.size;
-  let completed = 0;
   await files.prepare([...resources], signal, (count) => {
-    completed = count;
-    progress?.(completed, total);
+    progress?.(count, total);
   });
-  completed = resources.size;
-  for (const icon of iconResources) {
-    signal?.throwIfAborted();
-    try {
-      await files.read(icon, signal);
-    } catch (error) {
-      if (!(error instanceof Error) || error.name !== "NotFoundError")
-        throw error;
-    }
-    progress?.(++completed, total);
-  }
+  // Keep optional icon misses distinct from required texture failures. Use the
+  // same bounded read pool as appearances instead of waiting for each icon.
+  if (iconResources.size)
+    await files.prepare(
+      [...iconResources],
+      signal,
+      (count) => {
+        if (count) progress?.(resources.size + count, total);
+      },
+      { allowMissing: true },
+    );
 }

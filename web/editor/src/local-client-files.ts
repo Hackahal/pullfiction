@@ -209,6 +209,7 @@ export class LocalClientFiles {
     names: readonly string[],
     signal?: AbortSignal,
     progress?: (completed: number, total: number) => void,
+    { allowMissing = false }: { allowMissing?: boolean } = {},
   ): Promise<void> {
     let completed = 0;
     progress?.(completed, names.length);
@@ -219,7 +220,17 @@ export class LocalClientFiles {
         while (!failed && next < names.length) {
           signal?.throwIfAborted();
           const name = names[next++];
-          await this.read(name, signal);
+          try {
+            await this.read(name, signal);
+          } catch (error) {
+            if (
+              !allowMissing ||
+              !(error instanceof Error) ||
+              error.name !== "NotFoundError"
+            )
+              throw error;
+          }
+          signal?.throwIfAborted();
           if (failed) return;
           progress?.(++completed, names.length);
         }
