@@ -1938,6 +1938,90 @@
   display: none;
 }
 
+.scene-event-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid #66547b;
+  border-radius: 5px;
+  background: #19171ff5;
+  color: #f0eaf6;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.scene-event-band {
+  display: flex;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  background: var(--studio-panel);
+}
+
+.scene-event-caption,
+.scene-event-actors {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.scene-event-caption > span,
+.scene-event-actors button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-event-caption i {
+  flex: 0 0 5px;
+  height: 5px;
+  margin-inline: 2px;
+  transform: rotate(45deg);
+  background: #dab7f5;
+}
+
+.scene-event-caption time {
+  color: #e4cafa;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor .scene-event-actors button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 4px;
+  border-color: transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  pointer-events: auto;
+}
+
+.editor .scene-event-actors button:is(:hover, [data-current="true"]) {
+  border-color: #6d627b;
+  background: #332e3d;
+}
+
+.editor .scene-event-actors button[aria-disabled="true"] {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.scene-event-actors .editor-icon {
+  flex: 0 0 13px;
+  width: 13px;
+  height: 13px;
+}
+
+.scene-event-unknown {
+  color: #c8bece;
+}
+
 @container run-dock (max-width: 440px) and (max-height: 140px) {
   .editor .run-navigator-tools > .run-event-jump {
     display: none;

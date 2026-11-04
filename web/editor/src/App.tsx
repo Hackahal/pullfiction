@@ -18,6 +18,7 @@ import {
 import { SceneToolbar } from "./SceneToolbar";
 import { ReplayLoading } from "./ReplayLoading";
 import { SceneDisplay } from "./SceneDisplay";
+import { SceneEventContext } from "./SceneEventContext";
 import { RaidFrameResize } from "./RaidFrameResize";
 import { BrowserClient } from "./BrowserClient";
 import { EditorIcon } from "./EditorIcon";
@@ -483,6 +484,10 @@ export function App({ controller }: { controller: EditorController }) {
     dialog,
     inspector,
   ]);
+  const sceneEvent =
+    state.workspaceMode === "analyse" && openPanels.includes("events")
+      ? selectedRunEvent
+      : null;
   return (
     <GameVersionContext.Provider value={state.gameVersion}>
       <div
@@ -703,12 +708,7 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       pageDetails={pageDetails && state.planning}
-                      selectedEvent={
-                        state.workspaceMode === "analyse" &&
-                        openPanels.includes("events")
-                          ? selectedRunEvent
-                          : null
-                      }
+                      selectedEvent={sceneEvent}
                       onPageDetails={showPageDetails}
                     />
                   ),
@@ -792,6 +792,7 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       focus={inspector}
+                      sceneEvent={sceneEvent}
                       playback={
                         <ReplayTransport
                           state={state}
@@ -1181,12 +1182,14 @@ function Viewport({
   focus,
   playback,
   closeFocus,
+  sceneEvent,
 }: {
   state: Snapshot;
   controller: EditorController;
   focus: boolean;
   playback: React.ReactNode;
   closeFocus: () => void;
+  sceneEvent: RecordedEventDetail | null;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [map, setMap] = useState(false);
@@ -1349,6 +1352,15 @@ function Viewport({
     controller.setMapView(map);
     return () => controller.setMapView(false);
   }, [map, controller]);
+  const eventContext =
+    sceneEvent && state.replay && !map && state.sceneReady ? (
+      <SceneEventContext
+        event={sceneEvent}
+        replay={state.replay}
+        selected={state.selected}
+        controller={controller}
+      />
+    ) : null;
   return (
     <div className="viewport-shell">
       <div className="scene-chrome">
@@ -1438,6 +1450,7 @@ function Viewport({
           </div>
         </div>
       </div>
+      {eventContext && <div className="scene-event-band">{eventContext}</div>}
       <div className="viewport" data-input-context="scene">
         <canvas
           id="benilla"
