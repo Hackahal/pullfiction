@@ -3824,6 +3824,42 @@ test("missing optional presentation cues preserve replay preparation but cancell
   }
 });
 
+test("Saved appearances stay scoped to their report and game version", async () => {
+  const code = raw.report.code;
+  const c = new EditorController({
+    getItem: (key) =>
+      key === "pullfiction.appearance.v1"
+        ? JSON.stringify({
+            [`${code}:1`]: { display: 11 },
+            [`sod:${code}:1`]: { display: 22 },
+          })
+        : null,
+    setItem: () => {},
+  });
+  const install = (
+    reportCode: string,
+    display: number,
+    gameVersion: "vanilla" | "sod" = "vanilla",
+  ) => {
+    c.installReplay({
+      ...raw,
+      gameVersion,
+      report: { ...raw.report, code: reportCode },
+      appearanceOverrides: { 1: { display } },
+    });
+    return c.getSnapshot().replay!.actors.find(({ id }) => id === 1)!;
+  };
+  assert.equal(c.appearance(install(code, 33)).display, 11);
+  assert.equal(c.appearance(install("AnotherReport", 44)).display, 44);
+  assert.equal(c.appearance(install("AnotherReport", 55)).display, 55);
+  const actor = install(code, 33, "sod");
+  assert.equal(c.appearance(actor).display, 22);
+  await c.setAppearance(actor, "display", 66);
+  assert.equal(c.appearance(actor).display, 66);
+  assert.equal(c.appearance(install(code, 33)).display, 11);
+  c.stop();
+});
+
 test("Appearance edits prepare before publishing and merge pending fields without stale commits", async () => {
   const f = fixture();
   const actor = f.c.getSnapshot().replay!.actors[0];

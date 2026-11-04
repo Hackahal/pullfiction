@@ -283,6 +283,12 @@ export class EditorController {
     { plan: Plan; saved: string; undo: Plan[]; redo: Plan[] }
   >();
   private appearances: Record<string, Appearance> = {};
+  private appearanceReport: string | null = null;
+  private appearanceVersion?: GameVersion;
+  private readonly savedAppearanceByActor = new Map<
+    number,
+    Appearance | null
+  >();
   private engine: Engine | null = null;
   private mapView = false;
   private sceneFocused = false;
@@ -4654,16 +4660,26 @@ export class EditorController {
     return !!actor;
   }
   appearance(actor: Actor) {
-    return (
-      this.appearances[
-        `${this.state.gameVersion}:${this.state.reportCode}:${actor.id}`
-      ] ??
-      (this.state.gameVersion === "vanilla"
-        ? this.appearances[`${this.state.reportCode}:${actor.id}`]
-        : undefined) ??
-      this.state.replay?.raw.appearanceOverrides?.[actor.id] ??
-      {}
-    );
+    const { gameVersion, reportCode, replay } = this.state;
+    if (
+      this.appearanceReport !== reportCode ||
+      this.appearanceVersion !== gameVersion
+    ) {
+      this.savedAppearanceByActor.clear();
+      this.appearanceReport = reportCode;
+      this.appearanceVersion = gameVersion;
+    }
+    let saved = this.savedAppearanceByActor.get(actor.id);
+    if (saved === undefined) {
+      saved =
+        this.appearances[`${gameVersion}:${reportCode}:${actor.id}`] ??
+        (gameVersion === "vanilla"
+          ? this.appearances[`${reportCode}:${actor.id}`]
+          : undefined) ??
+        null;
+      this.savedAppearanceByActor.set(actor.id, saved);
+    }
+    return saved ?? replay?.raw.appearanceOverrides?.[actor.id] ?? {};
   }
   async setAppearance(
     actor: Actor,
@@ -4730,6 +4746,7 @@ export class EditorController {
     this.pendingAppearances.delete(id);
     // Publish only after the synchronous native texture reads can succeed.
     this.appearances[id] = next;
+    this.savedAppearanceByActor.delete(actor.id);
     try {
       this.storage?.setItem(APPEARANCE_KEY, JSON.stringify(this.appearances));
     } catch {
