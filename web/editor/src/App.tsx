@@ -1360,60 +1360,67 @@ function Viewport({
           </span>
         )}
         <div className="viewport-modes" role="group" aria-label="Scene view">
-          <select
-            aria-label="Camera mode"
-            title="Free camera: right-drag to look; WASD to move"
-            value={controller.cameraPresentation(map).value}
-            onChange={(e) => {
-              const mode = e.target.value;
-              if (mode === "orbit") controller.setCameraMode("orbit");
-              else {
-                controller.setCameraMode("free");
-                controller.setOption("lockCamera", mode === "player");
-                controller.setOption("followRaid", mode !== "free");
-              }
-            }}
+          <div
+            className="scene-camera-controls"
+            role="group"
+            aria-label="Camera"
           >
-            <option value="free">Free camera</option>
-            {state.replay && <option value="raid">Follow raid</option>}
-            {!map && state.replay && controller.orbitCandidate() && (
-              <option value="player">
-                Follow {controller.orbitCandidate()?.name ?? "selected player"}
-              </option>
-            )}
-            {!map && controller.orbitCandidate() && (
-              <option value="orbit">
-                Orbit {controller.orbitCandidate()?.name}
-              </option>
-            )}
-          </select>
-          <button
-            className="scene-frame-selection"
-            aria-label="Frame selection"
-            onClick={() => controller.frameSelection()}
-            title="Frame selection (F)"
-          >
-            <EditorIcon name="focus" />
-            <span>Frame selection</span>
-          </button>
-          {!map &&
-            ((state.replay && state.options.followRaid) ||
-              state.cameraMode === "orbit") && (
-              <select
-                aria-label="Maximum camera distance"
-                title="Maximum camera distance"
-                value={state.cameraMaxDistance}
-                onChange={(e) =>
-                  controller.setCameraDistance(Number(e.target.value))
+            <select
+              aria-label="Camera mode"
+              title="Free camera: right-drag to look; WASD to move"
+              value={controller.cameraPresentation(map).value}
+              onChange={(e) => {
+                const mode = e.target.value;
+                if (mode === "orbit") controller.setCameraMode("orbit");
+                else {
+                  controller.setCameraMode("free");
+                  controller.setOption("lockCamera", mode === "player");
+                  controller.setOption("followRaid", mode !== "free");
                 }
-              >
-                {[20, 30, 40, 50, 60].map((v) => (
-                  <option key={v} value={v}>
-                    {v} yd max
-                  </option>
-                ))}
-              </select>
-            )}
+              }}
+            >
+              <option value="free">Free camera</option>
+              {state.replay && <option value="raid">Follow raid</option>}
+              {!map && state.replay && controller.orbitCandidate() && (
+                <option value="player">
+                  Follow{" "}
+                  {controller.orbitCandidate()?.name ?? "selected player"}
+                </option>
+              )}
+              {!map && controller.orbitCandidate() && (
+                <option value="orbit">
+                  Orbit {controller.orbitCandidate()?.name}
+                </option>
+              )}
+            </select>
+            <button
+              className="scene-frame-selection"
+              aria-label="Frame selection"
+              onClick={() => controller.frameSelection()}
+              title="Frame selection (F)"
+            >
+              <EditorIcon name="focus" />
+              <span>Frame selection</span>
+            </button>
+            {!map &&
+              ((state.replay && state.options.followRaid) ||
+                state.cameraMode === "orbit") && (
+                <select
+                  aria-label="Maximum camera distance"
+                  title="Maximum camera distance"
+                  value={state.cameraMaxDistance}
+                  onChange={(e) =>
+                    controller.setCameraDistance(Number(e.target.value))
+                  }
+                >
+                  {[20, 30, 40, 50, 60].map((v) => (
+                    <option key={v} value={v}>
+                      {v} yd max
+                    </option>
+                  ))}
+                </select>
+              )}
+          </div>
           <SceneDisplay state={state} controller={controller} />
           <div className="studio-segment" role="group" aria-label="View type">
             <button aria-pressed={!map} onClick={() => setMap(false)}>

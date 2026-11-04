@@ -485,6 +485,60 @@
   background: var(--studio-panel);
 }
 
+.editor .viewport-modes {
+  gap: 5px;
+}
+
+.editor .viewport-modes > .scene-camera-controls {
+  align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid #3e434a;
+  border-radius: 5px;
+  background: #1e2024;
+}
+
+.editor .scene-camera-controls > :is(select, button),
+.editor .viewport-modes > .panel-settings-trigger[aria-expanded="false"],
+.editor .viewport-modes .studio-segment > button {
+  min-height: 26px;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.editor .scene-camera-controls > select:first-child {
+  min-width: 0;
+}
+
+.editor .scene-camera-controls > :is(select, button):hover:not(:disabled),
+.editor .viewport-modes > .panel-settings-trigger[aria-expanded="false"]:hover {
+  background-color: #ffffff12;
+}
+
+.editor .viewport-modes .studio-segment > button[aria-pressed="true"] {
+  color: #edf3fb;
+  background-color: #3d4b5d;
+  border-color: #58677a;
+}
+
+.editor .viewport-modes :is(button, select):focus-visible {
+  outline: 2px solid #e9eff8;
+  outline-offset: -2px;
+}
+
+@container replay-scene (max-width: 395px) {
+  .editor .viewport-modes > .panel-settings-trigger.has-label > span {
+    display: none;
+  }
+
+  .editor .scene-camera-controls > :is(select, button),
+  .editor .viewport-modes .studio-segment > button {
+    padding-inline: 5px;
+  }
+}
+
 .editor .panel-settings-trigger[aria-expanded="true"] {
   background: #ffffff0e;
   border-color: #555960;
