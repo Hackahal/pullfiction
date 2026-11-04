@@ -42,12 +42,12 @@ test("asset recovery replaces blocking replay progress in the editor and library
       ".library-backdrop:not(.library-landing)",
     ]) {
       const surface = recovery.document.querySelector(selector)!;
+      assert.doesNotMatch(surface.textContent!, /Preparing replay/);
       const buttons = [...surface.querySelectorAll(".browser-client button")];
       assert.deepEqual(
         buttons.map((button) => button.textContent),
         ["Retry download", "Cancel loading"],
       );
-      assert.doesNotMatch(surface.textContent!, /Preparing replay/);
     }
     recovery.close();
     patch({ busy: false, buffering: true, bufferError: "Try replay again" });
