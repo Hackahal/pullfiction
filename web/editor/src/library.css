@@ -2255,3 +2255,86 @@
 .library-front-door .ranking-connect { max-width: 640px; padding: 32px; text-align: left; }
 .library-front-door .ranking-connect p { max-width: 520px; margin-left: 0; }
 .library-front-door .ranking-connect .gold-button { margin: 12px 0; padding: 11px 18px; }
+
+/* The library uses the same quiet studio controls as the workspace. */
+.library-front-door {
+  --library-accent: #a4cbff;
+  --library-ink: #edf0f5;
+  --library-seam: #414348;
+  color: var(--library-ink);
+  background: #191a1c;
+  font-family: system-ui, sans-serif;
+}
+
+.library-front-door .library-header {
+  background: #2b2c2e;
+  border-bottom-color: var(--library-seam);
+  box-shadow: none;
+}
+
+.library-front-door .library-brand {
+  font: 650 22px system-ui, sans-serif;
+  letter-spacing: -0.055em;
+}
+
+.library-front-door .library-header nav button[aria-pressed="true"],
+.library-front-door .library-sidebar > button[aria-pressed="true"] {
+  color: #e8f2ff;
+  background: #304866;
+  border-color: #52759e;
+}
+
+.library-front-door .library-sidebar {
+  background: #222325;
+  border-right-color: var(--library-seam);
+}
+
+.library-front-door .library-sidebar .eyebrow,
+.library-front-door .eyebrow {
+  color: #b4bac3;
+}
+
+.library-front-door :is(h1, .workspace-resume h2) {
+  color: var(--library-ink);
+  font: 650 clamp(20px, 3vw, 30px) / 1.2 system-ui, sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.library-front-door .gold-button:not(:disabled) {
+  color: #142138;
+  background: var(--library-accent);
+  border-color: var(--library-accent);
+  box-shadow: none;
+}
+
+.library-front-door .gold-button:hover:not(:disabled) {
+  color: #142138;
+  background: #c4deff;
+}
+
+.library-front-door .outline-action {
+  color: var(--library-ink);
+  background: #292a2c;
+  border-color: #55585e;
+}
+
+.library-front-door :is(.workspace-resume, .library-new-plan, .discovery-report-link, .discovery-search, .library-empty) {
+  background: #242527;
+  border-color: var(--library-seam);
+  box-shadow: none;
+}
+
+.library-front-door .workspace-resume {
+  border-left-width: 1px;
+}
+
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-actions .outline-action {
+  white-space: nowrap;
+}

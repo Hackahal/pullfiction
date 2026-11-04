@@ -5280,12 +5280,24 @@ test("Scene presentation presets keep overlays deliberate without editing the pl
   assert.equal(f.c.getSnapshot().options.auras, true);
   assert.deepEqual(f.c.getSnapshot().raidFrameSize, {
     width: 724,
-    height: 276,
+    height: 186,
   });
   f.c.setScenePresentation("scene");
   assert.equal(f.c.getSnapshot().options.raidFrames, false);
   assert.equal(f.c.getSnapshot().options.auras, false);
   assert.equal(f.c.getSnapshot().options.bossNameplates, true);
   assert.equal(f.c.getSnapshot().plan, plan);
+  f.c.stop();
+});
+
+test("A failed replay import reports failure and preserves the open replay", async () => {
+  const f = fixture();
+  const before = f.c.getSnapshot();
+  const invalid = new File(["not JSON"], "bad-replay.json", {
+    type: "application/json",
+  });
+  assert.equal(await f.c.importFile(invalid, "replay"), false);
+  assert.equal(f.c.getSnapshot().replay, before.replay);
+  assert.equal(f.c.getSnapshot().workspaceMode, before.workspaceMode);
   f.c.stop();
 });

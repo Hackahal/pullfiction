@@ -794,16 +794,26 @@ export function Library({
                 <div className="library-toolbar">
                   <div>
                     <h1>Your workspace</h1>
-                    <p>Pick up your plan, or find the next run to study.</p>
+                    <p>Open a raid recording or pick up a plan.</p>
                   </div>
-                  <button
-                    hidden={newPlan}
-                    className="gold-button"
-                    onClick={() => setNewPlan(!newPlan)}
-                  >
-                    <EditorIcon name={newPlan ? "close" : "plus"} />{" "}
-                    {newPlan ? "Close form" : "New plan"}
-                  </button>
+                  <div className="workspace-actions">
+                    <button
+                      className="outline-action"
+                      aria-label="Import replay JSON"
+                      disabled={disabled}
+                      onClick={() => replayImporter.current?.click()}
+                    >
+                      <EditorIcon name="upload" /> Import replay
+                    </button>
+                    <button
+                      hidden={newPlan}
+                      className="gold-button"
+                      disabled={disabled}
+                      onClick={() => setNewPlan(true)}
+                    >
+                      <EditorIcon name="plus" /> New plan
+                    </button>
+                  </div>
                 </div>
                 {createForm}
                 {allPlans.length ? (
@@ -1248,8 +1258,11 @@ export function Library({
                 if (!next.browserAssets || next.clientStatus === "ready")
                   return controller.importFile(file, "replay");
               })
-              .then(() => {
-                if (controller.getSnapshot().replay !== state.replay) close();
+              .then((imported) => {
+                if (imported) {
+                  controller.setWorkspaceMode("analyse");
+                  close();
+                }
               })
               .finally(() => setOpening(false));
           }

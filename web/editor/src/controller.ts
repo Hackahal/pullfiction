@@ -4309,12 +4309,12 @@ export class EditorController {
         friendlyNameplates: false,
         enemyNameplates: true,
         bossNameplates: true,
-        trashNameplates: preset === "raid",
+        trashNameplates: false,
         raidFrames: preset === "raid",
         auras: preset === "raid",
       },
     });
-    if (preset === "raid") this.setRaidFrameSize(724, 276);
+    if (preset === "raid") this.setRaidFrameSize(724, 186);
     this.resetEvents = true;
     this.render();
   }
@@ -5426,8 +5426,10 @@ export class EditorController {
         );
         this.installReplay(raw, prepared);
       }
+      return true;
     } catch (e) {
       this.notify(message(e));
+      return false;
     }
   }
   exportFile(kind: "plan" | "replay") {

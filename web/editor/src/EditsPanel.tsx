@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MarkEditor, AddPlanPlayer, PageProperties } from "./Planning";
 import { EditorIcon } from "./EditorIcon";
+import { preciseTime } from "./domain";
 import type { EditorController } from "./controller";
 import type { PlannedActor, Snapshot } from "./types";
 function placementStatus(actor: PlannedActor) {
@@ -29,8 +30,166 @@ export function EditsPanel({
   const hasSelection = !!(
     state.selectedMarks.length || state.selectedActors.length
   );
-  const matches = (name: string) =>
-    name.toLowerCase().includes(query.trim().toLowerCase());
+  const search = query.trim().toLowerCase();
+  const matches = (name: string) => name.toLowerCase().includes(search);
+  const outline = (
+    <div
+      className={`edits-outline${search ? " searching" : ""}`}
+      aria-label="Saved edits"
+    >
+      {state.plan.steps.map((page, pageIndex) => {
+        const marks = page.annotations.filter((a) =>
+            matches(`${a.name} ${a.label} ${a.type}`),
+          ),
+          actors = (page.snapshot?.actors ?? []).filter((a) => matches(a.name));
+        if (!marks.length && !actors.length) return null;
+        const captured = actors.filter(
+          (actor) => placementStatus(actor) === "Captured",
+        );
+        const edits = actors.filter(
+          (actor) => placementStatus(actor) !== "Captured",
+        );
+        const placement = (actor: PlannedActor) => {
+          const selected =
+            page.id === state.activeStep &&
+            state.selectedActors.includes(actor.key);
+          return (
+            <button
+              key={actor.key}
+              className={`edit-outline-row actor-edit ${selected ? "active" : ""}`}
+              aria-pressed={selected}
+              onClick={(e) => {
+                controller.revealActorEdit(
+                  actor.key,
+                  page.id,
+                  e.shiftKey || e.ctrlKey || e.metaKey,
+                );
+              }}
+            >
+              <EditorIcon
+                name={
+                  actor.class === "Boss"
+                    ? "skull"
+                    : actor.type === "Player"
+                      ? "person"
+                      : "creature"
+                }
+              />
+              <span>{actor.name}</span>
+              <small>{placementStatus(actor)}</small>
+            </button>
+          );
+        };
+        return (
+          <section key={page.id}>
+            <div className="edits-page-heading">
+              <span>
+                Page {pageIndex + 1}
+                {page.snapshot && (
+                  <> · Captured {preciseTime(page.snapshot.time)}</>
+                )}
+                {page.id === state.activeStep && <> · Current page</>}
+              </span>
+              <button
+                aria-label={`Open page ${pageIndex + 1}: ${page.name}`}
+                onClick={() => {
+                  controller.setActiveStep(page.id);
+                  onPageDetails?.(true);
+                }}
+              >
+                {page.name}
+              </button>
+            </div>
+            {marks.map((edit) => (
+              <div
+                className={`edit-outline-row ${state.selectedMarks.includes(edit.id) ? "active" : ""}`}
+                key={edit.id}
+              >
+                <button
+                  className="edit-select"
+                  aria-pressed={state.selectedMarks.includes(edit.id)}
+                  onClick={(e) => {
+                    if (e.shiftKey || e.ctrlKey || e.metaKey)
+                      controller.selectMark(edit.id, "toggle");
+                    else controller.revealEdit(edit.id);
+                  }}
+                >
+                  <EditorIcon
+                    name={edit.type === "marker" ? "pin" : edit.type}
+                  />
+                  <span>{edit.name}</span>
+                  {edit.actor && <EditorIcon name="actors" />}
+                </button>
+                <button
+                  title={edit.hidden ? "Show edit" : "Hide edit"}
+                  aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
+                  aria-pressed={!edit.hidden}
+                  onClick={() => {
+                    controller.revealEdit(edit.id);
+                    controller.updateMark({ hidden: !edit.hidden });
+                  }}
+                >
+                  <EditorIcon name="eye" />
+                </button>
+                <button
+                  title={edit.locked ? "Unlock edit" : "Lock edit"}
+                  aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
+                  aria-pressed={edit.locked}
+                  onClick={() => {
+                    controller.revealEdit(edit.id);
+                    controller.updateMark({ locked: !edit.locked });
+                  }}
+                >
+                  <EditorIcon name="lock" />
+                </button>
+              </div>
+            ))}
+            {edits.map(placement)}
+            {search
+              ? captured.map(placement)
+              : captured.length > 0 && (
+                  <details
+                    className="captured-placements"
+                    open={
+                      page.id === state.activeStep &&
+                      captured.some((actor) =>
+                        state.selectedActors.includes(actor.key),
+                      )
+                        ? true
+                        : undefined
+                    }
+                  >
+                    <summary>
+                      Captured positions <span>{captured.length}</span>
+                    </summary>
+                    {captured.map(placement)}
+                  </details>
+                )}
+          </section>
+        );
+      })}
+      {search &&
+        !state.plan.steps.some(
+          (page) =>
+            page.annotations.some((edit) =>
+              matches(`${edit.name} ${edit.label} ${edit.type}`),
+            ) || page.snapshot?.actors.some((actor) => matches(actor.name)),
+        ) && (
+          <p className="edits-empty" role="status">
+            No edits match “{query.trim()}”.
+          </p>
+        )}
+      {!search &&
+        !state.plan.steps.some(
+          (s) => s.annotations.length || s.snapshot?.actors.length,
+        ) && (
+          <p className="edits-empty">
+            Choose Route to draw a path, or Marker to place a raid marker in the
+            scene.
+          </p>
+        )}
+    </div>
+  );
   return (
     <section
       className="edits-panel"
@@ -78,7 +237,8 @@ export function EditsPanel({
           </div>
         </details>
       </div>
-      {state.workspaceMode === "plan" && (
+      {search && outline}
+      {!search && state.workspaceMode === "plan" && (
         <AddPlanPlayer controller={controller} />
       )}
       {pageDetails && state.workspaceMode === "plan" ? (
@@ -94,144 +254,7 @@ export function EditsPanel({
           Select an edit to change its properties.
         </p>
       )}
-      <div className="edits-outline" aria-label="Saved edits">
-        {state.plan.steps.map((page) => {
-          const marks = page.annotations.filter((a) =>
-              matches(`${a.name} ${a.label} ${a.type}`),
-            ),
-            actors = (page.snapshot?.actors ?? []).filter((a) =>
-              matches(a.name),
-            );
-          if (!marks.length && !actors.length) return null;
-          const captured = actors.filter(
-            (actor) => placementStatus(actor) === "Captured",
-          );
-          const edits = actors.filter(
-            (actor) => placementStatus(actor) !== "Captured",
-          );
-          const placement = (actor: PlannedActor) => {
-            const selected =
-              page.id === state.activeStep &&
-              state.selectedActors.includes(actor.key);
-            return (
-              <button
-                key={actor.key}
-                className={`edit-outline-row actor-edit ${selected ? "active" : ""}`}
-                aria-pressed={selected}
-                onClick={(e) => {
-                  controller.revealActorEdit(
-                    actor.key,
-                    page.id,
-                    e.shiftKey || e.ctrlKey || e.metaKey,
-                  );
-                }}
-              >
-                <EditorIcon
-                  name={
-                    actor.class === "Boss"
-                      ? "skull"
-                      : actor.type === "Player"
-                        ? "person"
-                        : "creature"
-                  }
-                />
-                <span>{actor.name}</span>
-                <small>{placementStatus(actor)}</small>
-              </button>
-            );
-          };
-          return (
-            <section key={page.id}>
-              <div className="edits-page-heading">
-                <span>
-                  {state.plan.layers.find((l) => l.id === page.layerId)?.name}
-                </span>
-                <button
-                  onClick={() => {
-                    controller.setActiveStep(page.id);
-                    onPageDetails?.(true);
-                  }}
-                >
-                  {page.name}
-                </button>
-              </div>
-              {marks.map((edit) => (
-                <div
-                  className={`edit-outline-row ${state.selectedMarks.includes(edit.id) ? "active" : ""}`}
-                  key={edit.id}
-                >
-                  <button
-                    className="edit-select"
-                    aria-pressed={state.selectedMarks.includes(edit.id)}
-                    onClick={(e) => {
-                      if (e.shiftKey || e.ctrlKey || e.metaKey)
-                        controller.selectMark(edit.id, "toggle");
-                      else controller.revealEdit(edit.id);
-                    }}
-                  >
-                    <EditorIcon
-                      name={edit.type === "marker" ? "pin" : edit.type}
-                    />
-                    <span>{edit.name}</span>
-                    {edit.actor && <EditorIcon name="actors" />}
-                  </button>
-                  <button
-                    title={edit.hidden ? "Show edit" : "Hide edit"}
-                    aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
-                    aria-pressed={!edit.hidden}
-                    onClick={() => {
-                      controller.revealEdit(edit.id);
-                      controller.updateMark({ hidden: !edit.hidden });
-                    }}
-                  >
-                    <EditorIcon name="eye" />
-                  </button>
-                  <button
-                    title={edit.locked ? "Unlock edit" : "Lock edit"}
-                    aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
-                    aria-pressed={edit.locked}
-                    onClick={() => {
-                      controller.revealEdit(edit.id);
-                      controller.updateMark({ locked: !edit.locked });
-                    }}
-                  >
-                    <EditorIcon name="lock" />
-                  </button>
-                </div>
-              ))}
-              {edits.map(placement)}
-              {query.trim()
-                ? captured.map(placement)
-                : captured.length > 0 && (
-                    <details
-                      className="captured-placements"
-                      open={
-                        page.id === state.activeStep &&
-                        captured.some((actor) =>
-                          state.selectedActors.includes(actor.key),
-                        )
-                          ? true
-                          : undefined
-                      }
-                    >
-                      <summary>
-                        Captured positions <span>{captured.length}</span>
-                      </summary>
-                      {captured.map(placement)}
-                    </details>
-                  )}
-            </section>
-          );
-        })}
-        {!state.plan.steps.some(
-          (s) => s.annotations.length || s.snapshot?.actors.length,
-        ) && (
-          <p className="edits-empty">
-            Choose Route to draw a path, or Marker to place a raid marker in the
-            scene.
-          </p>
-        )}
-      </div>
+      {!search && outline}
     </section>
   );
 }

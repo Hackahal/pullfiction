@@ -36,6 +36,7 @@ pub struct PlannerUiUnit {
     pub friendly: bool,
     pub estimated: bool,
     pub health_known: bool,
+    pub dead: bool,
     pub health: u32,
     pub max_health: u32,
     pub power_known: bool,
@@ -258,21 +259,21 @@ pub(super) fn raid_chunk(frame: &PlannerUiFrame, viewport: [f32; 2], seam: f32) 
             "{{name={},progress={:.4},remaining={}}}", quote(&c.name), c.progress.clamp(0., 1.), quote(&format!("{:.1}", c.remaining.max(0.))),
         )).unwrap_or("nil".into());
         format!(
-            "{{guid={},name={},class={},hp={},max={},known={},power={},maxpower={},powertype={},powerknown={},selected={},cast={cast},auras={{{auras}}}}}",
-            quote(&u.guid.to_string()), quote(&u.name), u.class, u.health, u.max_health.max(1), u.health_known,
+            "{{guid={},name={},class={},hp={},max={},known={},dead={},power={},maxpower={},powertype={},powerknown={},selected={},cast={cast},auras={{{auras}}}}}",
+            quote(&u.guid.to_string()), quote(&u.name), u.class, u.health, u.max_health.max(1), u.health_known, u.dead,
             u.power, u.max_power, u.power_type, u.power_known, frame.selected == Some(u.guid),
         )
     }).collect::<Vec<_>>().join(",");
     let [w, h] = frame.raid_frame_size;
     let w = if w > 0. { w } else { 724. };
     let h = if h > 0. { h } else { 276. };
-    let layout = crate::planner_raid_layout::layout(
+    let (layout, compact) = crate::planner_raid_layout::viewport_layout(
         units.len(),
         w.min((viewport[0] - 24.).max(80.)),
         h.min((viewport[1] - 24.).max(80.)),
     );
     format!(
-        "PullFictionRaid_Update({{{rows}}},{},{:.5},{},{:.5})",
+        "PullFictionRaid_Update({{{rows}}},{},{:.5},{},{:.5},{compact})",
         frame.raid_frames,
         1. / seam,
         layout.rows,

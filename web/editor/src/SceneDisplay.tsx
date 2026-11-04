@@ -18,7 +18,7 @@ export function SceneDisplay({
   const raid =
     options.raidFrames &&
     !options.friendlyNameplates &&
-    options.trashNameplates &&
+    !options.trashNameplates &&
     options.auras;
   return (
     <PanelSettings title="Scene display" label="Display" icon="eye" width={340}>
@@ -35,7 +35,7 @@ export function SceneDisplay({
           onClick={() => controller.setScenePresentation("raid")}
         >
           <strong>Raid overview</strong>
-          <span>Show a larger roster</span>
+          <span>Scan a compact roster</span>
         </button>
       </div>
       <fieldset className="scene-display-options">
@@ -47,7 +47,7 @@ export function SceneDisplay({
             ["enemyNameplates", "Enemy nameplates"],
             ["trashNameplates", "Trash nameplates"],
             ["bossNameplates", "Boss nameplates"],
-            ["auras", "Buffs and debuffs on nameplates"],
+            ["auras", "Buff and debuff details"],
             ["spells", "Spell effects"],
           ] as [keyof Options, string][]
         ).map(([key, title]) => (
@@ -62,6 +62,24 @@ export function SceneDisplay({
             />
           </label>
         ))}
+        {options.raidFrames && (
+          <>
+            <label>
+              <span>Detailed raid frames</span>
+              <input
+                type="checkbox"
+                checked={state.raidFrameSize.height >= 220}
+                onChange={(event) =>
+                  controller.setRaidFrameSize(
+                    state.raidFrameSize.width,
+                    event.target.checked ? 276 : 186,
+                  )
+                }
+              />
+            </label>
+            <small>Small viewers use compact frames automatically.</small>
+          </>
+        )}
       </fieldset>
       <div className="scene-display-actions">
         <button onClick={() => controller.focusCurrent()}>Frame raid</button>

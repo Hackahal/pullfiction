@@ -595,6 +595,7 @@ pub struct ReplayBody {
     identity: crate::planner_replay_identity::ActorIdentity,
     pub label_height: f32,
     pub(crate) health_known: bool,
+    pub(crate) dead: bool,
     pub(crate) power_known: bool,
     pub(crate) friendly: bool,
     pub(crate) nameplate: bool,
@@ -1232,6 +1233,7 @@ pub(crate) fn apply(
                     }
                     *movement = motion;
                     body.health_known = unit.health.is_some();
+                    body.dead = unit.dead;
                     body.power_known = unit.power.is_some();
                     body.friendly = unit.friendly;
                     body.nameplate = unit.nameplate;
@@ -1360,6 +1362,7 @@ pub(crate) fn apply(
                         plate_auras: unit.plate_auras.clone(),
                         self_auras: unit.self_auras.clone(),
                         health_known: unit.health.is_some(),
+                        dead: unit.dead,
                         power_known: unit.power.is_some(),
                         label_height: if unit.player { 2.6 } else { 4.5 * unit.scale },
                         cast: 0,

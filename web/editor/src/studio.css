@@ -647,3 +647,24 @@
   color: var(--muted);
   font-size: 12px;
 }
+
+.edits-outline.searching {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
+  border-bottom: 1px solid var(--studio-edge);
+}
+
+.scene-display-options > small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.edits-page-heading > button {
+  min-width: 0;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
