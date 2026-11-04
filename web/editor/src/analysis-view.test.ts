@@ -134,14 +134,22 @@ test("Combat event details stay in their panel, focus the tray and restore the s
       ),
     );
     const trigger = dom.window.document.querySelector<HTMLElement>(
-      '.combat-event-ability a[role="button"]',
+      ".combat-event-ability button",
     )!;
     assert.ok(trigger);
+    assert.equal(
+      trigger.closest(".combat-event-list")?.querySelector("[data-wowhead]"),
+      null,
+    );
     await act(async () => trigger.click());
     const tray = dom.window.document.querySelector<HTMLElement>(
       '[aria-label="Selected combat event"]',
     )!;
     assert.ok(tray?.closest(".analysis-panel"));
+    assert.match(
+      tray.querySelector<HTMLAnchorElement>(".widget-reference a")?.href ?? "",
+      /wowhead\.com\/classic\/spell=133/,
+    );
     assert.equal(trigger.getAttribute("aria-controls"), tray.id);
     assert.equal(dom.window.document.activeElement, tray);
     assert.match(tray.textContent ?? "", /Fireball.*Mage.*Boss.*100/);

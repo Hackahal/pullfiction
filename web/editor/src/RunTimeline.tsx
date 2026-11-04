@@ -42,6 +42,9 @@ export function RunTimeline({
   const [width, setWidth] = useState(1000);
   const [range, setRange] = useState(() => runRange(0, duration, duration));
   const [panning, setPanning] = useState(false);
+  const [compactLane, setCompactLane] = useState<"pulls" | "mobs" | "pages">(
+    "pulls",
+  );
   const [layerSnap, setLayerSnap] = useState(true);
   const [follow, setFollow] = useState(true);
   const lastHit = useRef<RunSegment | null>(null);
@@ -185,6 +188,7 @@ export function RunTimeline({
     <section
       className="run-navigator"
       data-workspace={state.workspaceMode}
+      data-compact-lane={compactLane}
       data-input-context="timeline"
       aria-label={replay ? "Raid scrubber" : "Plan steps"}
     >
@@ -211,6 +215,23 @@ export function RunTimeline({
             >
               Full run
             </button>
+            {state.workspaceMode === "analyse" && (
+              <select
+                className="run-compact-lane"
+                aria-label="Timeline lane"
+                title="Choose the visible track in a short timeline dock"
+                value={compactLane}
+                onChange={(event) =>
+                  setCompactLane(
+                    event.currentTarget.value as typeof compactLane,
+                  )
+                }
+              >
+                <option value="pulls">Pulls</option>
+                <option value="mobs">Mobs</option>
+                <option value="pages">Plan pages</option>
+              </select>
+            )}
           </>
         ) : (
           <>
@@ -370,7 +391,7 @@ export function RunTimeline({
                     )}
                   </span>
                 </span>
-                <span>Mobs</span>
+                <span className="run-mob-label">Mobs</span>
               </div>
             )}
             <LayerHeaders state={state} controller={controller} />

@@ -889,7 +889,7 @@
   container: run-dock / size;
 }
 
-@container run-dock (max-height: 110px) {
+@container run-dock (max-height: 140px) {
   .editor .run-navigator-tools {
     min-height: 26px;
     padding-block: 1px;
@@ -1431,7 +1431,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-@container run-dock (max-height: 110px) {
+@container run-dock (max-height: 140px) {
   .editor .run-bosses .run-segment[data-detail="bar"] {
     top: 3px;
     height: 17px;
@@ -1613,4 +1613,38 @@
 
 .analysis-v2 .combat-event-scroll {
   min-height: 42px;
+}
+
+.run-compact-lane {
+  display: none;
+}
+
+@container run-dock (max-height: 110px) {
+  .run-navigator[data-workspace="analyse"] .run-compact-lane {
+    display: inline-block;
+    width: auto;
+    max-width: 15ch;
+    padding: 2px 4px;
+    font-size: 11px;
+  }
+
+  .run-navigator[data-workspace="analyse"]:not([data-compact-lane="pulls"])
+    :is(.run-encounter-label, .run-bosses),
+  .run-navigator[data-workspace="analyse"]:not([data-compact-lane="mobs"])
+    :is(.run-mob-label, .run-mobs),
+  .run-navigator[data-workspace="analyse"]:not([data-compact-lane="pages"])
+    :is(.run-lane-labels > .layer-row-label, .plan-layer-tracks) {
+    display: none;
+  }
+}
+
+@container run-dock (max-height: 110px) {
+  .run-navigator[data-workspace="analyse"] :is(.plan-layer-track, .layer-row-label) {
+    height: 24px;
+  }
+
+  .run-navigator[data-workspace="analyse"] .layer-clip {
+    top: 1px;
+    height: 21px;
+  }
 }

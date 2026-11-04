@@ -977,25 +977,23 @@ export function Analysis({
                                 Death recap
                               </button>
                             ) : (
-                              <AbilityReference spell={e.spell} name={e.name}>
-                                <button
-                                  aria-expanded={selected}
-                                  aria-controls={
-                                    selected ? eventDetailId : undefined
+                              <button
+                                aria-expanded={selected}
+                                aria-controls={
+                                  selected ? eventDetailId : undefined
+                                }
+                                onClick={() => {
+                                  if (selected) {
+                                    closeEventDetail(false);
+                                    return;
                                   }
-                                  onClick={() => {
-                                    if (selected) {
-                                      closeEventDetail(false);
-                                      return;
-                                    }
-                                    setEventDetail(
-                                      recordedEventDetail(replay, e),
-                                    );
-                                  }}
-                                >
-                                  {e.name}
-                                </button>
-                              </AbilityReference>
+                                  setEventDetail(
+                                    recordedEventDetail(replay, e),
+                                  );
+                                }}
+                              >
+                                {e.name}
+                              </button>
                             )}
                           </div>
                           <p className="combat-event-actors" title={actors}>
