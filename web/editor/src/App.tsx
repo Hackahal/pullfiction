@@ -1901,7 +1901,9 @@ function Viewport({
             <GameIcon name="Spell_Fire_Immolation" />
             <span>
               {state.error ??
-                `Loading ${raidByMap(state.plan.mapId)?.name ?? "raid"}…`}
+                (!state.ready
+                  ? "Starting 3D viewer…"
+                  : `Loading ${raidByMap(state.plan.mapId)?.name ?? "raid"}…`)}
             </span>
             {!state.error && (
               <LoadingProgress

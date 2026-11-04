@@ -617,6 +617,7 @@ export class EditorController {
   private browserLogs: BrowserLogs | null = null;
   private authStarted = false;
   private bootPromise: Promise<void> | null = null;
+  private enginePreparation: Promise<Engine> | null = null;
   constructor(
     private storage?: StoragePort,
     private runtime: {
@@ -6580,9 +6581,9 @@ export class EditorController {
     let releasePreparedFiles: (() => void) | null = null;
     let releasePreparedArt: (() => void) | null = null;
     try {
-      reader =
+      const opening =
         restored ??
-        (await (this.runtime.openClient ?? openHostedClient)(
+        (this.runtime.openClient ?? openHostedClient)(
           files,
           (value) => {
             if (!abort.signal.aborted)
@@ -6592,7 +6593,11 @@ export class EditorController {
               });
           },
           { signal: abort.signal },
-        ));
+        );
+      // This prepares only the module. The current client still owns the start gate.
+      if (!abort.signal.aborted && globalThis.navigator?.gpu)
+        void this.prepareEngine().catch(() => {});
+      reader = await opening;
       abort.signal.throwIfAborted();
       if (!restored && this.clientCache) {
         try {
@@ -6802,6 +6807,19 @@ export class EditorController {
       throw new Error("Renderer diagnostics are not enabled");
     this.needClientSource();
   }
+  private prepareEngine() {
+    return (this.enginePreparation ??= (async () => {
+      const modulePath = "/pullfiction_viewer.js";
+      const engine = this.runtime.loadEngine
+        ? await this.runtime.loadEngine()
+        : ((await import(/* @vite-ignore */ modulePath)) as Engine);
+      await engine.default();
+      return engine;
+    })().catch((error) => {
+      this.enginePreparation = null;
+      throw error;
+    }));
+  }
   private async bootEngine(signal?: AbortSignal) {
     try {
       signal?.throwIfAborted();
@@ -6822,11 +6840,10 @@ export class EditorController {
         )
           throw new Error("Invalid local game data");
       }
-      const modulePath = "/pullfiction_viewer.js";
-      const engine = this.runtime.loadEngine
-        ? await this.runtime.loadEngine()
-        : ((await import(/* @vite-ignore */ modulePath)) as Engine);
-      await Promise.all([engine.default(), this.loadSpawnReferences()]);
+      const [engine] = await Promise.all([
+        this.prepareEngine(),
+        this.loadSpawnReferences(),
+      ]);
       signal?.throwIfAborted();
       engine.start();
       this.attachEngine(engine);
