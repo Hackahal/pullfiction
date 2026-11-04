@@ -77,6 +77,11 @@ function AbilityReference({
             return;
           event.preventDefault();
           props.onClick?.(event);
+          // The detail panel now owns the clicked ability. Release the transient
+          // hover using the same event that the reference receives on blur.
+          event.currentTarget.dispatchEvent(
+            new MouseEvent("mouseout", { bubbles: true }),
+          );
         }}
         onKeyDown={(event) => {
           if (event.key === " ") {
@@ -787,134 +792,113 @@ export function Analysis({
             </div>
           )}
           {config.view === "resources" ? (
-            <div className="analysis-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>Health</th>
-                    <th>Power</th>
-                    <th>Gains / waste · 5s</th>
-                    <th>Cast</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {actors
-                    .filter(
-                      (a) =>
-                        a.type === "Player" &&
-                        replay.fight.friendlyPlayers.includes(a.id) &&
-                        (source === "*" || a.key === source),
-                    )
-                    .map((a) => {
-                      const s = combatStateAt(a, state.time),
-                        p = s.power;
-                      return (
-                        <tr key={a.key}>
-                          <td>
-                            <button
-                              style={{ color: CLASS_COLORS[a.class] }}
-                              onClick={() => controller.select(a.key, false)}
-                            >
-                              {a.name}
-                            </button>
-                          </td>
-                          <td>
-                            <Bar
-                              label="Health"
-                              current={s.health?.current}
-                              max={s.health?.max}
-                              color={CLASS_COLORS[a.class]}
-                              text={
-                                s.health
-                                  ? `${Math.round(s.health.percent * 100)}%`
-                                  : undefined
-                              }
-                            />
-                          </td>
-                          <td
-                            title={
-                              p
-                                ? `${p.current ?? "Unknown"} / ${p.max}`
-                                : "No recorded power snapshot"
-                            }
-                          >
-                            <Bar
-                              label={
-                                p ? (POWER_NAMES[p.type] ?? "Power") : "Power"
-                              }
-                              current={p?.current}
-                              max={p?.max}
-                              color={
-                                p ? (POWER_COLORS[p.type] ?? "#678") : "#678"
-                              }
-                            />
-                          </td>
-                          <td>
-                            {s.resources.totals
-                              .map(
-                                (r) =>
-                                  `${["Mana", "Rage", "Focus", "Energy"][r.type] ?? `Resource ${r.type}`}: +${r.gain} / ${r.waste}`,
-                              )
-                              .join(" · ") || "--"}
-                          </td>
-                          <td>{s.cast?.name ?? ""}</td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+            <div className="analysis-scroll resource-list">
+              <p className="analysis-data-note">
+                Live snapshots · estimated health is marked. Unrecorded values
+                stay unknown.
+              </p>
+              {actors
+                .filter(
+                  (a) =>
+                    a.type === "Player" &&
+                    replay.fight.friendlyPlayers.includes(a.id) &&
+                    (source === "*" || a.key === source),
+                )
+                .map((a) => {
+                  const s = combatStateAt(a, state.time),
+                    p = s.power;
+                  return (
+                    <article className="resource-card" key={a.key}>
+                      <button
+                        className="resource-player"
+                        style={{ color: CLASS_COLORS[a.class] }}
+                        onClick={() => controller.select(a.key, false)}
+                      >
+                        {a.name}
+                        <span>{a.class}</span>
+                      </button>
+                      <div className="resource-bars">
+                        <Bar
+                          label="Health"
+                          current={s.health?.current}
+                          max={s.health?.max}
+                          color={CLASS_COLORS[a.class]}
+                          estimated={!!s.health?.initial}
+                          text={!s.health ? "Not recorded" : undefined}
+                        />
+                        <Bar
+                          label={p ? (POWER_NAMES[p.type] ?? "Power") : "Power"}
+                          current={p?.current}
+                          max={p?.max}
+                          color={p ? (POWER_COLORS[p.type] ?? "#678") : "#678"}
+                        />
+                      </div>
+                      {s.resources.totals.length > 0 && (
+                        <p className="resource-detail">
+                          Last 5s ·{" "}
+                          {s.resources.totals
+                            .map(
+                              (r) =>
+                                `${["Mana", "Rage", "Focus", "Energy"][r.type] ?? `Resource ${r.type}`}: +${r.gain} gained / ${r.waste} wasted`,
+                            )
+                            .join(" · ")}
+                        </p>
+                      )}
+                      {s.cast && (
+                        <p className="resource-detail">
+                          Casting · {s.cast.name}
+                        </p>
+                      )}
+                    </article>
+                  );
+                })}
             </div>
           ) : config.view === "events" ? (
             <div className="analysis-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Source → Target</th>
-                    <th>Ability</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(recap ? deathRecap(events, recap) : filtered)
-                    .slice(-250)
-                    .reverse()
-                    .map((e) => (
-                      <tr key={e.id}>
-                        <td>
-                          <button onClick={() => controller.seek(e.t)}>
-                            {preciseTime(e.t)}
+              <ol className="combat-event-list" aria-label="Combat events">
+                {(recap ? deathRecap(events, recap) : filtered)
+                  .slice(-250)
+                  .reverse()
+                  .map((e) => (
+                    <li key={e.id}>
+                      <button
+                        className="combat-event-time"
+                        onClick={() => controller.seek(e.t)}
+                      >
+                        {preciseTime(e.t)}
+                      </button>
+                      <strong className="combat-event-amount">
+                        {e.amount.toLocaleString()}
+                      </strong>
+                      <div className="combat-event-ability">
+                        {e.kind === "death" ? (
+                          <button onClick={() => setRecap(e)}>
+                            Death recap
                           </button>
-                        </td>
-                        <td>
-                          {actorMap.get(e.source)?.name ?? "Environment"} →{" "}
-                          {actorMap.get(e.target)?.name ?? "Unknown"}
-                        </td>
-                        <td>
-                          {e.kind === "death" ? (
-                            <button onClick={() => setRecap(e)}>
-                              Death recap
+                        ) : (
+                          <AbilityReference spell={e.spell} name={e.name}>
+                            <button
+                              onClick={() =>
+                                controller.inspectSpell(
+                                  e.spell === -4 ? 1 : e.spell,
+                                )
+                              }
+                            >
+                              {e.name}
                             </button>
-                          ) : (
-                            <AbilityReference spell={e.spell} name={e.name}>
-                              <button
-                                onClick={() =>
-                                  controller.inspectSpell(
-                                    e.spell === -4 ? 1 : e.spell,
-                                  )
-                                }
-                              >
-                                {e.name}
-                              </button>
-                            </AbilityReference>
-                          )}
-                        </td>
-                        <td>{e.amount.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                          </AbilityReference>
+                        )}
+                      </div>
+                      <p className="combat-event-actors">
+                        <span>
+                          {actorMap.get(e.source)?.name ?? "Environment"}
+                        </span>
+                        <span aria-label="to">→</span>
+                        <span>{actorMap.get(e.target)?.name ?? "Unknown"}</span>
+                      </p>
+                    </li>
+                  ))}
+              </ol>
               {!recap && filtered.length > 250 && (
                 <p>Latest 250 matching events</p>
               )}

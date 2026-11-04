@@ -34,6 +34,7 @@ export function ShareDialog({
   const incoming = "incoming" in target;
   const [snapshot, setSnapshot] = useState<SharedSnapshot | null>(null);
   const [siteKey, setSiteKey] = useState("");
+  const [available, setAvailable] = useState<boolean | null>(null);
   const [token, setToken] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -63,9 +64,10 @@ export function ShareDialog({
         const value = await controller.projectShareSnapshot(target.projectId);
         if (!disposed) setSnapshot(value);
         const config = await client.config();
-        if (!config.enabled || !config.siteKey)
-          throw new Error("Sharing is not configured on this deployment.");
-        if (!disposed) setSiteKey(config.siteKey);
+        if (!disposed) {
+          setAvailable(!!config.enabled && !!config.siteKey);
+          if (config.enabled && config.siteKey) setSiteKey(config.siteKey);
+        }
       }
     })().catch((error) => {
       if (!disposed) setError(error.message);
@@ -195,7 +197,17 @@ export function ShareDialog({
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
         {!snapshot && !error && !notice && <p role="status">Loading share…</p>}
-        {snapshot && (
+        {snapshot && available === false && !incoming && <section className="share-unavailable">
+          <h2>Link sharing is unavailable</h2>
+          <p>This deployment cannot create share links yet. Export a portable copy of {snapshot.plan.name} to keep or share the plan.</p>
+          <button className="gold-button" onClick={() => {
+            const id = "projectId" in target ? target.projectId : undefined;
+            if (id) void controller.exportProject(id);
+            else controller.exportFile("plan");
+          }}>{"projectId" in target && target.projectId ? "Export project backup" : "Export plan"}</button>
+          <p className="share-export-note">The exported file is saved on your device.</p>
+        </section>}
+        {snapshot && available !== false && (
           <>
             <h2>{snapshot.plan.name}</h2>
             <p>

@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode } from "react";
+import { EditorIcon } from "./EditorIcon";
 
 export type LandingDestination = "workspace" | "projects" | "logs" | "rankings";
 
@@ -83,11 +84,16 @@ export function LandingPage({
       <main id="landing-main" tabIndex={-1}>
         <section className="pf-hero pf-width" aria-labelledby="landing-title">
           <div className="pf-hero-copy">
-            <h1 id="landing-title">
-              Replay the run.
-              <br />
-              Rethink the pull.
-            </h1>
+            <div className="pf-hero-title">
+              <p className="pf-kicker">
+                World of Warcraft Classic · Raid companion
+              </p>
+              <h1 id="landing-title">
+                Replay the run.
+                <br />
+                <span>Rethink the pull.</span>
+              </h1>
+            </div>
             <div className="pf-hero-intro">
               <p>
                 A 3D raid replay and planner for WoW Classic. Bring your
@@ -128,10 +134,14 @@ export function LandingPage({
             />
             <div className="pf-preview-bar">
               <div className="pf-preview-modes">
-                <label htmlFor="pf-preview-replay">Replay a run</label>
-                <label htmlFor="pf-preview-plan">Plan a pull</label>
+                <label htmlFor="pf-preview-replay">
+                  <EditorIcon name="play" /> Replay a run
+                </label>
+                <label htmlFor="pf-preview-plan">
+                  <EditorIcon name="plan" /> Plan a pull
+                </label>
               </div>
-              <span>Inside Pull Fiction</span>
+              <span>Real raids. In your browser.</span>
             </div>
             <div className="pf-preview-sheets">
               <figure className="pf-replay-sheet">
@@ -145,6 +155,14 @@ export function LandingPage({
                 <figcaption>
                   <strong>See the whole run.</strong> Follow the raid in 3D and
                   move through every pull on the timeline.
+                  <a
+                    className="pf-preview-expand"
+                    href="/landing/replay.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View full size <span aria-hidden="true">↗</span>
+                  </a>
                 </figcaption>
               </figure>
               <figure className="pf-plan-sheet">

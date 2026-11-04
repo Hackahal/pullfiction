@@ -183,7 +183,8 @@ export function EditsPanel({
           (s) => s.annotations.length || s.snapshot?.actors.length,
         ) && (
           <p className="edits-empty">
-            Draw in the scene or capture a moment to start a plan.
+            Choose Route to draw a path, or Marker to place a raid marker in the
+            scene.
           </p>
         )}
       </div>

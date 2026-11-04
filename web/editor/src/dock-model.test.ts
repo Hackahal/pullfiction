@@ -379,3 +379,22 @@ test("Speedrun timer defaults to a tall right panel and migrates without moving 
   );
   assert.deepEqual(readPanels('["speedrun","speedrun"]'), ["speedrun"]);
 });
+
+test("Default analysis layout reserves more height for the scene and charts than the run overview", () => {
+  const layout = defaultDock();
+  const g = dockGeometry(
+    layout,
+    new Set<PaneId>(["scene", "damage", "run"]),
+    1280,
+    790,
+  );
+  assert.ok(g.panes.run!.height >= 100);
+  assert.ok(g.panes.damage!.height > g.panes.run!.height);
+  assert.deepEqual(parseDock(JSON.stringify(layout)), layout);
+  const custom = resizeDock(layout, "ba", 0.7);
+  assert.deepEqual(
+    parseDock(JSON.stringify(custom)),
+    custom,
+    "saved custom proportions remain unchanged",
+  );
+});

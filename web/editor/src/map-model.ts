@@ -121,10 +121,22 @@ export function mapActorToken(
   zoom = 1,
 ) {
   const boss = actor.type === "NPC" && actor.class === "Boss";
-  const factor = Math.max(0.75, Math.min(2, Math.sqrt(Math.max(0.01, zoom))));
-  const radius =
-    factor *
-    (actor.type === "Player" ? 9 : boss ? 20 : actor.type === "Pet" ? 10 : 12);
+  // Whole-raid views need geography first. Portraits become useful at encounter zoom.
+  const detail = zoom >= 2;
+  const factor = Math.max(
+    0.75,
+    Math.min(2, Math.sqrt(Math.max(0.01, zoom) / 2)),
+  );
+  const radius = detail
+    ? factor *
+      (actor.type === "Player" ? 6 : boss ? 12 : actor.type === "Pet" ? 6 : 7)
+    : actor.type === "Player"
+      ? 5
+      : boss
+        ? 7
+        : actor.type === "Pet"
+          ? 4
+          : 3.5;
   const raw = actor.icon?.replace(/^custom-icon-/i, "");
   const stem = raw?.split(/[\\/]/).pop()?.split(".")[0];
   const icon =
@@ -137,6 +149,7 @@ export function mapActorToken(
           : "inv_misc_monsterhead_02";
   return {
     boss,
+    detail,
     radius,
     factor,
     icon: BROWSER_ASSETS ? schematicIcon : `/game-ui/icons/${icon}.png`,

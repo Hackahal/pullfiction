@@ -49,7 +49,7 @@ export function validatePlan(input){
     if(a.friendly!==undefined){if(typeof a.friendly!=='boolean')throw Error('Invalid actor friendliness.');appearance.friendly=a.friendly;}
     // WCL gameID can identify a player or pet, not just a creature entry. Preserve its native u32 range.
     for(const [key,max] of [['displayID',10000000],['gameID',0xffffffff],['race',1000],['sex',2]])if(a[key]!==undefined&&a[key]!==null){if(!Number.isInteger(a[key])||a[key]<0||a[key]>max)throw Error('Invalid actor appearance.');appearance[key]=a[key];}
-    if(a.scale!==undefined){if(!Number.isFinite(a.scale)||a.scale<.05||a.scale>20)throw Error('Invalid actor scale.');appearance.scale=a.scale;}
+    if(a.scale!==undefined){if(!Number.isFinite(a.scale)||a.scale<=0||a.scale>20)throw Error('Invalid actor scale.');appearance.scale=a.scale;}
     if(a.recordedFacing!==undefined){if(!Number.isFinite(a.recordedFacing))throw Error('Invalid recorded facing.');appearance.recordedFacing=a.recordedFacing;}
 
     if(keys.has(key)||!Number.isFinite(a.facing))throw Error('Invalid snapshot actor.');keys.add(key);

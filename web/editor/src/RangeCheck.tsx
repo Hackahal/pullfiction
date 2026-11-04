@@ -64,6 +64,7 @@ export function RangeCheck({
               controller.setRangeCheck({ group: e.target.value as RangeGroup })
             }
           >
+            <option value="selected">Selected players</option>
             <option value="all">All players</option>
             <option value="ranged">Ranged DPS</option>
             <option value="melee">Melee DPS</option>
@@ -72,6 +73,12 @@ export function RangeCheck({
             <option value="tanks">Tanks</option>
             <option value="individuals">Choose players</option>
           </select>
+          {settings.group === "selected" && (
+            <p className="range-check-note">
+              Select a player in the scene or raid frames to check nearby
+              players. Shift-click to add another.
+            </p>
+          )}
           {settings.group === "individuals" && (
             <>
               <input
@@ -127,6 +134,7 @@ export function RangeCheck({
             Player inside
           </div>
           {state.replay &&
+            settings.group !== "selected" &&
             settings.group !== "all" &&
             settings.group !== "individuals" &&
             players.some(

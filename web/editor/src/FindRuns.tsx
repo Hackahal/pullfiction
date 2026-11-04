@@ -4,6 +4,7 @@ import type { Snapshot } from "./types";
 import type { LogListing, LogRealm } from "./wcl-browser";
 import { type FollowedSource, sourceKey } from "./followed-sources";
 import { raidForZone, time } from "./domain";
+import { EditorIcon } from "./EditorIcon";
 import { RaidArt } from "./RaidArt";
 import { SourceIcon } from "./IdentityIcon";
 import { reportSource } from "../../planner/game-versions.mjs";
@@ -12,6 +13,8 @@ export function FindRuns({
   state,
   controller,
   preview,
+  createPlan,
+  importReplay,
   followed,
   chosen,
   choose,
@@ -20,6 +23,8 @@ export function FindRuns({
   state: Snapshot;
   controller: EditorController;
   preview: (code: string) => Promise<void>;
+  createPlan: () => void;
+  importReplay: () => void;
   followed: FollowedSource[];
   chosen: FollowedSource | null;
   choose: (s: FollowedSource | null) => void;
@@ -150,124 +155,199 @@ export function FindRuns({
           </p>
         </div>
       </div>
-      <form
-        className="discovery-report-link"
-        onSubmit={(e) => {
-          e.preventDefault();
-          try {
-            reportSource(reportLink, state.gameVersion);
-            setLinkError("");
-            void preview(reportLink.trim());
-          } catch (error) {
-            setLinkError(
-              error instanceof Error ? error.message : String(error),
-            );
-          }
-        }}
-      >
-        <label htmlFor="discovery-report-link">Warcraft Logs report link</label>
-        <div>
-          <input
-            id="discovery-report-link"
-            value={reportLink}
-            onChange={(e) => {
-              setReportLink(e.target.value);
-              setLinkError("");
-            }}
-            placeholder="Paste a WCL report link or report code"
-            required
-            aria-invalid={Boolean(linkError)}
-            aria-describedby={
-              linkError ? "discovery-report-link-error" : undefined
-            }
-          />
-          <button
-            className="gold-button"
-            disabled={!reportLink.trim() || !state.wclConnected || state.busy}
-          >
-            Open report
-          </button>
+      {!state.wclConnected && (
+        <div className="discovery-connection" role="status">
+          <EditorIcon name="lock" />
+          <div>
+            <h2>
+              {state.wclConfigured
+                ? "Connect to browse Warcraft Logs"
+                : "Warcraft Logs is unavailable here"}
+            </h2>
+            <p>
+              {state.wclConfigured
+                ? "Connect your account to search guilds, players and reports."
+                : "Online reports need a Warcraft Logs connection. You can plan a raid or open a replay file now."}
+            </p>
+            <div className="connection-actions">
+              {state.wclConfigured && (
+                <button
+                  className="gold-button"
+                  disabled={state.busy}
+                  onClick={() => void controller.connectWcl()}
+                >
+                  Connect Warcraft Logs
+                </button>
+              )}
+              <button className="outline-action" onClick={createPlan}>
+                <EditorIcon name="plus" /> Create a plan
+              </button>
+              <button className="outline-action" onClick={importReplay}>
+                <EditorIcon name="upload" /> Import replay
+              </button>
+            </div>
+          </div>
         </div>
-        {linkError && (
-          <p id="discovery-report-link-error" role="alert">
-            {linkError}
-          </p>
-        )}
-        {!state.wclConnected && (
-          <p className="library-caption">
-            Connect Warcraft Logs to open a report.
-          </p>
-        )}
-      </form>
-      <form
-        className="discovery-search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          choose(null);
-          setResult(null);
-          setSearch({ kind, name, realm, region });
-        }}
+      )}
+      <details
+        className="discovery-online"
+        open={state.wclConnected || undefined}
       >
-        <label>
-          Find
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value as typeof kind)}
+        <summary>
+          {state.wclConnected
+            ? "Search Warcraft Logs"
+            : state.wclConfigured
+              ? "Preview online search tools"
+              : "Online search tools · unavailable here"}
+        </summary>
+        <div className="discovery-methods">
+          <form
+            className="discovery-report-link"
+            onSubmit={(e) => {
+              e.preventDefault();
+              try {
+                reportSource(reportLink, state.gameVersion);
+                setLinkError("");
+                void preview(reportLink.trim());
+              } catch (error) {
+                setLinkError(
+                  error instanceof Error ? error.message : String(error),
+                );
+              }
+            }}
           >
-            <option value="guild">Guild</option>
-            <option value="character">Player</option>
-          </select>
-        </label>
-        <label className="discovery-name">
-          {kind === "guild" ? "Guild name" : "Character name"}
-          <input
-            value={name}
-            maxLength={100}
-            required
-            placeholder={
-              kind === "guild" ? "Full guild name" : "Character name"
-            }
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label>
-          Region
-          <select value={region} onChange={(e) => setRegion(e.target.value)}>
-            {["eu", "us", "kr", "tw", "cn"].map((r) => (
-              <option key={r} value={r}>
-                {r.toUpperCase()}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Realm
-          <select
-            required
-            value={realm}
-            disabled={!state.wclConnected || realmsBusy || !realms.length}
-            onChange={(e) => setRealm(e.target.value)}
+            <div className="discovery-method-heading">
+              <EditorIcon name="logs" />
+              <div>
+                <h2>Open a report</h2>
+                <p>
+                  Already have a run in mind? Bring it straight into the raid.
+                </p>
+              </div>
+            </div>
+            <label htmlFor="discovery-report-link">
+              Warcraft Logs report link
+            </label>
+            <div>
+              <input
+                id="discovery-report-link"
+                value={reportLink}
+                onChange={(e) => {
+                  setReportLink(e.target.value);
+                  setLinkError("");
+                }}
+                placeholder="Paste a WCL report link or report code"
+                required
+                aria-invalid={Boolean(linkError)}
+                aria-describedby={
+                  linkError ? "discovery-report-link-error" : undefined
+                }
+              />
+              <button
+                className="gold-button"
+                disabled={
+                  !reportLink.trim() || !state.wclConnected || state.busy
+                }
+              >
+                Open report
+              </button>
+            </div>
+            {linkError && (
+              <p id="discovery-report-link-error" role="alert">
+                {linkError}
+              </p>
+            )}
+            {!state.wclConnected && (
+              <p className="library-caption">
+                {state.wclConfigured
+                  ? "Connect Warcraft Logs to open a report."
+                  : "Online reports are unavailable on this site."}
+              </p>
+            )}
+          </form>
+          <form
+            className="discovery-search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              choose(null);
+              setResult(null);
+              setSearch({ kind, name, realm, region });
+            }}
           >
-            <option value="">
-              {realmsBusy ? "Loading realms…" : "Choose a realm"}
-            </option>
-            {realms.map((r) => (
-              <option key={r.id} value={r.slug}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          className="gold-button"
-          disabled={!state.wclConnected || finding || !realm || !name.trim()}
-        >
-          {finding ? "Finding…" : "Search"}
-        </button>
-      </form>
-      <p className="library-caption">
-        Use the exact name and realm from Warcraft Logs.
-      </p>
+            <div className="discovery-method-heading">
+              <EditorIcon name="guild" />
+              <div>
+                <h2>Find your guild or player</h2>
+                <p>Explore recorded runs by name and realm.</p>
+              </div>
+            </div>
+            <label>
+              Find
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as typeof kind)}
+              >
+                <option value="guild">Guild</option>
+                <option value="character">Player</option>
+              </select>
+            </label>
+            <label className="discovery-name">
+              {kind === "guild" ? "Guild name" : "Character name"}
+              <input
+                value={name}
+                maxLength={100}
+                required
+                placeholder={
+                  kind === "guild" ? "Full guild name" : "Character name"
+                }
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <label>
+              Region
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+              >
+                {["eu", "us", "kr", "tw", "cn"].map((r) => (
+                  <option key={r} value={r}>
+                    {r.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Realm
+              <select
+                required
+                value={realm}
+                disabled={!state.wclConnected || realmsBusy || !realms.length}
+                onChange={(e) => setRealm(e.target.value)}
+              >
+                <option value="">
+                  {realmsBusy ? "Loading realms…" : "Choose a realm"}
+                </option>
+                {realms.map((r) => (
+                  <option key={r.id} value={r.slug}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="gold-button"
+              disabled={
+                !state.wclConnected || finding || !realm || !name.trim()
+              }
+            >
+              {finding ? "Finding…" : "Search"}
+            </button>
+          </form>
+          <p className="library-caption">
+            Use the exact name and realm from Warcraft Logs.
+          </p>
+        </div>
+      </details>
       {realmError && (
         <p role="alert">
           {realmError}{" "}

@@ -363,6 +363,7 @@ test("native channel snapshots use only the recorded cast target and clear it on
 });
 test("native self aura provenance follows active snapshots, rewinds and the aura visibility option", () => {
   const f = fixture();
+  f.c.setOption("auras", true);
   f.c.seek(6500);
   assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, [133]);
   f.c.seek(5000);
@@ -377,6 +378,7 @@ test("native self aura provenance follows active snapshots, rewinds and the aura
 
 test("Playback, pause, casts, aura rewind and native selection share controller state", () => {
   const f = fixture();
+  f.c.setOption("auras", true);
   f.c.seek(4800);
   assert.equal(
     f.frame.find((a) => a.key === "1:1")!.plate_cast?.name,
@@ -1587,6 +1589,27 @@ test("Plan from this moment freezes poses, saves source context and never change
   );
   f.c.stop();
   stored.stop();
+});
+
+test("Rejected replay capture keeps the current page and workspace", () => {
+  const f = fixture();
+  const plan = f.c.getSnapshot().plan;
+  f.c.editPlan({
+    ...plan,
+    steps: Array.from({ length: 2048 }, (_, i) => ({
+      ...plan.steps[0],
+      id: `capture-limit-${i}`,
+    })),
+  });
+  const before = f.c.getSnapshot();
+  assert.equal(before.plan.steps.length, 2048);
+  assert.equal(f.c.planFromMoment(), false);
+  const after = f.c.getSnapshot();
+  assert.equal(after.plan, before.plan);
+  assert.equal(after.activeStep, before.activeStep);
+  assert.equal(after.workspaceMode, "analyse");
+  assert.match(after.notice, /2048/);
+  f.c.stop();
 });
 
 test("Actor drag previews make one undo operation; Escape restores all positions", () => {
@@ -2952,6 +2975,12 @@ test("Analyse ranges update on paused seek, never become plan edits, and clear i
     ).ranges;
   f.c.seek(2000);
   f.c.setRangeCheck({ enabled: true, radius: 20 });
+  assert.deepEqual(
+    lastRanges(),
+    [],
+    "selected mode starts without raid-wide clutter",
+  );
+  f.c.selectActor("1:1");
   assert.equal(f.c.getSnapshot().playing, false);
   assert.deepEqual(lastRanges(), [{ key: "1:1", radius: 20, status: "clear" }]);
   f.c.setRangeCheck({ group: "individuals", players: [] });
@@ -5217,4 +5246,46 @@ test("rejected selected trajectories terminate preparation and invalidate late r
     }
     f.c.stop();
   }
+});
+
+test("Plan from a replay moment preserves small authored creature scale and pose", () => {
+  const f = fixture();
+  const actor = f.c.getSnapshot().replay!.actors.find((a) => a.type === "NPC")!;
+  actor.scale = 0.009999999776482582;
+  f.c.seek(5000);
+  const pose = f.c.actorPose(actor)!;
+  f.c.planFromMoment();
+  const snapshot = f.c.snapshot();
+  assert.ok(snapshot, f.c.getSnapshot().notice);
+  const captured = snapshot.actors.find((a) => a.key === actor.key)!;
+  assert.equal(captured.scale, actor.scale);
+  assert.deepEqual(captured.position.slice(0, 2), pose.pos.slice(0, 2));
+  assert.ok(
+    Number.isFinite(captured.position[2]),
+    "snapshot resolves the replay floor",
+  );
+  const portable = parsePlan(JSON.stringify(f.c.getSnapshot().plan));
+  assert.deepEqual(portable.steps.find((s) => s.snapshot)!.snapshot, snapshot);
+  f.c.stop();
+});
+
+test("Scene presentation presets keep overlays deliberate without editing the plan", () => {
+  const f = fixture();
+  const plan = f.c.getSnapshot().plan;
+  assert.equal(f.c.getSnapshot().options.raidFrames, false);
+  assert.equal(f.c.getSnapshot().options.friendlyNameplates, false);
+  f.c.setScenePresentation("raid");
+  assert.equal(f.c.getSnapshot().options.raidFrames, true);
+  assert.equal(f.c.getSnapshot().options.friendlyNameplates, false);
+  assert.equal(f.c.getSnapshot().options.auras, true);
+  assert.deepEqual(f.c.getSnapshot().raidFrameSize, {
+    width: 724,
+    height: 276,
+  });
+  f.c.setScenePresentation("scene");
+  assert.equal(f.c.getSnapshot().options.raidFrames, false);
+  assert.equal(f.c.getSnapshot().options.auras, false);
+  assert.equal(f.c.getSnapshot().options.bossNameplates, true);
+  assert.equal(f.c.getSnapshot().plan, plan);
+  f.c.stop();
 });

@@ -2,7 +2,7 @@ import { GameIcon } from "./GameIcon";
 import { replayIdentity } from "./replay-buffer";
 import { LayerHeaders, LayerTracks } from "./LayerTracks";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { time } from "./domain";
+import { pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
 import {
@@ -27,6 +27,7 @@ export function RunTimeline({
 }) {
   const replay = state.replay;
   const duration = controller.duration();
+  const pull = replay && pullAt(replay, state.time);
   const host = useRef<HTMLDivElement>(null);
   const optionsId = useId(),
     optionsMenu = useRef<HTMLDivElement>(null);
@@ -183,6 +184,18 @@ export function RunTimeline({
             <button aria-label="Zoom in raid scrubber" onClick={() => zoom(2)}>
               +
             </button>
+            <button
+              disabled={!pull}
+              title="Zoom this timeline to the current pull without moving the playhead"
+              onClick={() => {
+                if (pull)
+                  setRange(
+                    runRange(pull.start, pull.end - pull.start, duration),
+                  );
+              }}
+            >
+              Fit pull
+            </button>
             <button onClick={() => setRange(runRange(0, duration, duration))}>
               Full run
             </button>
@@ -300,7 +313,7 @@ export function RunTimeline({
             {replay && (
               <div className="run-fixed-labels">
                 <span />
-                <span>Bosses</span>
+                <span className="run-encounter-label">Pulls</span>
                 <span>Mobs</span>
               </div>
             )}

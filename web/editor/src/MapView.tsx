@@ -33,7 +33,7 @@ import {
   projectedFloor,
   localFloorHeight,
 } from "./local-map";
-import { combatStateAt, poseAt, raidByMap } from "./domain";
+import { CLASS_COLORS, combatStateAt, poseAt, raidByMap } from "./domain";
 import type { Actor, Snapshot } from "./types";
 import type { EditorController } from "./controller";
 import {
@@ -626,8 +626,10 @@ export function MapView({
     for (const actor of ordered) {
       const pose = controller.actorPose(actor);
       if (!pose || (pose.dead && actor.type !== "Player")) continue;
-      const token = mapActorToken(actor, camera.scale / fitScale.current),
-        r = token.radius;
+      const token = mapActorToken(actor, camera.scale / fitScale.current);
+      const selected = state.selectedActors.includes(actor.key);
+      const portraitDetail = token.detail && (selected || token.boss);
+      const r = token.detail && !portraitDetail ? 6 : token.radius;
       const [x, y] = screen(mapPoint(pose.pos[0], pose.pos[1]));
       if (x < -r || y < -r || x > size.width + r || y > size.height + r)
         continue;
@@ -654,7 +656,28 @@ export function MapView({
         ctx.stroke();
       }
       const cell = CLASS_CELLS[actor.class];
-      if (
+      if (!portraitDetail) {
+        ctx.fillStyle =
+          actor.type === "Player"
+            ? (CLASS_COLORS[actor.class] ?? "#b7d5e4")
+            : token.boss
+              ? "#e6bf72"
+              : actor.type === "Pet"
+                ? "#8eb5c4"
+                : "#c1936e";
+        ctx.strokeStyle = "#10181b";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (token.boss) {
+          ctx.moveTo(x, y - r);
+          ctx.lineTo(x + r, y);
+          ctx.lineTo(x, y + r);
+          ctx.lineTo(x - r, y);
+          ctx.closePath();
+        } else ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else if (
         actor.type === "Player" &&
         cell &&
         atlas?.complete &&
@@ -742,7 +765,7 @@ export function MapView({
           }
         }
       }
-      if (actor.key === state.selected || pose.estimated) {
+      if (actor.key === state.selected || (pose.estimated && portraitDetail)) {
         ctx.strokeStyle = actor.key === state.selected ? "#ffe09a" : "#c1d8e2";
         ctx.lineWidth = 2;
         if (pose.estimated) ctx.setLineDash([3, 3]);
@@ -790,6 +813,36 @@ export function MapView({
         ctx.fillStyle = "#f0e8d6";
         ctx.fillText(label, box.x + 6, box.y + 15, box.width - 12);
       }
+    }
+    // Labels use free screen space; actual actor positions and hit targets stay exact.
+    for (const {
+      actor,
+      point: [x, y],
+      radius,
+    } of [...dots.current].reverse()) {
+      const selected = state.selectedActors.includes(actor.key);
+      const token = mapActorToken(actor, camera.scale / fitScale.current);
+      if (!selected && (!token.detail || actor.type !== "Player")) continue;
+      ctx.font = "12px sans-serif";
+      const width = Math.min(150, ctx.measureText(actor.name).width + 14);
+      const box = labels.place(
+        { x: x - width / 2, y: y - radius - 25, width, height: 22 },
+        selected,
+        [x, y],
+      );
+      if (!box) continue;
+      ctx.strokeStyle = selected ? "#e2c17d" : "#8a9a9d88";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(box.x + box.width / 2, box.y + box.height / 2);
+      ctx.stroke();
+      ctx.fillStyle = "#11181bf0";
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = CLASS_COLORS[actor.class] ?? "#eee2c5";
+      ctx.fillRect(box.x, box.y, 2, box.height);
+      ctx.textAlign = "left";
+      ctx.fillText(actor.name, box.x + 7, box.y + 15, box.width - 12);
     }
     for (const mark of marks) {
       if (mark.selected && !mark.locked)
@@ -1348,16 +1401,23 @@ export function MapView({
       )}
       <div className="map-controls">
         {mapNote && <span title="Prepared raid assets">{mapNote}</span>}
+        <span className="map-detail-note">
+          {camera.scale / fitScale.current < 2
+            ? "Overview · zoom for units"
+            : "Unit detail"}
+        </span>
         <button
           onClick={() => {
             controller.setOption("followRaid", false);
             fit();
           }}
         >
-          Fit
+          Fit raid
         </button>
         <button
           aria-pressed={healthBars}
+          disabled={camera.scale / fitScale.current < 2}
+          title="Health bars appear at unit detail zoom"
           onClick={() => setHealthBars((v) => !v)}
         >
           Health bars

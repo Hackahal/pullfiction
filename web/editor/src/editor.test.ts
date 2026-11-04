@@ -70,7 +70,7 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
   const markup = renderToString(createElement(App, { controller }));
   const nav = markup.slice(markup.indexOf("<nav"), markup.indexOf("</nav>"));
   assert.match(nav, /Place marker/);
-  assert.match(nav, /Markings/);
+  assert.match(nav, /Markers and style/);
   assert.match(nav, /Raid markers|Default stroke/);
   assert.doesNotMatch(nav, /aria-label="Mark editor"|Move handles/);
   assert.doesNotMatch(nav, /Step notes|Follow replay|Damage graph/);
@@ -113,7 +113,7 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
   assert.match(markup, /Click to select · Drag to draw/);
   assert.doesNotMatch(markup, /Alt-drag to draw|Alt-click to place/);
   assert.doesNotMatch(markup, /Select underneath|scene-selection-menu/);
-  assert.match(markup, /Frame<\/button>/);
+  assert.match(markup, /Frame selection<\/button>/);
   assert.match(markup, /editor-canvas/);
   assert.match(markup, /data-cursor="default"/);
   controller.stop();

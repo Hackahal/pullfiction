@@ -174,9 +174,29 @@ export function Rankings({
           </div>
         )}
       {!state.wclConnected && (
-        <p className="library-empty">
-          Connect Warcraft Logs to browse live rankings.
-        </p>
+        <div className="library-empty ranking-connect">
+          <h2>Find your next reference run</h2>
+          <p>
+            Compare raid clear times, damage and healing, then open a run to
+            study its pulls.
+          </p>
+          {state.wclConfigured ? (
+            <>
+              <button
+                className="gold-button"
+                onClick={() => void controller.connectWcl()}
+              >
+                Connect Warcraft Logs
+              </button>
+              <p>Sign in to load live raid categories and rankings.</p>
+            </>
+          ) : (
+            <p>
+              Warcraft Logs connection is unavailable on this deployment. You
+              can still import a replay from your library.
+            </p>
+          )}
+        </div>
       )}
       {raid && (
         <>

@@ -1,3 +1,4 @@
+import { tacticalMarker } from "./icon-fallbacks";
 import { GameIcon } from "./GameIcon";
 import { AttachmentControl } from "./AttachmentControl";
 import { ExactNumber } from "./ExactNumber";
@@ -20,7 +21,13 @@ export function MarkIcon({ icon }: { icon: string }) {
       />
     );
   }
-  return <GameIcon className="plan-game-icon" name={icon} />;
+  return (
+    <GameIcon
+      className="plan-game-icon"
+      name={icon}
+      fallbackSrc={tacticalMarker(icon)?.fallback}
+    />
+  );
 }
 export function PageProperties({
   state,
@@ -38,8 +45,44 @@ export function PageProperties({
       data-input-context="playbook"
       aria-label="Page properties"
     >
+      <header className="page-identity">
+        <h3>Plan page</h3>
+        {step.snapshot && (
+          <p className="snapshot-source">
+            Captured at <time>{preciseTime(step.snapshot.time)}</time>
+            <span> · {step.snapshot.actors.length} recorded placements</span>
+          </p>
+        )}
+      </header>
+      <div className="page-name-fields">
+        <label>
+          Page name
+          <input
+            aria-label="Step name"
+            value={step.name}
+            maxLength={100}
+            onChange={(e) => controller.updateStep({ name: e.target.value })}
+          />
+        </label>
+        <label>
+          Type
+          <select
+            aria-label="Step type"
+            value={step.kind}
+            onChange={(e) =>
+              controller.updateStep({
+                kind: e.target.value as PlanStep["kind"],
+              })
+            }
+          >
+            {["pull", "boss", "phase", "route", "note"].map((k) => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       <label className="page-layer-picker">
-        Page
+        Switch page
         <select
           aria-label="Plan page"
           value={step.id}
@@ -72,29 +115,16 @@ export function PageProperties({
           ))}
         </select>
       </label>
-      <div className="plan-form-row">
-        <input
-          aria-label="Step name"
-          value={step.name}
-          maxLength={100}
-          onChange={(e) => controller.updateStep({ name: e.target.value })}
-        />
-        <select
-          aria-label="Step type"
-          value={step.kind}
-          onChange={(e) =>
-            controller.updateStep({
-              kind: e.target.value as PlanStep["kind"],
-            })
-          }
-        >
-          {["pull", "boss", "phase", "route", "note"].map((k) => (
-            <option key={k}>{k}</option>
-          ))}
-        </select>
-      </div>
       {state.replay && (
         <>
+          <div className="planning-timing-state">
+            <strong>Replay timing</strong>
+            <p>
+              {step.start === null && step.end === null
+                ? "Always visible"
+                : `${step.start === null ? "From the beginning" : `From ${preciseTime(step.start)}`} · ${step.end === null ? "until the end" : `to ${preciseTime(step.end)}`}`}
+            </p>
+          </div>
           <div className="plan-form-row">
             <button
               title="Set step start to playhead"
@@ -109,71 +139,66 @@ export function PageProperties({
                 })
               }
             >
-              Start {step.start === null ? "—" : preciseTime(step.start)}
+              Set start at playhead
             </button>
             <button
               title="Set step end to playhead"
               disabled={!state.replay || state.time <= (step.start ?? 0)}
               onClick={() => controller.updateStep({ end: state.time })}
             >
-              End {step.end === null ? "—" : preciseTime(step.end)}
+              Set end at playhead
             </button>
             <button
               title="Remove time link"
               onClick={() => controller.updateStep({ start: null, end: null })}
             >
-              Unlink
+              Clear timing
             </button>
           </div>
-          <div className="plan-form-row">
-            <label>
-              Start · seconds
-              <input
-                aria-label="Step start seconds"
-                type="number"
-                min="0"
-                step=".1"
-                value={step.start === null ? "" : step.start / 1000}
-                onChange={(e) => {
-                  const n = Number(e.target.value) * 1000;
-                  if (
-                    Number.isFinite(n) &&
-                    n >= 0 &&
-                    (step.end === null || n < step.end)
-                  )
-                    controller.updateStep({
-                      start: e.target.value === "" ? null : n,
-                    });
-                }}
-              />
-            </label>
-            <label>
-              End · seconds
-              <input
-                aria-label="Step end seconds"
-                type="number"
-                min="0"
-                step=".1"
-                value={step.end === null ? "" : step.end / 1000}
-                onChange={(e) => {
-                  const n = Number(e.target.value) * 1000;
-                  if (Number.isFinite(n) && n > (step.start ?? 0))
-                    controller.updateStep({
-                      end: e.target.value === "" ? null : n,
-                    });
-                }}
-              />
-            </label>
-          </div>
+          <details className="planning-advanced">
+            <summary>Exact timing in seconds</summary>
+            <div className="plan-form-row">
+              <label>
+                Start · seconds
+                <input
+                  aria-label="Step start seconds"
+                  type="number"
+                  min="0"
+                  step=".1"
+                  value={step.start === null ? "" : step.start / 1000}
+                  onChange={(e) => {
+                    const n = Number(e.target.value) * 1000;
+                    if (
+                      Number.isFinite(n) &&
+                      n >= 0 &&
+                      (step.end === null || n < step.end)
+                    )
+                      controller.updateStep({
+                        start: e.target.value === "" ? null : n,
+                      });
+                  }}
+                />
+              </label>
+              <label>
+                End · seconds
+                <input
+                  aria-label="Step end seconds"
+                  type="number"
+                  min="0"
+                  step=".1"
+                  value={step.end === null ? "" : step.end / 1000}
+                  onChange={(e) => {
+                    const n = Number(e.target.value) * 1000;
+                    if (Number.isFinite(n) && n > (step.start ?? 0))
+                      controller.updateStep({
+                        end: e.target.value === "" ? null : n,
+                      });
+                  }}
+                />
+              </label>
+            </div>
+          </details>
         </>
-      )}
-      {step.snapshot && (
-        <div className="snapshot-source">
-          <span>
-            {step.snapshot.actors.length} actors ·{" "}
-            {preciseTime(step.snapshot.time)}
-          </span>
-        </div>
       )}
       <textarea
         aria-label="Step notes"
@@ -290,7 +315,7 @@ export function MarkEditor({
           {multi
             ? `${state.selectedMarks.length} selected`
             : selected
-              ? "Mark properties"
+              ? selected.name
               : selectedActor
                 ? state.selectedActors.length > 1
                   ? `${state.selectedActors.length} actors selected`
@@ -301,78 +326,86 @@ export function MarkEditor({
           <button onClick={() => controller.selectMark(null)}>Deselect</button>
         )}
       </div>
-      {selectedActor && (
-        <div className="plan-form-row">
-          {([0, 1] as const).map((axis) => (
-            <label key={axis}>
-              {axis === 0 ? "X" : "Y"} yd
-              <ExactNumber
-                label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
-                value={selectedActor.position[axis]}
-                onCommit={(n) => controller.positionActors(axis, n)}
-                disabled={state.compareRecorded}
-              />
-            </label>
-          ))}
-        </div>
-      )}
-      {selected && !multi && (
-        <div className="plan-form-row">
-          {([0, 1] as const).map((axis) => (
-            <label key={axis}>
-              {axis === 0 ? "X" : "Y"} yd
-              <ExactNumber
-                label={`${axis === 0 ? "X" : "Y"} yards`}
-                value={selected.points[0][axis]}
-                disabled={selected.locked}
-                onCommit={(n) =>
-                  controller.nudgeMarks(
-                    axis === 0 ? n - selected.points[0][0] : 0,
-                    axis === 1 ? n - selected.points[0][1] : 0,
-                  )
-                }
-              />
-            </label>
-          ))}
-        </div>
-      )}
-      {(state.selectedMarks.length > 0 || state.selectedActors.length > 0) && (
-        <div className="plan-form-row">
-          <label>
-            Rotate °
-            <input
-              aria-label="Rotate selection degrees"
-              type="number"
-              defaultValue="0"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  controller.transformSelection(Number(e.currentTarget.value));
-                  e.currentTarget.value = "0";
-                }
-              }}
-            />
-          </label>
-          <label>
-            Scale ×
-            <input
-              aria-label="Scale selection"
-              type="number"
-              min=".05"
-              max="20"
-              step=".1"
-              defaultValue="1"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  controller.transformSelection(
-                    0,
-                    Number(e.currentTarget.value),
-                  );
-                  e.currentTarget.value = "1";
-                }
-              }}
-            />
-          </label>
-        </div>
+      {(selected || selectedActor || multi) && (
+        <details className="planning-advanced">
+          <summary>Position and transform</summary>
+          {selectedActor && (
+            <div className="plan-form-row">
+              {([0, 1] as const).map((axis) => (
+                <label key={axis}>
+                  {axis === 0 ? "X" : "Y"} yd
+                  <ExactNumber
+                    label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
+                    value={selectedActor.position[axis]}
+                    onCommit={(n) => controller.positionActors(axis, n)}
+                    disabled={state.compareRecorded}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+          {selected && !multi && (
+            <div className="plan-form-row">
+              {([0, 1] as const).map((axis) => (
+                <label key={axis}>
+                  {axis === 0 ? "X" : "Y"} yd
+                  <ExactNumber
+                    label={`${axis === 0 ? "X" : "Y"} yards`}
+                    value={selected.points[0][axis]}
+                    disabled={selected.locked}
+                    onCommit={(n) =>
+                      controller.nudgeMarks(
+                        axis === 0 ? n - selected.points[0][0] : 0,
+                        axis === 1 ? n - selected.points[0][1] : 0,
+                      )
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          )}
+          {(state.selectedMarks.length > 0 ||
+            state.selectedActors.length > 0) && (
+            <div className="plan-form-row">
+              <label>
+                Rotate °
+                <input
+                  aria-label="Rotate selection degrees"
+                  type="number"
+                  defaultValue="0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      controller.transformSelection(
+                        Number(e.currentTarget.value),
+                      );
+                      e.currentTarget.value = "0";
+                    }
+                  }}
+                />
+              </label>
+              <label>
+                Scale ×
+                <input
+                  aria-label="Scale selection"
+                  type="number"
+                  min=".05"
+                  max="20"
+                  step=".1"
+                  defaultValue="1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      controller.transformSelection(
+                        0,
+                        Number(e.currentTarget.value),
+                      );
+                      e.currentTarget.value = "1";
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          )}
+        </details>
       )}
       {multi && (
         <div className="planning-actions">

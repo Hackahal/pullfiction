@@ -4,8 +4,16 @@ import { EditorIcon } from "./EditorIcon";
 export function PanelSettings({
   title,
   children,
+  icon = "settings",
+  width = 400,
+  placement = "anchor",
+  label,
 }: {
   title: string;
+  icon?: string;
+  label?: string;
+  width?: number;
+  placement?: "anchor" | "edge";
   children: ReactNode;
 }) {
   const id = useId(),
@@ -21,14 +29,22 @@ export function PanelSettings({
   function anchor() {
     const rect = trigger.current?.getBoundingClientRect();
     if (!rect) return;
-    const width = Math.min(400, window.innerWidth - 16);
+    const actualWidth = Math.min(width, window.innerWidth - 16);
+    if (placement === "edge") {
+      setPosition({
+        left: Math.max(8, window.innerWidth - actualWidth - 16),
+        top: 16,
+        maxHeight: window.innerHeight - 32,
+      });
+      return;
+    }
     const below = window.innerHeight - rect.bottom - 12;
     const above = rect.top - 12;
     const useBelow = below >= Math.min(360, above);
     setPosition({
       left: Math.max(
         8,
-        Math.min(window.innerWidth - width - 8, rect.right - width),
+        Math.min(window.innerWidth - actualWidth - 8, rect.right - actualWidth),
       ),
       top: useBelow ? rect.bottom + 6 : undefined,
       bottom: useBelow ? undefined : window.innerHeight - rect.top + 6,
@@ -40,7 +56,7 @@ export function PanelSettings({
       <button
         ref={trigger}
         type="button"
-        className="panel-settings-trigger"
+        className={`panel-settings-trigger${label ? " has-label" : ""}`}
         aria-label={title}
         title={title}
         aria-expanded={open}
@@ -48,7 +64,8 @@ export function PanelSettings({
         popoverTarget={id}
         onClick={anchor}
       >
-        <EditorIcon name="settings" />
+        <EditorIcon name={icon} />
+        {label && <span>{label}</span>}
       </button>
       <div
         id={id}
@@ -62,6 +79,7 @@ export function PanelSettings({
         }}
         onKeyDown={(event) => event.stopPropagation()}
         style={{
+          width: `min(${width}px, calc(100vw - 16px))`,
           left: position.left,
           top: position.top,
           bottom: position.bottom,

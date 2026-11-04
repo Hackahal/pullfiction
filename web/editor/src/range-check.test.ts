@@ -53,6 +53,7 @@ function replay() {
 }
 const settings: RangeSettings = {
   ...defaultRangeCheck,
+  group: "all",
   enabled: true,
   radius: 10,
   players: [],
@@ -193,4 +194,23 @@ test("sidebar exposes range controls only in Analyse, and changes do not dirty t
   assert.doesNotMatch(html(), /Range radius in yards/);
   assert.deepEqual(controller.rangeCheckCircles(), []);
   controller.stop();
+});
+
+test("Selected range mode draws only selected players while measuring against the full raid", () => {
+  const run = replay();
+  const first = run.actors.find((a) => a.type === "Player")!;
+  const rings = rangeCircles(
+    run,
+    { ...settings, group: "selected", players: [first.key] },
+    () => pose(0),
+  );
+  assert.equal(rings.length, 1);
+  assert.equal(rings[0].key, first.key);
+  assert.ok(rings[0].nearby > 0);
+  assert.deepEqual(
+    rangeCircles(run, { ...settings, group: "selected", players: [] }, () =>
+      pose(0),
+    ),
+    [],
+  );
 });

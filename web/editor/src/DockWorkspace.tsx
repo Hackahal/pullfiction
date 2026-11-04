@@ -23,6 +23,7 @@ import {
   type Edge,
   type DockNode,
 } from "./dock-model";
+import { PanelSettings } from "./PanelSettings";
 import { EditorIcon } from "./EditorIcon";
 export const DOCK_STORAGE = "pullfiction.workspace.layout.v2";
 const LEGACY_DOCK_STORAGE = "pullfiction.workspace.layout.v1";
@@ -195,11 +196,12 @@ export function DockWorkspace({
                 tabIndex={0}
                 aria-label={`Move ${panel.title} panel`}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
+                    e.stopPropagation();
                     e.currentTarget.parentElement
-                      ?.querySelector("details")
-                      ?.setAttribute("open", "");
+                      ?.querySelector<HTMLButtonElement>(".panel-settings-trigger")
+                      ?.click();
                   }
                 }}
                 onPointerDown={(e) => {
@@ -264,21 +266,19 @@ export function DockWorkspace({
                 <EditorIcon name="grip" />
                 <span>{panel.title}</span>
               </span>
-              <details>
-                <summary
-                  aria-label={`${panel.title} panel actions`}
-                  title={`${panel.title} panel actions`}
-                >
-                  <EditorIcon name="more" />
-                </summary>
-                <div className="dock-menu">
+              <PanelSettings
+                title={`${panel.title} panel actions`}
+                icon="more"
+                width={280}
+              >
+                <div className="dock-actions">
                   <p className="dock-menu-title">Move {panel.title}</p>
                   <button
                     onClick={(e) => {
                       setLayout((old) => dockLeft(old, id));
                       e.currentTarget
-                        .closest("details")
-                        ?.removeAttribute("open");
+                        .closest<HTMLElement>("[popover]")
+                        ?.hidePopover();
                     }}
                   >
                     Dock in left zone
@@ -297,8 +297,8 @@ export function DockWorkspace({
                         ) {
                           setLayout((old) => moveDock(old, id, target, edge));
                           e.currentTarget
-                            .closest("details")
-                            ?.removeAttribute("open");
+                            .closest<HTMLElement>("[popover]")
+                            ?.hidePopover();
                         }
                       }}
                     >
@@ -339,14 +339,14 @@ export function DockWorkspace({
                       setLayout(defaultDock());
                       onReset();
                       e.currentTarget
-                        .closest("details")
-                        ?.removeAttribute("open");
+                        .closest<HTMLElement>("[popover]")
+                        ?.hidePopover();
                     }}
                   >
                     Reset workspace layout
                   </button>
                 </div>
-              </details>
+              </PanelSettings>
               {panel.close && (
                 <button
                   aria-label={`Close ${panel.title}`}
@@ -356,7 +356,15 @@ export function DockWorkspace({
                 </button>
               )}
             </header>
-            <div className="dock-content">{box ? panel.content : null}</div>
+            <div className="dock-content">
+              {box ? (
+                panel.content
+              ) : (
+                <div className="dock-preparing" role="status">
+                  Preparing {panel.title.toLowerCase()}…
+                </div>
+              )}
+            </div>
             {drop?.pane === id && !drop.workspace && (
               <div className={`dock-drop-preview ${drop.edge}`} />
             )}

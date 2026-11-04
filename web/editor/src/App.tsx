@@ -16,6 +16,7 @@ import {
 } from "./interaction-policy";
 import { SceneToolbar } from "./SceneToolbar";
 import { ReplayLoading } from "./ReplayLoading";
+import { SceneDisplay } from "./SceneDisplay";
 import { RaidFrameResize } from "./RaidFrameResize";
 import { BrowserClient } from "./BrowserClient";
 import { EditorIcon } from "./EditorIcon";
@@ -53,6 +54,7 @@ import {
   raidForZone,
   reportRaids,
   chapterAt,
+  pullAt,
   preciseTime,
   routeLength,
   time,
@@ -237,7 +239,8 @@ export function App({ controller }: { controller: EditorController }) {
   const planFile = useRef<HTMLInputElement>(null),
     logFile = useRef<HTMLInputElement>(null);
   const selected = state.replay?.actors.find((a) => a.key === state.selected),
-    chapter = state.replay && chapterAt(state.replay, state.time);
+    chapter = state.replay && chapterAt(state.replay, state.time),
+    pull = state.replay && pullAt(state.replay, state.time);
   useEffect(() => {
     if (state.selectedMark) setInspector(false);
   }, [state.selectedMark]);
@@ -311,6 +314,11 @@ export function App({ controller }: { controller: EditorController }) {
       }
       if (context === "timeline" && !command) {
         if (event.code === "Space") {
+          if (
+            event.target instanceof Element &&
+            event.target.closest("button, summary, a[href], [role=button]")
+          )
+            return;
           event.preventDefault();
           if (!state.replay) controller.stepPage(1);
           else controller.toggle();
@@ -455,6 +463,122 @@ export function App({ controller }: { controller: EditorController }) {
     dialog,
     inspector,
   ]);
+  const playback = (
+    <div
+      className="transport"
+      role="group"
+      aria-label="Replay playback"
+      hidden={!state.replay}
+    >
+      <button
+        aria-label="Previous encounter"
+        title="Previous encounter"
+        disabled={!state.replay}
+        onClick={() => controller.stepChapter(-1)}
+      >
+        <EditorIcon name="previous" />
+      </button>
+      <button
+        className="play"
+        aria-label={
+          state.playPreparing
+            ? "Cancel preparation"
+            : state.playing
+              ? "Pause"
+              : "Play"
+        }
+        disabled={!state.replay && state.workspaceMode !== "plan"}
+        onClick={() => controller.toggle()}
+      >
+        <EditorIcon
+          name={state.playing || state.playPreparing ? "pause" : "play"}
+        />
+      </button>
+      <button
+        aria-label="Next encounter"
+        title="Next encounter"
+        disabled={!state.replay}
+        onClick={() => controller.stepChapter(1)}
+      >
+        <EditorIcon name="next" />
+      </button>
+      <div className="playback-clocks">
+        <span className="timecode pull-timecode">
+          <span>Pull</span>{" "}
+          <b>{pull ? preciseTime(state.time - pull.start) : "—"}</b>
+        </span>
+        <span className="timecode">
+          <span>
+            {state.replay && controller.duration() > state.replay.duration
+              ? "Plan"
+              : "Run"}
+          </span>{" "}
+          <b>{preciseTime(state.time)}</b>
+          <span> / {time(controller.duration())}</span>
+        </span>
+      </div>
+      <select
+        aria-label="Playback speed"
+        value={state.rate}
+        onChange={(e) => controller.setRate(Number(e.target.value))}
+      >
+        {[0.5, 1, 2, 4].map((v) => (
+          <option key={v} value={v}>
+            {v}×
+          </option>
+        ))}
+      </select>
+      <button
+        className={state.loop ? "active" : ""}
+        title="Loop current encounter"
+        disabled={!state.replay}
+        onClick={() => controller.toggleLoop()}
+      >
+        Loop
+      </button>
+      <span className="menu-divider" />
+      {state.replay?.chapters.length ? (
+        <select
+          className="chapter-select"
+          aria-label="Encounter"
+          value={chapter?.id ?? ""}
+          onChange={(e) => controller.jump(e.target.value)}
+        >
+          <option value="" disabled>
+            Between pulls
+          </option>
+          {state.replay.chapters.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} · {time(c.start)}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className="current-encounter">
+          {state.replay?.fight.name ?? "No replay"}
+        </span>
+      )}
+      <div className="menu-spacer" />
+      {state.busy && <span className="busy-dot" />}
+      <button
+        className="transport-report"
+        title={state.replay?.report.title ?? "Open log"}
+        onClick={() => setDialog("import")}
+      >
+        <span>{state.replay?.report.title ?? "Open log"}</span>
+      </button>
+      {state.replay && state.workspaceMode === "analyse" && (
+        <button
+          className="plan-from-moment"
+          onClick={() => {
+            if (controller.planFromMoment()) showPageDetails(true);
+          }}
+        >
+          Plan from this moment
+        </button>
+      )}
+    </div>
+  );
   return (
     <GameVersionContext.Provider value={state.gameVersion}>
       <div
@@ -729,6 +853,7 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       focus={inspector}
+                      playback={playback}
                       closeFocus={() => setInspector(false)}
                     />
                   ),
@@ -786,90 +911,6 @@ export function App({ controller }: { controller: EditorController }) {
               ]}
             />
             <ReplayLoading state={state} controller={controller} />
-            <div className="transport" hidden={!state.replay}>
-              <button
-                aria-label="Previous encounter"
-                title="Previous encounter"
-                disabled={!state.replay}
-                onClick={() => controller.stepChapter(-1)}
-              >
-                <EditorIcon name="previous" />
-              </button>
-              <button
-                className="play"
-                aria-label={
-                  state.playPreparing
-                    ? "Cancel preparation"
-                    : state.playing
-                      ? "Pause"
-                      : "Play"
-                }
-                disabled={!state.replay && state.workspaceMode !== "plan"}
-                onClick={() => controller.toggle()}
-              >
-                <EditorIcon
-                  name={state.playing || state.playPreparing ? "pause" : "play"}
-                />
-              </button>
-              <button
-                aria-label="Next encounter"
-                title="Next encounter"
-                disabled={!state.replay}
-                onClick={() => controller.stepChapter(1)}
-              >
-                <EditorIcon name="next" />
-              </button>
-              <span className="timecode">
-                {preciseTime(state.time)}
-                <span> / {time(controller.duration())}</span>
-              </span>
-              <select
-                aria-label="Playback speed"
-                value={state.rate}
-                onChange={(e) => controller.setRate(Number(e.target.value))}
-              >
-                {[0.5, 1, 2, 4].map((v) => (
-                  <option key={v} value={v}>
-                    {v}×
-                  </option>
-                ))}
-              </select>
-              <button
-                className={state.loop ? "active" : ""}
-                title="Loop current encounter"
-                disabled={!state.replay}
-                onClick={() => controller.toggleLoop()}
-              >
-                Loop
-              </button>
-              <span className="menu-divider" />
-              {state.replay?.chapters.length ? (
-                <select
-                  className="chapter-select"
-                  aria-label="Encounter"
-                  value={chapter?.id ?? ""}
-                  onChange={(e) => controller.jump(e.target.value)}
-                >
-                  <option value="" disabled>
-                    Between pulls
-                  </option>
-                  {state.replay.chapters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {time(c.start)} · {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="current-encounter">
-                  {state.replay?.fight.name ?? "No replay"}
-                </span>
-              )}
-              <div className="menu-spacer" />
-              {state.busy && <span className="busy-dot" />}
-              <button onClick={() => setDialog("import")}>
-                {state.replay?.report.title ?? "Open log"}
-              </button>
-            </div>
           </div>
         </div>
         <footer className="statusbar">
@@ -1126,28 +1167,56 @@ export function App({ controller }: { controller: EditorController }) {
               <div className="settings-list">
                 {(
                   [
-                    ["raidFrames", "Raid frames"],
-                    ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
-                    ["enemyNameplates", "Enemy nameplates (V)"],
-                    ["trashNameplates", "Trash nameplates"],
-                    ["bossNameplates", "Boss nameplates"],
-                    ["auras", "Buffs and debuffs"],
-                    ["spells", "Spell effects"],
-                    ["smoothGaps", "Smooth gaps as wisps"],
-                    ["followPulls", "Follow encounters"],
-                    ["actors", "Replay actors"],
-                  ] as [keyof Options, string][]
-                ).map(([key, label]) => (
-                  <label key={key}>
-                    <span>{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={state.options[key]}
-                      onChange={(e) =>
-                        controller.setOption(key, e.target.checked)
-                      }
-                    />
-                  </label>
+                    {
+                      title: "Raid and nameplates",
+                      options: [
+                        ["raidFrames", "Raid frames"],
+                        ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
+                        ["enemyNameplates", "Enemy nameplates (V)"],
+                        ["trashNameplates", "Trash nameplates"],
+                        ["bossNameplates", "Boss nameplates"],
+                        ["auras", "Buffs and debuffs"],
+                      ],
+                    },
+                    {
+                      title: "Visual effects",
+                      options: [
+                        ["spells", "Spell effects"],
+                        ["smoothGaps", "Smooth gaps as wisps"],
+                      ],
+                    },
+                    {
+                      title: "Playback",
+                      options: [
+                        ["followPulls", "Follow encounters"],
+                        ["actors", "Replay actors"],
+                      ],
+                    },
+                  ] as { title: string; options: [keyof Options, string][] }[]
+                ).map((group) => (
+                  <fieldset key={group.title}>
+                    <legend>{group.title}</legend>
+                    {group.options.map(([key, label]) => (
+                      <label key={key}>
+                        <span>
+                          {label}
+                          {key === "smoothGaps" && (
+                            <small>
+                              Show inferred positions as wisps when recorded
+                              positions are missing.
+                            </small>
+                          )}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={state.options[key]}
+                          onChange={(e) =>
+                            controller.setOption(key, e.target.checked)
+                          }
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
                 ))}
               </div>
             )}
@@ -1161,11 +1230,13 @@ function Viewport({
   state,
   controller,
   focus,
+  playback,
   closeFocus,
 }: {
   state: Snapshot;
   controller: EditorController;
   focus: boolean;
+  playback: React.ReactNode;
   closeFocus: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -1365,7 +1436,7 @@ function Viewport({
             onClick={() => controller.frameSelection()}
             title="Frame selection (F)"
           >
-            Frame
+            Frame selection
           </button>
           {!map &&
             ((state.replay && state.options.followRaid) ||
@@ -1385,18 +1456,21 @@ function Viewport({
                 ))}
               </select>
             )}
-          <button aria-pressed={!map} onClick={() => setMap(false)}>
-            3D
-          </button>
-          <button
-            aria-pressed={map}
-            onClick={() => {
-              controller.setNavigationTool("select");
-              setMap(true);
-            }}
-          >
-            Map
-          </button>
+          <SceneDisplay state={state} controller={controller} />
+          <div className="studio-segment" role="group" aria-label="View type">
+            <button aria-pressed={!map} onClick={() => setMap(false)}>
+              3D
+            </button>
+            <button
+              aria-pressed={map}
+              onClick={() => {
+                controller.setNavigationTool("select");
+                setMap(true);
+              }}
+            >
+              Map
+            </button>
+          </div>
         </div>
       </div>
       <div className="viewport" data-input-context="scene">
@@ -1912,6 +1986,7 @@ function Viewport({
             />
           )}
       </div>
+      {playback}
     </div>
   );
 }

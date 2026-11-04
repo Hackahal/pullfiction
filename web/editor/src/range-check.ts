@@ -1,7 +1,14 @@
 import type { Actor, Point, Replay } from "./types";
 
 export type RangeGroup =
-  "all" | "ranged" | "melee" | "dps" | "healers" | "tanks" | "individuals";
+  | "selected"
+  | "all"
+  | "ranged"
+  | "melee"
+  | "dps"
+  | "healers"
+  | "tanks"
+  | "individuals";
 export interface RangeSettings {
   enabled: boolean;
   radius: number;
@@ -11,7 +18,7 @@ export interface RangeSettings {
 export const defaultRangeCheck: RangeSettings = {
   enabled: false,
   radius: 10,
-  group: "all",
+  group: "selected",
   players: [],
 };
 export const RANGE_COLORS = {
@@ -102,7 +109,7 @@ export function rangeMatches(
   settings: RangeSettings,
 ): boolean {
   if (settings.group === "all") return true;
-  if (settings.group === "individuals")
+  if (settings.group === "individuals" || settings.group === "selected")
     return settings.players.includes(actor.key);
   const { role, reach } = rangePlayerRole(replay, actor);
   return settings.group === "ranged" || settings.group === "melee"

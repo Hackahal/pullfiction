@@ -1,3 +1,4 @@
+import { pullAt } from "./domain";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -127,4 +128,29 @@ test("Zooming separates crowded mob portraits without losing names or mutating s
     2,
   );
   assert.equal(mobs[0].count, 1);
+});
+
+test("Pull context covers a standalone encounter and does not fill full-run gaps", () => {
+  const standalone = replay([]);
+  assert.deepEqual(pullAt(standalone, 5000), { start: 0, end: 120000 });
+  assert.equal(pullAt(standalone, 120001), null);
+  const chapter = {
+    id: 2,
+    name: "Boss",
+    start: 5000,
+    end: 10000,
+    encounterID: 1,
+  };
+  const trash = {
+    id: 3,
+    name: "Trash",
+    start: 10000,
+    end: 20000,
+    encounterID: 0,
+  };
+  const full = replay([], [chapter, trash]);
+  assert.equal(pullAt(full, 6000), chapter);
+  assert.equal(pullAt(full, 4999), null);
+  assert.equal(pullAt(full, 10000), null);
+  assert.equal(pullAt(full, 12000), null);
 });

@@ -115,7 +115,7 @@ test("Cap-only power displays unknown current with a real maximum and recent rec
       ],
     ],
   });
-  assert.match(html, /\? \/ 7,982/);
+  assert.match(html, /Unknown \/ 7,982/);
   assert.match(html.replace(/<!--.*?-->/g, ""), /Current mana not recorded/);
   assert.match(html, /Illumination/);
   assert.match(html.replace(/<!--.*?-->/g, ""), /\+325/);

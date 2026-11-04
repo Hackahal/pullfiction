@@ -92,3 +92,14 @@ test('Snapshot gameIDs preserve large WCL player and pet identifiers within the 
   assert.throws(()=>validatePlan(invalid));
  }
 });
+
+test('Authored small creature scales survive portable plan roundtrips without clamping',()=>{
+ const plan=emptyPlan();
+ const scale=0.009999999776482582; // Flame of Ragnaros, Classic display 13069.
+ plan.steps[0].snapshot={report:'reference-run',time:291591,actors:[{key:'90:1',name:'Flame of Ragnaros',class:'NPC',type:'NPC',position:[10,20,30],facing:1,displayID:13069,gameID:13148,scale}]};
+ assert.deepEqual(parsePlan(JSON.stringify(validatePlan(plan))).steps[0].snapshot,plan.steps[0].snapshot);
+ for(const scale of [0,-0.01,NaN,Infinity,20.01]){
+  const invalid=structuredClone(plan);invalid.steps[0].snapshot.actors[0].scale=scale;
+  assert.throws(()=>validatePlan(invalid),/Invalid actor scale/);
+ }
+});

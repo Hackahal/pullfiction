@@ -2739,12 +2739,6 @@ a {
   min-width: 0;
   flex: 1;
 }
-.toolbox .plan-from-moment {
-  color: #edc66d;
-  border: 1px solid #edc66d55;
-  margin-bottom: 8px;
-}
-
 .step-kind-icon {
   width: 22px;
   height: 22px;
@@ -4385,8 +4379,107 @@ a.inspect-rune-entry:focus-visible {
   box-shadow: none;
 }
 
-.share-dialog { max-width: min(640px, 95vw); }
-.share-dialog .modal-content { display: grid; gap: 12px; }
-.share-dialog input { width: 100%; min-width: 0; }
-.share-owned { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
-.share-owned span { flex: 1; overflow-wrap: anywhere; }
+.share-dialog {
+  max-width: min(640px, 95vw);
+}
+.share-dialog .modal-content {
+  display: grid;
+  gap: 12px;
+}
+.share-dialog input {
+  width: 100%;
+  min-width: 0;
+}
+.share-owned {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.share-owned span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.map-controls .map-detail-note {
+  color: #b9c9c8;
+  font-size: 11px;
+}
+
+/* Keep chart series available when a dock is shorter than its contents. */
+.chart-view { overflow-y: auto; }
+.chart-plot { flex-shrink: 0; min-height: 110px; }
+.chart-table { flex-shrink: 0; min-height: 96px; }
+.dock-header { min-height: 34px; font-size: 13px; }
+.ranking-connect { max-width: 640px; padding: 32px; text-align: left; }
+.ranking-connect h2 { margin-top: 0; color: #eee3cb; }
+.ranking-connect p { line-height: 1.6; }
+.ranking-connect button { margin: 12px 0; padding: 11px 18px; }
+
+/* A short, wide chart uses a plot and series table side by side. */
+.dock-content:has(> .chart-view) { container-type: size; container-name: chart-dock; }
+@container chart-dock (min-width: 700px) and (max-height: 400px) {
+  .chart-view {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+    grid-template-rows: auto auto auto minmax(80px, 1fr) 22px 22px;
+    grid-template-areas: "toolbar toolbar" "summary summary" "notice notice" "plot series" "axis series" "foot foot";
+    overflow: hidden;
+  }
+  .chart-view > .chart-toolbar { grid-area: toolbar; }
+  .chart-view > .chart-summary { grid-area: summary; }
+  .chart-view > .replay-data-notice { grid-area: notice; }
+  .chart-view > .chart-plot { grid-area: plot; min-height: 0; }
+  .chart-view > .chart-time-axis { grid-area: axis; }
+  .chart-view > .chart-table, .chart-view > .chart-legend { grid-area: series; min-height: 0; max-height: none; border-top: 0; border-left: 1px solid #ffffff18; }
+  .chart-view > .chart-footnote { grid-area: foot; }
+}
+.chart-toolbar select { font-size: 12px; }
+.chart-summary, .chart-axis, .chart-time-axis, .chart-footnote, .chart-table table { font-size: 12px; }
+.editor .statusbar { font-size: 12px; }
+.editor .toolbox > button { font-size: 13px; }
+
+.editor { font-size: 14px; }
+.editor:has(.drawing-defaults) { --toolbox-width: 210px; }
+.settings-list fieldset { margin: 0; padding: 10px 0; border: 0; border-bottom: 1px solid #ffffff14; }
+.settings-list fieldset:last-child { border-bottom: 0; }
+.settings-list legend { color: #e2cf9c; font: 15px Georgia, serif; padding: 0; }
+.settings-list fieldset label { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 8px 0; font-size: 14px; }
+.settings-list small { display: block; max-width: 330px; margin-top: 5px; color: #b9b6aa; font-size: 12px; line-height: 1.5; }
+.paperdoll-slot { position: relative; }
+.paperdoll-slot-label { position: absolute; z-index: 1; top: 15px; white-space: nowrap; color: #c4bcaa; font-size: 11px; pointer-events: none; }
+.paperdoll-slots.left .paperdoll-slot-label { left: 54px; }
+.paperdoll-slots.right .paperdoll-slot-label { right: 54px; }
+.paperdoll-weapons .paperdoll-slot-label { display: none; }
+.inspection-appearance { font-size: 11px; }
+
+.focus-aura-label { display: block; margin: 3px 0 5px; color: #c0bba9; font-size: 11px; line-height: 1.4; }
+
+.dock-preparing { display: grid; place-items: center; flex: 1; min-height: 80px; padding: 24px; color: #c9c1ad; font-size: 13px; }
+
+.planning-advanced { margin: 10px 0; padding: 9px 0; border-top: 1px solid #ffffff17; border-bottom: 1px solid #ffffff17; }
+.planning-advanced > summary { color: #c4bdac; font-size: 12px; cursor: pointer; }
+.planning-advanced[open] > summary { margin-bottom: 12px; }
+.planning-timing-state { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff17; }
+.planning-timing-state strong { font-size: 12px; color: #ded1ae; }
+.planning-timing-state p { margin: 6px 0 8px; font-size: 12px; color: #c2bcae; line-height: 1.5; }
+
+.chart-table[data-details="false"] :is(td, th):nth-child(n + 5) { display: none; }
+.chart-table .chart-columns { padding: 3px 6px; border: 1px solid #8e78454a; color: #e1d0a2; font-size: 11px; }
+
+.viewport-modes .panel-settings-trigger.has-label { flex: 0 0 auto; width: auto; gap: 6px; padding: 5px 8px; color: #dfd4bc; }
+.scene-display-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.scene-display-presets button { display: grid; gap: 6px; white-space: normal; text-align: left; padding: 12px; border: 1px solid #6a624e; }
+.scene-display-presets strong { font-size: 13px; }
+.scene-display-presets span { color: #bfb7a5; font-size: 12px; line-height: 1.4; }
+.scene-display-options { border: 0; border-top: 1px solid #ffffff17; margin: 0; padding: 10px 0; }
+.scene-display-options legend { font: 14px Georgia, serif; color: #dfc992; padding: 0 8px 0 0; }
+.scene-display-options label { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 34px; font-size: 13px; }
+.scene-display-actions { display: flex; gap: 8px; border-top: 1px solid #ffffff17; padding-top: 12px; }
+.scene-display-actions button { border: 1px solid #8b79534a; color: #e2d3ad; }
+.extra-marker-icons .plan-icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.extra-marker-icons .plan-icon-grid button { display: flex; flex-direction: column; width: auto; height: auto; gap: 5px; padding: 8px 4px; }
+.extra-marker-icons .plan-icon-grid button span { font-size: 11px; color: #d4c7a9; }
+
+.focus-units[hidden] { display: none; }

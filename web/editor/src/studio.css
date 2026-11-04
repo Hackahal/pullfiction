@@ -1,0 +1,447 @@
+/* Neutral editing chrome. Raid art, actors and game icons retain their own colours. */
+.editor {
+  --accent: #81b9ff;
+  --accent-fill: #233c57;
+  --studio-edge: #393a3d;
+  --studio-panel: #232426;
+  --studio-toolbar: #2b2c2e;
+  --muted: #afb2ba;
+  --text: #eceef2;
+  --control: #1c1d1f;
+  --border: #505257;
+  --selected: var(--accent-fill);
+  font-family: system-ui, sans-serif;
+}
+
+.editor > .menubar {
+  height: 48px;
+  background: var(--studio-toolbar);
+  border-bottom-color: var(--studio-edge);
+}
+
+.editor .brand {
+  font:
+    650 17px system-ui,
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.editor :is(.toolbox, .workspace-mode, .statusbar, .run-timeline) {
+  background: var(--studio-panel);
+  border-color: var(--studio-edge);
+}
+
+.editor :is(.dock-header, .scene-chrome, .transport) {
+  background: var(--studio-toolbar);
+  border-color: var(--studio-edge);
+  color: var(--text);
+}
+
+.editor .dock-header > .dock-drag > span {
+  font:
+    600 12px system-ui,
+    sans-serif;
+  color: var(--text);
+}
+
+.editor .toolbox-label {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.editor .workspace-mode button {
+  min-height: 32px;
+}
+
+.editor
+  :is(.menubar, .toolbox, .viewport-modes, .dock-header, .transport)
+  button:is(.active, [aria-pressed="true"]) {
+  color: var(--accent);
+  background: var(--accent-fill);
+  border-color: #52759e;
+}
+
+.editor
+  :is(.menubar, .toolbox, .viewport-modes, .dock-header, .transport)
+  :is(button, select):focus-visible {
+  outline-color: var(--accent);
+}
+
+.editor .transport {
+  min-height: 44px;
+  height: auto;
+  padding-block: 5px;
+  flex-wrap: wrap;
+}
+
+.transport .transport-report {
+  min-width: 0;
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transport .play {
+  color: var(--text);
+}
+
+.transport .plan-from-moment {
+  padding-inline: 11px;
+  background: #a4cbff;
+  border-color: #a4cbff;
+  color: #12223a;
+  font-weight: 650;
+}
+
+.transport .plan-from-moment:hover:not(:disabled) {
+  color: #12223a;
+  background: #c3deff;
+}
+
+.playback-clocks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #17181a;
+}
+
+.playback-clocks .timecode {
+  padding: 0;
+  color: var(--text);
+}
+
+.playback-clocks .timecode > span {
+  color: var(--muted);
+}
+
+.playback-clocks .pull-timecode {
+  color: var(--accent);
+}
+
+.editor .run-segment:not(.mob) {
+  border-color: #526b83;
+  background: #304456;
+}
+
+.editor .run-segment.current {
+  border-color: var(--accent);
+  background: #365d86;
+}
+
+.editor .run-segment span {
+  color: #e1eaf5;
+}
+
+.editor .run-playhead {
+  background: var(--accent);
+}
+
+.editor .run-playhead i {
+  border-top-color: var(--accent);
+}
+
+.playback-clocks .pull-timecode {
+  min-width: 15ch;
+}
+
+.transport-report > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.analysis-tools {
+  border-top: 1px solid var(--studio-edge);
+  padding-top: 4px;
+  margin-top: 10px;
+}
+
+.analysis-tools > summary {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.editor .toolbox button.open {
+  color: var(--accent);
+}
+
+.editor .run-navigator {
+  background: #1c1d1f;
+}
+
+.editor .run-navigator-tools {
+  color: var(--muted);
+  background: var(--studio-toolbar);
+  border-color: var(--studio-edge);
+}
+
+.editor .run-navigator-tools strong {
+  color: var(--text);
+}
+
+.editor .run-navigator-tools button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-fill);
+  border-color: #52759e;
+}
+
+.editor .run-navigator-tools input {
+  accent-color: var(--accent);
+}
+
+.editor .run-ruler {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.editor :is(.run-bosses, .run-encounter-label) {
+  height: 43px;
+}
+
+.editor .run-bosses .run-segment {
+  top: 3px;
+  height: 35px;
+  min-width: 35px;
+}
+
+.editor .run-bosses .run-segment img {
+  width: 32px;
+  height: 32px;
+  flex-basis: 32px;
+}
+
+.editor .run-bosses .run-segment span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Editing commands, fields and persistent modes have distinct silhouettes. */
+.editor
+  :is(.scene-chrome, .transport, .run-navigator-tools)
+  :is(button, select) {
+  min-height: 28px;
+  padding-inline: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.editor :is(.scene-chrome, .transport, .page-properties) select {
+  background: var(--control);
+  border-color: #414348;
+  color: var(--text);
+}
+
+.editor
+  :is(.scene-chrome, .transport, .run-navigator-tools)
+  button:hover:not(:disabled):not([aria-pressed="true"]):not(
+    .plan-from-moment
+  ) {
+  background: #ffffff0c;
+  color: var(--text);
+}
+
+.studio-segment {
+  display: inline-flex;
+  gap: 1px;
+  padding: 2px;
+  background: #1d1e20;
+  border: 1px solid #393b3e;
+  border-radius: 5px;
+}
+
+.editor .workspace-mode {
+  gap: 2px;
+  margin-bottom: 9px;
+  padding: 2px;
+  background: #1d1e20;
+  border: 1px solid #393b3e;
+  border-radius: 5px;
+}
+
+.editor .workspace-mode button {
+  min-height: 29px;
+  padding-block: 4px;
+}
+
+.editor :is(.studio-segment, .workspace-mode) button[aria-pressed="true"] {
+  background: #344966;
+  border-color: #577497;
+  color: #e8f2ff;
+}
+
+.editor .transport .playback-clocks {
+  gap: 10px;
+  background: #1b1c1e;
+}
+
+.playback-clocks .timecode {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.playback-clocks .timecode b {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+
+.playback-clocks .pull-timecode {
+  min-width: 12ch;
+}
+
+.playback-clocks .timecode > span {
+  font:
+    11px system-ui,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.editor :is(.scene-chrome, .transport, .run-navigator-tools) button > svg {
+  width: 15px;
+  height: 15px;
+}
+
+.editor
+  :is(.scene-chrome, .run-navigator-tools, .analysis-tools)
+  :focus-visible {
+  outline-color: var(--accent);
+}
+
+.editor :is(.scene-display-options, .analysis-tools) input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.editor .combat-event-list li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  grid-template-areas: "time ability amount" "time actors amount";
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: start;
+  padding: 6px 0;
+}
+
+.combat-event-list .combat-event-time {
+  grid-area: time;
+  padding: 0 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.combat-event-list .combat-event-ability {
+  grid-area: ability;
+  margin: 0;
+  min-width: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.combat-event-list .combat-event-ability :is(button, a) {
+  padding: 0 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.combat-event-list .combat-event-amount {
+  grid-area: amount;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.combat-event-list .combat-event-actors {
+  grid-area: actors;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.editor .chart-axis {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.primary-replay-tools {
+  display: grid;
+  gap: 2px;
+}
+.editor .primary-replay-tools button {
+  min-height: 34px;
+  font-size: 13px;
+}
+.editor .toolbox button.open {
+  background: #81b9ff0c;
+}
+
+.editor .run-navigator-tools {
+  min-height: 32px;
+  height: auto;
+  padding-block: 3px;
+  flex-wrap: wrap;
+  column-gap: 4px;
+  row-gap: 2px;
+}
+
+.run-navigator-tools > span {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-identity {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--studio-edge);
+}
+
+.page-identity h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.page-identity .snapshot-source {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.page-identity time {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.page-name-fields {
+  display: grid;
+  gap: 6px;
+}
+
+.page-name-fields label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.editor .page-properties :is(input, select) {
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.editor .resource-bars .focus-bar > div {
+  opacity: 0.38;
+}
+
+.editor .resource-bars .focus-bar > :is(span, strong) {
+  color: #f2f4f6;
+}

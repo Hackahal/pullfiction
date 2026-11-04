@@ -160,6 +160,7 @@ export function DamageGraph({
       config: readConfig(storage, metric),
     })),
     [hidden, setHidden] = useState<string[]>([]),
+    [tableDetails, setTableDetails] = useState(false),
     [exportRequest, setExportRequest] = useState<{
       source: string;
       config: Config;
@@ -658,7 +659,7 @@ export function DamageGraph({
             : formatRate(currentRate)}
           /s <small>5s</small>
         </span>
-        <PanelSettings title="Chart settings">
+        <PanelSettings title="Chart settings" placement="edge" width={420}>
           <div className="chart-control-grid">
             <label>
               Breakdown
@@ -980,7 +981,9 @@ export function DamageGraph({
             ? " downloaded total"
             : " run total"}{" "}
           · {result?.count.toLocaleString() ?? 0} events
-          {filters > 0 ? ` · ${filters} filters` : ""}
+          {filters > 0
+            ? ` · ${filters} ${filters === 1 ? "filter" : "filters"}`
+            : ""}
         </span>
         {!!result?.missing && (
           <span className="chart-warning">
@@ -996,7 +999,10 @@ export function DamageGraph({
       <div className="chart-plot">
         <div className="chart-axis">
           <span>
-            {max.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {max.toLocaleString(undefined, {
+              notation: "compact",
+              maximumFractionDigits: 1,
+            })}
             {unit}
           </span>
           <span>0</span>
@@ -1219,7 +1225,7 @@ export function DamageGraph({
         <span>{time(end)}</span>
       </div>
       {config.table ? (
-        <div className="chart-table">
+        <div className="chart-table" data-details={tableDetails}>
           <div
             className="chart-summary"
             aria-label="Table time basis"
@@ -1232,6 +1238,13 @@ export function DamageGraph({
             <span>
               {elapsed.toLocaleString(undefined, { maximumFractionDigits: 3 })}s
               {config.window === "elapsed" && !brush ? " combat" : ""}
+              <button
+                className="chart-columns"
+                aria-expanded={tableDetails}
+                onClick={() => setTableDetails((value) => !value)}
+              >
+                {tableDetails ? "Fewer columns" : "More columns"}
+              </button>
             </span>
           </div>
           {!prefixAvailable && (

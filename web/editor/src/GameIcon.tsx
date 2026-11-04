@@ -73,6 +73,7 @@ export function GameIcon({
   item,
   iconFile,
   source,
+  fallbackSrc,
   ...props
 }: {
   name?: string;
@@ -80,6 +81,7 @@ export function GameIcon({
   item?: number;
   iconFile?: number;
   source?: string;
+  fallbackSrc?: string;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "onError">) {
   const local = useGameIcon({ icon: name, spell, item, iconFile }, !source);
   return (
@@ -87,9 +89,11 @@ export function GameIcon({
       draggable={false}
       alt=""
       {...props}
-      src={source ?? local}
+      src={
+        source ?? (local === schematicIcon && fallbackSrc ? fallbackSrc : local)
+      }
       onError={(event) => {
-        const fallback = iconUrl();
+        const fallback = fallbackSrc ?? iconUrl();
         if (event.currentTarget.getAttribute("src") !== fallback)
           event.currentTarget.src = fallback;
       }}

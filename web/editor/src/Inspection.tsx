@@ -88,6 +88,7 @@ export function Inspection({
       className={`paperdoll-slot slot-${index}`}
       aria-label={`${SLOTS[index]} slot`}
     >
+      <span className="paperdoll-slot-label">{SLOTS[index]}</span>
       {gear.has(index) ? (
         <GearIcon
           key={`${state.gameVersion}:${actor.key}:${index}:${gear.get(index)!.id}`}
@@ -171,7 +172,7 @@ export function Inspection({
           className="inspection-appearance"
           title="The model uses available appearance data. Unrecorded race, body and cosmetic choices use the viewer's defaults. Enchant visuals, guild tabard patterns and hidden equipment preferences may be unavailable."
         >
-          Appearance may be estimated
+          Appearance may be estimated · Hover an item for details
         </div>
       </div>
     </FloatingWindow>

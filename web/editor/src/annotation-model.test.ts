@@ -102,13 +102,15 @@ test("Steps follow half-open replay intervals, preserve manual gaps and filter h
 });
 test("Map icons and health bar scale factors increase with zoom and remain bounded", () => {
   const actor = { type: "NPC", class: "NPC", icon: null };
-  const normal = mapActorToken(actor, 1),
-    near = mapActorToken(actor, 4),
+  const normal = mapActorToken(actor, 2),
+    near = mapActorToken(actor, 8),
     far = mapActorToken(actor, 0.01);
   assert.equal(near.radius, normal.radius * 2);
-  assert.equal(far.radius, normal.radius * 0.75);
+  assert.ok(far.radius < normal.radius);
+  assert.equal(far.detail, false);
+  assert.equal(normal.detail, true);
   assert.equal(mapActorToken(actor, 10000).radius, near.radius);
-  assert.ok(mapActorToken({ ...actor, class: "Boss" }, 4).radius > near.radius);
+  assert.ok(mapActorToken({ ...actor, class: "Boss" }, 8).radius > near.radius);
   assert.equal(near.factor, 2);
 });
 

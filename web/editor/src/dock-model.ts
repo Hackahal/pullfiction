@@ -74,7 +74,7 @@ export function defaultDock(): DockNode {
     b: {
       axis: "row",
       ratio: 0.72,
-      a: { axis: "column", ratio: 0.74, a: coreDock(), b: { pane: "run" } },
+      a: { axis: "column", ratio: 0.76, a: coreDock(), b: { pane: "run" } },
       b: { pane: "speedrun" },
     },
   };

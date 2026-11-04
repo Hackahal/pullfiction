@@ -43,7 +43,7 @@ export function Focus({
   useEffect(() => {
     const node = panel.current,
       parent = node?.parentElement;
-    if (!node || !parent) return;
+    if (!node || !parent || state.detail) return;
     const observer = new ResizeObserver(() =>
       setPosition((old) =>
         old
@@ -61,7 +61,7 @@ export function Focus({
     observer.observe(node);
     observer.observe(parent);
     return () => observer.disconnect();
-  }, []);
+  }, [Boolean(state.detail)]);
   useEffect(() => {
     if (position)
       try {
@@ -83,6 +83,7 @@ export function Focus({
   return (
     <>
       <aside
+        hidden={Boolean(state.detail)}
         ref={panel}
         className="focus-units"
         aria-label="Focus"

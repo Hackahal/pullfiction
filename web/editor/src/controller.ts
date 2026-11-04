@@ -730,12 +730,12 @@ export class EditorController {
       detail: null,
       options: {
         nameplates: true,
-        friendlyNameplates: true,
+        friendlyNameplates: false,
         enemyNameplates: true,
-        trashNameplates: true,
+        trashNameplates: false,
         bossNameplates: true,
-        raidFrames: true,
-        auras: true,
+        raidFrames: false,
+        auras: false,
         spells: true,
         smoothGaps: true,
         followPulls: true,
@@ -2714,10 +2714,10 @@ export class EditorController {
       this.notify(
         "Wait for this replay section to load before creating a plan.",
       );
-      return;
+      return false;
     }
     const replay = this.state.replay;
-    if (!replay) return;
+    if (!replay) return false;
     if (this.state.playing) this.toggle();
     const floorHints = this.replayFloors(replay);
     const actors = replay.actors.flatMap((a) => {
@@ -2783,11 +2783,14 @@ export class EditorController {
       ...this.state.plan,
       steps: [...this.state.plan.steps, step],
     });
+    if (!this.state.plan.steps.some((page) => page.id === step.id))
+      return false;
     this.setWorkspaceMode("plan");
     this.setActiveStep(step.id, false);
     this.setStepView({ followSteps: true });
     this.setOption("followRaid", false);
     this.render();
+    return true;
   }
   setCompareRecorded(compareRecorded: boolean) {
     this.cancelDrawing();
@@ -4298,6 +4301,23 @@ export class EditorController {
       } else this.engine?.pick_map(x, y, height);
     }
   }
+  setScenePresentation(preset: "scene" | "raid") {
+    this.patch({
+      options: {
+        ...this.state.options,
+        nameplates: true,
+        friendlyNameplates: false,
+        enemyNameplates: true,
+        bossNameplates: true,
+        trashNameplates: preset === "raid",
+        raidFrames: preset === "raid",
+        auras: preset === "raid",
+      },
+    });
+    if (preset === "raid") this.setRaidFrameSize(724, 276);
+    this.resetEvents = true;
+    this.render();
+  }
   setOption(key: keyof Options, value: boolean) {
     if (key === "followRaid" && value && this.state.cameraMode === "orbit")
       this.setCameraMode("free");
@@ -4327,7 +4347,11 @@ export class EditorController {
     if (!this.state.replay || !this.state.rangeCheck.enabled) return [];
     return withReplayPoses((lookup) => {
       const floors = this.replayFloors(this.state.replay!, lookup);
-      return rangeCircles(this.state.replay, this.state.rangeCheck, (actor) => {
+      const settings =
+        this.state.rangeCheck.group === "selected"
+          ? { ...this.state.rangeCheck, players: this.state.selectedActors }
+          : this.state.rangeCheck;
+      return rangeCircles(this.state.replay, settings, (actor) => {
         const pose = this.actorPose(actor, lookup);
         return pose
           ? {

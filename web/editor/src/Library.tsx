@@ -90,6 +90,9 @@ export function Library({
   const allPlans = state.projects.filter(
     (p) => !p.deletedAt && p.kind === "plan",
   );
+  const latestPlan = [...allPlans].sort(
+    (a, b) => (b.lastViewedAt ?? b.updatedAt) - (a.lastViewedAt ?? a.updatedAt),
+  )[0];
   const recent = viewedProjects(state.projects),
     saved = recent.filter(isSavedRun);
   const plans = state.projects
@@ -271,13 +274,15 @@ export function Library({
   function runList(items: LocalProject[]) {
     return (
       <div className="run-table" aria-label="Runs">
-        <div className="run-columns">
-          <span>Raid / run</span>
-          <span>Clear time</span>
-          <span>Bosses</span>
-          <span>Last viewed</span>
-          <span />
-        </div>
+        {items.length > 0 && (
+          <div className="run-columns">
+            <span>Raid / run</span>
+            <span>Clear time</span>
+            <span>Bosses</span>
+            <span>Last viewed</span>
+            <span />
+          </div>
+        )}
         {items.map((p) => {
           const r = p.source?.summary;
           return (
@@ -372,12 +377,17 @@ export function Library({
         })}
         {!items.length && (
           <div className="library-empty">
-            <h2>No runs here yet</h2>
-            <p>
-              Browse a guild, a player or the rankings to find your next
-              reference run.
-            </p>
-            <button onClick={() => navigate("logs")}>Find runs</button>
+            <EditorIcon name="logs" />
+            <div className="empty-run-copy">
+              <h2>Your next reference run</h2>
+              <p>
+                Open a recorded raid to study its pulls and build your next
+                strategy.
+              </p>
+            </div>
+            <button className="outline-action" onClick={() => navigate("logs")}>
+              <EditorIcon name="search" /> Find runs
+            </button>
           </div>
         )}
       </div>
@@ -403,6 +413,7 @@ export function Library({
                 </small>
                 <small>{p.source?.title ?? "Empty raid plan"}</small>
               </span>
+              <EditorIcon name="right" />
             </button>
             <div className="project-actions">
               {trash ? (
@@ -432,33 +443,50 @@ export function Library({
                   >
                     {p.pinned ? "Unpin" : "Pin"}
                   </button>
-                  <button
-                    disabled={disabled}
-                    onClick={() => {
-                      setRenaming(p.id);
-                      setRename(p.plan.name);
-                    }}
-                  >
-                    Rename
-                  </button>
-                  <button
-                    disabled={disabled}
-                    onClick={() => void controller.duplicateProject(p.id)}
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    disabled={disabled}
-                    onClick={() => void controller.exportProject(p.id)}
-                  >
-                    Export
-                  </button>
-                  <button
-                    disabled={disabled}
-                    onClick={() => void controller.trashProject(p.id)}
-                  >
-                    Trash
-                  </button>
+                  <details className="plan-more run-more">
+                    <summary aria-label={`More actions for ${p.plan.name}`}>
+                      <EditorIcon name="more" />
+                    </summary>
+                    <div
+                      onClick={(event) => {
+                        if (
+                          event.target instanceof Element &&
+                          event.target.closest("button")
+                        )
+                          event.currentTarget.parentElement?.removeAttribute(
+                            "open",
+                          );
+                      }}
+                    >
+                      <button
+                        disabled={disabled}
+                        onClick={() => {
+                          setRenaming(p.id);
+                          setRename(p.plan.name);
+                        }}
+                      >
+                        Rename
+                      </button>
+                      <button
+                        disabled={disabled}
+                        onClick={() => void controller.duplicateProject(p.id)}
+                      >
+                        Duplicate
+                      </button>
+                      <button
+                        disabled={disabled}
+                        onClick={() => void controller.exportProject(p.id)}
+                      >
+                        Export
+                      </button>
+                      <button
+                        disabled={disabled}
+                        onClick={() => void controller.trashProject(p.id)}
+                      >
+                        Trash
+                      </button>
+                    </div>
+                  </details>
                 </>
               )}
             </div>
@@ -499,6 +527,10 @@ export function Library({
         });
       }}
     >
+      <div className="plan-form-heading">
+        <EditorIcon name="plan" />
+        <h2>Create a raid plan</h2>
+      </div>
       <label>
         Name
         <input
@@ -525,16 +557,28 @@ export function Library({
           ))}
         </select>
       </label>
-      <label>
-        Raid
-        <select value={map} onChange={(e) => setMap(Number(e.target.value))}>
-          {raidsForVersion(version).map((r) => (
-            <option key={r.map} value={r.map}>
-              {r.name}
-            </option>
+      <fieldset className="plan-raid-choices">
+        <legend>Choose your raid</legend>
+        <div>
+          {raidsForVersion(version).map((raid) => (
+            <label
+              key={raid.map}
+              className={map === raid.map ? "selected" : undefined}
+            >
+              <input
+                type="radio"
+                aria-label={raid.name}
+                name="plan-raid"
+                value={raid.map}
+                checked={map === raid.map}
+                onChange={() => setMap(raid.map)}
+              />
+              <RaidArt map={raid.map} version={version} />
+              <span>{raid.name}</span>
+            </label>
           ))}
-        </select>
-      </label>
+        </div>
+      </fieldset>
       <button className="gold-button" disabled={disabled}>
         Create plan
       </button>
@@ -571,17 +615,18 @@ export function Library({
           <nav aria-label="Library sections">
             {(
               [
-                ["workspace", "Workspace"],
-                ["projects", "My plans"],
-                ["logs", "Find runs"],
-                ["rankings", "Rankings"],
+                ["workspace", "Workspace", "home"],
+                ["projects", "My plans", "plan"],
+                ["logs", "Find runs", "search"],
+                ["rankings", "Rankings", "sword"],
               ] as const
-            ).map(([t, label]) => (
+            ).map(([t, label, icon]) => (
               <button
                 key={t}
                 aria-pressed={tab === t}
                 onClick={() => navigate(t)}
               >
+                <EditorIcon name={icon} />
                 {label}
               </button>
             ))}
@@ -684,13 +729,15 @@ export function Library({
               aria-pressed={tab === "runs"}
               onClick={() => navigate("runs")}
             >
-              Saved runs <small>{saved.length}</small>
+              <EditorIcon name="pin" />
+              <span>Saved runs</span> <small>{saved.length}</small>
             </button>
             <button
               aria-pressed={tab === "recent"}
               onClick={() => navigate("recent")}
             >
-              Recently opened
+              <EditorIcon name="refresh" />
+              <span>Recently opened</span>
             </button>
             <p className="eyebrow">Following</p>
             {followed
@@ -714,24 +761,30 @@ export function Library({
                 </button>
               ))}
             <button onClick={() => navigate("logs")}>
-              + Find guild or player
+              <EditorIcon name="guild" />
+              <span>Find guild or player</span>
             </button>
             <p className="eyebrow">Warcraft Logs</p>
             <span className="library-caption">
               {state.wclConnected ? "Connected" : "Not connected"}
             </span>
-            <button
-              disabled={!state.wclConfigured || disabled}
-              onClick={() =>
-                state.wclConnected
-                  ? controller.disconnectWcl()
-                  : void controller.connectWcl()
-              }
-            >
-              {state.wclConnected ? "Disconnect" : "Connect Warcraft Logs"}
-            </button>
-            {!state.wclConfigured && (
-              <small>WCL connection is not configured for this site.</small>
+            {state.wclConfigured ? (
+              <button
+                disabled={disabled}
+                onClick={() =>
+                  state.wclConnected
+                    ? controller.disconnectWcl()
+                    : void controller.connectWcl()
+                }
+              >
+                <EditorIcon name="logs" />
+                {state.wclConnected ? "Disconnect" : "Connect Warcraft Logs"}
+              </button>
+            ) : (
+              <small className="connection-unavailable">
+                Online browsing unavailable. Local plans and replay imports are
+                ready.
+              </small>
             )}
             <CommunityLinks />
           </aside>
@@ -744,51 +797,43 @@ export function Library({
                     <p>Pick up your plan, or find the next run to study.</p>
                   </div>
                   <button
+                    hidden={newPlan}
                     className="gold-button"
                     onClick={() => setNewPlan(!newPlan)}
                   >
-                    New plan
+                    <EditorIcon name={newPlan ? "close" : "plus"} />{" "}
+                    {newPlan ? "Close form" : "New plan"}
                   </button>
                 </div>
                 {createForm}
                 {allPlans.length ? (
                   <>
                     <section className="workspace-resume">
-                      <div>
-                        <p className="eyebrow">Continue planning</p>
-                        <h2>
-                          {
-                            [...allPlans].sort(
-                              (a, b) =>
-                                (b.lastViewedAt ?? b.updatedAt) -
-                                (a.lastViewedAt ?? a.updatedAt),
-                            )[0].plan.name
-                          }
-                        </h2>
-                        <p>
-                          {relativeDate(
-                            [...allPlans].sort(
-                              (a, b) =>
-                                (b.lastViewedAt ?? b.updatedAt) -
-                                (a.lastViewedAt ?? a.updatedAt),
-                            )[0].updatedAt,
-                          )}
-                        </p>
+                      <div className="workspace-resume-identity">
+                        <RaidArt
+                          map={latestPlan.plan.mapId}
+                          version={latestPlan.plan.gameVersion}
+                        />
+                        <div>
+                          <p className="eyebrow">Continue planning</p>
+                          <h2>{latestPlan.plan.name}</h2>
+                          <p>
+                            {
+                              raidByMap(
+                                latestPlan.plan.mapId,
+                                latestPlan.plan.gameVersion,
+                              )?.name
+                            }{" "}
+                            · {relativeDate(latestPlan.updatedAt)}
+                          </p>
+                        </div>
                       </div>
                       <button
                         className="gold-button"
                         disabled={disabled}
-                        onClick={() =>
-                          void open(
-                            [...allPlans].sort(
-                              (a, b) =>
-                                (b.lastViewedAt ?? b.updatedAt) -
-                                (a.lastViewedAt ?? a.updatedAt),
-                            )[0],
-                          )
-                        }
+                        onClick={() => void open(latestPlan)}
                       >
-                        Resume plan
+                        Resume plan <EditorIcon name="right" />
                       </button>
                     </section>
                     <div className="library-section-heading">
@@ -797,7 +842,17 @@ export function Library({
                         All plans
                       </button>
                     </div>
-                    {planList(allPlans.filter((p) => p.pinned).slice(0, 3))}
+                    {allPlans.some((p) => p.pinned) ? (
+                      planList(allPlans.filter((p) => p.pinned).slice(0, 3))
+                    ) : (
+                      <div className="workspace-pin-empty">
+                        <EditorIcon name="pin" />
+                        <p>
+                          Keep your next strategy here. Pin a plan from My plans
+                          for quick access.
+                        </p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="workspace-empty">
@@ -818,7 +873,14 @@ export function Library({
             {tab === "projects" && (
               <>
                 <div className="library-toolbar">
-                  <h1>{trash ? "Trash" : "My plans"}</h1>
+                  <div className="plans-page-heading">
+                    <h1>{trash ? "Trash" : "My plans"}</h1>
+                    <p>
+                      {trash
+                        ? "Restore plans you removed from this device."
+                        : "Your raid strategies, saved on this device."}
+                    </p>
+                  </div>
                   <label className="library-search">
                     <EditorIcon name="search" />
                     <input
@@ -838,10 +900,12 @@ export function Library({
                     Import project
                   </button>
                   <button
+                    hidden={newPlan}
                     className="gold-button"
                     onClick={() => setNewPlan(!newPlan)}
                   >
-                    New plan
+                    <EditorIcon name={newPlan ? "close" : "plus"} />{" "}
+                    {newPlan ? "Close form" : "New plan"}
                   </button>
                 </div>
                 {createForm}
@@ -852,14 +916,20 @@ export function Library({
                 ) : (
                   <div className="library-empty">
                     <h2>
-                      {trash
-                        ? "Trash is empty"
-                        : filter
-                          ? "No matching plans"
+                      {filter
+                        ? trash
+                          ? "No matching deleted plans"
+                          : "No matching plans"
+                        : trash
+                          ? "Trash is empty"
                           : "No plans yet"}
                     </h2>
                     <p>
-                      Start with an empty raid, or create a plan from a run.
+                      {filter
+                        ? "Try another plan name or raid."
+                        : trash
+                          ? "Removed plans appear here and can be restored."
+                          : "Start with an empty raid, or create a plan from a run."}
                     </p>
                   </div>
                 )}
@@ -893,6 +963,11 @@ export function Library({
                 state={state}
                 controller={controller}
                 preview={preview}
+                createPlan={() => {
+                  navigate("projects");
+                  setNewPlan(true);
+                }}
+                importReplay={() => replayImporter.current?.click()}
                 followed={followed}
                 chosen={chosen}
                 choose={setChosen}
