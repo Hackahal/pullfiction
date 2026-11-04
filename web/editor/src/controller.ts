@@ -473,6 +473,7 @@ export class EditorController {
         // renderFrame replaces metadata before publishing edits. Pose updates
         // spread each row and allocate their changing vectors separately.
         this.frame,
+        true, // Native rows are plain objects whose keys stay fixed during serialization.
       );
     } else {
       this.frameTransport.reset();

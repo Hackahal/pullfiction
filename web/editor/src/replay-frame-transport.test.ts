@@ -266,3 +266,27 @@ test("undefined values clear retained fields and returning actors discard old pa
   encoder.send("source", [{ key: "a", health: 75 }], publish);
   assert.deepEqual(packet.updates, [{ key: "a", health: 75 }]);
 });
+
+test("plain frame rows still clear omitted keys when another field replaces them", () => {
+  const encoder = new ReplayFrameTransport();
+  const packets: string[] = [];
+  const publish = (json: string) => packets.push(json);
+  const first = { key: "mage", trajectory: { component: "old" }, cast: 0 };
+  encoder.send("source", [first], publish, {}, true);
+  const next = { key: "mage", movement: { fraction: 0.5 }, cast: undefined };
+  assert.throws(() =>
+    encoder.send(
+      "source",
+      [next],
+      () => {
+        throw new Error("failed");
+      },
+      {},
+      true,
+    ),
+  );
+  encoder.send("source", [next], publish, {}, true);
+  assert.deepEqual(JSON.parse(packets[1]).updates, [
+    { key: "mage", movement: { fraction: 0.5 }, cast: null, trajectory: null },
+  ]);
+});
