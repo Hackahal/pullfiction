@@ -400,46 +400,45 @@ impl ParticleEmitterDef {
     /// Classic flipbook keys keep their authored lifetime clock, including discontinuities.
     pub fn sample_life(&self, age: f32) -> OverLifeSample {
         let mut value = self.over_life.sample(age);
-        fn cell(keys: &[[f32; 2]], age: f32) -> Option<u16> {
+        fn bracket<const N: usize>(
+            keys: &[[f32; N]],
+            age: f32,
+        ) -> Option<(&[f32; N], &[f32; N], f32)> {
             if keys.is_empty() {
                 return None;
             }
             let end = keys.partition_point(|key| key[0] <= age);
-            let a = keys[end.saturating_sub(1)];
-            let b = keys[end.min(keys.len() - 1)];
-            let t = if b[0] > a[0] {
-                ((age - a[0]) / (b[0] - a[0])).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            Some((a[1] + (b[1] - a[1]) * t).floor().max(0.0) as u16)
-        }
-        fn linear<const N: usize>(keys: &[[f32; N]], age: f32, column: usize) -> Option<f32> {
-            if keys.is_empty() {
-                return None;
-            }
-            let end = keys.partition_point(|key| key[0] <= age);
-            let a = keys[end.saturating_sub(1)];
-            let b = keys[end.min(keys.len() - 1)];
+            let a = &keys[end.saturating_sub(1)];
+            let b = &keys[end.min(keys.len() - 1)];
             let t = if b[0] > a[0] {
                 ((age - a[0]) / (b[0] - a[0])).clamp(0., 1.)
             } else {
                 0.
             };
-            Some(a[column] + (b[column] - a[column]) * t)
+            Some((a, b, t))
         }
-        for i in 0..3 {
-            if let Some(c) = linear(&self.life_color_curve, age, i + 1) {
-                value.color[i] = c;
+        fn lerp(a: f32, b: f32, t: f32) -> f32 {
+            a + (b - a) * t
+        }
+        fn cell(keys: &[[f32; 2]], age: f32) -> Option<u16> {
+            let (a, b, t) = bracket(keys, age)?;
+            Some(lerp(a[1], b[1], t).floor().max(0.) as u16)
+        }
+        // Channels of a curve share the same authored clock and key pair.
+        if let Some((a, b, t)) = bracket(&self.life_color_curve, age) {
+            for i in 0..3 {
+                value.color[i] = lerp(a[i + 1], b[i + 1], t);
             }
         }
-        if let Some(a) = linear(&self.life_alpha_curve, age, 1) {
-            value.color[3] = a;
+        if let Some((a, b, t)) = bracket(&self.life_alpha_curve, age) {
+            value.color[3] = lerp(a[1], b[1], t);
         }
-        if let Some(size) = linear(&self.life_scale_curve, age, 1) {
-            value.size = size;
+        if let Some((a, b, t)) = bracket(&self.life_scale_curve, age) {
+            value.size = lerp(a[1], b[1], t);
+            value.size_y = lerp(a[2], b[2], t);
+        } else {
+            value.size_y = value.size;
         }
-        value.size_y = linear(&self.life_scale_curve, age, 2).unwrap_or(value.size);
         value.head_cell = cell(&self.head_cell_curve, age).unwrap_or(value.head_cell);
         value.tail_cell = cell(&self.tail_cell_curve, age).unwrap_or(value.tail_cell);
         if let Some(material) = &self.modern_material {
