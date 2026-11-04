@@ -56,28 +56,31 @@ export class IncrementalReplayNormalizer {
       metadata.every((value, i) => value === this.metadata[i]);
     const evidence = new Map<string, Evidence>();
     const global: Evidence = { events: [], indices: [] };
+    const record = (
+      value: unknown,
+      i: number,
+      id: number,
+      instance: number,
+    ) => {
+      if (!(id > 0)) return;
+      const key = `${id}:${instance || 1}`;
+      let row = evidence.get(key);
+      if (!row) evidence.set(key, (row = { events: [], indices: [] }));
+      row.events.push(value);
+      row.indices.push(i);
+    };
     raw.events.forEach((value, i) => {
       const event = value as Record<string, any>;
-      if (
-        [
-          "zonechange",
-          "encounterstart",
-          "encounterend",
-          "combatantinfo",
-        ].includes(event.type)
-      ) {
-        global.events.push(value);
-        global.indices.push(i);
+      switch (event.type) {
+        case "zonechange":
+        case "encounterstart":
+        case "encounterend":
+        case "combatantinfo":
+          global.events.push(value);
+          global.indices.push(i);
       }
-      for (const side of ["source", "target"]) {
-        const id = event[`${side}ID`];
-        if (!(id > 0)) continue;
-        const key = `${id}:${event[`${side}Instance`] || 1}`;
-        let row = evidence.get(key);
-        if (!row) evidence.set(key, (row = { events: [], indices: [] }));
-        row.events.push(value);
-        row.indices.push(i);
-      }
+      record(value, i, event.sourceID, event.sourceInstance);
+      record(value, i, event.targetID, event.targetInstance);
     });
     const reused = new Map<string, Actor>();
     if (canReuse && sameEvidence(this.evidence.get("global"), global)) {
