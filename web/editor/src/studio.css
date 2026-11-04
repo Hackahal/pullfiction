@@ -306,7 +306,7 @@
 .editor .combat-event-list li {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
-  grid-template-areas: "time ability amount" "time actors amount";
+  grid-template-areas: "time ability amount" "actors actors actors";
   column-gap: 8px;
   row-gap: 2px;
   align-items: start;
@@ -1167,15 +1167,14 @@
   overflow-wrap: anywhere;
 }
 
-.ability-event-facts dd button {
-  padding: 0;
-  color: #a4cbff;
-  font-variant-numeric: tabular-nums;
+.analysis-v2[data-view="events"] {
+  --event-selection: #b4cbfb;
+  --event-selection-fill: #26354b;
 }
 
 .editor .combat-event-list li[data-selected="true"] {
-  background: #81b9ff15;
-  box-shadow: -2px 0 #81b9ff;
+  background: var(--event-selection-fill);
+  box-shadow: -2px 0 var(--event-selection);
 }
 
 .ability-inspector > header strong {
@@ -1493,6 +1492,7 @@
   overflow: hidden;
   background: var(--studio-panel);
   border-top: 1px solid #52759e;
+  border-left: 2px solid var(--event-selection);
 }
 
 .event-details-tray > header {
@@ -1501,7 +1501,7 @@
   align-items: center;
   gap: 7px;
   padding: 4px 8px;
-  background: var(--studio-toolbar);
+  background: var(--event-selection-fill);
   font-size: 12px;
 }
 
@@ -1533,8 +1533,74 @@
 }
 
 .event-details-body .ability-event-facts {
+  gap: 3px 8px;
+  align-items: center;
+  padding: 6px 8px;
+}
+
+.event-actor-focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 1px 0;
+  white-space: normal;
+  text-align: left;
+  color: var(--text);
+}
+
+.event-actor-focus > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-actor-focus svg,
+.event-seek svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+.event-actor-focus svg {
+  color: var(--muted);
+}
+
+.event-actor-focus[aria-disabled="true"] {
+  cursor: default;
+}
+
+.event-actor-focus[aria-disabled="true"] svg {
+  visibility: hidden;
+}
+
+.event-details-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 4px 8px;
-  padding: 7px 8px;
+}
+
+.event-details-result {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+.editor .event-seek {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid #52759e;
+  border-radius: 3px;
+  background: #26354b;
+  color: #dbe9ff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.event-seek b {
+  font-variant-numeric: tabular-nums;
 }
 
 .event-details-body > :not(dl) {

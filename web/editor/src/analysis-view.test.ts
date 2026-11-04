@@ -104,6 +104,12 @@ test("Combat event details stay in their panel, focus the tray and restore the s
     Object.defineProperty(globalThis, key, { configurable: true, value });
   const controller = new EditorController();
   const seeks: number[] = [];
+  const focused: string[] = [];
+  controller.focusRecordedActor = (key) => {
+    focused.push(key);
+    return true;
+  };
+  controller.canFocusRecordedActor = (key) => key === "1:1";
   controller.seek = (time) => {
     seeks.push(time);
   };
@@ -115,6 +121,7 @@ test("Combat event details stay in their panel, focus the tray and restore the s
       replay,
       time: 2000,
       playing: false,
+      workspaceMode: "analyse" as const,
     };
     await act(async () =>
       root.render(
@@ -140,6 +147,21 @@ test("Combat event details stay in their panel, focus the tray and restore the s
     assert.match(tray.textContent ?? "", /Fireball.*Mage.*Boss.*100/);
     assert.deepEqual(seeks, []);
     assert.equal(controller.getSnapshot().detail, null);
+    const source = tray.querySelector<HTMLButtonElement>(
+      '[aria-label="Focus source: Mage"]',
+    )!;
+    const target = tray.querySelector<HTMLButtonElement>(
+      '[aria-label="Focus target: Boss"]',
+    )!;
+    assert.equal(source.getAttribute("aria-disabled"), "false");
+    assert.equal(target.getAttribute("aria-disabled"), "true");
+    await act(async () => {
+      source.click();
+      target.click();
+    });
+    assert.deepEqual(focused, ["1:1"]);
+    assert.deepEqual(seeks, []);
+    assert.equal(trigger.getAttribute("aria-expanded"), "true");
     await act(async () =>
       tray
         .querySelector<HTMLElement>('[title="Jump playhead to event"]')!

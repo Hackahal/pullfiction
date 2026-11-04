@@ -1150,6 +1150,8 @@ export function Analysis({
           event={eventDetail}
           replay={replay}
           seek={(time) => controller.seek(time)}
+          canFocus={(actor) => controller.canFocusRecordedActor(actor.key)}
+          focusActor={(key) => controller.focusRecordedActor(key)}
           close={() => closeEventDetail()}
         />
       )}

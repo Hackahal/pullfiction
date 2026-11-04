@@ -4519,8 +4519,37 @@ export class EditorController {
     this.focus(key, false);
     this.render();
   }
-  focus(key: string, select = true) {
+  private liveRecordedActorPose(key: string) {
+    if (this.state.workspaceMode !== "analyse" || this.state.buffering)
+      return null;
+    const actor = this.state.replay?.actors.find(
+      (candidate) => candidate.key === key,
+    );
+    const pose = actor ? this.actorPose(actor) : null;
+    return pose && !pose.dead ? pose : null;
+  }
+  canFocusRecordedActor(key: string) {
+    return this.liveRecordedActorPose(key) !== null;
+  }
+  focusRecordedActor(key: string) {
+    const pose = this.liveRecordedActorPose(key);
+    if (!pose) return false;
+    this.setOption("followRaid", false);
+    this.select(key);
+    if (this.mapView) this.patch({ frameRequest: this.state.frameRequest + 1 });
+    else this.centerReplayActor(key, pose.pos);
+    return true;
+  }
+  private centerReplayActor(key: string, pos: readonly (number | null)[]) {
     const replay = this.state.replay;
+    const hint = replay ? this.replayFloors(replay).get(key) : undefined;
+    this.engine?.focus_replay(
+      pos[0]!,
+      pos[1]!,
+      pos[2] ?? hint ?? raidByMap(this.state.plan.mapId)?.spawn[2] ?? 0,
+    );
+  }
+  focus(key: string, select = true) {
     const actor = this.sceneActors().find((a) => a.key === key);
     if (!actor) return;
     if (select) {
@@ -4529,14 +4558,8 @@ export class EditorController {
     }
     const pose = this.actorPose(actor);
     const pos = pose?.pos ?? actor.samples[0]?.slice(1);
-    if (pos) {
-      const hint = replay ? this.replayFloors(replay).get(key) : undefined;
-      this.engine?.focus_replay(
-        pos[0]!,
-        pos[1]!,
-        pos[2] ?? hint ?? raidByMap(this.state.plan.mapId)?.spawn[2] ?? 0,
-      );
-    } else this.notify("No recorded position");
+    if (pos) this.centerReplayActor(key, pos);
+    else this.notify("No recorded position");
   }
   focusCurrent() {
     const replay = this.state.replay;

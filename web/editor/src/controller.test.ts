@@ -539,6 +539,35 @@ test("Inspecting a cast selects its player, seeks to its timestamp and retains s
   f.c.stop();
 });
 
+test("Event actor focus uses the current living pose and frames the map without seeking", () => {
+  const f = fixture();
+  f.c.setWorkspaceMode("analyse");
+  f.c.seek(4000);
+  assert.equal(f.c.canFocusRecordedActor("2:1"), true);
+  assert.equal(f.c.focusRecordedActor("2:1"), true);
+  assert.deepEqual(
+    f.focus.at(-1)?.slice(0, 2),
+    f.c
+      .actorPose(
+        f.c.getSnapshot().replay!.actors.find((actor) => actor.key === "2:1")!,
+      )
+      ?.pos.slice(0, 2),
+  );
+  assert.equal(f.c.getSnapshot().time, 4000);
+  f.c.setMapView(true);
+  const frameRequest = f.c.getSnapshot().frameRequest;
+  const sceneCalls = f.focus.length;
+  assert.equal(f.c.focusRecordedActor("1:1"), true);
+  assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);
+  assert.equal(f.focus.length, sceneCalls);
+  f.c.seek(9000);
+  assert.equal(f.c.focusRecordedActor("2:1"), false);
+  assert.equal(f.c.getSnapshot().selected, "1:1");
+  assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);
+  assert.equal(f.c.getSnapshot().time, 9000);
+  f.c.stop();
+});
+
 test("Recorded combat row identity survives buffering and preserves missing facts", () => {
   const f = fixture();
   const replay = f.c.getSnapshot().replay!;
