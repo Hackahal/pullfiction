@@ -1,6 +1,6 @@
 // Recorded timestamps always win. DBC/observed timing hints only bound missing ends.
 import {isBeatrixCannonPulse} from './encounters/sod-beatrix.mjs';
-import {targetedChannelAuras} from './replay-channel-auras.mjs';
+import {targetedChannelAuraSteps} from './replay-channel-auras.mjs';
 import {aq40ResultPolicy} from './encounters/sod-aq40-results.mjs';
 import {raidResultPolicy} from './encounters/sod-raid-results.mjs';
 import {recordedOssirianTargets} from './encounters/sod-ossirian.mjs';
@@ -194,7 +194,8 @@ export function* reconstructCastSteps(replay, metadata = {}, reused = new Map(),
         const selfAura = channelAura(a, spell, t);
         const hintedEnd = Math.min(replay.duration, t + h.ms);
         const ownAura = selfAura && (metadata[spell]?.durationMs === -1 || selfAura.end <= hintedEnd) ? selfAura : null;
-        if(!ownAura&&h.ms>0&&k!==tk)targetAura??=targetedChannelAuras(events,metadata,replay.duration);
+        if(!ownAura&&h.ms>0&&k!==tk&&!targetAura)
+          targetAura=yield* targetedChannelAuraSteps(events,metadata,replay.duration);
         const victimAura = !ownAura&&h.ms>0&&k!==tk?targetAura(k,tk,spell,id,t,hintedEnd):null;
         const aura = ownAura??victimAura;
         const channel = {
