@@ -9,12 +9,13 @@ import {
 
 test("original synchronous readers see byte-exact prepared files using archive name rules", async () => {
   let reads = 0;
+  const sourceBytes = new Uint8Array([0, 1, 255, 128, 0]);
   const files = new LocalClientFiles(
     {
       read: async (name) => {
         reads++;
         assert.equal(name, "fonts/frizqt__.ttf");
-        return new Uint8Array([0, 1, 255, 128, 0]);
+        return sourceBytes;
       },
     },
     "client-a",
@@ -25,6 +26,12 @@ test("original synchronous readers see byte-exact prepared files using archive n
     LocalFileNotReady,
   );
   await files.prepare(["Fonts\\FRIZQT__.TTF"]);
+  sourceBytes[0] = 88;
+  const progress: number[] = [];
+  await files.prepare(["fonts/frizqt__.ttf"], undefined, (done) =>
+    progress.push(done),
+  );
+  assert.deepEqual(progress, [0, 1]);
   assert.equal(files.containsSync("FONTS/FRIZQT__.ttf"), true);
   assert.deepEqual(
     [...files.readSync("FONTS/FRIZQT__.ttf")],
