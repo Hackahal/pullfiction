@@ -114,7 +114,7 @@ test("Idle encountered mobs do not frame the camera, and combat grace rewinds de
   assert.deepEqual(keys(22000), ["1:1"]);
 });
 
-test("an optional recorded-pose lookup preserves every camera subject and query argument", () => {
+test("camera queries poses only for eligible subjects with the original time and smoothing", () => {
   const r = {
     fight: { friendlyPlayers: [1] },
     combat: [{ t: 9000, kind: "damage", source: "1:1", target: "2:1" }],
@@ -134,6 +134,26 @@ test("an optional recorded-pose lookup preserves every camera subject and query 
   );
   assert.deepEqual(
     calls,
-    r.actors.map((a) => [a, 10000, true]),
+    r.actors.slice(0, 2).map((a) => [a, 10000, true]),
   );
+});
+
+test("camera range stays centered on living raid players and falls back to active enemies", () => {
+  const r = {
+    fight: { friendlyPlayers: [1] },
+    combat: [
+      { t: 1000, kind: "damage", source: "1:1", target: "3:1" },
+      { t: 1000, kind: "damage", source: "1:1", target: "4:1" },
+    ],
+    actors: [
+      actor(1, "Player", 0),
+      actor(2, "Pet", 90),
+      actor(3, "NPC", 90),
+      actor(4, "NPC", 150),
+    ],
+  } as unknown as Replay;
+  const keys = () => raidCameraSubjects(r, 1000, true).map((p) => p.actor.key);
+  assert.deepEqual(keys(), ["1:1", "2:1", "3:1"]);
+  r.actors[0].deaths = [[0, true]];
+  assert.deepEqual(keys(), ["3:1", "4:1"]);
 });
