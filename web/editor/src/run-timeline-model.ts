@@ -65,6 +65,44 @@ export function projectRunClip(
     width: ((end - start) / view.span) * 100,
   };
 }
+
+/** Keep fixed-size overview portraits apart without expanding timed clips. */
+export function runOverviewLandmarks(
+  clips: ReadonlyArray<{
+    key: string;
+    left: number;
+    width: number;
+  }>,
+  trackWidth: number,
+  currentKey?: string,
+): Set<string> {
+  const occupied: number[] = [];
+  const landmarks = new Set<string>();
+  const detail = clips
+    .filter((clip) => (clip.width / 100) * trackWidth >= 35)
+    .map((clip) => [
+      (clip.left / 100) * trackWidth,
+      ((clip.left + clip.width) / 100) * trackWidth,
+    ]);
+  const current = clips.find((clip) => clip.key === currentKey);
+  const candidates = current
+    ? [current, ...clips.filter((clip) => clip !== current)]
+    : clips;
+  for (const clip of candidates) {
+    if ((clip.width / 100) * trackWidth >= 35) continue;
+    const center = ((clip.left + clip.width / 2) / 100) * trackWidth;
+    if (
+      center < 9 ||
+      center > trackWidth - 9 ||
+      detail.some(([start, end]) => center + 9 > start && center - 9 < end) ||
+      occupied.some((x) => Math.abs(x - center) < 21)
+    )
+      continue;
+    occupied.push(center);
+    landmarks.add(clip.key);
+  }
+  return landmarks;
+}
 const boss = (a: Actor) =>
   a.class === "Boss" || a.icon?.toLowerCase() === "boss";
 

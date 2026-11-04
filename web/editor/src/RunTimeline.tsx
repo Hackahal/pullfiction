@@ -8,6 +8,7 @@ import type { EditorController } from "./controller";
 import type { RecordedEventDetail, Snapshot } from "./types";
 import {
   projectRunClip,
+  runOverviewLandmarks,
   runRange,
   runSegments,
   runTimeAt,
@@ -88,6 +89,17 @@ export function RunTimeline({
     () => visibleRunMobs(segments.mobs, view, width),
     [segments, view.start, view.span, width],
   );
+  const overview = showingFullRun && (replay?.chapters.length ?? 0) > 1;
+  const landmarks = overview
+    ? runOverviewLandmarks(
+        visibleBosses.map(({ segment, clip }) => ({
+          key: segment.key,
+          ...clip,
+        })),
+        width,
+        currentBoss?.key,
+      )
+    : null;
   useEffect(() => {
     setRange(runRange(0, duration, duration));
     setFollow(true);
@@ -531,7 +543,7 @@ export function RunTimeline({
                 [...segments.bosses, ...mobs].find((s) => s.key === key) ??
                 null;
               const captionStart =
-                e.button === 0 && hit?.classList.contains("run-boss-caption")
+                e.button === 0 && hit?.hasAttribute("data-segment-jump")
                   ? (lastHit.current?.start ?? null)
                   : null;
               if (e.button === 2) {
@@ -637,7 +649,7 @@ export function RunTimeline({
                       </span>
                     ))}
                 </div>
-                <div className="run-bosses">
+                <div className="run-bosses" data-overview={overview}>
                   {visibleBosses.map(
                     ({ segment: s, clip, occupiedUntil }, index) => {
                       const pixels = (clip.width / 100) * width;
@@ -648,14 +660,39 @@ export function RunTimeline({
                             ? "portrait"
                             : "bar";
                       const current = currentBoss?.key === s.key;
+                      const landmark =
+                        detail === "bar" && landmarks?.has(s.key);
                       const edge = clip.left + clip.width;
-                      const gap =
-                        (visibleBosses[index + 1]?.clip.left ?? 100) - edge;
+                      const following = visibleBosses.slice(index + 1);
+                      const nextEdge =
+                        ((following[0]?.clip.left ?? 100) / 100) * width;
+                      const nextLandmarkEdge = landmarks
+                        ? following.reduce(
+                            (boundary, item) =>
+                              landmarks.has(item.segment.key)
+                                ? Math.min(
+                                    boundary,
+                                    ((item.clip.left + item.clip.width / 2) /
+                                      100) *
+                                      width -
+                                      10,
+                                  )
+                                : boundary,
+                            nextEdge,
+                          )
+                        : nextEdge;
+                      const captionInset = landmark
+                        ? Math.max(0, 10 - pixels / 2)
+                        : 0;
+                      const captionSpace =
+                        nextLandmarkEdge - (edge / 100) * width - captionInset;
                       const showCaption =
                         detail !== "named" &&
                         s.start >= view.start &&
                         edge >= occupiedUntil &&
-                        (gap / 100) * width >= 50;
+                        captionSpace >=
+                          (overview ? s.name.length * 6.5 + 13 : 50);
+                      const interval = `${s.name} · ${preciseTime(s.start)} – ${preciseTime(s.end)}${s.kill === true ? " · Kill" : s.kill === false ? " · Wipe" : ""}`;
                       return (
                         <Fragment key={s.key}>
                           <div
@@ -665,7 +702,7 @@ export function RunTimeline({
                               left: `${clip.left}%`,
                               width: `${clip.width}%`,
                             }}
-                            title={`${s.name} · ${preciseTime(s.start)} – ${preciseTime(s.end)}${s.kill === true ? " · Kill" : s.kill === false ? " · Wipe" : ""}`}
+                            title={interval}
                             data-segment={s.key}
                           >
                             {detail !== "bar" && (
@@ -676,12 +713,31 @@ export function RunTimeline({
                             )}
                             {detail === "named" && <span>{s.name}</span>}
                           </div>
+                          {landmark && (
+                            <span
+                              className="run-boss-landmark"
+                              data-current={current || undefined}
+                              data-segment={s.key}
+                              data-segment-jump
+                              title={interval}
+                              style={{ left: `${clip.left + clip.width / 2}%` }}
+                            >
+                              <GameIcon
+                                source={portrait(s)}
+                                name="inv_misc_head_dragon_01"
+                              />
+                            </span>
+                          )}
                           {showCaption && (
                             <span
                               className="run-boss-caption"
                               data-current={current || undefined}
-                              style={{ left: `${edge}%`, maxWidth: `${gap}%` }}
+                              style={{
+                                left: `calc(${edge}% + ${captionInset}px)`,
+                                maxWidth: `${captionSpace}px`,
+                              }}
                               data-segment={s.key}
+                              data-segment-jump
                               title={`Jump to ${s.name} · ${preciseTime(s.start)}`}
                             >
                               {s.name}
@@ -692,7 +748,7 @@ export function RunTimeline({
                     },
                   )}
                 </div>
-                <div className="run-mobs">
+                <div className="run-mobs" data-overview={overview}>
                   {mobs.map((s, i) => {
                     const end = Math.min(s.end, mobs[i + 1]?.start ?? Infinity);
                     const clip = projectRunClip({ start: s.start, end }, view);
@@ -720,6 +776,15 @@ export function RunTimeline({
                         key={s.key}
                         className="run-segment mob"
                         data-detail={detail}
+                        data-density={
+                          overview && detail === "bar"
+                            ? s.count >= 10
+                              ? "high"
+                              : s.count >= 4
+                                ? "medium"
+                                : "low"
+                            : undefined
+                        }
                         style={{
                           left: `${left}%`,
                           width: extent ? `${extent}%` : "2px",

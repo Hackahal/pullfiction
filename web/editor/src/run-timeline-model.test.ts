@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   projectRunClip,
+  runOverviewLandmarks,
   runRange,
   runTimeAt,
   zoomRunRange,
@@ -10,6 +11,21 @@ import {
   visibleRunMobs,
 } from "./run-timeline-model";
 import type { Actor, Replay } from "./types";
+
+test("Overview favors the current portrait without overlapping other badges or detailed clips", () => {
+  const clips = [
+    { key: "edge", left: 0, width: 0.5 },
+    { key: "near", left: 10, width: 2 },
+    { key: "current", left: 13, width: 2 },
+    { key: "open", left: 25, width: 2 },
+    { key: "crowded", left: 48, width: 2 },
+    { key: "detail", left: 50, width: 15 },
+  ];
+  assert.deepEqual(
+    [...runOverviewLandmarks(clips, 300, "current")],
+    ["current", "open"],
+  );
+});
 const npc = (
   key: string,
   name: string,

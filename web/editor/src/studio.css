@@ -1568,6 +1568,39 @@
   font-weight: 650;
 }
 
+.editor .run-bosses[data-overview="true"] .run-segment[data-detail="bar"] {
+  top: auto;
+  bottom: 1px;
+  height: 5px;
+}
+
+.run-boss-landmark {
+  position: absolute;
+  top: 1px;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #566375;
+  border-radius: 4px;
+  background: #27323d;
+  cursor: pointer;
+}
+
+.run-boss-landmark img {
+  width: 16px;
+  height: 16px;
+  object-fit: cover;
+}
+
+.run-boss-landmark:hover,
+.run-boss-landmark[data-current="true"] {
+  border-color: #d2dce9;
+}
+
 .editor .combat-event-list .combat-event-actors {
   display: block;
   padding-inline: 2px;
@@ -1812,6 +1845,35 @@
   height: 16px;
   border: 0;
   background: #5e6973;
+}
+
+.editor .run-mobs[data-overview="true"] .run-segment.mob[data-density] {
+  top: auto;
+  bottom: 3px;
+  height: 5px;
+  min-width: 0;
+  overflow: visible;
+  border-radius: 1px;
+  background: #526761;
+}
+
+.editor .run-mobs[data-overview="true"] .run-segment.mob[data-density]::after {
+  content: "";
+  position: absolute;
+  inset-block: -2px;
+  left: 50%;
+  width: max(100%, 2px);
+  transform: translateX(-50%);
+}
+
+.editor .run-mobs[data-overview="true"] .run-segment.mob[data-density="medium"] {
+  height: 9px;
+  background: #637c72;
+}
+
+.editor .run-mobs[data-overview="true"] .run-segment.mob[data-density="high"] {
+  height: 13px;
+  background: #799287;
 }
 
 @container run-dock (max-height: 140px) {
