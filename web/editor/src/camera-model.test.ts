@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  combatCameraEnemies,
   raidCameraSubjects,
   raidMapFrame,
   easeMapCamera,
@@ -156,4 +157,20 @@ test("camera range stays centered on living raid players and falls back to activ
   assert.deepEqual(keys(), ["1:1", "2:1", "3:1"]);
   r.actors[0].deaths = [[0, true]];
   assert.deepEqual(keys(), ["3:1", "4:1"]);
+});
+
+test("recent-combat cache preserves the inclusive boundary, set order, and rewind", () => {
+  const r = {
+    actors: [actor(1, "Player", 0), actor(2, "NPC", 5), actor(3, "NPC", 10)],
+    combat: [
+      { t: 0, kind: "damage", source: "1:1", target: "2:1" },
+      { t: 8000, kind: "damage", source: "1:1", target: "3:1" },
+    ],
+  } as unknown as Replay;
+  const active = (time: number) => [...combatCameraEnemies(r, time)];
+  assert.deepEqual(active(8000), ["3:1", "2:1"]);
+  assert.deepEqual(active(8000.01), ["3:1"]);
+  assert.deepEqual(active(0), ["2:1"]);
+  r.combat[0] = { ...r.combat[0], target: "3:1" };
+  assert.deepEqual(active(0), ["3:1"]);
 });
