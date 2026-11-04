@@ -1022,7 +1022,30 @@
   color: #b4bdc9;
 }
 
+.editor .focus-unit-tools .focus-combat-toggle {
+  display: none;
+}
+
 @container replay-scene (max-width: 520px) {
+  .editor .focus-unit-tools .focus-combat-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+  }
+
+  .editor
+    .focus-units[data-combat-expanded="false"]
+    .focus-unit-frame
+    :is(
+      .focus-unit-power,
+      .focus-power-space,
+      .focus-unit-cast,
+      .focus-cast-space
+    ) {
+    display: none;
+  }
+
   .editor .focus-units {
     grid-template-columns: minmax(0, 178px);
   }

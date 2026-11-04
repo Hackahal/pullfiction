@@ -30,6 +30,7 @@ export function Focus({
 }) {
   const state = useBufferedView(inputState);
   const [showAuras, setShowAuras] = useState(false);
+  const [showCombatDetails, setShowCombatDetails] = useState(false);
   const panel = useRef<HTMLElement>(null);
   const aurasId = useId();
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
@@ -89,6 +90,7 @@ export function Focus({
         ref={panel}
         className="focus-units"
         data-empty={!actor}
+        data-combat-expanded={showCombatDetails}
         aria-label="Focus"
         style={position ? { left: position.x, top: position.y } : undefined}
       >
@@ -164,6 +166,18 @@ export function Focus({
           <span className="focus-hud-status">
             {actor ? "Focus" : "Select a player or mob"}
           </span>
+          {actor && (
+            <button
+              className="focus-combat-toggle"
+              aria-label="Combat details"
+              aria-expanded={showCombatDetails}
+              title="Show or hide power and casts"
+              onClick={() => setShowCombatDetails((value) => !value)}
+            >
+              <EditorIcon name={showCombatDetails ? "up" : "down"} />
+              Combat
+            </button>
+          )}
           {actor && (
             <button
               className="focus-auras-toggle"
@@ -328,6 +342,7 @@ function FocusedUnit({
       />
       {combat.power ? (
         <div
+          className="focus-unit-power"
           title={
             [
               combat.power.current === null
