@@ -7,6 +7,7 @@ import {
 import { GameIcon } from "./GameIcon";
 import { useAnalysisData } from "./use-analysis-data";
 import { Bar, ReferenceHover } from "./FocusWidgets";
+import { EventDetails } from "./EventDetails";
 import { PanelSettings } from "./PanelSettings";
 import { EditorIcon } from "./EditorIcon";
 import { analysisRange, type AnalysisWindow } from "./analysis-range";
@@ -20,6 +21,9 @@ import {
   useMemo,
   useState,
   useEffect,
+  useLayoutEffect,
+  useRef,
+  useId,
   useContext,
   type ReactElement,
   type AnchorHTMLAttributes,
@@ -27,7 +31,7 @@ import {
 import { GameVersionContext, wowheadUrl } from "./Wowhead";
 import { EditorController } from "./controller";
 import { CLASS_COLORS, combatStateAt, preciseTime, time } from "./domain";
-import type { Snapshot } from "./types";
+import type { RecordedEventDetail, Snapshot } from "./types";
 import {
   metrics,
   indexEvents,
@@ -152,9 +156,44 @@ export function Analysis({
     [spell, setSpell] = useState("*"),
     [fight, setFight] = useState(""),
     [recap, setRecap] = useState<AnalysisEvent | null>(null),
+    [eventDetail, setEventDetail] = useState<RecordedEventDetail | null>(null),
     [search, setSearch] = useState(""),
     [ascending, setAscending] = useState(false);
   const replay = state.replay;
+  const eventDetailId = useId();
+  const eventList = useRef<HTMLDivElement>(null);
+  const analysisPanel = useRef<HTMLElement>(null);
+  const eventTray = useRef<HTMLElement>(null);
+  const selectedEventButton = () =>
+    eventList.current?.querySelector<HTMLElement>(
+      '.combat-event-ability [aria-expanded="true"]',
+    );
+  function closeEventDetail(restoreFocus = true) {
+    setEventDetail(null);
+    if (restoreFocus) {
+      (
+        selectedEventButton() ??
+        eventList.current ??
+        analysisPanel.current
+      )?.focus({
+        preventScroll: true,
+      });
+    }
+  }
+  useLayoutEffect(() => {
+    const list = eventList.current;
+    if (!eventDetail || !list) return;
+    const row = selectedEventButton()?.closest("li");
+    if (row) {
+      const bounds = list.getBoundingClientRect();
+      const selected = row.getBoundingClientRect();
+      if (selected.bottom > bounds.bottom)
+        list.scrollTop += selected.bottom - bounds.bottom;
+      else if (selected.top < bounds.top)
+        list.scrollTop -= bounds.top - selected.top;
+    }
+    eventTray.current?.focus();
+  }, [eventDetail]);
   const events = useMemo(
     () =>
       replay && config.view !== "resources" && config.view !== "parses"
@@ -174,6 +213,12 @@ export function Analysis({
     setFight("");
     setRecap(null);
   }, [replayIdentity(replay)]);
+  // A buffered refresh retains the raw fight header; a new install may
+  // reuse the report/fight IDs but supplies different event objects.
+  useEffect(
+    () => setEventDetail(null),
+    [replayIdentity(replay), replay?.raw.fight],
+  );
   const clock = state.playing ? Math.floor(state.time / 250) * 250 : state.time;
   const recipientMetric = ["taken", "death", "buff", "debuff"].includes(
     config.metric,
@@ -329,10 +374,22 @@ export function Analysis({
     return { graphPath, max };
   }, [buckets]);
   const total = rows.reduce((s, r) => s + r.total, 0);
-  useEffect(
-    () => setRecap(null),
-    [config.metric, config.window, config.view, source, target, spell, fight],
-  );
+  useEffect(() => {
+    setRecap(null);
+    setEventDetail(null);
+  }, [
+    config.metric,
+    config.window,
+    config.view,
+    config.hostility,
+    config.mergePets,
+    includePets,
+    source,
+    target,
+    spell,
+    fight,
+    search,
+  ]);
   const actors = replay?.actors ?? [];
   const counterpart = ["taken", "death"].includes(config.metric)
     ? "Attacker"
@@ -391,6 +448,7 @@ export function Analysis({
   };
   const back = () => {
     if (recap) {
+      closeEventDetail(false);
       setRecap(null);
       return;
     }
@@ -455,7 +513,20 @@ export function Analysis({
       </section>
     );
   return (
-    <section className="analysis-panel analysis-v2" aria-label="Analysis">
+    <section
+      className="analysis-panel analysis-v2"
+      aria-label="Analysis"
+      data-view={config.view}
+      ref={analysisPanel}
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && eventDetail) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeEventDetail();
+        }
+      }}
+    >
       <div className="analysis-header" data-view={config.view}>
         {config.view === "resources" ? (
           <strong>Resources</strong>
@@ -868,78 +939,77 @@ export function Analysis({
                 })}
             </div>
           ) : config.view === "events" ? (
-            <div className="analysis-scroll">
-              <ol className="combat-event-list" aria-label="Combat events">
-                {(recap ? deathRecap(events, recap) : filtered)
-                  .slice(-250)
-                  .reverse()
-                  .map((e) => (
-                    <li
-                      key={e.id}
-                      data-selected={
-                        state.detail?.event !== undefined &&
-                        state.detail.event.id === recordedEventId(replay, e)
-                          ? "true"
-                          : undefined
-                      }
-                    >
-                      <button
-                        className="combat-event-time"
-                        onClick={() => controller.seek(e.t)}
-                      >
-                        {preciseTime(e.t)}
-                      </button>
-                      <strong className="combat-event-amount">
-                        {e.amountRecorded ? e.amount.toLocaleString() : ""}
-                      </strong>
-                      <div className="combat-event-ability">
-                        {e.kind === "death" ? (
-                          <button onClick={() => setRecap(e)}>
-                            Death recap
+            <>
+              <div
+                className="analysis-scroll combat-event-scroll"
+                ref={eventList}
+                tabIndex={-1}
+                aria-label="Recorded event list"
+              >
+                <ol className="combat-event-list" aria-label="Combat events">
+                  {(recap ? deathRecap(events, recap) : filtered)
+                    .slice(-250)
+                    .reverse()
+                    .map((e) => {
+                      const selected =
+                        !!eventDetail &&
+                        eventDetail.id === recordedEventId(replay, e);
+                      const actors = `${actorMap.get(e.source)?.name ?? "Environment"} → ${actorMap.get(e.target)?.name ?? "Unknown"}`;
+                      return (
+                        <li key={e.id} data-selected={selected || undefined}>
+                          <button
+                            className="combat-event-time"
+                            onClick={() => controller.seek(e.t)}
+                          >
+                            {preciseTime(e.t)}
                           </button>
-                        ) : (
-                          <AbilityReference spell={e.spell} name={e.name}>
-                            <button
-                              aria-pressed={
-                                state.detail?.event !== undefined &&
-                                state.detail.event.id ===
-                                  recordedEventId(replay, e)
-                              }
-                              onClick={(click) => {
-                                const row = click.currentTarget
-                                  .closest("li")
-                                  ?.getBoundingClientRect();
-                                controller.inspectSpell(
-                                  e.spell === -4 ? 1 : e.spell,
-                                  recordedEventDetail(replay, e),
-                                  row && {
-                                    left: row.left,
-                                    right: row.right,
-                                    top: row.top,
-                                    bottom: row.bottom,
-                                  },
-                                );
-                              }}
-                            >
-                              {e.name}
-                            </button>
-                          </AbilityReference>
-                        )}
-                      </div>
-                      <p className="combat-event-actors">
-                        <span>
-                          {actorMap.get(e.source)?.name ?? "Environment"}
-                        </span>
-                        <span aria-label="to">→</span>
-                        <span>{actorMap.get(e.target)?.name ?? "Unknown"}</span>
-                      </p>
-                    </li>
-                  ))}
-              </ol>
-              {!recap && filtered.length > 250 && (
-                <p>Latest 250 matching events</p>
-              )}
-            </div>
+                          <strong className="combat-event-amount">
+                            {e.amountRecorded ? e.amount.toLocaleString() : ""}
+                          </strong>
+                          <div className="combat-event-ability">
+                            {e.kind === "death" ? (
+                              <button
+                                onClick={() => {
+                                  closeEventDetail(false);
+                                  setRecap(e);
+                                }}
+                              >
+                                Death recap
+                              </button>
+                            ) : (
+                              <AbilityReference spell={e.spell} name={e.name}>
+                                <button
+                                  aria-expanded={selected}
+                                  aria-controls={
+                                    selected ? eventDetailId : undefined
+                                  }
+                                  onClick={() => {
+                                    if (selected) {
+                                      closeEventDetail(false);
+                                      return;
+                                    }
+                                    setEventDetail(
+                                      recordedEventDetail(replay, e),
+                                    );
+                                  }}
+                                >
+                                  {e.name}
+                                </button>
+                              </AbilityReference>
+                            )}
+                          </div>
+                          <p className="combat-event-actors" title={actors}>
+                            {actors}
+                          </p>
+                        </li>
+                      );
+                    })}
+                </ol>
+                {!recap && filtered.length > 250 && (
+                  <p>Latest 250 matching events</p>
+                )}
+              </div>
+            </>
           ) : (
             <>
               <div className="analysis-scroll">
@@ -1072,6 +1142,16 @@ export function Analysis({
             </>
           )}
         </>
+      )}
+      {config.view === "events" && eventDetail && replay && (
+        <EventDetails
+          id={eventDetailId}
+          trayRef={eventTray}
+          event={eventDetail}
+          replay={replay}
+          seek={(time) => controller.seek(time)}
+          close={() => closeEventDetail()}
+        />
       )}
     </section>
   );

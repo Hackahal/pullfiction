@@ -539,7 +539,7 @@ test("Inspecting a cast selects its player, seeks to its timestamp and retains s
   f.c.stop();
 });
 
-test("Inspecting a combat row keeps its recorded event and leaves playback at the current time", () => {
+test("Recorded combat row identity survives buffering and preserves missing facts", () => {
   const f = fixture();
   const replay = f.c.getSnapshot().replay!;
   const indexed = indexEvents(replay).find(
@@ -566,12 +566,6 @@ test("Inspecting a combat row keeps its recorded event and leaves playback at th
   );
   assert.equal(missingDetail.source, undefined);
   assert.equal(missingDetail.amount, undefined);
-  f.c.seek(5000);
-  f.c.inspectSpell(event.spell, event);
-  assert.deepEqual(f.c.getSnapshot().detail, { spell: event.spell, event });
-  assert.equal(f.c.getSnapshot().time, 5000);
-  f.c.closeDetail();
-  assert.equal(f.c.getSnapshot().detail, null);
   f.c.stop();
 });
 

@@ -155,8 +155,6 @@ import {
 import type {
   GameVersion,
   Snapshot,
-  RecordedEventDetail,
-  ScreenAnchor,
   Engine,
   Plan,
   Tool,
@@ -4505,17 +4503,8 @@ export class EditorController {
     });
     this.engine?.select_replay(actorKey);
   }
-  inspectSpell(
-    spell: number,
-    event?: RecordedEventDetail,
-    anchor?: ScreenAnchor,
-  ) {
-    if (event || (Number.isInteger(spell) && spell > 0))
-      this.patch({
-        detail: event
-          ? { spell, event, ...(anchor ? { anchor } : {}) }
-          : { spell },
-      });
+  inspectSpell(spell: number) {
+    if (Number.isInteger(spell) && spell > 0) this.patch({ detail: { spell } });
   }
   closeDetail() {
     this.patch({ detail: null });

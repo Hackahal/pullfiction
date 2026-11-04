@@ -213,7 +213,6 @@ export function Focus({
           label="ability details"
           positionKey="pullfiction.ability-details.position.v1"
           className="ability-inspector"
-          anchor={state.detail.anchor}
           close={() => controller.closeDetail()}
         >
           <CastDetails state={state} controller={controller} />

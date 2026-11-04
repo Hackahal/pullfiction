@@ -1,30 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { JSDOM } from "jsdom";
 import { renderToString } from "react-dom/server";
 import { Analysis } from "./Analysis";
 import { EditorController } from "./controller";
 import { normalizeReplay, enrichCombat } from "./domain";
 import type { RawReplay } from "./types";
 
-test("Ability meter rows retain full-width layout and hosted Wowhead references", (t) => {
-  const descriptor = Object.getOwnPropertyDescriptor(
-    globalThis,
-    "localStorage",
-  );
-  Object.defineProperty(globalThis, "localStorage", {
-    configurable: true,
-    value: {
-      getItem: () => JSON.stringify({ view: "meter", group: "spell" }),
-      setItem() {},
-    },
-  });
-  t.after(() => {
-    if (descriptor)
-      Object.defineProperty(globalThis, "localStorage", descriptor);
-    else Reflect.deleteProperty(globalThis, "localStorage");
-  });
-  const replay = enrichCombat(
+function eventReplay() {
+  return enrichCombat(
     normalizeReplay(
       {
         report: { code: "test" },
@@ -54,6 +40,26 @@ test("Ability meter rows retain full-width layout and hosted Wowhead references"
     ),
     {},
   );
+}
+
+test("Ability meter rows retain full-width layout and hosted Wowhead references", (t) => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "localStorage",
+  );
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: () => JSON.stringify({ view: "meter", group: "spell" }),
+      setItem() {},
+    },
+  });
+  t.after(() => {
+    if (descriptor)
+      Object.defineProperty(globalThis, "localStorage", descriptor);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  });
+  const replay = eventReplay();
   const controller = new EditorController();
   t.after(() => controller.stop());
   const html = renderToString(
@@ -76,4 +82,104 @@ test("Ability meter rows retain full-width layout and hosted Wowhead references"
   assert.doesNotMatch(html, /class="focus-icon-wrap"/);
   assert.match(html, /Current pull/);
   assert.match(html, /DPS/);
+});
+
+test("Combat event details stay in their panel, focus the tray and restore the selected source", async () => {
+  const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost/" });
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    MutationObserver: dom.window.MutationObserver,
+    MouseEvent: dom.window.MouseEvent,
+    localStorage: dom.window.localStorage,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = new Map(
+    Object.keys(globals).map((key) => [
+      key,
+      Object.getOwnPropertyDescriptor(globalThis, key),
+    ]),
+  );
+  for (const [key, value] of Object.entries(globals))
+    Object.defineProperty(globalThis, key, { configurable: true, value });
+  const controller = new EditorController();
+  const seeks: number[] = [];
+  controller.seek = (time) => {
+    seeks.push(time);
+  };
+  const root = createRoot(dom.window.document.getElementById("root")!);
+  try {
+    const replay = eventReplay();
+    const state = {
+      ...controller.getSnapshot(),
+      replay,
+      time: 2000,
+      playing: false,
+    };
+    await act(async () =>
+      root.render(
+        createElement(Analysis, {
+          state,
+          controller,
+          close() {},
+          preset: { view: "events" },
+        }),
+      ),
+    );
+    const trigger = dom.window.document.querySelector<HTMLElement>(
+      '.combat-event-ability a[role="button"]',
+    )!;
+    assert.ok(trigger);
+    await act(async () => trigger.click());
+    const tray = dom.window.document.querySelector<HTMLElement>(
+      '[aria-label="Selected combat event"]',
+    )!;
+    assert.ok(tray?.closest(".analysis-panel"));
+    assert.equal(trigger.getAttribute("aria-controls"), tray.id);
+    assert.equal(dom.window.document.activeElement, tray);
+    assert.match(tray.textContent ?? "", /Fireball.*Mage.*Boss.*100/);
+    assert.deepEqual(seeks, []);
+    assert.equal(controller.getSnapshot().detail, null);
+    await act(async () =>
+      tray
+        .querySelector<HTMLElement>('[title="Jump playhead to event"]')!
+        .click(),
+    );
+    assert.deepEqual(seeks, [1000]);
+    await act(async () =>
+      tray.dispatchEvent(
+        new dom.window.KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+        }),
+      ),
+    );
+    assert.equal(
+      dom.window.document.querySelector('[aria-label="Selected combat event"]'),
+      null,
+    );
+    assert.equal(dom.window.document.activeElement, trigger);
+    await act(async () => trigger.click());
+    await act(async () =>
+      root.render(
+        createElement(Analysis, {
+          state: { ...state, replay: eventReplay() },
+          controller,
+          close() {},
+          preset: { view: "events" },
+        }),
+      ),
+    );
+    assert.equal(
+      dom.window.document.querySelector('[aria-label="Selected combat event"]'),
+      null,
+    );
+  } finally {
+    await act(async () => root.unmount());
+    controller.stop();
+    dom.window.close();
+    for (const [key, descriptor] of saved)
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+  }
 });

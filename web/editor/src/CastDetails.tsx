@@ -26,9 +26,6 @@ export function CastDetails({
   const target = cast?.target
     ? replay.actors.find((a) => a.key === cast.target)
     : null;
-  const event = detail.event;
-  const eventSource = replay.actors.find((a) => a.key === event?.source);
-  const eventTarget = replay.actors.find((a) => a.key === event?.target);
   const ability = replay.abilities.get(detail.spell);
   return (
     <section className="cast-details">
@@ -37,34 +34,8 @@ export function CastDetails({
           name={ability?.icon}
           spell={detail.spell > 0 ? detail.spell : undefined}
         />
-        <h3>{event?.name ?? cast?.name ?? ability?.name ?? "Spell"}</h3>
+        <h3>{cast?.name ?? ability?.name ?? "Spell"}</h3>
       </div>
-      {event && (
-        <dl className="ability-event-facts">
-          <dt>Recorded at</dt>
-          <dd>
-            <button onClick={() => controller.seek(event.t)}>
-              {preciseTime(event.t)}
-            </button>
-          </dd>
-          <dt>Source</dt>
-          <dd>
-            {eventSource?.name ?? (event.source ? "Unknown" : "Environment")}
-          </dd>
-          <dt>Target</dt>
-          <dd>{eventTarget?.name ?? "Unknown"}</dd>
-          <dt>Event</dt>
-          <dd>
-            {event.kind}
-            {event.amount !== undefined && (
-              <>
-                {" "}
-                · <strong>{event.amount.toLocaleString()}</strong>
-              </>
-            )}
-          </dd>
-        </dl>
-      )}
       {actor && cast && (
         <>
           <div className="cast-facts">

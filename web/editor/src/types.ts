@@ -263,12 +263,6 @@ export interface CombatEvent {
   tick?: boolean;
   impacts?: { target: string; t: number }[];
 }
-export interface ScreenAnchor {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
 export type RecordedEventDetail = Pick<
   CombatEvent,
   "id" | "t" | "kind" | "source" | "target" | "spell" | "name" | "amount"
@@ -539,8 +533,6 @@ export interface Snapshot {
     spell: number;
     actorKey?: string;
     castIndex?: number;
-    event?: RecordedEventDetail;
-    anchor?: ScreenAnchor;
   } | null;
   options: Options;
   cameraMaxDistance: number;

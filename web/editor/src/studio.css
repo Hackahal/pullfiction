@@ -1418,3 +1418,80 @@
   color: #f3d49a;
   font-weight: 650;
 }
+
+.editor .combat-event-list .combat-event-actors {
+  display: block;
+  padding-inline: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.editor .combat-event-list .combat-event-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.event-details-tray {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  min-height: 64px;
+  max-height: 48%;
+  overflow: hidden;
+  background: var(--studio-panel);
+  border-top: 1px solid #52759e;
+}
+
+.event-details-tray > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  background: var(--studio-toolbar);
+  font-size: 12px;
+}
+
+.event-details-tray > header img {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+}
+
+.event-details-tray > header strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-details-tray > header button {
+  display: inline-flex;
+  padding: 2px;
+}
+
+.event-details-tray > header button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.event-details-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.event-details-body .ability-event-facts {
+  gap: 4px 8px;
+  padding: 7px 8px;
+}
+
+.event-details-body > :not(dl) {
+  margin: 0 8px 7px;
+}
+
+.analysis-v2[data-view="events"] {
+  overflow-y: auto;
+}
+
+.analysis-v2 .combat-event-scroll {
+  min-height: 42px;
+}
