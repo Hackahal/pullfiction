@@ -52,6 +52,25 @@ import {
   type MapCamera,
   type MapPoint,
 } from "./map-model";
+function prepareMapCanvas(
+  node: HTMLCanvasElement | null,
+  size: { width: number; height: number },
+  dpr: number,
+) {
+  if (!node) return;
+  const width = Math.max(1, Math.round(size.width * dpr)),
+    height = Math.max(1, Math.round(size.height * dpr));
+  if (node.width !== width) node.width = width;
+  if (node.height !== height) node.height = height;
+  const ctx = node.getContext("2d");
+  if (!ctx) return;
+  // Reset paths and styles without resizing a stable backing store.
+  if (typeof ctx.reset === "function") ctx.reset();
+  else node.width = width;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
 export function MapView({
   state: inputState,
   controller,
@@ -61,7 +80,8 @@ export function MapView({
 }) {
   const state = useBufferedView(inputState);
   const host = useRef<HTMLDivElement>(null),
-    canvas = useRef<HTMLCanvasElement>(null);
+    canvas = useRef<HTMLCanvasElement>(null),
+    terrain = useRef<HTMLCanvasElement>(null);
   const hoverGrip = useRef<{ id: string; index: number } | null>(null);
   const labelRects = useRef<(LabelRect & { id: string })[]>([]);
   const [editHover, setEditHover] = useState<{
@@ -83,10 +103,13 @@ export function MapView({
   // Zero dimensions defer the initial fit instead of fitting a placeholder size.
   const [size, setSize] = useState({ width: 0, height: 0 }),
     [camera, setCamera] = useState<MapCamera>({ x: 0, y: 0, scale: 1 });
+  const [dpr, setDpr] = useState(() => globalThis.devicePixelRatio || 1);
+  const [terrainArt, setTerrainArt] = useState(0);
   const [art, setArt] = useState(0),
     [hover, setHover] = useState<{ actor: Actor; x: number; y: number } | null>(
       null,
     );
+  const terrainImages = useRef(new Map<string, HTMLImageElement>());
   const images = useRef(new Map<string, HTMLImageElement>()),
     drag = useRef<{
       x: number;
@@ -118,6 +141,9 @@ export function MapView({
       dead: boolean;
     }[]
   >([]);
+  const terrainImageLoader = useRef<MapViewImages | null>(null);
+  if (!terrainImageLoader.current)
+    terrainImageLoader.current = new MapViewImages(terrainImages.current);
   const imageLoader = useRef<MapViewImages | null>(null);
   if (!imageLoader.current)
     imageLoader.current = new MapViewImages(images.current);
@@ -383,7 +409,6 @@ export function MapView({
       ...marks
         .filter((a) => !/^[1-8]$/.test(a.icon))
         .map((a) => `/game-ui/icons/${a.icon}.png`),
-      ...(manifest?.tiles.map((t) => t.src) ?? []),
       ...(state.replay?.actors
         .filter((a) => a.type !== "Player")
         .flatMap((a) => [
@@ -397,7 +422,6 @@ export function MapView({
       () => setArt((n) => n + 1),
     );
   }, [
-    manifest,
     state.replay,
     state.portraitVersion,
     state.browserAssets,
@@ -406,27 +430,35 @@ export function MapView({
     localUiArt,
     localIcons,
   ]);
+  useEffect(() => {
+    terrainImageLoader.current!.update(
+      manifest?.tiles.map((tile) => tile.src) ?? [],
+      { browser: state.browserAssets },
+      () => setTerrainArt((n) => n + 1),
+    );
+  }, [manifest, state.browserAssets]);
   useEffect(
     () => () => {
       imageLoader.current?.dispose();
+      terrainImageLoader.current?.dispose();
     },
     [],
   );
   useEffect(() => {
-    const node = canvas.current;
-    if (!node) return;
-    const dpr = window.devicePixelRatio || 1,
-      width = Math.max(1, Math.round(size.width * dpr)),
-      height = Math.max(1, Math.round(size.height * dpr));
-    if (node.width !== width) node.width = width;
-    if (node.height !== height) node.height = height;
-    const ctx = node.getContext("2d");
+    let resolution: MediaQueryList | undefined;
+    const track = () => {
+      resolution?.removeEventListener("change", track);
+      const next = globalThis.devicePixelRatio || 1;
+      setDpr(next);
+      resolution = globalThis.matchMedia?.(`(resolution: ${next}dppx)`);
+      resolution?.addEventListener("change", track);
+    };
+    track();
+    return () => resolution?.removeEventListener("change", track);
+  }, []);
+  useEffect(() => {
+    const ctx = prepareMapCanvas(terrain.current, size, dpr);
     if (!ctx) return;
-    // Match the previous resize reset, including clips, paths and styles, while
-    // keeping unchanged backing dimensions. Retain the legacy path if needed.
-    if (typeof ctx.reset === "function") ctx.reset();
-    else node.width = width;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#13191c";
     ctx.fillRect(0, 0, size.width, size.height);
     const screen = (p: MapPoint) =>
@@ -478,7 +510,7 @@ export function MapView({
         !intersectsMapViewport(tile.bounds, a, b, tilePadding)
       )
         continue;
-      const image = images.current.get(tile.src);
+      const image = terrainImages.current.get(tile.src);
       if (!image?.complete || !image.naturalWidth) continue;
       const tl = screen(tile.corners[0]),
         tr = screen(tile.corners[1]),
@@ -495,6 +527,12 @@ export function MapView({
       ctx.drawImage(image, 0, 0);
       ctx.restore();
     }
+  }, [camera, size, area, terrainArt, dpr, floorPaths, tiles]);
+  useEffect(() => {
+    const ctx = prepareMapCanvas(canvas.current, size, dpr);
+    if (!ctx) return;
+    const screen = (p: MapPoint) =>
+      mapScreen(p, camera, size.width, size.height);
     const raidIcons = images.current.get("/game-ui/raid-icons.png");
     const drawPath = (path: (typeof marks)[number]["paths"][number]) => {
       ctx.beginPath();
@@ -852,7 +890,18 @@ export function MapView({
     ctx.font = "11px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("N ↑", size.width - 12, 20);
-  }, [state, camera, size, manifest, area, art, healthBars, controller, marks]);
+  }, [
+    state,
+    camera,
+    size,
+    manifest,
+    area,
+    art,
+    healthBars,
+    controller,
+    marks,
+    dpr,
+  ]);
   const pixel = (e: { clientX: number; clientY: number }): MapPoint => {
     const r = host.current!.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
@@ -938,6 +987,7 @@ export function MapView({
     hover?.actor.deaths.filter(([t]) => t <= state.time).at(-1)?.[1] ?? false;
   return (
     <div className="tactical-map" ref={host}>
+      <canvas ref={terrain} className="tactical-terrain" aria-hidden="true" />
       {boxRect && <div className="selection-box" style={boxRect} />}
       <canvas
         ref={canvas}
