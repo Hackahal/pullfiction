@@ -1,6 +1,6 @@
 import { useBufferedView } from "./ReplayLoading";
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { FloatingWindow } from "./FloatingWindow";
 import { EditorIcon } from "./EditorIcon";
 import { GameIcon } from "./GameIcon";
 import { CastDetails } from "./CastDetails";
@@ -206,23 +206,18 @@ export function Focus({
           <div className="focus-empty">Select a player or mob.</div>
         )}
       </aside>
-      {state.detail &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <aside className="focus-ability-window" aria-label="Ability details">
-            <header>
-              <strong>Ability details</strong>
-              <button
-                aria-label="Close ability details"
-                onClick={() => controller.closeDetail()}
-              >
-                <EditorIcon name="close" />
-              </button>
-            </header>
-            <CastDetails state={state} controller={controller} />
-          </aside>,
-          document.body,
-        )}
+      {state.detail && (
+        <FloatingWindow
+          title="Ability details"
+          label="ability details"
+          positionKey="pullfiction.ability-details.position.v1"
+          className="ability-inspector"
+          anchor={state.detail.anchor}
+          close={() => controller.closeDetail()}
+        >
+          <CastDetails state={state} controller={controller} />
+        </FloatingWindow>
+      )}
     </>
   );
 }

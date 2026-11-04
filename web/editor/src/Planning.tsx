@@ -81,40 +81,43 @@ export function PageProperties({
           </select>
         </label>
       </div>
-      <label className="page-layer-picker">
-        Switch page
-        <select
-          aria-label="Plan page"
-          value={step.id}
-          onChange={(e) => controller.setActiveStep(e.target.value, false)}
-        >
-          {state.plan.layers.map((layer) => (
-            <optgroup key={layer.id} label={layer.name}>
-              {state.plan.steps
-                .filter((page) => page.layerId === layer.id)
-                .map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
-      <label className="page-layer-picker">
-        Layer
-        <select
-          aria-label="Page layer"
-          value={step.layerId}
-          onChange={(e) => controller.updateStep({ layerId: e.target.value })}
-        >
-          {state.plan.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <details className="planning-advanced page-routing">
+        <summary>Page and layer</summary>
+        <label className="page-layer-picker">
+          Switch page
+          <select
+            aria-label="Plan page"
+            value={step.id}
+            onChange={(e) => controller.setActiveStep(e.target.value, false)}
+          >
+            {state.plan.layers.map((layer) => (
+              <optgroup key={layer.id} label={layer.name}>
+                {state.plan.steps
+                  .filter((page) => page.layerId === layer.id)
+                  .map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <label className="page-layer-picker">
+          Layer
+          <select
+            aria-label="Page layer"
+            value={step.layerId}
+            onChange={(e) => controller.updateStep({ layerId: e.target.value })}
+          >
+            {state.plan.layers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </details>
       {state.replay && (
         <>
           <div className="planning-timing-state">

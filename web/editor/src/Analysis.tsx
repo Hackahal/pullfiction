@@ -36,6 +36,8 @@ import {
   graphBuckets,
   meterColor,
   deathRecap,
+  recordedEventDetail,
+  recordedEventId,
   type AnalysisEvent,
   type Metric,
 } from "./analysis-model";
@@ -860,7 +862,15 @@ export function Analysis({
                   .slice(-250)
                   .reverse()
                   .map((e) => (
-                    <li key={e.id}>
+                    <li
+                      key={e.id}
+                      data-selected={
+                        state.detail?.event !== undefined &&
+                        state.detail.event.id === recordedEventId(replay, e)
+                          ? "true"
+                          : undefined
+                      }
+                    >
                       <button
                         className="combat-event-time"
                         onClick={() => controller.seek(e.t)}
@@ -868,7 +878,7 @@ export function Analysis({
                         {preciseTime(e.t)}
                       </button>
                       <strong className="combat-event-amount">
-                        {e.amount.toLocaleString()}
+                        {e.amountRecorded ? e.amount.toLocaleString() : ""}
                       </strong>
                       <div className="combat-event-ability">
                         {e.kind === "death" ? (
@@ -878,11 +888,26 @@ export function Analysis({
                         ) : (
                           <AbilityReference spell={e.spell} name={e.name}>
                             <button
-                              onClick={() =>
+                              aria-pressed={
+                                state.detail?.event !== undefined &&
+                                state.detail.event.id ===
+                                  recordedEventId(replay, e)
+                              }
+                              onClick={(click) => {
+                                const row = click.currentTarget
+                                  .closest("li")
+                                  ?.getBoundingClientRect();
                                 controller.inspectSpell(
                                   e.spell === -4 ? 1 : e.spell,
-                                )
-                              }
+                                  recordedEventDetail(replay, e),
+                                  row && {
+                                    left: row.left,
+                                    right: row.right,
+                                    top: row.top,
+                                    bottom: row.bottom,
+                                  },
+                                );
+                              }}
                             >
                               {e.name}
                             </button>

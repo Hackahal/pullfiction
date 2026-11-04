@@ -1,5 +1,5 @@
 import { CLASS_COLORS } from "./domain";
-import type { Replay } from "./types";
+import type { RecordedEventDetail, Replay } from "./types";
 import {
   defaultCombatSide,
   matchesCombatSide,
@@ -26,6 +26,7 @@ export interface AnalysisEvent {
   spell: number;
   name: string;
   amount: number;
+  amountRecorded?: boolean;
   overheal: number;
   hitType: number;
 }
@@ -87,6 +88,7 @@ export function indexEvents(replay: Replay): AnalysisEvent[] {
           replay.abilities.get(spell)?.name ??
           (spell === -4 ? "Melee" : `Spell ${spell}`),
         amount: Number.isFinite(e.amount) ? e.amount : 0,
+        amountRecorded: Number.isFinite(e.amount),
         overheal: Number.isFinite(e.overheal) ? e.overheal : 0,
         hitType: e.hitType ?? 0,
       };
@@ -101,6 +103,42 @@ export function indexEvents(replay: Replay): AnalysisEvent[] {
     index,
   });
   return index;
+}
+// Buffer snapshots keep the raw event objects from their owning chunk. A
+// position in the sorted snapshot can change when an earlier chunk arrives.
+const recordedEventIds = new WeakMap<object, number>();
+let nextRecordedEventId = 0;
+export function recordedEventId(
+  replay: Replay,
+  event: AnalysisEvent,
+): number | undefined {
+  const raw = replay.raw.events[event.id];
+  return raw ? recordedEventIds.get(raw) : undefined;
+}
+export function recordedEventDetail(
+  replay: Replay,
+  event: AnalysisEvent,
+): RecordedEventDetail {
+  const raw = replay.raw.events[event.id] as Record<string, any>;
+  let id = recordedEventIds.get(raw);
+  if (id === undefined) {
+    id = ++nextRecordedEventId;
+    recordedEventIds.set(raw, id);
+  }
+  return {
+    id,
+    t: event.t,
+    kind: event.kind,
+    source:
+      Number.isFinite(raw.sourceID) ||
+      (raw.type === "death" && Number.isFinite(raw.killerID))
+        ? event.source
+        : undefined,
+    target: Number.isFinite(raw.targetID) ? event.target : undefined,
+    spell: event.spell,
+    name: event.name,
+    amount: event.amountRecorded ? event.amount : undefined,
+  };
 }
 function bound(events: AnalysisEvent[], t: number, upper = false) {
   let a = 0,

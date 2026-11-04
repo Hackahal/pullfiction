@@ -263,6 +263,16 @@ export interface CombatEvent {
   tick?: boolean;
   impacts?: { target: string; t: number }[];
 }
+export interface ScreenAnchor {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+export type RecordedEventDetail = Pick<
+  CombatEvent,
+  "id" | "t" | "kind" | "source" | "target" | "spell" | "name" | "amount"
+>;
 export interface Replay {
   gameVersion: GameVersion;
   map: number;
@@ -525,7 +535,13 @@ export interface Snapshot {
   playing: boolean;
   rate: number;
   selected: string | null;
-  detail: { spell: number; actorKey?: string; castIndex?: number } | null;
+  detail: {
+    spell: number;
+    actorKey?: string;
+    castIndex?: number;
+    event?: RecordedEventDetail;
+    anchor?: ScreenAnchor;
+  } | null;
   options: Options;
   cameraMaxDistance: number;
   portraitVersion: number;

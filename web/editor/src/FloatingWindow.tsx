@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { EditorIcon } from "./EditorIcon";
 import { clampFocus } from "./focus-model";
+import type { ScreenAnchor } from "./types";
+
 export function FloatingWindow({
   title,
   label,
@@ -9,6 +17,7 @@ export function FloatingWindow({
   close,
   children,
   className = "",
+  anchor,
 }: {
   title: string;
   label: string;
@@ -16,6 +25,7 @@ export function FloatingWindow({
   close: () => void;
   children: ReactNode;
   className?: string;
+  anchor?: ScreenAnchor;
 }) {
   const panel = useRef<HTMLElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
@@ -28,6 +38,38 @@ export function FloatingWindow({
       }
     },
   );
+  const [anchoredPosition, setAnchoredPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const node = panel.current;
+    if (!anchor || !node || position) return;
+    const place = () => {
+      const width = window.innerWidth,
+        height = window.innerHeight;
+      const w = node.offsetWidth,
+        h = node.offsetHeight,
+        gap = 12;
+      let x = anchor.left,
+        y = anchor.top;
+      if (anchor.left >= w + gap) x = anchor.left - w - gap;
+      else if (anchor.right + gap + w <= width) x = anchor.right + gap;
+      else if (anchor.bottom + gap + h <= height) y = anchor.bottom + gap;
+      else if (anchor.top >= h + gap) y = anchor.top - h - gap;
+      else
+        y =
+          height - anchor.bottom > anchor.top
+            ? anchor.bottom + gap
+            : anchor.top - h - gap;
+      setAnchoredPosition(clampFocus(x, y, width, height, w, h));
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(node);
+    observer.observe(document.documentElement);
+    return () => observer.disconnect();
+  }, [anchor, position]);
   useEffect(() => {
     const node = panel.current;
     if (!node) return;
@@ -56,6 +98,7 @@ export function FloatingWindow({
       } catch {}
   }, [position, positionKey]);
   if (typeof document === "undefined") return null;
+  const placement = position ?? (anchor ? anchoredPosition : null);
   return createPortal(
     <aside
       ref={panel}
@@ -72,8 +115,13 @@ export function FloatingWindow({
         }
       }}
       style={
-        position
-          ? { left: position.x, top: position.y, transform: "none" }
+        placement
+          ? {
+              left: placement.x,
+              top: placement.y,
+              right: "auto",
+              transform: "none",
+            }
           : undefined
       }
     >

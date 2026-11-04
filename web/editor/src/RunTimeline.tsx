@@ -141,6 +141,14 @@ export function RunTimeline({
     t += step
   )
     ticks.push(t);
+  const minorStep = step / ((step / view.span) * width >= 120 ? 4 : 2);
+  const minorTicks: number[] = [];
+  for (
+    let t = Math.ceil(view.start / minorStep) * minorStep;
+    t <= view.start + view.span;
+    t += minorStep
+  )
+    if (t % step !== 0) minorTicks.push(t);
   const portrait = (segment: RunSegment) =>
     segment.actor ? controller.portraitUrl(segment.actor) : undefined;
   const segmentStyle = (segment: RunSegment) => ({
@@ -151,6 +159,7 @@ export function RunTimeline({
   return (
     <section
       className="run-navigator"
+      data-workspace={state.workspaceMode}
       data-input-context="timeline"
       aria-label={replay ? "Raid scrubber" : "Plan steps"}
     >
@@ -477,6 +486,14 @@ export function RunTimeline({
                         left: `${percent(a)}%`,
                         width: `${((b - a) / view.span) * 100}%`,
                       }}
+                    />
+                  ))}
+                  {minorTicks.map((t) => (
+                    <i
+                      key={t}
+                      className="run-minor-tick"
+                      aria-hidden="true"
+                      style={{ left: `${percent(t)}%` }}
                     />
                   ))}
                   {ticks

@@ -134,7 +134,7 @@ export function Toolbox({
         ).map((panel) => (
           <button
             key={panel.id}
-            className={panel.visible ? "active" : ""}
+            className="panel-tool"
             aria-pressed={panel.visible}
             draggable
             title={`Show or hide ${panel.label} · Drag to dock`}

@@ -1,3 +1,8 @@
+import {
+  indexEvents,
+  recordedEventDetail,
+  recordedEventId,
+} from "./analysis-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
@@ -531,6 +536,42 @@ test("Inspecting a cast selects its player, seeks to its timestamp and retains s
   assert.equal(f.c.getSnapshot().detail?.castIndex, index);
   f.c.inspectSpell(20589);
   assert.equal(f.c.getSnapshot().detail?.spell, 20589);
+  f.c.stop();
+});
+
+test("Inspecting a combat row keeps its recorded event and leaves playback at the current time", () => {
+  const f = fixture();
+  const replay = f.c.getSnapshot().replay!;
+  const indexed = indexEvents(replay).find(
+    (row) => row.kind === "damage" && row.amount === 200,
+  )!;
+  assert.ok(indexed);
+  const event = recordedEventDetail(replay, indexed);
+  const missing = {
+    timestamp: replay.fight.startTime,
+    type: "cast",
+    abilityGameID: 1,
+  };
+  const expanded = {
+    ...replay,
+    raw: { ...replay.raw, events: [missing, ...replay.raw.events] },
+  };
+  const shifted = indexEvents(expanded).find(
+    (row) => row.id === indexed.id + 1,
+  )!;
+  assert.equal(recordedEventId(expanded, shifted), event.id);
+  const missingDetail = recordedEventDetail(
+    expanded,
+    indexEvents(expanded).find((row) => row.id === 0)!,
+  );
+  assert.equal(missingDetail.source, undefined);
+  assert.equal(missingDetail.amount, undefined);
+  f.c.seek(5000);
+  f.c.inspectSpell(event.spell, event);
+  assert.deepEqual(f.c.getSnapshot().detail, { spell: event.spell, event });
+  assert.equal(f.c.getSnapshot().time, 5000);
+  f.c.closeDetail();
+  assert.equal(f.c.getSnapshot().detail, null);
   f.c.stop();
 });
 

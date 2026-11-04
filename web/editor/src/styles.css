@@ -3945,24 +3945,6 @@ select:hover:not(:disabled) {
   background: #161a1e;
   color: #c4c0b6;
 }
-.focus-ability-window {
-  position: fixed;
-  z-index: 100;
-  right: 16px;
-  bottom: 60px;
-  width: min(400px, calc(100vw - 32px));
-  max-height: 65vh;
-  overflow: auto;
-  background: #181c20;
-  box-shadow: 0 10px 32px #0008;
-}
-.focus-ability-window > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  background: #24282c;
-}
 .floating-window {
   position: fixed;
   z-index: 100;

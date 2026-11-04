@@ -393,7 +393,8 @@ export function App({ controller }: { controller: EditorController }) {
         } else if (state.selectedMarks.length || state.selectedActors.length) {
           controller.selectMark(null);
           controller.clearActorSelection();
-        } else if (inspector) setInspector(false);
+        } else if (state.detail) controller.closeDetail();
+        else if (inspector) setInspector(false);
         return;
       }
       if (scene && event.key === "Enter" && state.drawing) {
@@ -456,6 +457,7 @@ export function App({ controller }: { controller: EditorController }) {
     state.replay,
     state.transform,
     state.transformActive,
+    state.detail,
     dialog,
     inspector,
   ]);
