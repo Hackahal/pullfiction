@@ -726,6 +726,22 @@ fn merge_diff_retains_explicit_zero_without_notifying() {
     assert_eq!(store.get_raw(20), Some(0));
 }
 
+#[test]
+fn channel_object_equality_requires_both_explicit_dwords() {
+    let absent = ObjectFields::from_pairs(&[]).into_created(ObjectType::Unit);
+    assert!(!absent.has_channel_object_fields(None));
+    let high_only = ObjectFields::from_pairs(&[(21, 7)]).into_created(ObjectType::Unit);
+    assert!(!high_only.has_channel_object_fields(Some(7u64 << 32)));
+    let low_only = ObjectFields::from_pairs(&[(20, 3)]).into_created(ObjectType::Unit);
+    assert!(!low_only.has_channel_object_fields(Some(3)));
+    let clear = ObjectFields::from_pairs(&[(20, 0), (21, 0)]).into_created(ObjectType::Unit);
+    assert!(clear.has_channel_object_fields(None));
+    let target = ObjectFields::from_pairs(&[(20, 0), (21, 7)]).into_created(ObjectType::Unit);
+    assert!(target.has_channel_object_fields(Some(7u64 << 32)));
+    assert!(!target.has_channel_object_fields(None));
+    assert!(!target.has_channel_object_fields(Some(8u64 << 32)));
+}
+
 /// A re-create refreshes a live guid in place and notifies over both masks: an omitted field is
 /// an edge to 0.
 #[test]

@@ -677,22 +677,6 @@ pub(crate) fn apply(
         // without discarding their validated checkpoints or unfinished work.
         plans.clear_demands();
         let mut spawned = false;
-        // Resolve after all actors have identities, including targets later in this
-        // frame. An absent recorded target stays absent rather than being guessed.
-        let channel_targets: Vec<_> = batch
-            .iter()
-            .map(|unit| {
-                (
-                    unit.key.clone(),
-                    unit.player,
-                    if unit.channel && !unit.dead {
-                        unit.channel_target.clone()
-                    } else {
-                        None
-                    },
-                )
-            })
-            .collect();
         let keep: HashSet<_> = batch.iter().map(|u| u.key.as_str()).collect();
         ground_cache.retain(|key, _| keep.contains(key.as_str()));
         canonical
@@ -1283,15 +1267,29 @@ pub(crate) fn apply(
             units.insert(unit.key.clone(), (id, guid));
             spawned = true;
         }
-        for (key, player, target) in channel_targets {
-            let Some(&(entity, guid)) = units.get(&key) else {
+        // Resolve targets after all actors have identities, including actors
+        // spawned later in the batch. The retained frame still owns their keys.
+        for unit in batch {
+            let Some(&(entity, guid)) = units.get(&unit.key) else {
                 continue;
             };
-            let target_guid = target.as_ref().and_then(|key| units.get(key)).map(|u| u.1);
+            let target_guid = if unit.channel && !unit.dead {
+                unit.channel_target
+                    .as_ref()
+                    .and_then(|key| units.get(key))
+                    .map(|u| u.1)
+            } else {
+                None
+            };
+            let player = unit.player;
             commands.queue(move |world: &mut World| {
                 let Some(mut store) = world.get_mut::<net::ObjectStore>(entity) else {
                     return;
                 };
+                if store.0.created_as().is_some() && store.0.has_channel_object_fields(target_guid)
+                {
+                    return;
+                }
                 let delta = crate::planner_replay_identity::channel_target_fields(target_guid);
                 let changed =
                     crate::planner_replay_identity::write_replay_fields(&mut store, delta);
