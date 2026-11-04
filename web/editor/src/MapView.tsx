@@ -42,6 +42,8 @@ import {
   fitMap,
   frameMapSelection,
   mapPoint,
+  mapBounds,
+  intersectsMapViewport,
   mapScreen,
   screenMap,
   worldPoint,
@@ -328,8 +330,14 @@ export function MapView({
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [state.options.followRaid, state.replay]);
-  const tiles =
-    manifest?.tiles.filter((t) => area === "*" || t.area === area) ?? [];
+  const tiles = useMemo(
+    () =>
+      (manifest?.tiles ?? []).map((tile) => {
+        const corners = tile.corners.map((point) => mapPoint(...point));
+        return { ...tile, corners, bounds: mapBounds(corners) };
+      }),
+    [manifest],
+  );
   const floorPaths = useMemo(() => {
     return (manifest?.floors ?? [])
       .map((floor) => {
@@ -346,6 +354,7 @@ export function MapView({
         }
         return {
           area: floor.area,
+          bounds: mapBounds(vertices),
           path,
           height:
             manifest?.areas.find((area) => area.id === floor.area)?.height ?? 0,
@@ -450,24 +459,30 @@ export function MapView({
     ctx.fillStyle = "#38484d";
     ctx.strokeStyle = "#6b848955";
     ctx.lineWidth = Math.min(0.8, 0.5 / camera.scale);
+    // Allow for miter joins and antialiasing beyond the projected floor bounds.
+    const floorPadding = 8 / camera.scale;
     for (const floor of floorPaths) {
-      if (area !== "*" && floor.area !== area) continue;
+      if (
+        (area !== "*" && floor.area !== area) ||
+        !intersectsMapViewport(floor.bounds, a, b, floorPadding)
+      )
+        continue;
       ctx.fill(floor.path);
       ctx.stroke(floor.path);
     }
     ctx.restore();
+    const tilePadding = 1 / camera.scale;
     for (const tile of tiles) {
-      const image = images.current.get(tile.src);
-      if (!image?.complete || !image.naturalWidth) continue;
-      const points = tile.corners.map((p) => screen(mapPoint(...p))),
-        [tl, tr, , bl] = points;
       if (
-        points.every((p) => p[0] < 0) ||
-        points.every((p) => p[0] > size.width) ||
-        points.every((p) => p[1] < 0) ||
-        points.every((p) => p[1] > size.height)
+        (area !== "*" && tile.area !== area) ||
+        !intersectsMapViewport(tile.bounds, a, b, tilePadding)
       )
         continue;
+      const image = images.current.get(tile.src);
+      if (!image?.complete || !image.naturalWidth) continue;
+      const tl = screen(tile.corners[0]),
+        tr = screen(tile.corners[1]),
+        bl = screen(tile.corners[3]);
       ctx.save();
       ctx.transform(
         (tr[0] - tl[0]) / image.naturalWidth,

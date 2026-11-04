@@ -9,6 +9,8 @@ import {
   worldPoint,
   mapScreen,
   screenMap,
+  mapBounds,
+  intersectsMapViewport,
   zoomMap,
   type MapManifest,
 } from "./map-model";
@@ -166,4 +168,24 @@ test("Frame selection fits a range, retains actor context and includes multiple 
     const [x, y] = mapScreen(point, camera, 900, 650);
     assert.ok(x >= 20 && x <= 880 && y >= 40 && y <= 610);
   }
+});
+
+test("viewport culling preserves touching, stroke-padded and unknown bounds", () => {
+  const bounds = mapBounds([
+    [6, 8],
+    [-2, 11],
+    [2, 9],
+  ]);
+  assert.deepEqual(bounds, [-2, 8, 6, 11]);
+  assert.equal(intersectsMapViewport(bounds, [6, 8], [12, 14], 0), true);
+  assert.equal(intersectsMapViewport(bounds, [7, 9], [12, 14], 0), false);
+  assert.equal(intersectsMapViewport(bounds, [7, 9], [12, 14], 1), true);
+  assert.equal(intersectsMapViewport(mapBounds([]), [7, 9], [12, 14], 0), true);
+  assert.equal(
+    mapBounds([
+      [1, 2],
+      [Infinity, 4],
+    ]),
+    undefined,
+  );
 });

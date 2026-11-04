@@ -26,6 +26,42 @@ export interface MapFloor {
 // North up: +WoW X is screen up; +WoW Y is screen left.
 export const mapPoint = (x: number, y: number): MapPoint => [-y, -x];
 export const worldPoint = (x: number, y: number): MapPoint => [-y, -x];
+export type MapBounds = [
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+];
+
+export function mapBounds(points: readonly MapPoint[]): MapBounds | undefined {
+  let left = Infinity,
+    top = Infinity,
+    right = -Infinity,
+    bottom = -Infinity;
+  for (const [x, y] of points) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+    if (x < left) left = x;
+    if (x > right) right = x;
+    if (y < top) top = y;
+    if (y > bottom) bottom = y;
+  }
+  if (left !== Infinity) return [left, top, right, bottom];
+}
+
+export function intersectsMapViewport(
+  bounds: MapBounds | undefined,
+  topLeft: MapPoint,
+  bottomRight: MapPoint,
+  padding: number,
+) {
+  return (
+    !bounds ||
+    (bounds[2] + padding >= topLeft[0] &&
+      bounds[3] + padding >= topLeft[1] &&
+      bounds[0] - padding <= bottomRight[0] &&
+      bounds[1] - padding <= bottomRight[1])
+  );
+}
 export function mapScreen(
   p: MapPoint,
   camera: MapCamera,
