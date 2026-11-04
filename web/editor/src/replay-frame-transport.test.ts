@@ -271,9 +271,9 @@ test("plain frame rows still clear omitted keys when another field replaces them
   const encoder = new ReplayFrameTransport();
   const packets: string[] = [];
   const publish = (json: string) => packets.push(json);
-  const first = { key: "mage", trajectory: { component: "old" }, cast: 0 };
+  const first = { key: "mage", trajectory: { component: "old" }, display: 42 };
   encoder.send("source", [first], publish, {}, true);
-  const next = { key: "mage", movement: { fraction: 0.5 }, cast: undefined };
+  const next = { key: "mage", movement: { fraction: 0.5 }, display: undefined };
   assert.throws(() =>
     encoder.send(
       "source",
@@ -287,6 +287,6 @@ test("plain frame rows still clear omitted keys when another field replaces them
   );
   encoder.send("source", [next], publish, {}, true);
   assert.deepEqual(JSON.parse(packets[1]).updates, [
-    { key: "mage", movement: { fraction: 0.5 }, cast: null, trajectory: null },
+    { key: "mage", movement: { fraction: 0.5 }, display: null, trajectory: null },
   ]);
 });

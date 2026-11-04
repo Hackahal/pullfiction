@@ -441,7 +441,7 @@ function combatIndex(actor) {
   index={casts,castLength:casts.length,auras,auraLength:auras.length,
     initial,initialLength:initial.length,resources,resourceLength:resources.length,
     ends,size,sortedCasts,sortedResources,sortedAuras,state,cursor:0,values:[...state.values()],
-    checkpoints:new Map([[0,[...state]]])};
+    checkpoints:new Map([[0,[...state]]]),lastCheckpoint:0};
   combatIndexes.set(actor,index);
   return index;
 }
@@ -462,10 +462,10 @@ function activeCast(index,t) {
   return found<0?null:casts[found];
 }
 function resetAuraState(state,aura) {
-  const retained=(aura.preserve??[]).map(spell=>state.get(spell)).filter(Boolean);
+  const retained=aura.preserve==null?null:aura.preserve.map(spell=>state.get(spell)).filter(Boolean);
   state.clear();
   for(const spell of aura.reset)state.set(spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false});
-  for(const entry of retained)state.set(entry.spell,entry);
+  if(retained)for(const entry of retained)state.set(entry.spell,entry);
 }
 function auraState(index,t) {
   const events=index.auras;
@@ -478,12 +478,17 @@ function auraState(index,t) {
     }
     return [...state.values()];
   }
-  let lo=0,hi=events.length;
+  const cursor=index.cursor;
+  const pastPrevious=cursor===0||!(events[cursor-1][0]>t);
+  const beforeNext=cursor===events.length||events[cursor][0]>t;
+  if(pastPrevious&&beforeNext)return index.values;
+  let lo=pastPrevious?cursor:0,hi=pastPrevious?events.length:cursor;
   while(lo<hi){const mid=(lo+hi)>>>1;if(events[mid][0]>t)hi=mid;else lo=mid+1;}
   const target=lo;
-  if(target===index.cursor)return index.values;
-  if(target<index.cursor){
-    const checkpoint=Math.floor(target/AURA_CHECKPOINT)*AURA_CHECKPOINT;
+  // Checkpoints form a contiguous prefix. On a forward seek after rewinding,
+  // use the latest saved state at or before the target instead of replaying it.
+  const checkpoint=Math.min(index.lastCheckpoint,Math.floor(target/AURA_CHECKPOINT)*AURA_CHECKPOINT);
+  if(target<cursor||checkpoint>cursor){
     index.state=new Map(index.checkpoints.get(checkpoint));
     index.cursor=checkpoint;
   }
@@ -492,8 +497,10 @@ function auraState(index,t) {
     if(a.reset)resetAuraState(state,a);
     else if(a.remove)state.delete(a.spell);
     else state.set(a.spell,a);
-    if(index.cursor%AURA_CHECKPOINT===0&&!index.checkpoints.has(index.cursor))
+    if(index.cursor%AURA_CHECKPOINT===0&&index.cursor>index.lastCheckpoint){
       index.checkpoints.set(index.cursor,[...state]);
+      index.lastCheckpoint=index.cursor;
+    }
   }
   index.values=[...index.state.values()];
   return index.values;
