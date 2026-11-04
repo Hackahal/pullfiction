@@ -140,6 +140,7 @@ export async function prepareOriginalUnits(
     bridge.catalog("creatures"),
     bridge.catalog("items"),
   ]);
+  signal?.throwIfAborted();
   const resources = new Set<string>();
   const iconResources = new Set<string>();
   for (const unit of units) {

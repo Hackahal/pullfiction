@@ -5270,15 +5270,28 @@ export class EditorController {
     derived?: ReturnType<EditorController["replayForInstall"]>,
   ) {
     const prepared = derived ?? this.replayForInstall(raw);
-    if (this.localFiles && this.browserBridge) {
+    const files = this.localFiles,
+      bridge = this.browserBridge;
+    if (files && bridge) {
+      signal?.throwIfAborted();
+      const owner = new AbortController();
+      const requestSignal = signal
+        ? AbortSignal.any([signal, owner.signal])
+        : owner.signal;
       const epoch = visible() ? ++this.preparationEpochs[progressField] : null;
       const reportable = () =>
         epoch !== null &&
         epoch === this.preparationEpochs[progressField] &&
-        !signal?.aborted &&
+        !requestSignal.aborted &&
+        this.localFiles === files &&
+        this.browserBridge === bridge &&
         visible();
       let lastProgress = -Infinity;
+      let geometryDone = false;
+      let appearanceProgress = { completed: 0, total: 0 };
       const progress = (completed: number, total: number) => {
+        appearanceProgress = { completed, total };
+        if (!geometryDone) return;
         if (!reportable()) return;
         const now = performance.now();
         if (completed !== total && now - lastProgress < 100) return;
@@ -5302,9 +5315,9 @@ export class EditorController {
       try {
         const { replay } = prepared;
         let lastGeometryProgress = -Infinity;
-        await this.prepareFloorGeometry(
+        const geometry = this.prepareFloorGeometry(
           replay.map,
-          signal,
+          requestSignal,
           (completed, total) => {
             if (!reportable()) return;
             const now = performance.now();
@@ -5324,10 +5337,17 @@ export class EditorController {
               },
             });
           },
-        );
-        await prepareOriginalUnits(
-          this.localFiles,
-          this.browserBridge,
+        ).then(() => {
+          geometryDone = true;
+          if (
+            appearanceProgress.total === 0 ||
+            appearanceProgress.completed < appearanceProgress.total
+          )
+            progress(appearanceProgress.completed, appearanceProgress.total);
+        });
+        const appearances = prepareOriginalUnits(
+          files,
+          bridge,
           replay.actors.map((actor) => {
             const appearance =
               this.appearances[
@@ -5355,9 +5375,11 @@ export class EditorController {
           [...replay.abilities.values()].flatMap((ability) =>
             ability.icon ? [ability.icon] : [],
           ),
-          signal,
+          requestSignal,
           progress,
         );
+        await Promise.all([geometry, appearances]);
+        requestSignal.throwIfAborted();
         if (reportable())
           this.patch({
             [progressField]: {
@@ -5367,23 +5389,25 @@ export class EditorController {
             },
           });
         try {
-          const spellGraph = await this.browserBridge.catalog("spells");
+          const spellGraph = await bridge.catalog("spells");
+          requestSignal.throwIfAborted();
           await prepareOriginalSpellEffects(
-            this.localFiles,
-            this.browserBridge,
+            files,
+            bridge,
             [...replay.abilities.keys()].filter(
               (id) => spellGraph.spells?.[id]?.summonCue,
             ),
-            signal,
+            requestSignal,
           );
         } catch (error) {
-          signal?.throwIfAborted();
+          requestSignal.throwIfAborted();
           if (error instanceof Error && error.name === "AbortError")
             throw error;
           // These illustrative cues are optional; unavailable effects must not block the run.
           this.notify(`Some spell effects are unavailable: ${message(error)}`);
         }
       } finally {
+        owner.abort();
         if (epoch !== null && epoch === this.preparationEpochs[progressField])
           this.patch({ [progressField]: null });
       }

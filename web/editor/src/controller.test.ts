@@ -5301,7 +5301,7 @@ test("a blocked replay section and buffered asset preparation report independent
   );
   let finishGeometry!: (reason: Error) => void;
   internals.localFiles = {};
-  internals.browserBridge = {};
+  internals.browserBridge = { catalog: () => new Promise(() => {}) };
   internals.prepareFloorGeometry = () =>
     new Promise<void>((_, reject) => {
       finishGeometry = reject;
@@ -5340,6 +5340,72 @@ test("a blocked replay section and buffered asset preparation report independent
   internals.localFiles = null;
   internals.browserBridge = null;
   c.stop();
+});
+
+test("replay geometry and appearances overlap with one visible progress stage", async () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    prepareReplayForInstall(value: typeof raw): Promise<unknown>;
+    prepareFloorGeometry(
+      map: number,
+      signal: AbortSignal,
+      progress: (completed: number, total: number) => void,
+    ): Promise<void>;
+    localFiles: object | null;
+    browserBridge: object | null;
+  };
+  let finishGeometry!: () => void, finishAppearance!: () => void;
+  let appearanceStarted!: () => void;
+  const started = new Promise<void>((resolve) => {
+    appearanceStarted = resolve;
+  });
+  internals.prepareFloorGeometry = async (_map, _signal, progress) => {
+    progress(3, 10);
+    await new Promise<void>((resolve) => {
+      finishGeometry = resolve;
+    });
+  };
+  internals.browserBridge = {
+    catalog: async () => ({
+      sectionTextureTypes: Array.from({ length: 32 }, (_, i) => ({
+        race: i >> 1,
+        sex: i % 2,
+        types: [],
+      })),
+    }),
+  };
+  internals.localFiles = {
+    prepare: async (
+      keys: string[],
+      _signal: AbortSignal,
+      progress: (count: number) => void,
+    ) => {
+      if (keys.some((key) => key.startsWith("interface/icons/"))) return;
+      progress(0);
+      await new Promise<void>((resolve) => {
+        finishAppearance = resolve;
+        appearanceStarted();
+      });
+      progress(keys.length);
+    },
+  };
+  try {
+    const ready = internals.prepareReplayForInstall(raw);
+    await started;
+    assert.equal(c.getSnapshot().replayPreparation?.unit, "triangles");
+    assert.equal(c.getSnapshot().replayPreparation?.completed, 3);
+    finishGeometry();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.match(c.getSnapshot().replayPreparation!.message, /appearances/);
+    finishAppearance();
+    await ready;
+    assert.equal(c.getSnapshot().replayPreparation, null);
+  } finally {
+    internals.localFiles = null;
+    internals.browserBridge = null;
+    c.stop();
+  }
 });
 
 test("cancelling a file import prevents its delayed replay from installing", async () => {
