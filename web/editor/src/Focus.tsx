@@ -1,5 +1,5 @@
 import { useBufferedView } from "./ReplayLoading";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { FloatingWindow } from "./FloatingWindow";
 import { EditorIcon } from "./EditorIcon";
 import { GameIcon } from "./GameIcon";
@@ -31,6 +31,7 @@ export function Focus({
   const state = useBufferedView(inputState);
   const [showAuras, setShowAuras] = useState(false);
   const panel = useRef<HTMLElement>(null);
+  const aurasId = useId();
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     () => {
       try {
@@ -87,6 +88,7 @@ export function Focus({
         hidden={Boolean(state.detail)}
         ref={panel}
         className="focus-units"
+        data-empty={!actor}
         aria-label="Focus"
         style={position ? { left: position.x, top: position.y } : undefined}
       >
@@ -159,10 +161,18 @@ export function Focus({
           >
             <EditorIcon name="grip" />
           </span>
+          <span className="focus-hud-status">
+            {actor ? "Focus" : "Select a player or mob"}
+          </span>
           {actor && (
             <button
               className="focus-auras-toggle"
               aria-expanded={showAuras}
+              aria-controls={
+                showAuras
+                  ? `${aurasId}-unit${target ? ` ${aurasId}-target` : ""}`
+                  : undefined
+              }
               onClick={() => setShowAuras((value) => !value)}
             >
               <EditorIcon name={showAuras ? "up" : "down"} />
@@ -173,7 +183,7 @@ export function Focus({
             <EditorIcon name="close" />
           </button>
         </div>
-        {actor ? (
+        {actor && (
           <>
             <FocusedUnit
               actor={actor}
@@ -181,6 +191,7 @@ export function Focus({
               reservePower={reservePower}
               reserveCast={reserveCast}
               showAuras={showAuras}
+              aurasId={`${aurasId}-unit`}
               state={state}
               controller={controller}
               inspect={inspect}
@@ -192,6 +203,7 @@ export function Focus({
                 reservePower={reservePower}
                 reserveCast={reserveCast}
                 showAuras={showAuras}
+                aurasId={`${aurasId}-target`}
                 state={state}
                 controller={controller}
                 target
@@ -203,8 +215,6 @@ export function Focus({
               />
             )}
           </>
-        ) : (
-          <div className="focus-empty">Select a player or mob.</div>
         )}
       </aside>
       {state.detail && (
@@ -227,6 +237,7 @@ function FocusedUnit({
   reservePower,
   reserveCast,
   showAuras,
+  aurasId,
   state,
   controller,
   target = false,
@@ -238,6 +249,7 @@ function FocusedUnit({
   reservePower: boolean;
   reserveCast: boolean;
   showAuras: boolean;
+  aurasId: string;
   state: Snapshot;
   controller: EditorController;
   target?: boolean;
@@ -255,7 +267,7 @@ function FocusedUnit({
       aria-label={target ? "Focused target" : "Focused unit"}
     >
       {showAuras && (
-        <div className="focus-unit-auras">
+        <div className="focus-unit-auras" id={aurasId}>
           {!combat.auras.length && (
             <span className="focus-aura-label">No active auras</span>
           )}
@@ -276,11 +288,18 @@ function FocusedUnit({
         </div>
       )}
       <div className="focus-unit-identity" style={{ borderColor: color }}>
+        <span className="focus-unit-role">
+          {target ? "Target" : actor.type === "Player" ? "Player" : "Unit"}
+        </span>
         <button
           className="focus-unit-name"
           style={{ color: actor.type === "NPC" ? "#efc075" : color }}
           aria-label={target ? `Focus target: ${actor.name}` : undefined}
-          title={target ? evidence : "Center camera on focused unit"}
+          title={
+            target
+              ? [actor.name, evidence].filter(Boolean).join(" · ")
+              : `${actor.name} · Center camera on focused unit`
+          }
           onClick={() =>
             target ? controller.select(actor.key) : controller.focus(actor.key)
           }
@@ -292,9 +311,10 @@ function FocusedUnit({
             className="focus-inspect"
             onClick={inspect}
             title="Inspect equipment and talents"
+            aria-label="Inspect"
           >
             <EditorIcon name="inspect" />
-            Inspect
+            <span>Inspect</span>
           </button>
         )}
       </div>
