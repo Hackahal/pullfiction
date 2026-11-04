@@ -726,16 +726,24 @@
 }
 
 .editor .focus-unit-tools .focus-auras-toggle {
+  display: inline-flex;
+  align-items: center;
   min-height: 22px;
   padding-inline: 7px;
   color: var(--text);
   font-size: 11px;
+  gap: 3px;
 }
 
-.editor .focus-unit-tools .focus-auras-toggle[aria-pressed="true"] {
-  color: #e5f1ff;
-  background: var(--accent-fill);
-  border-color: #52759e;
+.editor .focus-unit-tools .focus-auras-toggle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.editor .focus-unit-tools .focus-auras-toggle[aria-expanded="true"] {
+  color: #f1f3f6;
+  background: #383d45;
+  border-color: #686f7c;
 }
 
 .editor > .menubar {
@@ -858,10 +866,15 @@
 
 .editor .run-playhead {
   top: 12px;
+  width: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 1px #111519;
 }
 
 .editor .run-playhead i {
-  top: -2px;
+  left: -3px;
+  top: -3px;
+  filter: drop-shadow(0 -1px #111519);
 }
 
 .run-navigator[data-workspace="analyse"] .run-lane-labels {
@@ -917,6 +930,9 @@
 }
 
 .editor .focus-unit-auras {
+  align-items: stretch;
+  max-height: none;
+  overflow: visible;
   padding: 4px 6px 5px;
   background: #171b20ee;
   border: 1px solid #454b55;
@@ -1001,4 +1017,88 @@
 .ability-inspector > header strong {
   color: #edf0f5;
   font: 600 12px system-ui, sans-serif;
+}
+
+.editor .focus-aura-row .focus-auras {
+  max-block-size: 42px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.editor .focus-aura-row .focus-auras [role="button"] {
+  box-sizing: border-box;
+}
+
+.viewport-shell {
+  container: replay-scene / inline-size;
+}
+
+.transport .transport-report > svg,
+.transport .plan-label-compact {
+  display: none;
+}
+
+@container replay-scene (max-width: 740px) {
+  .editor .transport:not([hidden]) {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) auto;
+    gap: 4px 6px;
+  }
+
+  .transport .transport-core {
+    grid-column: 1 / -1;
+  }
+
+  .transport .transport-context select {
+    max-width: 100%;
+  }
+
+  .transport .transport-report {
+    display: inline-flex;
+    padding-inline: 5px;
+  }
+
+  .transport .transport-report > svg {
+    display: block;
+  }
+
+  .transport :is(.transport-report > span, .plan-label-wide) {
+    display: none;
+  }
+
+  .transport .plan-label-compact {
+    display: inline;
+  }
+
+  .transport .plan-from-moment {
+    padding-inline: 7px;
+  }
+}
+
+@container replay-scene (max-width: 400px) {
+  .editor .transport .playback-clocks {
+    gap: 3px;
+  }
+
+  .editor .transport .timecode {
+    min-width: 0;
+    gap: 3px;
+    padding-inline: 3px;
+  }
+
+  .transport .timecode b {
+    min-width: 0;
+  }
+}
+
+.analysis-header[data-view="events"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.analysis-header[data-view="events"] > select {
+  width: 100%;
+  max-width: none;
+  padding-inline-start: 5px;
+  font-size: 11px;
 }

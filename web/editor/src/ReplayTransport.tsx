@@ -129,14 +129,22 @@ export function ReplayTransport({
         {state.busy && <span className="busy-dot" />}
         <button
           className="transport-report"
+          aria-label="Open replay log"
           title={state.replay?.report.title ?? "Open log"}
           onClick={onOpenLog}
         >
+          <EditorIcon name="logs" />
           <span>{state.replay?.report.title ?? "Open log"}</span>
         </button>
         {state.replay && state.workspaceMode === "analyse" && (
-          <button className="plan-from-moment" onClick={onPlan}>
-            Plan from this moment
+          <button
+            className="plan-from-moment"
+            aria-label="Plan from this moment"
+            title="Plan from this moment"
+            onClick={onPlan}
+          >
+            <span className="plan-label-wide">Plan from this moment</span>
+            <span className="plan-label-compact">Plan</span>
           </button>
         )}
       </div>

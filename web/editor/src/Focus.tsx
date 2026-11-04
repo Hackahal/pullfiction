@@ -162,9 +162,10 @@ export function Focus({
           {actor && (
             <button
               className="focus-auras-toggle"
-              aria-pressed={showAuras}
+              aria-expanded={showAuras}
               onClick={() => setShowAuras((value) => !value)}
             >
+              <EditorIcon name={showAuras ? "up" : "down"} />
               Auras
             </button>
           )}
@@ -256,6 +257,9 @@ function FocusedUnit({
     >
       {showAuras && (
         <div className="focus-unit-auras">
+          {!combat.auras.length && (
+            <span className="focus-aura-label">No active auras</span>
+          )}
           <AuraGroup
             label={target ? "Target debuffs" : "Debuffs"}
             auras={combat.auras.filter((a) => a.debuff)}

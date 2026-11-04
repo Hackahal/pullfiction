@@ -456,7 +456,7 @@ export function Analysis({
     );
   return (
     <section className="analysis-panel analysis-v2" aria-label="Analysis">
-      <div className="analysis-header">
+      <div className="analysis-header" data-view={config.view}>
         {config.view === "resources" ? (
           <strong>Resources</strong>
         ) : (
@@ -476,7 +476,7 @@ export function Analysis({
             >
               {Object.entries(metrics).map(([k, v]) => (
                 <option key={k} value={k}>
-                  {v}
+                  {config.view === "events" && k === "damage" ? "Damage" : v}
                 </option>
               ))}
             </select>
@@ -510,14 +510,16 @@ export function Analysis({
             </select>
           </>
         )}
-        {config.metric === "damage" && config.view !== "resources" && (
-          <button
-            title="Show predicted parses during playback"
-            onClick={() => set({ view: "parses" })}
-          >
-            Parse %
-          </button>
-        )}
+        {config.metric === "damage" &&
+          config.view !== "resources" &&
+          config.view !== "events" && (
+            <button
+              title="Show predicted parses during playback"
+              onClick={() => set({ view: "parses" })}
+            >
+              Parse %
+            </button>
+          )}
         <PanelSettings
           title={
             config.view === "resources"
@@ -646,6 +648,11 @@ export function Analysis({
                 Use focused player
               </button>
               <button onClick={clearFilters}>Reset filters</button>
+              {config.view === "events" && config.metric === "damage" && (
+                <button onClick={() => set({ view: "parses" })}>
+                  Predicted parses
+                </button>
+              )}
             </div>
           </div>
         </PanelSettings>
@@ -725,7 +732,12 @@ export function Analysis({
                   {range.label}
                   {range.between && <small> · Finished</small>}
                 </span>
-                {config.view !== "resources" && (
+                {config.view === "events" ? (
+                  <span>
+                    {filtered.length.toLocaleString()}{" "}
+                    {filtered.length === 1 ? "event" : "events"}
+                  </span>
+                ) : (
                   <span>
                     {total.toLocaleString()}
                     {rateLabel && (

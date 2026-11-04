@@ -49,7 +49,7 @@ test("Compact Focus shows unit bars and keeps auras and gear behind their contro
   assert.match(html, /aria-label="Focus"/);
   assert.match(html, /aria-label="Health"[^>]*aria-valuenow="800"/);
   assert.match(html, /aria-label="Mana"[^>]*aria-valuenow="300"/);
-  assert.match(html, /aria-pressed="false">Auras<\/button>/);
+  assert.match(html, /aria-expanded="false">.*Auras<\/button>/);
   assert.doesNotMatch(html, /aria-label="(?:Debuffs|Buffs|Intellect|Curse)"/);
   assert.doesNotMatch(
     html,
