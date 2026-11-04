@@ -283,3 +283,99 @@ test("preparation cancellation stops before reading dependencies", async () => {
     { name: "AbortError" },
   );
 });
+
+test("spell model preload overlaps ready siblings and still visits newly discovered children", async () => {
+  const read: string[] = [];
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const files = new LocalClientFiles(
+    {
+      async read(path) {
+        read.push(path);
+        await gate;
+        if (path.endsWith("100.m2"))
+          return model("__classic/10.blp", "__classic/999.m2");
+        if (path.endsWith(".m2")) return model("__classic/10.blp");
+        return new Uint8Array([1]);
+      },
+    },
+    "parallel-spell-models",
+  );
+  const roots = [100, 200, 300, 400, 500];
+  const bridge = {
+    async catalog() {
+      return {
+        spells: { 7: { visuals: [{ id: 1 }] } },
+        visuals: { 1: { missiles: roots.map((effect) => ({ effect })) } },
+        effects: Object.fromEntries(
+          roots.map((id) => [id, { type: 0, fileDataID: id }]),
+        ),
+      };
+    },
+  } as unknown as BrowserAssetBridge;
+  const pending = prepareOriginalSpellEffects(files, bridge, [7]);
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.deepEqual(
+      read,
+      roots.slice(0, 4).map((id) => `__classic/${id}.m2`),
+    );
+  } finally {
+    release();
+  }
+  await pending;
+  assert.deepEqual(read, [
+    ...roots.map((id) => `__classic/${id}.m2`),
+    "__classic/999.m2",
+    "__classic/10.blp",
+  ]);
+});
+
+test("a failed model batch cancels sibling leases before returning", async () => {
+  let release!: () => void, fail!: (error: Error) => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const failure = new Promise<Uint8Array>((_, reject) => {
+    fail = reject;
+  });
+  let siblingSignal: AbortSignal | undefined;
+  const files = new LocalClientFiles(
+    {
+      async read(path, signal) {
+        if (path.endsWith("100.m2")) return failure;
+        siblingSignal = signal;
+        await gate;
+        return model("__classic/10.blp");
+      },
+    },
+    "failed-spell-model-batch",
+  );
+  const bridge = {
+    async catalog() {
+      return {
+        spells: { 7: { visuals: [{ id: 1 }] } },
+        visuals: { 1: { missiles: [{ effect: 1 }, { effect: 2 }] } },
+        effects: {
+          1: { type: 0, fileDataID: 100 },
+          2: { type: 0, fileDataID: 200 },
+        },
+      };
+    },
+  } as unknown as BrowserAssetBridge;
+  const pending = prepareOriginalSpellEffects(files, bridge, [7]);
+  try {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.ok(siblingSignal);
+    fail(new Error("Model conversion failed"));
+    await assert.rejects(pending, /Model conversion failed/);
+    assert.equal(siblingSignal.aborted, true);
+    assert.equal(files.preparedBytes, 0);
+  } finally {
+    release();
+  }
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(files.preparedBytes, 0);
+});

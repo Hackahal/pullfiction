@@ -216,16 +216,42 @@ export async function prepareOriginalSpellEffects(
       signal,
     );
   }
-  for (const path of models) {
+  const queue = models.values();
+  let prepared = 0;
+  while (prepared < models.size) {
     signal?.throwIfAborted();
     if (models.size > 256)
       throw new Error("Spell dependency closure exceeds 256 models");
-    await files.prepare([path], signal);
-    const dependencies = /\.wmo$/i.test(path)
-      ? preparedWmoDependencies(files.readSync(path), path)
-      : preparedModelDependencies(files.readSync(path));
-    dependencies.textures.forEach((texture) => textures.add(texture));
-    dependencies.models.forEach((model) => models.add(model));
+    // Do not read the iterator to exhaustion: decoding this batch can append
+    // new child models. Pull only the entries already known to the set.
+    const batch = Array.from(
+      { length: Math.min(4, models.size - prepared) },
+      () => queue.next().value!,
+    );
+    // A failed sibling must not keep writing to the preparation cache after
+    // this optional preload has returned to its caller.
+    const reads = new AbortController();
+    const cancel = () => reads.abort(signal?.reason);
+    signal?.addEventListener("abort", cancel, { once: true });
+    try {
+      await files.prepare(batch, reads.signal);
+    } catch (error) {
+      reads.abort(error);
+      throw error;
+    } finally {
+      signal?.removeEventListener("abort", cancel);
+    }
+    prepared += batch.length;
+    for (const path of batch) {
+      signal?.throwIfAborted();
+      if (models.size > 256)
+        throw new Error("Spell dependency closure exceeds 256 models");
+      const dependencies = /\.wmo$/i.test(path)
+        ? preparedWmoDependencies(files.readSync(path), path)
+        : preparedModelDependencies(files.readSync(path));
+      dependencies.textures.forEach((texture) => textures.add(texture));
+      dependencies.models.forEach((model) => models.add(model));
+    }
   }
   await files.prepare([...textures], signal);
 }

@@ -353,7 +353,10 @@ export class EditorController {
             for (const id of ids) {
               signal.throwIfAborted();
               const temporary = new LocalClientFiles(
-                { read: (name) => files.readStreaming(name, signal) },
+                {
+                  read: (name, readSignal) =>
+                    files.readStreaming(name, readSignal),
+                },
                 `${files.identity}:warm:${id}`,
                 32 * 1024 * 1024,
               );
