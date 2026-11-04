@@ -1008,11 +1008,6 @@ export function App({ controller }: { controller: EditorController }) {
                         Import an exported replay JSON file below.
                       </p>
                     )}
-                    {state.busy && (
-                      <button onClick={() => controller.cancelImport()}>
-                        Cancel import
-                      </button>
-                    )}
                   </div>
                 )}
                 <form
@@ -1130,7 +1125,23 @@ export function App({ controller }: { controller: EditorController }) {
                   >
                     Import replay JSON
                   </button>
-                  {state.busy && <span>Loading…</span>}
+                  {state.busy && (
+                    <>
+                      <div role="status">
+                        <span>
+                          {state.replayPreparation?.message ?? "Loading…"}
+                        </span>
+                        {state.replayPreparation && (
+                          <PreparationProgress
+                            progress={state.replayPreparation}
+                          />
+                        )}
+                      </div>
+                      <button onClick={() => controller.cancelImport()}>
+                        Cancel import
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             ) : (
@@ -1906,7 +1917,16 @@ function Viewport({
             )}
           </div>
         ) : null}
-        {state.sceneReady && state.buffering && (
+        {state.sceneReady && state.busy && state.replayPreparation && (
+          <div className="scene-loading loading-surface" role="status">
+            <strong>{state.replayPreparation.message}</strong>
+            <PreparationProgress progress={state.replayPreparation} />
+            <button onClick={() => controller.cancelImport()}>
+              Cancel loading
+            </button>
+          </div>
+        )}
+        {state.sceneReady && !state.busy && state.buffering && (
           <div className="scene-loading loading-surface" role="status">
             <strong>
               {state.bufferError ??

@@ -28,7 +28,12 @@ export function LoadingProgress({
 export function PreparationProgress({
   progress,
 }: {
-  progress: { message: string; completed: number; total: number };
+  progress: {
+    message: string;
+    completed: number;
+    total: number;
+    unit?: "events";
+  };
 }) {
   return (
     <div className="loading-progress">
@@ -40,7 +45,7 @@ export function PreparationProgress({
       />
       <small>
         {progress.total > 0
-          ? `${progress.completed} / ${progress.total} assets checked`
+          ? `${progress.completed} / ${progress.total} ${progress.unit === "events" ? "events read" : "assets checked"}`
           : "Preparing the next step…"}
       </small>
     </div>

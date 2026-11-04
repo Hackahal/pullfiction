@@ -1,3 +1,4 @@
+import { readReplayFile } from "./replay-file";
 import { assetProgress } from "./loading-progress";
 import { framePerformance, type FramePerformance } from "./frame-performance";
 import {
@@ -1365,40 +1366,66 @@ export class EditorController {
     }
   }
   async openProject(id: string) {
+    let epoch: number | undefined;
+    let abort: AbortController | undefined;
+    let clientSignal: AbortSignal | undefined;
+    const cancel = () => abort?.abort(clientSignal?.reason);
+    const restore = (operation: () => void) => {
+      const previous = this.restoringProject;
+      this.restoringProject = true;
+      try {
+        operation();
+      } finally {
+        this.restoringProject = previous;
+      }
+    };
     try {
       await this.flushProject();
       await this.replayCacheWrite;
       const project = await this.projectStore?.get(id);
       if (!project || project.deletedAt !== null)
         throw new Error("Local project not found");
-      const epoch = ++this.request;
+      this.cancelImport();
+      epoch = ++this.request;
+      abort = this.importAbort = new AbortController();
+      const signal = abort.signal;
+      clientSignal = this.clientAbort?.signal;
+      clientSignal?.addEventListener("abort", cancel, { once: true });
+      if (clientSignal?.aborted) cancel();
       this.patch({ busy: true, playing: false });
       const raw = project.source
         ? await this.projectStore!.getReplay(project.source.cacheKey)
         : null;
+      signal.throwIfAborted();
       if (epoch !== this.request) return false;
       if (!this.state.browserAssets || this.state.clientStatus === "ready")
-        await this.preparePlanAssets(project.plan, this.clientAbort?.signal);
+        await this.preparePlanAssets(project.plan, signal);
+      signal.throwIfAborted();
       if (epoch !== this.request) return false;
-      this.restoringProject = true;
-      this.mapDrafts.clear();
-      this.selectRaid(project.plan.mapId, true, project.plan.gameVersion);
-      this.patch({ busy: true });
-      if (raw && project.source)
-        project.source = {
-          ...project.source,
-          summary: summarizeRun(raw, project.plan.mapId),
-        };
-      this.resetProject(project);
-      this.saved = JSON.stringify(project.plan);
-      this.undoStack = [];
-      this.redoStack = [];
-      this.planState(project.plan);
-      this.patch({
-        activeStep: initialStep(project.plan),
-        selectedMark: null,
-        selectedMarks: [],
-        selectedActors: [],
+      restore(() => {
+        this.mapDrafts.clear();
+        this.selectRaid(
+          project.plan.mapId,
+          true,
+          project.plan.gameVersion,
+          true,
+        );
+        if (raw && project.source)
+          project.source = {
+            ...project.source,
+            summary: summarizeRun(raw, project.plan.mapId),
+          };
+        this.resetProject(project);
+        this.saved = JSON.stringify(project.plan);
+        this.undoStack = [];
+        this.redoStack = [];
+        this.planState(project.plan);
+        this.patch({
+          activeStep: initialStep(project.plan),
+          selectedMark: null,
+          selectedMarks: [],
+          selectedActors: [],
+        });
       });
       if (
         raw &&
@@ -1406,12 +1433,16 @@ export class EditorController {
       ) {
         const prepared = await this.prepareReplayForInstall(
           raw,
-          this.clientAbort?.signal,
+          signal,
+          () => epoch === this.request,
         );
+        signal.throwIfAborted();
         if (epoch !== this.request) return false;
-        this.installReplay(raw, prepared);
-        this.seek(project.time);
-        this.patch({ sourceStatus: "cached" });
+        restore(() => {
+          this.installReplay(raw, prepared);
+          this.seek(project.time);
+          this.patch({ sourceStatus: "cached" });
+        });
       } else if (raw) {
         this.pendingProjectReplay = {
           raw,
@@ -1427,15 +1458,22 @@ export class EditorController {
             "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
           );
       }
-      this.setWorkspaceMode(project.mode);
+      restore(() => this.setWorkspaceMode(project.mode));
       await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
       return true;
     } catch (error) {
-      this.notify(`Could not open project: ${message(error)}`);
+      if (
+        (epoch === undefined || epoch === this.request) &&
+        !abort?.signal.aborted
+      )
+        this.notify(`Could not open project: ${message(error)}`);
       return false;
     } finally {
-      this.restoringProject = false;
-      this.patch({ busy: false });
+      clientSignal?.removeEventListener("abort", cancel);
+      if (epoch !== undefined && epoch === this.request) {
+        this.importAbort = null;
+        this.patch({ busy: false, replayPreparation: null });
+      }
     }
   }
   async initializeFrontDoor() {
@@ -4105,6 +4143,7 @@ export class EditorController {
     map: number,
     clearReplay = true,
     version: GameVersion = this.state.gameVersion,
+    keepImport = false,
   ) {
     const raid = raidByMap(map, version);
     if (!raid) throw new Error("Unsupported raid map for this game version");
@@ -4148,13 +4187,7 @@ export class EditorController {
       this.resetProject(null);
       this.mapDrafts.clear();
     }
-    if (clearReplay) {
-      this.loadingBuffer?.close();
-      this.loadingBuffer = null;
-      this.importAbort?.abort();
-      this.request++;
-      this.patch({ busy: false });
-    }
+    if (clearReplay && !keepImport) this.cancelImport();
     try {
       this.storage?.setItem(ACTIVE_RAID_KEY, String(map));
       this.storage?.setItem("pullfiction.gameVersion.v1", version);
@@ -4789,7 +4822,8 @@ export class EditorController {
     this.importAbort = null;
     this.loadingBuffer?.close();
     this.loadingBuffer = null;
-    this.patch({ busy: false });
+    this.preparationEpochs.replayPreparation++;
+    this.patch({ busy: false, replayPreparation: null });
   }
   private async initializeWcl() {
     if (this.authStarted || typeof window === "undefined") return;
@@ -5500,31 +5534,88 @@ export class EditorController {
     if (this.state.sceneReady) this.focusCurrent();
   }
   async importFile(file: File, kind: "plan" | "replay") {
+    if (kind === "replay") return this.importReplayFile(file);
     try {
       await this.flushProject();
-      if (file.size > (kind === "plan" ? 400000 : 150000000))
-        throw new Error("File exceeds import limit");
-      const text = await file.text();
-      if (kind === "plan") {
-        const plan = parsePlan(text);
-        await this.preparePlanAssets(plan, this.clientAbort?.signal);
-        if (this.projectStore) {
-          this.resetProject(null);
-          this.saved = "";
-        }
-        this.selectRaid(plan.mapId, true, plan.gameVersion);
-        this.editPlan(plan);
-      } else {
-        await this.loadCatalogs();
-        const raw = JSON.parse(text) as RawReplay;
-        const prepared = await this.prepareReplayForInstall(
-          raw,
-          this.clientAbort?.signal,
-        );
-        this.installReplay(raw, prepared);
+      if (file.size > 400000) throw new Error("File exceeds import limit");
+      const plan = parsePlan(await file.text());
+      await this.preparePlanAssets(plan, this.clientAbort?.signal);
+      if (this.projectStore) {
+        this.resetProject(null);
+        this.saved = "";
       }
+      this.selectRaid(plan.mapId, true, plan.gameVersion);
+      this.editPlan(plan);
     } catch (e) {
       this.notify(message(e));
+    }
+  }
+  private async importReplayFile(file: File) {
+    if (this.state.busy) return;
+    this.cancelPlayPreparation();
+    const request = ++this.request;
+    const abort = (this.importAbort = new AbortController());
+    const signal = abort.signal;
+    const clientSignal = this.clientAbort?.signal;
+    const cancel = () => abort.abort(clientSignal?.reason);
+    clientSignal?.addEventListener("abort", cancel, { once: true });
+    if (clientSignal?.aborted) cancel();
+    let lastProgress = -Infinity;
+    this.patch({
+      busy: true,
+      playing: false,
+      replayPreparation: {
+        message: "Reading replay file…",
+        completed: 0,
+        total: 0,
+      },
+    });
+    try {
+      if (file.size > 150000000) throw new Error("File exceeds import limit");
+      await this.flushProject();
+      signal.throwIfAborted();
+      const [raw] = await Promise.all([
+        readReplayFile(file, signal, (completed, total) => {
+          if (signal.aborted || request !== this.request) return;
+          const now = performance.now();
+          if (completed !== total && now - lastProgress < 100) return;
+          lastProgress = now;
+          this.patch({
+            replayPreparation: {
+              message: "Reading replay events…",
+              completed,
+              total,
+              unit: "events",
+            },
+          });
+        }),
+        this.loadCatalogs(),
+      ]);
+      signal.throwIfAborted();
+      if (request !== this.request) return;
+      this.patch({
+        replayPreparation: {
+          message: "Preparing replay data…",
+          completed: 0,
+          total: 0,
+        },
+      });
+      const prepared = await this.prepareReplayForInstall(
+        raw,
+        signal,
+        () => request === this.request,
+      );
+      signal.throwIfAborted();
+      if (request === this.request) this.installReplay(raw, prepared);
+    } catch (e) {
+      if (!signal.aborted && request === this.request) this.notify(message(e));
+    } finally {
+      clientSignal?.removeEventListener("abort", cancel);
+      abort.abort();
+      if (request === this.request) {
+        this.importAbort = null;
+        this.patch({ busy: false, replayPreparation: null });
+      }
     }
   }
   exportFile(kind: "plan" | "replay") {

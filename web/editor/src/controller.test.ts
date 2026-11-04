@@ -5341,3 +5341,121 @@ test("a blocked replay section and buffered asset preparation report independent
   internals.browserBridge = null;
   c.stop();
 });
+
+test("cancelling a file import prevents its delayed replay from installing", async () => {
+  const { c } = fixture();
+  const previous = c.getSnapshot().replay;
+  const internals = c as unknown as { loadCatalogs(): Promise<void> };
+  internals.loadCatalogs = async () => {};
+  let read!: () => void, finish!: (value: string) => void;
+  const reading = new Promise<void>((resolve) => {
+    read = resolve;
+  });
+  const pending = c.importFile(
+    {
+      size: 1,
+      text: () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+          read();
+        }),
+    } as File,
+    "replay",
+  );
+  await reading;
+  assert.equal(c.getSnapshot().busy, true);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /Reading replay file/,
+  );
+  c.cancelImport();
+  finish(JSON.stringify(raw));
+  await pending;
+  assert.equal(c.getSnapshot().replay, previous);
+  assert.equal(c.getSnapshot().busy, false);
+  assert.equal(c.getSnapshot().replayPreparation, null);
+  c.stop();
+});
+
+test("a cancelled project load cannot clear a newer file import's progress", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const project = newProject(emptyPlan(409), replaySource(raw, 409));
+  await store.putReplay(project.source!.cacheKey, raw);
+  await store.put(project);
+  const c = new EditorController(undefined, {
+    projectStore: store,
+    clientCache: null,
+    clientFolders: null,
+  });
+  const internals = c as unknown as {
+    loadCatalogs(): Promise<void>;
+    prepareReplayForInstall(
+      input: typeof raw,
+      signal: AbortSignal,
+    ): Promise<never>;
+  };
+  internals.loadCatalogs = async () => {};
+  let ready!: () => void, rejectPreparation!: (error: Error) => void;
+  let oldSignal!: AbortSignal;
+  const preparing = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  internals.prepareReplayForInstall = (_input, signal) => {
+    oldSignal = signal;
+    return new Promise((_, reject) => {
+      rejectPreparation = reject;
+      ready();
+    });
+  };
+  const old = c.openProject(project.id);
+  await preparing;
+  c.cancelImport();
+  assert.equal(oldSignal.aborted, true);
+  let reading!: () => void, finishRead!: (text: string) => void;
+  const read = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  const next = c.importFile(
+    {
+      size: 1,
+      text: () =>
+        new Promise<string>((resolve) => {
+          finishRead = resolve;
+          reading();
+        }),
+    } as File,
+    "replay",
+  );
+  await read;
+  rejectPreparation(Error("old load stopped"));
+  assert.equal(await old, false);
+  assert.equal(c.getSnapshot().busy, true);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /Reading replay file/,
+  );
+  c.cancelImport();
+  finishRead("{}");
+  await next;
+  c.stop();
+});
+
+test("opening a cached replay on another raid keeps its own load request", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const source = {
+    ...raw,
+    fight: { ...raw.fight, gameZone: { name: "Blackwing Lair" } },
+  };
+  const project = newProject(emptyPlan(469), replaySource(source, 469));
+  await store.putReplay(project.source!.cacheKey, source);
+  await store.put(project);
+  const c = new EditorController(undefined, {
+    projectStore: store,
+    clientCache: null,
+    clientFolders: null,
+  });
+  assert.equal(await c.openProject(project.id), true);
+  assert.equal(c.getSnapshot().replay?.map, 469);
+  assert.equal(c.getSnapshot().busy, false);
+  c.stop();
+});
