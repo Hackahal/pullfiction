@@ -225,28 +225,36 @@ export class ReplayFloorGeometry {
       ? undefined
       : this.height(x, y, context, false);
   }
-  private *crossings(
+  private visitCrossings(
     x: number,
     y: number,
-  ): IterableIterator<[number, Triangle]> {
-    const ids =
-      this.columns.get(`${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`) ?? [];
-    for (const id of [...ids, ...this.broad]) {
+    visit: (z: number, triangle: Triangle) => void,
+  ): void {
+    const ids = this.columns.get(
+      `${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`,
+    );
+    const localCount = ids?.length ?? 0;
+    const count = localCount + this.broad.length;
+    for (let i = 0; i < count; i++) {
+      const id = i < localCount ? ids![i] : this.broad[i - localCount];
       const tri = this.triangles[id],
         { a, ab, ac, nz } = tri;
-      const u = ((x - a[0]) * ac[1] - (y - a[1]) * ac[0]) / nz;
-      const v = (ab[0] * (y - a[1]) - ab[1] * (x - a[0])) / nz;
+      const dx = x - a[0],
+        dy = y - a[1];
+      const u = (dx * ac[1] - dy * ac[0]) / nz;
+      const v = (ab[0] * dy - ab[1] * dx) / nz;
       if (u < -1e-5 || v < -1e-5 || u + v > 1.00001) continue;
-      yield [a[2] + u * ab[2] + v * ac[2], tri];
+      visit(a[2] + u * ab[2] + v * ac[2], tri);
     }
   }
   private stepHeight(x: number, y: number, from: number): number | undefined {
     let best: number | undefined;
     // A walking down-ray finds the highest support within step-up reach, not
     // the numerically closest floor below a ramp laid over a lower surface.
-    for (const [z] of this.crossings(x, y))
+    this.visitCrossings(x, y, (z) => {
       if (z <= from + 1.1 && z >= from - 2 && (best === undefined || z > best))
         best = z;
+    });
     return best;
   }
 
@@ -256,10 +264,11 @@ export class ReplayFloorGeometry {
     const key = `${x}:${y}`;
     const cached = this.candidateColumns.get(key);
     if (cached) return cached;
-    const levels = [...this.crossings(x, y)]
-      .filter(([, triangle]) => triangle.structure)
-      .map(([z]) => z)
-      .sort((a, b) => a - b);
+    const levels: number[] = [];
+    this.visitCrossings(x, y, (z, triangle) => {
+      if (triangle.structure) levels.push(z);
+    });
+    levels.sort((a, b) => a - b);
     const unique: number[] = [];
     for (const z of levels)
       if (!unique.length || z - unique[unique.length - 1] > 0.05)
@@ -285,7 +294,7 @@ export class ReplayFloorGeometry {
       const calibrated = this.calibratedHeight(x, y, hint);
       if (calibrated !== undefined) return calibrated;
     }
-    for (const [z, { interior, structure: built }] of this.crossings(x, y)) {
+    this.visitCrossings(x, y, (z, { interior, structure: built }) => {
       if (best === undefined || Math.abs(z - hint) < Math.abs(best - hint))
         best = z;
       if (
@@ -299,7 +308,7 @@ export class ReplayFloorGeometry {
           Math.abs(z - hint) < Math.abs(structure - hint))
       )
         structure = z;
-    }
+    });
     // Open cloisters and decks are authored exterior groups, but still carry
     // the walkable floor above or below the terrain. Never treat them as terrain.
     return preferInterior ? (inside ?? structure ?? best) : best;
@@ -316,8 +325,8 @@ export class ReplayFloorGeometry {
       if (![x, y, hint].every(Number.isFinite)) return;
       if (!preferInterior) return this.height(x, y, hint, false);
       let best: { z: number; level: number; depth: number } | undefined;
-      for (const [z, { interior, room }] of this.crossings(x, y)) {
-        if (!interior || room === undefined || z > room + 0.01) continue;
+      this.visitCrossings(x, y, (z, { interior, room }) => {
+        if (!interior || room === undefined || z > room + 0.01) return;
         const level = Math.abs(room - hint),
           depth = room - z;
         if (
@@ -326,7 +335,7 @@ export class ReplayFloorGeometry {
           (level === best.level && depth < best.depth)
         )
           best = { z, level, depth };
-      }
+      });
       return best?.z ?? this.height(x, y, hint, true);
     },
   };
