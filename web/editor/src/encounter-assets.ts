@@ -35,8 +35,18 @@ export function encounterAssets(
   for (const chapter of selected)
     for (const npc of chapter.enemyNPCs ?? []) ids.add(npc.id);
   const spells = new Set<number>();
-  for (const event of replay.combat ?? []) {
-    if (event.t < start || event.t > end) continue;
+  // Combat enrichment publishes rows ordered by timestamp and source event ID.
+  const combat = replay.combat ?? [];
+  let first = 0,
+    limit = combat.length;
+  while (first < limit) {
+    const mid = (first + limit) >>> 1;
+    if (combat[mid].t < start) first = mid + 1;
+    else limit = mid;
+  }
+  for (let i = first; i < combat.length; i++) {
+    const event = combat[i];
+    if (event.t > end) break;
     if (event.source) keys.add(event.source);
     if (event.target) keys.add(event.target);
     if (event.spell > 0) spells.add(event.spell);

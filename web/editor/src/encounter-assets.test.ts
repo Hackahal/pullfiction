@@ -34,6 +34,17 @@ test("encounter preparation selects inclusive boundaries and at most one adjacen
   assert.throws(() => encounterAssets(replay, 150, 2), /window/);
   assert.throws(() => encounterAssets(replay, NaN), /window/);
 });
+test("window scanning keeps equal-time combat rows at both edges in original order", () => {
+  const bounded = {
+    ...replay,
+    combat: [99, 100, 100, 190, 190, 191].map((t, i) => ({
+      t,
+      source: "1:1",
+      spell: i + 1,
+    })),
+  } as Replay;
+  assert.deepEqual(encounterAssets(bounded, 150).spells, [2, 3, 4, 5]);
+});
 test("preparation limits retained selections independently of replay duration", () => {
   const large = {
     ...replay,

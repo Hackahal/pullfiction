@@ -5065,6 +5065,49 @@ test("speculative asset warming cannot block native playback preparation", () =>
   assert.equal(f.c.getSnapshot().playing, true);
 });
 
+test("scrubbing within an encounter retains its warmup but crossing encounters cancels it", () => {
+  const { c } = fixture();
+  const replay = c.getSnapshot().replay!;
+  replay.chapters = [
+    { id: 1, start: 0, end: 3000, name: "First" },
+    { id: 2, start: 3500, end: 10000, name: "Second" },
+  ];
+  const internals = c as unknown as {
+    localFiles: object | null;
+    browserBridge: object | null;
+    resetProject(project: null): void;
+    prepareFloorGeometry(map: number, signal: AbortSignal): Promise<void>;
+  };
+  internals.localFiles = {};
+  internals.browserBridge = {};
+  const leases: AbortSignal[] = [];
+  internals.prepareFloorGeometry = (_map, signal) => {
+    leases.push(signal);
+    return new Promise<void>((_, reject) =>
+      signal.addEventListener("abort", () => reject(signal.reason), {
+        once: true,
+      }),
+    );
+  };
+  try {
+    c.seek(1000);
+    c.seek(2000);
+    assert.equal(leases.length, 1);
+    assert.equal(leases[0].aborted, false);
+    c.seek(4000);
+    assert.equal(leases.length, 2);
+    assert.equal(leases[0].aborted, true);
+    assert.equal(leases[1].aborted, false);
+    internals.resetProject(null);
+    assert.equal(c.getSnapshot().replay, null);
+    assert.equal(leases[1].aborted, true);
+  } finally {
+    internals.localFiles = null;
+    internals.browserBridge = null;
+    c.stop();
+  }
+});
+
 test("initial scene deadline cancels playback preparation and a healthy retry can complete", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const f = fixture();

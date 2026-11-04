@@ -298,6 +298,11 @@ export class EditorController {
     renderModels: Record<string, unknown>;
     itemModels: Record<string, unknown>;
   };
+  private resetEncounterWarmup() {
+    this.encounterWarmEpoch++;
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
+  }
   private warmEncounter() {
     // Speculative conversions use idle time; demand loading owns playback bandwidth.
     if (this.state.playing || this.state.playPreparing) return;
@@ -792,6 +797,8 @@ export class EditorController {
     const cameraBefore = this.state.cameraMode,
       targetBefore = this.state.orbitTarget;
     const dimensionBefore = this.state.dimensionInput;
+    if (change.replay === null && this.state.replay)
+      this.resetEncounterWarmup();
     this.state = { ...this.state, ...change };
     if (this.state.cameraMode === "orbit" && change.selected) {
       const player = this.sceneActors().find(
@@ -4501,8 +4508,6 @@ export class EditorController {
     this.clearTrajectoryRetries();
     if (this.state.downloadingReplay) this.cancelReplayDownload();
     this.trajectoryCoverageBlocked = false;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
     this.clockTime = Math.max(0, Math.min(this.duration(), time));
     this.resetEvents = true;
     this.patch({ playing: false, time: this.clockTime });
@@ -5587,9 +5592,7 @@ export class EditorController {
     buffer?: ReplayBuffer,
   ) {
     this.cancelPlayPreparation();
-    this.encounterWarmEpoch++;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.clearTrajectoryRetries();
     this.trajectoryEpoch++;
     this.trajectoryCoverageBlocked = false;
@@ -5817,8 +5820,7 @@ export class EditorController {
   attachEngine(engine: Engine) {
     this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.replayNormalizer.reset();
     this.replayMetadata = undefined;
     this.trajectoryEpoch++; // Late notifications from a previous installation are stale.
@@ -6896,9 +6898,7 @@ export class EditorController {
   stop() {
     this.pendingScrub = null;
     this.cancelPlayPreparation();
-    this.encounterWarmEpoch++;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.replayNormalizer.reset();
     this.replayMetadata = undefined;
     this.clearTrajectoryRetries();

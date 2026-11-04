@@ -352,7 +352,8 @@ export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reus
   for(let j=0;j<events.length;j++){
     if((j&255)===0)yield;
     const i=order?.[j]??j,e=events[i];
-    const t=e.timestamp-raw.fight.startTime;if(t<0||t>replay.duration)continue;
+    if(!Number.isFinite(e.timestamp))continue;
+    const t=e.timestamp-raw.fight.startTime;if(!Number.isFinite(t)||t<0||t>replay.duration)continue;
     const source=index.get(`${e.sourceID}:${e.sourceInstance||1}`), target=index.get(`${e.targetID}:${e.targetInstance||1}`);
     const loggedSpell=e.abilityGameID??e.ability?.guid??0;
     // WCL uses -4 for some melee events; the client uses spell 1 for melee.
