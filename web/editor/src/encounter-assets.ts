@@ -8,12 +8,7 @@ export interface EncounterAssets {
   omittedActors: number;
   omittedSpells: number;
 }
-/** Preparation is optional and bounded; omitted assets keep ordinary demand loading. */
-export function encounterAssets(
-  replay: Replay,
-  time: number,
-  adjacent = 0,
-): EncounterAssets {
+function validateWindow(time: number, adjacent: number) {
   if (
     !Number.isFinite(time) ||
     !Number.isInteger(adjacent) ||
@@ -21,6 +16,15 @@ export function encounterAssets(
     adjacent > 1
   )
     throw new Error("Invalid encounter preparation window");
+}
+
+/** Preparation is optional and bounded; omitted assets keep ordinary demand loading. */
+export function encounterAssets(
+  replay: Replay,
+  time: number,
+  adjacent = 0,
+): EncounterAssets {
+  validateWindow(time, adjacent);
   const chapters = replay.chapters;
   let index = chapters.findIndex((chapter) => chapter.end >= time);
   if (index < 0) index = Math.max(0, chapters.length - 1);
@@ -64,6 +68,21 @@ export function encounterAssets(
   };
 }
 
+function waitForWarmupTask(signal: AbortSignal) {
+  signal.throwIfAborted();
+  return new Promise<void>((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, 0);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
 /** Own one preparation lease per report/client session; close on source replacement. */
 export class EncounterAssetWarmer {
   private job?: AbortController;
@@ -87,14 +106,19 @@ export class EncounterAssetWarmer {
     options: { adjacent?: number; signal?: AbortSignal } = {},
   ): Promise<EncounterAssets> {
     if (this.closed) throw new Error("Encounter preparation is closed");
-    options.signal?.throwIfAborted();
-    const assets = encounterAssets(replay, time, options.adjacent);
+    const { signal, adjacent = 0 } = options;
+    signal?.throwIfAborted();
+    validateWindow(time, adjacent);
     this.cancel();
     const job = new AbortController();
     this.job = job;
-    const cancel = () => job.abort(options.signal?.reason);
-    options.signal?.addEventListener("abort", cancel, { once: true });
+    const cancel = () => job.abort(signal?.reason);
+    signal?.addEventListener("abort", cancel, { once: true });
     try {
+      // A scrub must hand off its frame before optional asset selection starts.
+      await waitForWarmupTask(job.signal);
+      job.signal.throwIfAborted();
+      const assets = encounterAssets(replay, time, adjacent);
       await prepare.geometry(replay.map, job.signal);
       job.signal.throwIfAborted();
       await prepare.units(assets.actors, job.signal);
@@ -103,7 +127,7 @@ export class EncounterAssetWarmer {
       job.signal.throwIfAborted();
       return assets;
     } finally {
-      options.signal?.removeEventListener("abort", cancel);
+      signal?.removeEventListener("abort", cancel);
       if (this.job === job) this.job = undefined;
     }
   }

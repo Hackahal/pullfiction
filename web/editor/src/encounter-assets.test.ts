@@ -62,6 +62,42 @@ test("preparation limits retained selections independently of replay duration", 
   assert.equal(selection.omittedActors, 488);
   assert.equal(selection.omittedSpells, 744);
 });
+test("a superseded warmup never starts geometry or asset selection", async () => {
+  const warmer = new EncounterAssetWarmer();
+  const calls: string[] = [];
+  let scans = 0;
+  const counted = {
+    ...replay,
+    get combat() {
+      scans++;
+      return replay.combat;
+    },
+  };
+  const old = warmer.prepare(counted, 0, {
+    geometry: async () => {
+      calls.push("old");
+    },
+    units: async () => {},
+    spells: async () => {},
+  });
+  const next = warmer.prepare(counted, 150, {
+    geometry: async () => {
+      calls.push("latest");
+    },
+    units: async () => {},
+    spells: async () => {},
+  });
+  assert.deepEqual(calls, []);
+  assert.equal(scans, 0);
+  const cancelled = assert.rejects(old, { name: "AbortError" });
+  await Promise.resolve();
+  assert.deepEqual(calls, [], "selection waits past the microtask checkpoint");
+  assert.equal(scans, 0);
+  await cancelled;
+  await next;
+  assert.deepEqual(calls, ["latest"]);
+  assert.equal(scans, 1);
+});
 test("seek replacement aborts preparation and prevents late spell preparation", async () => {
   const warmer = new EncounterAssetWarmer();
   let started!: () => void;
@@ -103,16 +139,21 @@ test("seek replacement aborts preparation and prevents late spell preparation", 
 });
 test("report replacement cannot continue after an uncancellable callback returns late", async () => {
   const warmer = new EncounterAssetWarmer();
-  let release!: () => void;
+  let release!: () => void, started!: () => void;
+  const running = new Promise<void>((resolve) => (started = resolve));
   const ready = new Promise<void>((resolve) => (release = resolve));
   let units = 0;
   const pending = warmer.prepare(replay, 0, {
-    geometry: () => ready,
+    geometry: () => {
+      started();
+      return ready;
+    },
     units: async () => {
       units++;
     },
     spells: async () => {},
   });
+  await running;
   warmer.close();
   release();
   await assert.rejects(pending, { name: "AbortError" });

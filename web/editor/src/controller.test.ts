@@ -5065,8 +5065,8 @@ test("speculative asset warming cannot block native playback preparation", () =>
   assert.equal(f.c.getSnapshot().playing, true);
 });
 
-test("scrubbing within an encounter retains its warmup but crossing encounters cancels it", () => {
-  const { c } = fixture();
+test("scrubbing within an encounter retains its warmup but crossing encounters cancels it", async () => {
+  const { c, engine } = fixture();
   const replay = c.getSnapshot().replay!;
   replay.chapters = [
     { id: 1, start: 0, end: 3000, name: "First" },
@@ -5081,8 +5081,11 @@ test("scrubbing within an encounter retains its warmup but crossing encounters c
   internals.localFiles = {};
   internals.browserBridge = {};
   const leases: AbortSignal[] = [];
+  let started: (() => void) | undefined;
+  const nextLease = () => new Promise<void>((resolve) => (started = resolve));
   internals.prepareFloorGeometry = (_map, signal) => {
     leases.push(signal);
+    started?.();
     return new Promise<void>((_, reject) =>
       signal.addEventListener("abort", () => reject(signal.reason), {
         once: true,
@@ -5090,13 +5093,25 @@ test("scrubbing within an encounter retains its warmup but crossing encounters c
     );
   };
   try {
+    engine.prepare_replay_playback = () => {};
+    c.seek(1000);
+    c.toggle();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    assert.equal(leases.length, 0, "Play cancels the still pending warmup");
+    c.toggle();
+    const first = nextLease();
     c.seek(1000);
     c.seek(2000);
+    assert.equal(leases.length, 0);
+    await first;
     assert.equal(leases.length, 1);
     assert.equal(leases[0].aborted, false);
+    const second = nextLease();
     c.seek(4000);
-    assert.equal(leases.length, 2);
     assert.equal(leases[0].aborted, true);
+    assert.equal(leases.length, 1);
+    await second;
+    assert.equal(leases.length, 2);
     assert.equal(leases[1].aborted, false);
     internals.resetProject(null);
     assert.equal(c.getSnapshot().replay, null);
