@@ -3,6 +3,7 @@ import { readReplayFile } from "./replay-file";
 import {
   prepareWholeReplay,
   SLICED_IMPORT_MIN_EVENTS,
+  drainReplayTasks,
 } from "./replay-preparation";
 import { assetProgress } from "./loading-progress";
 import { framePerformance, type FramePerformance } from "./frame-performance";
@@ -72,7 +73,7 @@ import {
 } from "./original-client-assets";
 import { prepareOriginalSpellEffects } from "./original-spell-assets";
 import { installLocalUiArt } from "./local-ui-art";
-import { localSpellReplay } from "./local-spell-assets";
+import { localSpellReplay, localSpellReplaySteps } from "./local-spell-assets";
 import { setLocalTalentsProvider, type TalentCatalog } from "./local-talents";
 import {
   assetBridge,
@@ -5151,16 +5152,39 @@ export class EditorController {
       job.processing = true;
       this.reportBufferedProcessing(job);
       try {
-        const { input, models, renderModels, itemModels, spells } =
-          this.replayInput(raw);
-        const replay = await this.replayNormalizer.normalizeSliced(
-          input,
+        const catalog = this.modernSpells;
+        const inputCurrent = () => current() && this.modernSpells === catalog;
+        const input = this.state.browserAssets
+          ? await drainReplayTasks(
+              localSpellReplaySteps(
+                { ...raw, events: normalizationEvents(raw) },
+                catalog,
+              ),
+              () => {
+                if (!inputCurrent())
+                  throw new DOMException(
+                    "Replay preparation superseded",
+                    "AbortError",
+                  );
+              },
+            )
+          : undefined;
+        if (!inputCurrent()) return;
+        const {
+          input: normalizedInput,
+          models,
           renderModels,
           itemModels,
           spells,
-          current,
+        } = this.replayInput(raw, input);
+        const replay = await this.replayNormalizer.normalizeSliced(
+          normalizedInput,
+          renderModels,
+          itemModels,
+          spells,
+          inputCurrent,
         );
-        if (!current()) return;
+        if (!inputCurrent()) return;
         derived = this.completeReplayForInstall(raw, replay, models);
       } catch (error) {
         if (
@@ -5327,13 +5351,17 @@ export class EditorController {
       throw new Error("Connect Warcraft Logs or import a replay JSON file.");
     return this.browserLogs;
   }
-  private replayInput(raw: RawReplay) {
-    const context = raw.stream
-      ? { ...raw, events: normalizationEvents(raw) }
-      : raw;
-    const input = this.state.browserAssets
-      ? localSpellReplay(context, this.modernSpells)
-      : context;
+  private replayInput(raw: RawReplay, preparedInput?: RawReplay) {
+    const input =
+      preparedInput ??
+      (() => {
+        const context = raw.stream
+          ? { ...raw, events: normalizationEvents(raw) }
+          : raw;
+        return this.state.browserAssets
+          ? localSpellReplay(context, this.modernSpells)
+          : context;
+      })();
     const version = gameVersion(
       raw.gameVersion ?? raw.report?.gameVersion ?? "vanilla",
     ).id as GameVersion;

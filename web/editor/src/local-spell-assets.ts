@@ -13,12 +13,25 @@ export function localSpellReplay(
   raw: RawReplay,
   catalog: Record<string, unknown>,
 ): RawReplay {
+  const steps = localSpellReplaySteps(raw, catalog, false);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+export function* localSpellReplaySteps(
+  raw: RawReplay,
+  catalog: Record<string, unknown>,
+  sliced = true,
+): Generator<unknown, RawReplay> {
   const abilities = new Map(
     (raw.abilities ?? []).map((ability) => [ability.gameID, { ...ability }]),
   );
   const observed = new Set(abilities.keys());
-  for (const value of raw.events) {
-    const event = row(value);
+  for (let i = 0; i < raw.events.length; i++) {
+    if (sliced && (i & 511) === 0) yield;
+    const event = row(raw.events[i]);
     if (!event) continue;
     const spell = event.abilityGameID ?? row(event.ability)?.guid;
     if (positiveID(spell)) observed.add(spell);

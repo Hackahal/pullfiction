@@ -5776,6 +5776,8 @@ test("large buffered refreshes coalesce by revision and only install the newest 
   const { c } = fixture();
   const initial = c.getSnapshot().replay!;
   const internals = c as any;
+  internals.patch({ browserAssets: true });
+  internals.modernSpells = { 133: { iconFile: 100 } };
   const snapshot = (revision: number): RawReplay => ({
     ...raw,
     events: Array(50000).fill(raw.events[0]),
@@ -5801,6 +5803,7 @@ test("large buffered refreshes coalesce by revision and only install the newest 
   internals.replayBuffer = buffer;
   const starts: {
     revision: number;
+    icon?: string | null;
     current: () => boolean;
     release: (error?: unknown) => void;
   }[] = [];
@@ -5819,6 +5822,7 @@ test("large buffered refreshes coalesce by revision and only install the newest 
     await new Promise<void>((resolve, reject) => {
       starts.push({
         revision: input.stream!.revision,
+        icon: input.abilities?.find((ability) => ability.gameID === 133)?.icon,
         current,
         release: (error) => (error === undefined ? resolve() : reject(error)),
       });
@@ -5830,7 +5834,14 @@ test("large buffered refreshes coalesce by revision and only install the newest 
     const firstStart = nextStart();
     const first = internals.refreshBuffered(buffer);
     const same = internals.refreshBuffered(buffer);
+    await Promise.resolve();
+    internals.modernSpells = { 133: { iconFile: 200 } };
     await firstStart;
+    assert.equal(starts[0].icon, "pf_200.blp");
+    assert.notEqual(
+      raw.abilities?.find((ability) => ability.gameID === 133)?.icon,
+      "pf_200.blp",
+    );
     assert.equal(starts.length, 1);
     assert.equal(starts[0].current(), true);
     assert.equal(c.getSnapshot().bufferPreparation, undefined);

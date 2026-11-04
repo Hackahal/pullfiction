@@ -331,6 +331,20 @@ test("complete buffering conserves identical legitimate events and exact boundar
     2,
   );
 });
+test("normalization reuses complete ordered rows without hiding unsorted imported events", () => {
+  const header = bufferFixture();
+  const first = { timestamp: 2, id: "first" },
+    second = { timestamp: 2, id: "second" };
+  const sorted = [first, second, { timestamp: 3 }];
+  assert.equal(normalizationEvents({ ...header, events: sorted }), sorted);
+  const unsorted = [{ timestamp: 3 }, first, second];
+  assert.deepEqual(normalizationEvents({ ...header, events: unsorted }), [
+    first,
+    second,
+    unsorted[0],
+  ]);
+  assert.equal(unsorted[0].timestamp, 3);
+});
 test("restored overlaps retain first owners, closed context edges and final events", async () => {
   const row = (timestamp: number, label: string) => ({ timestamp, label });
   const header = bufferFixture();

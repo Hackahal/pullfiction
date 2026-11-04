@@ -464,6 +464,19 @@ export class ReplayBuffer {
 
 export function normalizationEvents(raw: RawReplay) {
   if (!raw.stream) return raw.events;
+  if (!raw.stream.contextEvents.length && !raw.stream.stateEvents.length) {
+    let previous = -Infinity;
+    let ordered = true;
+    for (const value of raw.events) {
+      const t = (value as { timestamp?: number } | null)?.timestamp;
+      if (typeof t !== "number" || !Number.isFinite(t) || t < previous) {
+        ordered = false;
+        break;
+      }
+      previous = t;
+    }
+    if (ordered) return raw.events;
+  }
   const context = raw.stream.contextEvents;
   const times = new Set(context.map((e) => e.timestamp));
   // Context is a complete event timestamp group; prefer it to the filtered
