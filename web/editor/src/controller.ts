@@ -1,3 +1,4 @@
+import { ReplayFramePresentation } from "./replay-frame-presentation";
 import { readReplayFile } from "./replay-file";
 import {
   prepareWholeReplay,
@@ -151,7 +152,7 @@ import {
   normalizeReplay,
   enrichCombat,
   poseAt,
-  combatStateAt,
+  frameCombatStateAt,
   visualEventsBetween,
   chapterAt,
   classIDs,
@@ -6846,6 +6847,7 @@ export class EditorController {
     this.renderFrame();
     this.renderedInputs = inputs;
   }
+  private readonly framePresentation = new ReplayFramePresentation();
   private renderFrame() {
     // The diagnostic runner owns actors, annotations and scene presentation.
     // Async editor bootstrap/floor callbacks must not inject reference spawns
@@ -6892,8 +6894,12 @@ export class EditorController {
     this.frame = this.sceneActors()
       .filter((actor) => !candidates || candidates.has(actor.key))
       .map((actor) => {
-        const state = combatStateAt(actor, this.clockTime),
+        const state = frameCombatStateAt(actor, this.clockTime),
           appearance = this.appearance(actor);
+        const { plate_auras, auras, self_auras } = this.framePresentation.auras(
+          state.auras,
+          replay.abilities,
+        );
         return {
           key: actor.key,
           name: actor.name,
@@ -6917,17 +6923,7 @@ export class EditorController {
           race: appearance.race ?? actor.race,
           sex: appearance.sex ?? actor.sex,
           look: appearance.look ?? [0, 0, 0, 0, 0],
-          gear: actor.gear
-            .filter((g) => g.model)
-            .map((g) => ({
-              id: g.id,
-              slot: g.slot,
-              ...g.model,
-              name: g.name ?? g.model?.name ?? `Item ${g.id}`,
-              quality: g.quality ?? g.model?.quality ?? 0,
-              enchant: g.permanentEnchant ?? 0,
-              temporary: g.temporaryEnchant ?? 0,
-            })),
+          gear: this.framePresentation.equipment(actor.gear),
           health: state.health?.current ?? null,
           max_health: state.health?.max ?? null,
           power: state.power?.current ?? null,
@@ -6942,26 +6938,14 @@ export class EditorController {
                   remaining: (state.cast.end - this.clockTime) / 1000,
                 }
               : null,
-          plate_auras: state.auras.slice(0, 48).map((a) => ({
-            spell: a.spell,
-            name:
-              replay.abilities.get(a.spell)?.name ??
-              a.name ??
-              `Spell ${a.spell}`,
-            icon: replay.abilities.get(a.spell)?.icon ?? a.icon ?? "",
-            stack: a.stack ?? 1,
-            debuff: !!a.debuff,
-          })),
+          plate_auras,
           channel: !!state.cast?.channel,
           channel_target: state.cast?.channel
             ? (state.cast.target ?? null)
             : null,
           cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
-          auras: state.auras.slice(0, 48).map((a) => a.spell),
-          self_auras: state.auras
-            .slice(0, 48)
-            .filter((a) => a.selfCast)
-            .map((a) => a.spell),
+          auras,
+          self_auras,
         };
       });
     this.sendPositions();

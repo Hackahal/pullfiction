@@ -498,7 +498,9 @@ function auraState(index,t) {
   index.values=[...index.state.values()];
   return index.values;
 }
-export function combatStateAt(actor,t){
+// Native frame rendering has no resource chart consumer and treats the
+// stable aura snapshot as read-only. Public inspection keeps its own array.
+export function frameCombatStateAt(actor,t){
   const index=combatIndex(actor),cast=activeCast(index,t),auras=auraState(index,t);
   let health=latestAt(actor.health??[],t);
   let power=latestAt(actor.power??[],t);
@@ -511,7 +513,11 @@ export function combatStateAt(actor,t){
     const max=actor.health?.[0]?.[1]?.max??100;
     health={current:max,max,percent:1,initial:true};
   }
-  return {health,power,resources:resourcesAt(actor,t),cast:cast?{...cast,progress:Math.min(1,(t-cast.start)/Math.max(1,cast.end-cast.start))}:null,auras:auras.slice()};
+  return {health,power,cast:cast?{...cast,progress:Math.min(1,(t-cast.start)/Math.max(1,cast.end-cast.start))}:null,auras};
+}
+export function combatStateAt(actor,t){
+  const {health,power,cast,auras}=frameCombatStateAt(actor,t);
+  return {health,power,resources:resourcesAt(actor,t),cast,auras:auras.slice()};
 }
 export function eventsBetween(replay,from,to){
   if(to<from)return [];
