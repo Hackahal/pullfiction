@@ -703,10 +703,10 @@
 }
 
 .editor .run-fixed-labels .run-encounter-label {
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  gap: 3px;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   padding-inline-end: 8px;
 }
@@ -907,13 +907,6 @@
 
   .editor :is(.run-bosses, .run-mobs, .run-fixed-labels > span:not(:first-child)) {
     height: 24px;
-  }
-
-  .editor .run-fixed-labels .run-encounter-label {
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 6px;
   }
 
   .editor :is(.run-bosses, .run-mobs) .run-segment {
@@ -1347,4 +1340,81 @@
 
 .layer-clip.active > i[data-edge="end"] {
   border-right: 2px solid #f2d392;
+}
+
+.editor .run-bosses .run-segment.boss {
+  min-width: 0;
+}
+
+.editor .run-bosses .run-segment[data-detail="bar"] {
+  top: 8px;
+  height: 24px;
+  border: 0;
+  border-radius: 2px;
+  background: #587089;
+}
+
+.editor .run-bosses .run-segment[data-detail="bar"].current {
+  background: #edca87;
+  box-shadow: 0 0 0 1px #111519;
+}
+
+.run-encounter-label > img {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.run-encounter-label > .run-encounter-context {
+  display: grid;
+  height: auto;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+}
+
+.run-encounter-context small {
+  font-variant-numeric: tabular-nums;
+}
+
+@container run-dock (max-height: 110px) {
+  .editor .run-bosses .run-segment[data-detail="bar"] {
+    top: 3px;
+    height: 17px;
+  }
+
+  .run-encounter-label > img {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+  }
+
+  .run-encounter-context:has(strong) small {
+    display: none;
+  }
+}
+
+.run-boss-caption {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  box-sizing: border-box;
+  padding: 0 5px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.run-boss-caption:hover {
+  color: var(--text);
+}
+
+.run-boss-caption[data-current="true"] {
+  color: #f3d49a;
+  font-weight: 650;
 }

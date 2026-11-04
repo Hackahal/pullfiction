@@ -2,6 +2,7 @@ import { pullAt } from "./domain";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  projectRunClip,
   runRange,
   runTimeAt,
   zoomRunRange,
@@ -153,4 +154,22 @@ test("Pull context covers a standalone encounter and does not fill full-run gaps
   assert.equal(pullAt(full, 4999), null);
   assert.equal(pullAt(full, 10000), null);
   assert.equal(pullAt(full, 12000), null);
+});
+
+test("Boss clips show recorded duration and clip to the visible time window", () => {
+  const view = { start: 1000, span: 10000 };
+  assert.deepEqual(projectRunClip({ start: 0, end: 2000 }, view), {
+    left: 0,
+    width: 10,
+  });
+  assert.deepEqual(projectRunClip({ start: 10500, end: 12000 }, view), {
+    left: 95,
+    width: 5,
+  });
+  assert.deepEqual(projectRunClip({ start: 10100, end: 10200 }, view), {
+    left: 91,
+    width: 1,
+  });
+  assert.equal(projectRunClip({ start: 0, end: 1000 }, view), null);
+  assert.equal(projectRunClip({ start: 11000, end: 12000 }, view), null);
 });

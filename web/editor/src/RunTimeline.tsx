@@ -2,11 +2,12 @@ import { PanelSettings } from "./PanelSettings";
 import { GameIcon } from "./GameIcon";
 import { replayIdentity } from "./replay-buffer";
 import { LayerHeaders, LayerTracks } from "./LayerTracks";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { pullAt, time } from "./domain";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { preciseTime, pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
 import {
+  projectRunClip,
   runRange,
   runSegments,
   runTimeAt,
@@ -36,6 +37,7 @@ export function RunTimeline({
     span: number;
     width: number;
     pan: boolean;
+    captionStart: number | null;
   } | null>(null);
   const [width, setWidth] = useState(1000);
   const [range, setRange] = useState(() => runRange(0, duration, duration));
@@ -57,8 +59,22 @@ export function RunTimeline({
     () => (replay ? runSegments(replay) : { bosses: [], mobs: [] }),
     [replay],
   );
+  const currentBoss =
+    pull &&
+    segments.bosses.find((s) => s.start === pull.start && s.end === pull.end);
   const activePullName =
     pull && ("name" in pull ? pull.name : replay?.fight.name);
+  let occupiedUntil = 0;
+  const visibleBosses = segments.bosses
+    .flatMap((segment) => {
+      const clip = projectRunClip(segment, view);
+      return clip ? [{ segment, clip }] : [];
+    })
+    .sort((a, b) => a.clip.left - b.clip.left)
+    .map((item) => {
+      occupiedUntil = Math.max(occupiedUntil, item.clip.left + item.clip.width);
+      return { ...item, occupiedUntil };
+    });
   const mobs = useMemo(
     () => visibleRunMobs(segments.mobs, view, width),
     [segments, view.start, view.span, width],
@@ -331,10 +347,28 @@ export function RunTimeline({
               <div className="run-fixed-labels">
                 <span />
                 <span className="run-encounter-label">
-                  <small>Pulls</small>
-                  {activePullName && (
-                    <strong title={activePullName}>{activePullName}</strong>
+                  {currentBoss && (
+                    <GameIcon
+                      source={portrait(currentBoss)}
+                      name="inv_misc_head_dragon_01"
+                    />
                   )}
+                  <span className="run-encounter-context">
+                    {activePullName ? (
+                      <>
+                        <strong title={activePullName}>{activePullName}</strong>
+                        {pull && (
+                          <small
+                            title={`${preciseTime(pull.start)} – ${preciseTime(pull.end)} run time`}
+                          >
+                            {time(pull.end - pull.start)} pull
+                          </small>
+                        )}
+                      </>
+                    ) : (
+                      <small>Pulls</small>
+                    )}
+                  </span>
                 </span>
                 <span>Mobs</span>
               </div>
@@ -362,7 +396,7 @@ export function RunTimeline({
                 ? time(state.time)
                 : state.plan.steps.find((s) => s.id === state.activeStep)?.name
             }
-            title="Drag to scrub · Right-drag to pan · Ctrl/⌘ + wheel to zoom · Double-click a segment to zoom to it"
+            title="Drag to scrub · Page Up/Down: previous/next boss pull · Right-drag to pan · Ctrl/⌘ + wheel to zoom · Double-click a segment to zoom to it"
             onContextMenu={(e) => e.preventDefault()}
             onDoubleClick={() => {
               if (lastHit.current) fitSegment(lastHit.current);
@@ -390,7 +424,15 @@ export function RunTimeline({
               }
               const delta = e.shiftKey ? 10000 : 1000;
               if (
-                ["ArrowLeft", "ArrowRight", "Home", "End", " "].includes(e.key)
+                [
+                  "ArrowLeft",
+                  "ArrowRight",
+                  "Home",
+                  "End",
+                  "PageUp",
+                  "PageDown",
+                  " ",
+                ].includes(e.key)
               ) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -401,6 +443,25 @@ export function RunTimeline({
                 controller.seek(Math.min(duration, state.time + delta));
               if (e.key === "Home") controller.seek(0);
               if (e.key === "End") controller.seek(duration);
+              if (e.key === "PageUp" || e.key === "PageDown") {
+                const previous = e.key === "PageUp";
+                const next = segments.bosses.reduce<RunSegment | null>(
+                  (nearest, segment) => {
+                    const inDirection = previous
+                      ? segment.start < state.time
+                      : segment.start > state.time;
+                    if (!inDirection) return nearest;
+                    return !nearest ||
+                      (previous
+                        ? segment.start > nearest.start
+                        : segment.start < nearest.start)
+                      ? segment
+                      : nearest;
+                  },
+                  null,
+                );
+                if (next) controller.seek(next.start);
+              }
               if (e.key === " ") controller.toggle();
             }}
             onPointerDown={(e) => {
@@ -422,12 +483,17 @@ export function RunTimeline({
                 controller.setActiveStep(state.plan.steps[i].id, false);
                 return;
               }
-              const key = (e.target as HTMLElement).closest<HTMLElement>(
+              const hit = (e.target as HTMLElement).closest<HTMLElement>(
                 "[data-segment]",
-              )?.dataset.segment;
+              );
+              const key = hit?.dataset.segment;
               lastHit.current =
                 [...segments.bosses, ...mobs].find((s) => s.key === key) ??
                 null;
+              const captionStart =
+                e.button === 0 && hit?.classList.contains("run-boss-caption")
+                  ? (lastHit.current?.start ?? null)
+                  : null;
               if (e.button === 2) {
                 setFollow(false);
                 lastHit.current = null;
@@ -439,10 +505,11 @@ export function RunTimeline({
                 span: view.span,
                 width: box.width,
                 pan: e.button === 2,
+                captionStart,
               };
               setPanning(e.button === 2);
               e.currentTarget.setPointerCapture(e.pointerId);
-              if (e.button === 0)
+              if (e.button === 0 && captionStart === null)
                 controller.seek(
                   runTimeAt(e.clientX - box.left, box.width, view, duration),
                 );
@@ -450,6 +517,11 @@ export function RunTimeline({
             onPointerMove={(e) => {
               const d = drag.current;
               if (!d) return;
+              if (d.captionStart !== null) {
+                if (Math.abs(e.clientX - d.x) <= 3) return;
+                d.captionStart = null;
+                lastHit.current = null;
+              }
               if (d.pan)
                 setRange(
                   runRange(
@@ -470,6 +542,17 @@ export function RunTimeline({
                 );
             }}
             onPointerUp={(e) => {
+              const d = drag.current;
+              if (d?.captionStart != null) {
+                const x =
+                  e.clientX - e.currentTarget.getBoundingClientRect().left;
+                if (Math.abs(e.clientX - d.x) <= 3)
+                  controller.seek(d.captionStart);
+                else {
+                  lastHit.current = null;
+                  controller.seek(runTimeAt(x, d.width, d, duration));
+                }
+              }
               drag.current = null;
               setPanning(false);
               if (e.currentTarget.hasPointerCapture(e.pointerId))
@@ -515,27 +598,59 @@ export function RunTimeline({
                     ))}
                 </div>
                 <div className="run-bosses">
-                  {segments.bosses
-                    .filter(
-                      (s) =>
-                        s.end >= view.start &&
-                        s.start <= view.start + view.span,
-                    )
-                    .map((s) => (
-                      <div
-                        key={s.key}
-                        className={`run-segment boss${state.time >= s.start && state.time < s.end ? " current" : ""}`}
-                        style={segmentStyle(s)}
-                        title={`${s.name} · ${time(s.start)}–${time(s.end)}${s.kill === true ? " · Kill" : s.kill === false ? " · Wipe" : ""}`}
-                        data-segment={s.key}
-                      >
-                        <GameIcon
-                          source={portrait(s)}
-                          name="inv_misc_head_dragon_01"
-                        />
-                        <span>{s.name}</span>
-                      </div>
-                    ))}
+                  {visibleBosses.map(
+                    ({ segment: s, clip, occupiedUntil }, index) => {
+                      const pixels = (clip.width / 100) * width;
+                      const detail =
+                        pixels >= 100
+                          ? "named"
+                          : pixels >= 35
+                            ? "portrait"
+                            : "bar";
+                      const current = currentBoss?.key === s.key;
+                      const edge = clip.left + clip.width;
+                      const gap =
+                        (visibleBosses[index + 1]?.clip.left ?? 100) - edge;
+                      const showCaption =
+                        detail !== "named" &&
+                        s.start >= view.start &&
+                        edge >= occupiedUntil &&
+                        (gap / 100) * width >= 50;
+                      return (
+                        <Fragment key={s.key}>
+                          <div
+                            className={`run-segment boss${current ? " current" : ""}`}
+                            data-detail={detail}
+                            style={{
+                              left: `${clip.left}%`,
+                              width: `${clip.width}%`,
+                            }}
+                            title={`${s.name} · ${preciseTime(s.start)} – ${preciseTime(s.end)}${s.kill === true ? " · Kill" : s.kill === false ? " · Wipe" : ""}`}
+                            data-segment={s.key}
+                          >
+                            {detail !== "bar" && (
+                              <GameIcon
+                                source={portrait(s)}
+                                name="inv_misc_head_dragon_01"
+                              />
+                            )}
+                            {detail === "named" && <span>{s.name}</span>}
+                          </div>
+                          {showCaption && (
+                            <span
+                              className="run-boss-caption"
+                              data-current={current || undefined}
+                              style={{ left: `${edge}%`, maxWidth: `${gap}%` }}
+                              data-segment={s.key}
+                              title={`Jump to ${s.name} · ${preciseTime(s.start)}`}
+                            >
+                              {s.name}
+                            </span>
+                          )}
+                        </Fragment>
+                      );
+                    },
+                  )}
                 </div>
                 <div className="run-mobs">
                   {mobs.map((s, i) => (

@@ -51,6 +51,19 @@ export function runTimeAt(
     ),
   );
 }
+/** Project only the visible part of a timed clip without borrowing time from neighbors. */
+export function projectRunClip(
+  segment: Pick<RunSegment, "start" | "end">,
+  view: RunRange,
+) {
+  const start = Math.max(segment.start, view.start);
+  const end = Math.min(segment.end, view.start + view.span);
+  if (end <= start) return null;
+  return {
+    left: ((start - view.start) / view.span) * 100,
+    width: ((end - start) / view.span) * 100,
+  };
+}
 const boss = (a: Actor) =>
   a.class === "Boss" || a.icon?.toLowerCase() === "boss";
 
