@@ -5663,6 +5663,52 @@ test("opening a cached replay on another raid keeps its own load request", async
   c.stop();
 });
 
+test("opening a large saved replay yields before committing and can be cancelled", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const source = {
+    ...raw,
+    events: Array.from({ length: 60_000 }, (_, i) => ({
+      timestamp: 1000 + Math.floor(i / 6),
+      type: "damage",
+      sourceID: 1,
+      targetID: 2,
+      amount: 2,
+    })),
+  } as RawReplay;
+  const project = {
+    ...newProject(emptyPlan(409), replaySource(source, 409)),
+    time: 4500,
+    mode: "analyse" as const,
+  };
+  await store.putReplay(project.source!.cacheKey, source);
+  await store.put(project);
+  const c = new EditorController(undefined, { projectStore: store });
+  let scheduled = false;
+  const unsubscribe = c.subscribe(() => {
+    if (
+      c.getSnapshot().replayPreparation?.message ===
+        "Reconstructing combat events…" &&
+      !scheduled
+    ) {
+      scheduled = true;
+      setTimeout(() => c.cancelImport(), 0);
+    }
+  });
+  try {
+    assert.equal(await c.openProject(project.id), false);
+    assert.equal(scheduled, true);
+    assert.equal(c.getSnapshot().projectId, null);
+    assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(await c.openProject(project.id), true);
+    assert.equal(c.getSnapshot().time, 4500);
+    assert.equal(c.getSnapshot().workspaceMode, "analyse");
+    assert.equal(c.getSnapshot().replay?.actors[0].id, 1);
+  } finally {
+    unsubscribe();
+    c.stop();
+  }
+});
+
 test("large whole-file import can be cancelled during combat preparation", async () => {
   const c = new EditorController(undefined, {
     projectStore: null,

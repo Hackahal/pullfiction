@@ -1439,15 +1439,24 @@ export class EditorController {
         await this.preparePlanAssets(project.plan, signal);
       signal.throwIfAborted();
       if (epoch !== this.request) return false;
-      const prepared =
+      const prepareReplay =
         raw &&
-        (!this.state.browserAssets || this.state.clientStatus === "ready")
-          ? await this.prepareReplayForInstall(
-              raw,
-              signal,
-              () => epoch === this.request,
-            )
-          : null;
+        (!this.state.browserAssets || this.state.clientStatus === "ready");
+      const current = () => epoch === this.request && !signal.aborted;
+      const derived = prepareReplay
+        ? await this.deriveLargeWholeReplay(raw, signal, current)
+        : undefined;
+      signal.throwIfAborted();
+      if (!current()) return false;
+      const prepared = prepareReplay
+        ? await this.prepareReplayForInstall(
+            raw,
+            signal,
+            current,
+            "replayPreparation",
+            derived,
+          )
+        : null;
       signal.throwIfAborted();
       if (epoch !== this.request) return false;
       if (raw && project.source)
@@ -1476,6 +1485,7 @@ export class EditorController {
           selectedActors: [],
         });
         if (raw && prepared) {
+          if (derived) this.replayNormalizer.reset();
           this.installReplay(raw, prepared);
           this.seek(project.time);
           this.patch({ sourceStatus: "cached" });
@@ -5430,6 +5440,34 @@ export class EditorController {
     );
     return this.completeReplayForInstall(raw, replay, models);
   }
+  private async deriveLargeWholeReplay(
+    raw: RawReplay,
+    signal: AbortSignal,
+    current: () => boolean,
+  ) {
+    if (
+      raw.stream ||
+      !Array.isArray(raw.events) ||
+      raw.events.length < SLICED_IMPORT_MIN_EVENTS
+    )
+      return;
+    const { input, models, renderModels, itemModels, spells } =
+      this.replayInput(raw);
+    const replay = await prepareWholeReplay(
+      input,
+      renderModels,
+      itemModels,
+      spells,
+      signal,
+      (message) => {
+        if (current())
+          this.patch({
+            replayPreparation: { message, completed: 0, total: 0 },
+          });
+      },
+    );
+    return this.completeReplayForInstall(raw, replay, models);
+  }
   private completeReplayForInstall(
     raw: RawReplay,
     replay: Replay,
@@ -5906,31 +5944,13 @@ export class EditorController {
           total: 0,
         },
       });
-      let derived: ReturnType<EditorController["replayForInstall"]> | undefined;
-      if (
-        !raw.stream &&
-        Array.isArray(raw.events) &&
-        raw.events.length >= SLICED_IMPORT_MIN_EVENTS
-      ) {
-        const { input, models, renderModels, itemModels, spells } =
-          this.replayInput(raw);
-        const replay = await prepareWholeReplay(
-          input,
-          renderModels,
-          itemModels,
-          spells,
-          signal,
-          (message) => {
-            if (request === this.request && !signal.aborted)
-              this.patch({
-                replayPreparation: { message, completed: 0, total: 0 },
-              });
-          },
-        );
-        signal.throwIfAborted();
-        if (request !== this.request) return;
-        derived = this.completeReplayForInstall(raw, replay, models);
-      }
+      const derived = await this.deriveLargeWholeReplay(
+        raw,
+        signal,
+        () => request === this.request && !signal.aborted,
+      );
+      signal.throwIfAborted();
+      if (request !== this.request) return;
       const prepared = await this.prepareReplayForInstall(
         raw,
         signal,
