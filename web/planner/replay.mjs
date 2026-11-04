@@ -171,6 +171,21 @@ function coveredByActivity(actor,time) {
   while(lo<hi){const mid=(lo+hi)>>>1;if(casts[mid].start<=time)lo=mid+1;else hi=mid;}
   return !!(lo&&casts[lo-1].end>time&&!casts[lo-1].instant);
 }
+function sampleTangent(left,right,axis) {
+  if(!left||!right||right[0]-left[0]>2000||left[axis]===null||right[axis]===null)return null;
+  return (right[axis]-left[axis])/(right[0]-left[0]);
+}
+const harmonicTangent=(d,q)=>q===null?d:q*d<=0?0:2*q*d/(q+d);
+
+function linearPosition(a,b,fraction) {
+  const pos=a.slice(1);
+  for(let i=0;i<pos.length;i++){
+    if(!(i in pos))continue;
+    const v=pos[i],w=b[i+1];
+    pos[i]=v===null||w===null?null:v+(w-v)*fraction;
+  }
+  return pos;
+}
 export function poseAt(actor, time, smoothGaps = false) {
   if(actor.presentationWindows && !actor.presentationWindows.some(([start,end])=>start<=time&&time<end))return null;
   if(actor.viscidusPresentation?.retirements.some(r=>r.start<=time&&(r.endInclusive?time<=r.end:time<r.end)))return null;
@@ -202,7 +217,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   const measuredCharge=!!b&&actor.chargeSegments?.some(([start,end])=>start===a[0]&&end===b[0]);
   let discontinuity=!!b&&((distance/(gap/1000)>35&&!measuredCharge)||lifeBoundary||zoneBoundary);
   const fresh = !beforeFirst && time-a[0] <= 2000;
-  let pos=a.slice(1), speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
+  let pos, speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
   const loadedBetween=!actor.bufferedRanges||actor.bufferedRanges.some(([start,end])=>start<=a[0]&&end>=b?.[0]);
   let estimated=!!(b && loadedBetween && !discontinuity && gap>2000 && smoothGaps && actor.type==='Player' && gap<=120000 && time>a[0]);
   const wisp=estimated&&!fresh&&distance>.25&&!coveredByActivity(actor,time);
@@ -217,36 +232,43 @@ export function poseAt(actor, time, smoothGaps = false) {
   if (b && loadedBetween && !beforeFirst && !discontinuity && (gap<=2000 || estimated)) {
     const fraction=timing&&(timing.weighted||estimated)?timing.fraction:(time-a[0])/gap;
     if(estimated){
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
+      pos=linearPosition(a,b,fraction);
       speed=distance/(gap/1000);
     }else if(actor.type!=='Player'){
       // Shape-preserving Hermite interpolation. Neighbouring stationary samples
       // produce zero tangents; no axis can overshoot its recorded endpoints.
       const previous=s[lo-2],next=s[lo+1];
-      const tangent=(left,right,axis)=>{
-        if(!left||!right||right[0]-left[0]>2000||left[axis]===null||right[axis]===null)return null;
-        return (right[axis]-left[axis])/(right[0]-left[0]);
-      };
-      const velocities=[];
-      pos=a.slice(1).map((v,i)=>{
-        const axis=i+1,w=b[axis];if(v===null||w===null){velocities.push(0);return null;}
-        const d=(w-v)/gap;
-        const harmonic=(q)=>q===null?d:q*d<=0?0:2*q*d/(q+d);
-        const m0=harmonic(tangent(previous,a,axis))*gap,m1=harmonic(tangent(b,next,axis))*gap;
-        const u=fraction,u2=u*u,u3=u2*u;
-        velocities.push(((6*u2-6*u)*v+(3*u2-4*u+1)*m0+(-6*u2+6*u)*w+(3*u2-2*u)*m1)/gap*1000);
-        return (2*u3-3*u2+1)*v+(u3-2*u2+u)*m0+(-2*u3+3*u2)*w+(u3-u2)*m1;
-      });
-      speed=Math.hypot(velocities[0],velocities[1]);
-      if(speed>.03)facing=Math.atan2(velocities[1],velocities[0]);
+      const u=fraction,u2=u*u,u3=u2*u;
+      const p0=2*u3-3*u2+1,t0=u3-2*u2+u,p1=-2*u3+3*u2,t1=u3-u2;
+      const v0=6*u2-6*u,mv0=3*u2-4*u+1,v1=-6*u2+6*u,mv1=3*u2-2*u;
+      let vx,vy,velocityCount=0;
+      pos=a.slice(1);
+      for(let i=0;i<pos.length;i++){
+        if(!(i in pos))continue;
+        const axis=i+1,v=pos[i],w=b[axis];
+        let velocity=0;
+        if(v===null||w===null)pos[i]=null;
+        else {
+          const d=(w-v)/gap;
+          const m0=harmonicTangent(d,sampleTangent(previous,a,axis))*gap;
+          const m1=harmonicTangent(d,sampleTangent(b,next,axis))*gap;
+          pos[i]=p0*v+t0*m0+p1*w+t1*m1;
+          if(velocityCount<2)velocity=(v0*v+mv0*m0+v1*w+mv1*m1)/gap*1000;
+        }
+        if(velocityCount===0)vx=velocity;
+        else if(velocityCount===1)vy=velocity;
+        velocityCount++;
+      }
+      speed=Math.hypot(vx,vy);
+      if(speed>.03)facing=Math.atan2(vy,vx);
     }
     if(actor.type==='Player'&&!estimated&&timing){
       const progress=runProgress(distance,timing.fraction,timing.rate,timing.travel_budget);
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*progress.fraction);
+      pos=linearPosition(a,b,progress.fraction);
       speed=distance*progress.rate;
       if(speed>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
     }else if(timing?.weighted){
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
+      pos=linearPosition(a,b,fraction);
       speed=distance*timing.rate;
       if(distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
     }
@@ -269,7 +291,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   }
   let dead=false;
   for(const [t,value] of actor.deaths) { if(t>time) break; dead=value; }
-  return { pos, movement:dead?null:movement, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:timing?.blink&&timing.after?'ability jump estimate':beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
+  return { pos:pos??a.slice(1), movement:dead?null:movement, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:timing?.blink&&timing.after?'ability jump estimate':beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
 }
 export class ReplayClock {
   constructor(duration=0) { this.duration=duration; this.time=0; this.playing=false; this.rate=1; }
