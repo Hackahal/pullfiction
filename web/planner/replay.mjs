@@ -256,7 +256,15 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
   const abilities=new Map((raw.abilities??[]).map(a=>[a.gameID,a]));
   const details=Object.values(raw.playerDetails?.data?.playerDetails??{}).flat();
-  const info=new Map(raw.events.filter(e=>e.type==='combatantinfo').map(e=>[e.sourceID,e]));
+  const events=raw.events, info=new Map();
+  let chronological=true;
+  for(let i=0;i<events.length;i++){
+    const e=events[i];
+    if(e.type==='combatantinfo')info.set(e.sourceID,e);
+    if(i&&!(e.timestamp-events[i-1].timestamp>=0))chronological=false;
+  }
+  // Cast identities use original indices, including for tied timestamps.
+  const order=chronological?null:events.map((_,i)=>i).sort((a,b)=>events[a].timestamp-events[b].timestamp);
   for(const a of all){
     if(reused.has(a.key))continue;
     combatIndexes.delete(a);
@@ -273,7 +281,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   }
   const snapshotPreservations=hakkarSnapshotPreservations(raw);
   const combat=[],auraSources=new Map(all.map(a=>[a.key,new Map()]));
-  for(const [i,e] of raw.events.map((e,i)=>[i,e]).sort((a,b)=>a[1].timestamp-b[1].timestamp)){
+  for(let j=0;j<events.length;j++){
+    const i=order?.[j]??j,e=events[i];
     const t=e.timestamp-raw.fight.startTime;if(t<0||t>replay.duration)continue;
     const source=index.get(`${e.sourceID}:${e.sourceInstance||1}`), target=index.get(`${e.targetID}:${e.targetInstance||1}`);
     const loggedSpell=e.abilityGameID??e.ability?.guid??0;
