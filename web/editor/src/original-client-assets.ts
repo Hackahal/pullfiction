@@ -133,6 +133,7 @@ export async function prepareOriginalUnits(
   units: readonly OriginalUnitAssets[],
   icons: readonly string[] = [],
   signal?: AbortSignal,
+  progress?: (completed: number, total: number) => void,
 ): Promise<void> {
   const [characters, creatures, items] = await Promise.all([
     bridge.catalog("characters"),
@@ -188,14 +189,21 @@ export async function prepareOriginalUnits(
     if (stem && /^[a-z0-9_-]{1,160}$/i.test(stem))
       iconResources.add(`interface/icons/${stem.toLowerCase()}.blp`);
   }
-  await files.prepare([...resources], signal);
+  const total = resources.size + iconResources.size;
+  let completed = 0;
+  await files.prepare([...resources], signal, (count) => {
+    completed = count;
+    progress?.(completed, total);
+  });
+  completed = resources.size;
   for (const icon of iconResources) {
     signal?.throwIfAborted();
     try {
-      await files.read(icon);
+      await files.read(icon, signal);
     } catch (error) {
       if (!(error instanceof Error) || error.name !== "NotFoundError")
         throw error;
     }
+    progress?.(++completed, total);
   }
 }

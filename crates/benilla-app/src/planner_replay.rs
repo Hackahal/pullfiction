@@ -13,26 +13,15 @@ use benilla_assets::coords::wow_to_bevy;
 use benilla_protocol::{messages::ObjectType, EntityKind, ObjectFields};
 use benilla_world::{collision::WorldCollision, schedule::WorldStage, view::WorldCamera};
 use bevy::prelude::*;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    sync::Arc,
+};
 
 #[path = "planner_replay_readiness.rs"]
 mod readiness;
 pub use readiness::PlaybackPreparation;
 
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct ReplayTrajectoryReference {
-    pub source: String,
-    pub component: String,
-    pub content: String,
-    pub at: Option<f64>,
-    #[serde(default)]
-    pub hold: bool,
-}
-#[derive(Clone, serde::Deserialize)]
-pub struct ReplayTrajectoryBridge {
-    pub from: ReplayTrajectoryReference,
-    pub to: ReplayTrajectoryReference,
-}
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct ReplayTrajectoryMissing {
     pub source: String,
@@ -381,114 +370,10 @@ mod canonical_presentation_tests {
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReplayApply;
 
-#[derive(Clone, serde::Deserialize)]
-pub struct ReplayGear {
-    pub id: u32,
-    pub slot: u16,
-    pub display: u32,
-    pub class: u32,
-    pub subclass: u32,
-    pub inventory: u32,
-    pub material: i32,
-    pub sheath: u32,
-    pub name: String,
-    pub quality: u32,
-    #[serde(default)]
-    pub enchant: u32,
-    #[serde(default)]
-    pub temporary: u32,
-}
-#[derive(Clone, serde::Deserialize)]
-pub struct ReplayCast {
-    pub name: String,
-    pub icon: String,
-    pub progress: f32,
-    pub remaining: f32,
-}
-#[derive(Clone, serde::Deserialize)]
-pub struct ReplayAura {
-    #[serde(default)]
-    pub name: String,
-    pub spell: u32,
-    pub icon: String,
-    pub stack: u32,
-    pub debuff: bool,
-}
-fn nameplate_default() -> bool {
-    true
-}
-
-#[derive(Clone, serde::Deserialize)]
-pub struct ReplayUnit {
-    pub key: String,
-    pub name: String,
-    pub player: bool,
-    pub class: u32,
-    pub entry: u32,
-    pub display: Option<u32>,
-    pub scale: f32,
-    pub position: Option<[f32; 3]>,
-    pub ground: bool,
-    #[serde(default)]
-    pub floor_hint: Option<f32>,
-    pub facing: f32,
-    pub speed: f32,
-    #[serde(
-        default,
-        deserialize_with = "crate::planner_movement::deserialize_optional"
-    )]
-    pub movement: Option<crate::planner_movement::Segment>,
-    #[serde(default)]
-    pub trajectory: Option<ReplayTrajectoryReference>,
-    #[serde(default)]
-    pub trajectory_prepare: Option<ReplayTrajectoryReference>,
-    #[serde(default)]
-    pub trajectory_bridge: Option<ReplayTrajectoryBridge>,
-    pub dead: bool,
-    #[serde(default)]
-    pub friendly: bool,
-    /// Per-actor plate category filter; omitted values preserve older clients.
-    #[serde(default = "nameplate_default")]
-    pub nameplate: bool,
-    #[serde(default)]
-    pub raid: bool,
-    #[serde(default)]
-    pub estimated: bool,
-    #[serde(default)]
-    pub wisp: bool,
-    #[serde(default)]
-    pub race: Option<u8>,
-    #[serde(default)]
-    pub sex: Option<u8>,
-    #[serde(default)]
-    pub look: [u8; 5],
-    #[serde(default)]
-    pub gear: Vec<ReplayGear>,
-    #[serde(default)]
-    pub health: Option<u32>,
-    #[serde(default)]
-    pub max_health: Option<u32>,
-    #[serde(default)]
-    pub power: Option<u32>,
-    #[serde(default)]
-    pub max_power: Option<u32>,
-    #[serde(default)]
-    pub power_type: u8,
-    #[serde(default)]
-    pub plate_cast: Option<ReplayCast>,
-    #[serde(default)]
-    pub plate_auras: Vec<ReplayAura>,
-    #[serde(default)]
-    pub channel: bool,
-    #[serde(default)]
-    pub channel_target: Option<String>,
-    #[serde(default)]
-    pub cast: u32,
-    #[serde(default)]
-    pub auras: Vec<u32>,
-    #[serde(default)]
-    pub self_auras: Vec<u32>,
-}
+pub use crate::planner_replay_presentation::{ReplayAura, ReplayCast};
+pub use crate::planner_replay_types::{
+    ReplayGear, ReplayTrajectoryBridge, ReplayTrajectoryReference, ReplayUnit,
+};
 #[derive(Clone, serde::Deserialize)]
 pub struct ReplayImpact {
     pub target: String,
@@ -537,7 +422,7 @@ pub struct ReplayControl {
     pub trajectory_status: ReplayTrajectoryStatus,
     pub trajectory_missing: Vec<ReplayTrajectoryMissing>,
     pub portrait_requests: Vec<ReplayPortrait>,
-    pub pending: Option<Vec<ReplayUnit>>,
+    pub pending: Option<Vec<Arc<ReplayUnit>>>,
     pub focus: Option<[f32; 3]>,
     pub camera_keys: Vec<String>,
     pub camera_max_distance: f32,
@@ -678,7 +563,7 @@ pub(crate) fn apply(
                 bevy::math::Affine3A,
             )>,
         >,
-        Local<readiness::RetainedFrame<Vec<ReplayUnit>>>,
+        Local<readiness::RetainedFrame<Vec<Arc<ReplayUnit>>>>,
     ),
     mut items: ResMut<crate::items::Items>,
     chars: Option<Res<crate::entities::CharCreate>>,
@@ -1237,8 +1122,14 @@ pub(crate) fn apply(
                     body.nameplate = unit.nameplate;
                     body.raid = unit.raid;
                     body.estimated = unit.estimated;
-                    body.plate_cast = unit.plate_cast.clone();
-                    body.plate_auras = unit.plate_auras.clone();
+                    crate::planner_replay_presentation::refresh_cast(
+                        &mut body.plate_cast,
+                        &unit.plate_cast,
+                    );
+                    crate::planner_replay_presentation::refresh_auras(
+                        &mut body.plate_auras,
+                        &unit.plate_auras,
+                    );
                     if body.self_auras != unit.self_auras {
                         body.self_auras = unit.self_auras.clone();
                         commands.entity(*entity).insert(
@@ -1247,9 +1138,10 @@ pub(crate) fn apply(
                             ),
                         );
                     }
-                    for (field, old, new) in
-                        net::write_fields(&mut store.0, ObjectFields::from_pairs(&fields))
-                    {
+                    for (field, old, new) in crate::planner_replay_identity::write_replay_fields(
+                        &mut store,
+                        ObjectFields::from_pairs(&fields),
+                    ) {
                         changes.write(net::FieldChanged {
                             at: crate::lanes::stamp(),
                             entity: *entity,
@@ -1401,7 +1293,8 @@ pub(crate) fn apply(
                     return;
                 };
                 let delta = crate::planner_replay_identity::channel_target_fields(target_guid);
-                let changed = net::write_fields(&mut store.0, delta);
+                let changed =
+                    crate::planner_replay_identity::write_replay_fields(&mut store, delta);
                 drop(store);
                 for (field, old, new) in changed {
                     world.write_message(net::FieldChanged {

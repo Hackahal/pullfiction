@@ -205,11 +205,32 @@ export class LocalClientFiles {
     });
   }
 
-  async prepare(names: readonly string[], signal?: AbortSignal): Promise<void> {
-    for (const name of names) {
-      signal?.throwIfAborted();
-      await this.read(name, signal);
-    }
+  async prepare(
+    names: readonly string[],
+    signal?: AbortSignal,
+    progress?: (completed: number, total: number) => void,
+  ): Promise<void> {
+    let completed = 0;
+    progress?.(completed, names.length);
+    let next = 0;
+    let failed = false;
+    const worker = async () => {
+      try {
+        while (!failed && next < names.length) {
+          signal?.throwIfAborted();
+          const name = names[next++];
+          await this.read(name, signal);
+          if (failed) return;
+          progress?.(++completed, names.length);
+        }
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(4, names.length) }, worker),
+    );
     signal?.throwIfAborted();
   }
 

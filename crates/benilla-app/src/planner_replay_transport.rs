@@ -1,8 +1,9 @@
 //! Versioned replay field updates, validated transactionally before becoming a full native frame.
-use super::ReplayUnit;
+use crate::planner_replay_types::ReplayUnit;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -16,14 +17,14 @@ struct Delta {
 #[derive(Default)]
 pub struct FrameDecoder {
     source: Option<String>,
-    actors: HashMap<String, ReplayUnit>,
+    actors: HashMap<String, Arc<ReplayUnit>>,
 }
 impl FrameDecoder {
     pub fn clear(&mut self) {
         self.source = None;
         self.actors.clear();
     }
-    pub fn decode(&mut self, json: &str) -> Result<Vec<ReplayUnit>, String> {
+    pub fn decode(&mut self, json: &str) -> Result<Vec<Arc<ReplayUnit>>, String> {
         if json.len() > 4_000_000 {
             return Err("Replay delta exceeds byte limit".into());
         }
@@ -51,7 +52,7 @@ impl FrameDecoder {
                 return Err("Invalid replay delta actor".into());
             }
             let mut actor = if !delta.reset {
-                self.actors.get(&key).cloned()
+                self.actors.get(&key).map(|row| (**row).clone())
             } else {
                 None
             };
@@ -63,7 +64,7 @@ impl FrameDecoder {
             }
             let mut actor = actor.unwrap();
             validate(&mut actor)?;
-            updates.insert(key, actor);
+            updates.insert(key, Arc::new(actor));
         }
         // No mutation before every changed/new row and order reference has passed validation.
         for key in &delta.order {
@@ -80,7 +81,7 @@ impl FrameDecoder {
         Ok(delta
             .order
             .iter()
-            .map(|key| self.actors[key].clone())
+            .map(|key| Arc::clone(&self.actors[key]))
             .collect())
     }
 }
@@ -175,6 +176,47 @@ mod tests {
     fn packet(reset: bool, order: Vec<&str>, updates: Vec<Value>) -> String {
         serde_json::json!({"version":1,"source":"report","reset":reset,"order":order,"updates":updates}).to_string()
     }
+    #[test]
+    fn shares_unchanged_rows_without_mutating_prior_frames() {
+        let mut decoder = FrameDecoder::default();
+        let initial = decoder
+            .decode(&packet(true, vec!["a", "b"], vec![row("a"), row("b")]))
+            .unwrap();
+        let changed = decoder
+            .decode(&packet(
+                false,
+                vec!["b", "a"],
+                vec![serde_json::json!({"key":"a","health":7})],
+            ))
+            .unwrap();
+        assert!(Arc::ptr_eq(&initial[1], &changed[0]));
+        assert!(!Arc::ptr_eq(&initial[0], &changed[1]));
+        assert_eq!(initial[0].health, None);
+        assert_eq!(changed[1].health, Some(7));
+
+        assert!(decoder
+            .decode(&packet(
+                false,
+                vec!["a", "b"],
+                vec![
+                    serde_json::json!({"key":"a","health":8}),
+                    serde_json::json!({"key":"b","scale":-1}),
+                ]
+            ))
+            .is_err());
+        let retained = decoder
+            .decode(&packet(false, vec!["a", "b"], vec![]))
+            .unwrap();
+        assert!(Arc::ptr_eq(&retained[0], &changed[1]));
+        assert!(Arc::ptr_eq(&retained[1], &changed[0]));
+
+        let reset = decoder
+            .decode(&packet(true, vec!["a"], vec![row("a")]))
+            .unwrap();
+        assert!(!Arc::ptr_eq(&reset[0], &retained[0]));
+        assert_eq!(reset[0].health, None);
+    }
+
     #[test]
     fn deltas_preserve_metadata_clear_optional_fields_and_remove_absent_actors() {
         let mut decoder = FrameDecoder::default();

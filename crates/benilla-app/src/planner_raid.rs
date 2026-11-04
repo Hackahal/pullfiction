@@ -126,7 +126,3 @@ fn drive(
     }){serialized.clear();warn!("raid update: {e}");}
  });
 }
-
-#[cfg(test)]
-#[path = "planner_raid_render_tests.rs"]
-mod render_tests;

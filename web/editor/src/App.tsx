@@ -1,3 +1,6 @@
+import { LoadingProgress } from "./LoadingProgress";
+import { FramePerformanceCounter } from "./FramePerformance";
+import { FPS_STORAGE } from "./frame-performance";
 import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
 import { ShareDialog, type ShareTarget } from "./ShareDialog";
 import { shareId } from "./share-client";
@@ -106,6 +109,13 @@ export function App({ controller }: { controller: EditorController }) {
     [source, setSource] = useState(
       "https://vanilla.warcraftlogs.com/reports/DyN7vF94QR8aj1Lc",
     );
+  const [showFps, setShowFps] = useState(() => {
+    try {
+      return localStorage.getItem(FPS_STORAGE) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [shareTarget, setShareTarget] = useState<ShareTarget | null>(() => {
     const id = typeof location === "undefined" ? null : shareId(location.hash);
     return id === null ? null : { incoming: id };
@@ -786,6 +796,7 @@ export function App({ controller }: { controller: EditorController }) {
               ]}
             />
             <ReplayLoading state={state} controller={controller} />
+            {showFps && <FramePerformanceCounter controller={controller} />}
             <div className="transport" hidden={!state.replay}>
               <button
                 aria-label="Previous encounter"
@@ -1124,6 +1135,20 @@ export function App({ controller }: { controller: EditorController }) {
               </>
             ) : (
               <div className="settings-list">
+                <label>
+                  <span>Show FPS counter</span>
+                  <input
+                    type="checkbox"
+                    checked={showFps}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setShowFps(enabled);
+                      try {
+                        localStorage.setItem(FPS_STORAGE, enabled ? "1" : "0");
+                      } catch {}
+                    }}
+                  />
+                </label>
                 {(
                   [
                     ["raidFrames", "Raid frames"],
@@ -1861,17 +1886,39 @@ function Viewport({
           (state.clientNeedsFiles && !state.clientPromptHidden)) ? (
           <BrowserClient state={state} controller={controller} />
         ) : !map && !state.sceneReady ? (
-          <div className="scene-loading" role="status">
+          <div className="scene-loading loading-surface" role="status">
             <GameIcon name="Spell_Fire_Immolation" />
             <span>
               {state.error ??
                 `Loading ${raidByMap(state.plan.mapId)?.name ?? "raid"}…`}
             </span>
+            {!state.error && (
+              <LoadingProgress
+                progress={
+                  state.clientLoadProgress?.activeFiles
+                    ? state.clientLoadProgress
+                    : null
+                }
+              />
+            )}
             {state.error && (
               <button onClick={() => location.reload()}>Reload</button>
             )}
           </div>
         ) : null}
+        {state.sceneReady && state.buffering && (
+          <div className="scene-loading loading-surface" role="status">
+            <strong>
+              {state.bufferError ?? "Loading this replay section…"}
+            </strong>
+            {!state.bufferError && <LoadingProgress label="Replay section" />}
+            {state.bufferError && (
+              <button onClick={() => controller.retryReplaySection()}>
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         {!map &&
           state.replay &&
           state.sceneReady &&
@@ -1879,10 +1926,20 @@ function Viewport({
           (state.playPreparing ||
             state.movementPreparing ||
             state.movementConflicted) && (
-            <div className="scene-movement-status" role="status">
+            <div
+              className={
+                state.playPreparing
+                  ? "scene-loading loading-surface"
+                  : "scene-movement-status"
+              }
+              role="status"
+            >
               {state.playPreparing || state.movementPreparing
                 ? "Preparing movement…"
                 : "Some movement could not be reconstructed."}
+              {state.playPreparing && (
+                <LoadingProgress label="Replay movement" />
+              )}
             </div>
           )}
         {focus && state.workspaceMode === "analyse" && (

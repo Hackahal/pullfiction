@@ -1,3 +1,4 @@
+import { LoadingProgress } from "./LoadingProgress";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
 
@@ -10,12 +11,16 @@ export function BrowserClient({
 }) {
   const opening = state.clientStatus === "opening";
   return (
-    <section className="browser-client" aria-label="Game assets">
+    <section
+      className="browser-client loading-surface"
+      aria-label="Game assets"
+    >
       <strong>
         {opening ? "Loading game assets" : "Game assets unavailable"}
       </strong>
       <p>Raid assets download automatically and are cached in this browser.</p>
       <span role="status">{state.error ?? state.clientProgress}</span>
+      {opening && <LoadingProgress progress={state.clientLoadProgress} />}
       {!opening && (
         <button
           className="gold-button"

@@ -4385,8 +4385,77 @@ a.inspect-rune-entry:focus-visible {
   box-shadow: none;
 }
 
-.share-dialog { max-width: min(640px, 95vw); }
-.share-dialog .modal-content { display: grid; gap: 12px; }
-.share-dialog input { width: 100%; min-width: 0; }
-.share-owned { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
-.share-owned span { flex: 1; overflow-wrap: anywhere; }
+.share-dialog {
+  max-width: min(640px, 95vw);
+}
+.share-dialog .modal-content {
+  display: grid;
+  gap: 12px;
+}
+.share-dialog input {
+  width: 100%;
+  min-width: 0;
+}
+.share-owned {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.share-owned span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.frame-performance {
+  position: fixed;
+  right: 16px;
+  bottom: 40px;
+  z-index: 30;
+  display: grid;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid #81704d;
+  border-radius: 6px;
+  color: #e9e4d6;
+  background: #13171eee;
+  font:
+    11px/1.4 ui-monospace,
+    monospace;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.frame-performance strong {
+  font-size: 16px;
+  color: #e7c67d;
+}
+.viewport .loading-surface {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: #111722b8;
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
+.loading-progress {
+  display: grid;
+  gap: 8px;
+  width: min(320px, 80%);
+}
+.loading-progress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #d7b766;
+}
+.loading-progress small {
+  color: #c2c9d3;
+  font-variant-numeric: tabular-nums;
+}

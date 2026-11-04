@@ -1,7 +1,7 @@
 //! Pull Fiction viewer with free-camera controls and native raid UI. Assets come from browser-local client files.
 #![cfg(target_arch = "wasm32")]
 
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::Arc};
 
 use benilla_assets::coords::{bevy_to_wow, wow_to_bevy};
 use benilla_world::{boot, collision::WorldCollision, schedule::WorldStage, view::WorldCamera};
@@ -161,7 +161,7 @@ pub fn set_replay_frame(json: &str) -> Result<(), JsValue> {
             .take()
             .and_then(|segment| segment.validated());
     }
-    enqueue(Command::Replay(actors));
+    enqueue(Command::Replay(actors.into_iter().map(Arc::new).collect()));
     Ok(())
 }
 /// Acknowledged only after the selected native replay pose is prepared.
@@ -323,7 +323,7 @@ enum Command {
     Points(Points),
     Home,
     Typing(bool),
-    Replay(Vec<ReplayActor>),
+    Replay(Vec<Arc<ReplayActor>>),
     Focus([f32; 3]),
     Camera(Vec<String>),
     CameraOptions(f32, String),
@@ -516,6 +516,7 @@ pub fn start() {
         Update,
         (
             telemetry,
+            frame_performance,
             actor_labels
                 .after(benilla_app::planner_trajectory_probe::ProbeDrive)
                 .after(benilla_app::planner_replay::ReplayApply),
@@ -931,4 +932,64 @@ fn actor_labels(
         );
     }
     report("actors",&serde_json::json!({"visualEvents":replay.visual_events,"unsupported":replay.unsupported.len(),"selected":replay.selected_key}).to_string());
+}
+
+thread_local! {
+    static PERFORMANCE_COUNTER: std::cell::Cell<(bool, u64)> = const { std::cell::Cell::new((false, 0)) };
+}
+
+#[wasm_bindgen]
+pub fn set_performance_counter_enabled(enabled: bool) {
+    PERFORMANCE_COUNTER.with(|value| {
+        let (previous, epoch) = value.get();
+        if previous != enabled {
+            value.set((enabled, epoch.wrapping_add(1)));
+        }
+    });
+}
+
+/// One summary per second, outside React's replay snapshot publications.
+fn frame_performance(
+    time: Res<Time<Real>>,
+    mut frames: Local<Vec<f64>>,
+    mut elapsed: Local<f64>,
+    mut started: Local<bool>,
+    mut generation: Local<u64>,
+) {
+    let (enabled, epoch) = PERFORMANCE_COUNTER.with(|value| value.get());
+    if !enabled || *generation != epoch {
+        *generation = epoch;
+        frames.clear();
+        *elapsed = 0.;
+        *started = false;
+        return;
+    }
+    if !*started {
+        *started = true;
+        return;
+    }
+    let delta = time.delta_secs_f64() * 1000.;
+    if delta <= 0. || !delta.is_finite() {
+        return;
+    }
+    frames.push(delta);
+    *elapsed += delta;
+    if *elapsed < 1000. {
+        return;
+    }
+    frames.sort_by(f64::total_cmp);
+    let count = frames.len();
+    let percentile = |p: f64| frames[(count as f64 * p).ceil() as usize - 1];
+    report(
+        "framePerformance",
+        &serde_json::json!({
+            "source": "renderer", "fps": count as f64 * 1000. / *elapsed,
+            "p95": percentile(0.95), "p99": percentile(0.99),
+            "worst": frames[count - 1], "frames": count,
+            "slow": frames.iter().filter(|&&ms| ms > 1000. / 60. + 1.).count(),
+        })
+        .to_string(),
+    );
+    frames.clear();
+    *elapsed = 0.;
 }

@@ -9,7 +9,10 @@
     "build": "npm run check && vite build",
     "test": "tsx --test src/*.test.ts src/renderer-lab/*.test.ts",
     "format": "prettier --write src vite.config.ts tsconfig.json package.json",
-    "format:check": "prettier --check src vite.config.ts tsconfig.json package.json"
+    "format:check": "prettier --check src vite.config.ts tsconfig.json package.json",
+    "bench:assets": "tsx benchmarks/asset-loading.mts",
+    "bench:scrub": "tsx benchmarks/scrubbing.mts",
+    "bench:prepare": "tsx benchmarks/preparation.mts"
   },
   "dependencies": {
     "konva": "^10.9.0",

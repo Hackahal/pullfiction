@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { replayFloorHints } from "./floor-model";
+import { withReplayPoses } from "./replay-pose-phase";
+import { poseAt } from "./domain";
 import type { Actor, Replay } from "./types";
 const npc = (
   id: number,
@@ -22,6 +24,43 @@ const npc = (
     headings: [],
   }) as unknown as Actor;
 const player = { ...npc(1, 0, -7435, -1049), type: "Player" } as Actor;
+test("floor hints share exact pose queries with the current publication phase", () => {
+  const enemy = npc(2, 12435, -7435, -1049);
+  const replay = {
+    map: 469,
+    actors: [player, enemy],
+    chapters: [{ start: 0, end: 1000, enemyNPCs: [{ id: 2 }] }],
+  } as Replay;
+  const catalog = { 12435: { floorSeeds: [[469, -7435, -1049, 413]] } };
+  const expectedSeeds = new Map<string, number>();
+  const expected = replayFloorHints(replay, 50, catalog, expectedSeeds);
+  let calls = 0;
+  const read: typeof poseAt = (actor, time, smooth) => {
+    calls++;
+    return poseAt(actor, time, smooth);
+  };
+  for (const time of [50, 950, 50]) {
+    withReplayPoses((lookup) => {
+      const seeds = new Map<string, number>();
+      const hints = replayFloorHints(
+        replay,
+        time,
+        catalog,
+        seeds,
+        undefined,
+        lookup,
+      );
+      assert.deepEqual(hints, expected);
+      assert.deepEqual(seeds, expectedSeeds);
+      for (const actor of replay.actors)
+        assert.deepEqual(
+          lookup(actor, time, false),
+          poseAt(actor, time, false),
+        );
+    }, read);
+  }
+  assert.equal(calls, 6);
+});
 test("chapter enemies distinguish overlapping BWL floors even on a direct seek", () => {
   const lower = npc(2, 12435, -7435, -1049, 0, 100),
     upper = npc(3, 14020, -7435, -1049, 900);

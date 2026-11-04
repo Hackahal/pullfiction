@@ -354,3 +354,94 @@ test("closing a client promptly releases consumers even when its source ignores 
   await Promise.resolve();
   assert.equal(files.preparedBytes, 0);
 });
+
+test("preparation overlaps four independent reads and reports only completed files", async () => {
+  const releases = new Map<string, (bytes: Uint8Array) => void>();
+  const started: string[] = [];
+  const counts: number[] = [];
+  const files = new LocalClientFiles(
+    {
+      read: (name) =>
+        new Promise((resolve) => {
+          started.push(name);
+          releases.set(name, resolve);
+        }),
+    },
+    "parallel",
+  );
+  const pending = files.prepare(
+    ["a", "b", "c", "d", "e", "f"],
+    undefined,
+    (n) => counts.push(n),
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a", "b", "c", "d"]);
+  assert.deepEqual(counts, [0]);
+  releases.get("c")!(new Uint8Array([3]));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a", "b", "c", "d", "e"]);
+  assert.deepEqual(counts, [0, 1]);
+  for (const name of ["a", "b", "d", "e"])
+    releases.get(name)!(new Uint8Array([name.charCodeAt(0)]));
+  await new Promise((resolve) => setImmediate(resolve));
+  releases.get("f")!(new Uint8Array([6]));
+  await pending;
+  assert.deepEqual(counts, [0, 1, 2, 3, 4, 5, 6]);
+  assert.deepEqual([...files.readSync("c")], [3]);
+  assert.equal(files.preparedBytes, 6);
+});
+
+test("failed preparation rejects promptly and stops assigning queued reads", async () => {
+  const started: string[] = [];
+  const releases: (() => void)[] = [];
+  let fail!: (error: Error) => void;
+  const files = new LocalClientFiles(
+    {
+      read: (name) => {
+        started.push(name);
+        return new Promise((resolve, reject) => {
+          if (name === "a") fail = reject;
+          else releases.push(() => resolve(new Uint8Array([1])));
+        });
+      },
+    },
+    "failed",
+  );
+  const counts: number[] = [];
+  const pending = files.prepare(["a", "b", "c", "d", "e"], undefined, (n) =>
+    counts.push(n),
+  );
+  const rejection = assert.rejects(pending, /conversion failed/);
+  await new Promise((resolve) => setImmediate(resolve));
+  fail(Error("conversion failed"));
+  await rejection;
+  releases.forEach((release) => release());
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a", "b", "c", "d"]);
+  assert.deepEqual(counts, [0]);
+});
+
+test("aborted preparation does not launch queued reads", async () => {
+  const started: string[] = [];
+  const controller = new AbortController();
+  const files = new LocalClientFiles(
+    {
+      read: (name, signal) => {
+        started.push(name);
+        return new Promise((_resolve, reject) =>
+          signal!.addEventListener("abort", () => reject(signal!.reason), {
+            once: true,
+          }),
+        );
+      },
+    },
+    "abort-prepare",
+  );
+  const pending = files.prepare(["a", "b", "c", "d", "e"], controller.signal);
+  const rejection = assert.rejects(pending, { name: "AbortError" });
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  await rejection;
+  assert.deepEqual(started, ["a", "b", "c", "d"]);
+  assert.equal(files.preparedBytes, 0);
+});

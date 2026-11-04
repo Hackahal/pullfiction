@@ -5218,3 +5218,36 @@ test("rejected selected trajectories terminate preparation and invalidate late r
     f.c.stop();
   }
 });
+
+test("scrubbing coalesces a burst to the latest target and commits on release", () => {
+  const { c } = fixture();
+  let publishes = 0;
+  const off = c.subscribe(() => publishes++);
+  for (let i = 1; i <= 100; i++) c.scrub(i * 50);
+  assert.equal(publishes, 0);
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 5000);
+  assert.ok(publishes < 5);
+  const after = publishes;
+  c.flushScrub();
+  assert.equal(publishes, after);
+  c.scrub(8000);
+  c.seek(1000);
+  c.flushScrub();
+  assert.equal(
+    c.getSnapshot().time,
+    1000,
+    "Explicit navigation cancels an older drag target",
+  );
+  off();
+  c.stop();
+});
+
+test("a queued scrub cannot seek a replacement replay", () => {
+  const { c } = fixture();
+  c.scrub(5000);
+  c.installReplay(structuredClone(raw));
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 0);
+  c.stop();
+});

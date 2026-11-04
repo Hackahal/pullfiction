@@ -1,3 +1,4 @@
+import { LoadingProgress, PreparationProgress } from "./LoadingProgress";
 import { LandingPage } from "./LandingPage";
 import { SourceIcon } from "./IdentityIcon";
 import { useEffect, useRef, useState } from "react";
@@ -616,12 +617,27 @@ export function Library({
             </button>
           )}
           {(state.busy || opening) && (
-            <div className="library-loading" role="status">
+            <div
+              className="library-loading library-loading-overlay"
+              role="status"
+            >
               <span>
                 {opening && state.clientStatus !== "ready"
                   ? "Preparing raid assets…"
-                  : "Loading replay…"}
+                  : (state.replayPreparation?.message ??
+                    "Preparing replay assets…")}
               </span>
+              {state.replayPreparation ? (
+                <PreparationProgress progress={state.replayPreparation} />
+              ) : (
+                <LoadingProgress
+                  progress={
+                    state.clientLoadProgress?.activeFiles
+                      ? state.clientLoadProgress
+                      : null
+                  }
+                />
+              )}
               {(state.busy || state.clientStatus !== "ready") && (
                 <button
                   onClick={() => {

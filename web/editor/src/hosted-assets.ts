@@ -434,7 +434,23 @@ export async function openHostedAssets(
     check();
     return raw;
   }
+  // Bound downloads, decompression and cache writes across all concurrent files.
+  let activeChunks = 0;
+  const chunkWaiters: (() => void)[] = [];
   async function loadChunk(sha: string): Promise<Uint8Array> {
+    if (activeChunks >= 4)
+      await new Promise<void>((resolve) => chunkWaiters.push(resolve));
+    else activeChunks++;
+    try {
+      check();
+      return await loadChunkNow(sha);
+    } finally {
+      const next = chunkWaiters.shift();
+      if (next) next();
+      else activeChunks--;
+    }
+  }
+  async function loadChunkNow(sha: string): Promise<Uint8Array> {
     const url = new URL(`chunks/${sha}.bin.gz`, baseUrl);
     let raw: Uint8Array | undefined;
     try {
@@ -492,6 +508,22 @@ export async function openHostedAssets(
     }
     return promise;
   }
+  let activeFiles = 0;
+  let completedBytes = 0;
+  let totalBytes = 0;
+  let lastProgress = -Infinity;
+  function reportProgress(message: string) {
+    const now = performance.now();
+    if (activeFiles && now - lastProgress < 100) return;
+    lastProgress = now;
+    progress({
+      stage: "assets",
+      message,
+      completedBytes,
+      totalBytes,
+      activeFiles,
+    });
+  }
   async function file(key: string): Promise<Uint8Array<ArrayBuffer>> {
     check();
     const entry = Object.hasOwn(manifest.files, key)
@@ -523,18 +555,55 @@ export async function openHostedAssets(
             : stage === "model"
               ? "Loading character and creature models"
               : "Loading textures and interface assets";
-    progress({ stage: "assets", message: label });
-    const bytes = new Uint8Array(entry.bytes);
-    let offset = 0;
-    for (const part of entry.parts) {
-      const raw = await chunk(part.chunk);
-      bytes.set(raw.subarray(part.offset, part.offset + part.length), offset);
-      offset += part.length;
+    if (!activeFiles) {
+      completedBytes = 0;
+      totalBytes = 0;
+      lastProgress = -Infinity;
     }
-    if ((await digest(bytes)) !== entry.sha256)
-      throw new Error(`Hosted resource integrity check failed: ${key}`);
-    check();
-    return bytes;
+    activeFiles++;
+    totalBytes += entry.bytes;
+    reportProgress(label);
+    try {
+      const bytes = new Uint8Array(entry.bytes);
+      let next = 0;
+      let offset = 0;
+      let failed = false;
+      const copyParts = async () => {
+        while (!failed && next < entry.parts.length) {
+          check();
+          const part = entry.parts[next++];
+          const destination = offset;
+          offset += part.length;
+          let raw: Uint8Array;
+          try {
+            raw = await chunk(part.chunk);
+          } catch (error) {
+            failed = true;
+            throw error;
+          }
+          check();
+          if (failed) return;
+          bytes.set(
+            raw.subarray(part.offset, part.offset + part.length),
+            destination,
+          );
+          completedBytes += part.length;
+          reportProgress(label);
+        }
+      };
+      // Workers copy directly into disjoint slices, retaining at most four
+      // chunks per file instead of collecting every decompressed part.
+      await Promise.all(
+        Array.from({ length: Math.min(4, entry.parts.length) }, copyParts),
+      );
+      if ((await digest(bytes)) !== entry.sha256)
+        throw new Error(`Hosted resource integrity check failed: ${key}`);
+      check();
+      return bytes;
+    } finally {
+      activeFiles--;
+      reportProgress(label);
+    }
   }
   async function json(key: string) {
     const value = JSON.parse(

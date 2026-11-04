@@ -1,3 +1,5 @@
+import { assetProgress } from "./loading-progress";
+import { framePerformance, type FramePerformance } from "./frame-performance";
 import {
   shareSnapshot,
   readSharedSnapshot,
@@ -109,7 +111,7 @@ import {
 } from "./replay-trajectory-packets";
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
-import { movementFloorCandidates } from "./replay-movement-floors";
+import { MovementFloorCache } from "./replay-movement-floors";
 import { replayFloorAnchors } from "./replay-floor-anchors";
 import { ReplayHeightCache } from "./replay-height-cache";
 import { withReplayPoses } from "./replay-pose-phase";
@@ -462,6 +464,9 @@ export class EditorController {
         `${this.trajectorySource || replayIdentity(this.state.replay)}:frame-${this.trajectoryEpoch}`,
         frame,
         (json) => engine.set_replay_frame_delta!(json),
+        // renderFrame replaces metadata before publishing edits. Pose updates
+        // spread each row and allocate their changing vectors separately.
+        this.frame,
       );
     } else {
       this.frameTransport.reset();
@@ -491,6 +496,7 @@ export class EditorController {
   >();
   private fromFloorHeights = new ReplayHeightCache();
   private toFloorHeights = new ReplayHeightCache();
+  private movementFloors = new MovementFloorCache();
   private floorHintCache: {
     replay: Replay;
     time: number;
@@ -4401,7 +4407,32 @@ export class EditorController {
     this.render();
     if (this.activeProject && !this.state.playing) this.scheduleAutosave();
   }
+  private pendingScrub: {
+    time: number;
+    replay: Snapshot["replay"];
+    plan: Snapshot["plan"];
+  } | null = null;
+  /** Coalesce high-frequency drag input to the latest target on the next frame. */
+  scrub(time: number) {
+    if (Number.isFinite(time))
+      this.pendingScrub = {
+        time,
+        replay: this.state.replay,
+        plan: this.state.plan,
+      };
+  }
+  flushScrub() {
+    const pending = this.pendingScrub;
+    this.pendingScrub = null;
+    if (
+      pending &&
+      pending.replay === this.state.replay &&
+      pending.plan === this.state.plan
+    )
+      this.seek(pending.time);
+  }
   seek(time: number) {
+    this.pendingScrub = null;
     if (!Number.isFinite(time)) return;
     this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
@@ -5125,58 +5156,96 @@ export class EditorController {
       throw new Error("Too many actors in this report");
     return { replay, models };
   }
+  private replayPreparationEpoch = 0;
   private async prepareReplayForInstall(raw: RawReplay, signal?: AbortSignal) {
     const prepared = this.replayForInstall(raw);
     if (this.localFiles && this.browserBridge) {
-      const { replay } = prepared;
-      await this.prepareFloorGeometry(replay.map, signal);
-      await prepareOriginalUnits(
-        this.localFiles,
-        this.browserBridge,
-        replay.actors.map((actor) => {
-          const appearance =
-            this.appearances[
-              `${replay.gameVersion}:${replay.report.code}:${actor.id}`
-            ] ??
-            (replay.gameVersion === "vanilla"
-              ? this.appearances[`${replay.report.code}:${actor.id}`]
-              : undefined) ??
-            raw.appearanceOverrides?.[actor.id] ??
-            {};
-          return {
-            player: actor.type === "Player",
-            race: appearance.race ?? actor.race,
-            sex: appearance.sex ?? actor.sex,
-            look: appearance.look ?? [0, 0, 0, 0, 0],
-            display: appearance.display ?? actor.displayID,
-            gear: actor.gear
-              .filter((gear) => gear.model)
-              .map((gear) => ({
-                slot: gear.slot,
-                display: gear.model?.display,
-              })),
-          };
-        }),
-        [...replay.abilities.values()].flatMap((ability) =>
-          ability.icon ? [ability.icon] : [],
-        ),
-        signal,
-      );
+      const epoch = ++this.replayPreparationEpoch;
+      let lastProgress = -Infinity;
+      const progress = (completed: number, total: number) => {
+        if (epoch !== this.replayPreparationEpoch || signal?.aborted) return;
+        const now = performance.now();
+        if (completed !== total && now - lastProgress < 100) return;
+        lastProgress = now;
+        this.patch({
+          replayPreparation: {
+            message: "Preparing appearances and icons",
+            completed,
+            total,
+          },
+        });
+      };
+      this.patch({
+        replayPreparation: {
+          message: "Preparing raid geometry",
+          completed: 0,
+          total: 0,
+        },
+      });
       try {
-        const spellGraph = await this.browserBridge.catalog("spells");
-        await prepareOriginalSpellEffects(
+        const { replay } = prepared;
+        await this.prepareFloorGeometry(replay.map, signal);
+        await prepareOriginalUnits(
           this.localFiles,
           this.browserBridge,
-          [...replay.abilities.keys()].filter(
-            (id) => spellGraph.spells?.[id]?.summonCue,
+          replay.actors.map((actor) => {
+            const appearance =
+              this.appearances[
+                `${replay.gameVersion}:${replay.report.code}:${actor.id}`
+              ] ??
+              (replay.gameVersion === "vanilla"
+                ? this.appearances[`${replay.report.code}:${actor.id}`]
+                : undefined) ??
+              raw.appearanceOverrides?.[actor.id] ??
+              {};
+            return {
+              player: actor.type === "Player",
+              race: appearance.race ?? actor.race,
+              sex: appearance.sex ?? actor.sex,
+              look: appearance.look ?? [0, 0, 0, 0, 0],
+              display: appearance.display ?? actor.displayID,
+              gear: actor.gear
+                .filter((gear) => gear.model)
+                .map((gear) => ({
+                  slot: gear.slot,
+                  display: gear.model?.display,
+                })),
+            };
+          }),
+          [...replay.abilities.values()].flatMap((ability) =>
+            ability.icon ? [ability.icon] : [],
           ),
           signal,
+          progress,
         );
-      } catch (error) {
-        signal?.throwIfAborted();
-        if (error instanceof Error && error.name === "AbortError") throw error;
-        // These illustrative cues are optional; unavailable effects must not block the run.
-        this.notify(`Some spell effects are unavailable: ${message(error)}`);
+        if (epoch === this.replayPreparationEpoch)
+          this.patch({
+            replayPreparation: {
+              message: "Preparing spell effects",
+              completed: 0,
+              total: 0,
+            },
+          });
+        try {
+          const spellGraph = await this.browserBridge.catalog("spells");
+          await prepareOriginalSpellEffects(
+            this.localFiles,
+            this.browserBridge,
+            [...replay.abilities.keys()].filter(
+              (id) => spellGraph.spells?.[id]?.summonCue,
+            ),
+            signal,
+          );
+        } catch (error) {
+          signal?.throwIfAborted();
+          if (error instanceof Error && error.name === "AbortError")
+            throw error;
+          // These illustrative cues are optional; unavailable effects must not block the run.
+          this.notify(`Some spell effects are unavailable: ${message(error)}`);
+        }
+      } finally {
+        if (epoch === this.replayPreparationEpoch)
+          this.patch({ replayPreparation: null });
       }
     }
     return prepared;
@@ -5231,6 +5300,7 @@ export class EditorController {
       geometry?.contextCatalog(replay.map, this.models) ?? this.models,
       seeds,
       candidates ?? undefined,
+      lookupPose,
     );
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
@@ -5431,6 +5501,14 @@ export class EditorController {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  private performanceCounterEnabled = false;
+  setPerformanceCounter(enabled: boolean): boolean {
+    if (enabled !== this.performanceCounterEnabled) {
+      this.performanceCounterEnabled = enabled;
+      this.engine?.set_performance_counter_enabled?.(enabled);
+    }
+    return !!this.engine?.set_performance_counter_enabled;
+  }
   attachEngine(engine: Engine) {
     this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
@@ -5441,6 +5519,7 @@ export class EditorController {
     this.trajectoryEpoch++; // Late notifications from a previous installation are stale.
     this.trajectoryRetryStopped = false;
     this.engine = engine;
+    engine.set_performance_counter_enabled?.(this.performanceCounterEnabled);
     try {
       const stored = JSON.parse(
         this.storage?.getItem("pullfiction.raidFrames.size.v1") ?? "null",
@@ -5740,6 +5819,25 @@ export class EditorController {
       });
       if (first && this.state.cameraMode !== "orbit") this.focusCurrent();
       this.startClientPrefetch();
+    } else if (kind === "framePerformance") {
+      try {
+        const data = JSON.parse(value) as FramePerformance;
+        if (
+          this.performanceCounterEnabled &&
+          data.source === "renderer" &&
+          [
+            data.fps,
+            data.p95,
+            data.p99,
+            data.worst,
+            data.slow,
+            data.frames,
+          ].every((n) => Number.isFinite(n) && n >= 0)
+        )
+          framePerformance.publish(data);
+      } catch {
+        /* Optional diagnostics cannot interrupt playback. */
+      }
     } else if (kind === "status") {
       this.patch({ status: value });
     } else if (kind === "visualDiagnostics")
@@ -5972,6 +6070,7 @@ export class EditorController {
       // No storage lookup or other await before the native permission request.
       const permissionRequest = this.clientFolders.permission(handle, true);
       this.patch({
+        clientLoadProgress: null,
         clientStatus: "opening",
         clientProgress: "Requesting access to your saved client folder",
         error: null,
@@ -6109,7 +6208,10 @@ export class EditorController {
         files,
         (value) => {
           if (!abort.signal.aborted)
-            this.patch({ clientProgress: progressText(value) });
+            this.patch({
+              clientProgress: progressText(value),
+              clientLoadProgress: assetProgress(value),
+            });
         },
         { signal: abort.signal },
       );
@@ -6158,6 +6260,7 @@ export class EditorController {
     const abort = new AbortController();
     this.clientAbort = abort;
     this.patch({
+      clientLoadProgress: null,
       clientStatus: "opening",
       clientProgress: restored
         ? "Opening saved game assets"
@@ -6179,7 +6282,10 @@ export class EditorController {
           files,
           (value) => {
             if (!abort.signal.aborted)
-              this.patch({ clientProgress: progressText(value) });
+              this.patch({
+                clientProgress: progressText(value),
+                clientLoadProgress: assetProgress(value),
+              });
           },
           { signal: abort.signal },
         ));
@@ -6435,6 +6541,7 @@ export class EditorController {
     this.trajectoryRetryStopped = false;
     if (this.raf) return;
     const tick = (now: number) => {
+      this.flushScrub();
       if (this.previousTick) {
         const delta = Math.min(250, now - this.previousTick);
         this.advance(delta);
@@ -6466,6 +6573,7 @@ export class EditorController {
     this.raf = requestAnimationFrame(tick);
   }
   stop() {
+    this.pendingScrub = null;
     this.cancelPlayPreparation();
     this.encounterWarmEpoch++;
     this.encounterWarmer.cancel();
@@ -7187,8 +7295,9 @@ export class EditorController {
                   to: [movement.to[0], movement.to[1], toHeight],
                   from_inferred: movement.from[2] == null && seed === undefined,
                   to_inferred: movement.to[2] == null && seed === undefined,
-                  floor_candidates: geometry
-                    ? movementFloorCandidates(
+                  floor_candidates: geometry && actor
+                    ? this.movementFloors.candidates(
+                        actor,
                         geometry,
                         movement.from as number[],
                         movement.to as number[],

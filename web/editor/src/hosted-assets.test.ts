@@ -712,3 +712,145 @@ test("mock-clock settlement fails explicitly for a never-settling operation", as
     /did not settle/,
   );
 });
+
+test("multipart files start independent chunks together and report assembled byte progress", async () => {
+  const f = fixture();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started: string[] = [];
+  const progress: any[] = [];
+  const reader = await openHostedAssets(
+    "https://assets.example",
+    (value) => progress.push(value),
+    {
+      cache: null,
+      fetch: async (url, options) => {
+        if (!String(url).endsWith("manifest.json")) {
+          started.push(String(url));
+          await gate;
+        }
+        return f.fetcher(url, options);
+      },
+    },
+  );
+  const result = reader.read("fonts/a.ttf");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(
+    started.length,
+    2,
+    "Both chunks must start before either finishes",
+  );
+  release();
+  assert.deepEqual([...new Uint8Array((await result).bytes)], [1, 2, 3, 4]);
+  assert.equal(progress[0].completedBytes, 0);
+  assert.equal(progress[0].totalBytes, 4);
+  assert.equal(progress.at(-1).completedBytes, 4);
+  assert.equal(progress.at(-1).activeFiles, 0);
+  reader.close();
+});
+
+test("parallel files bound chunk work globally and preserve reordered parts", async () => {
+  const raws = Array.from(
+    { length: 8 },
+    (_, i) => new Uint8Array([i, i + 1, i + 2]),
+  );
+  const zipped = raws.map((raw) => new Uint8Array(gzipSync(raw)));
+  const hashes = zipped.map(sha);
+  const bytes = Buffer.concat(raws);
+  const manifest: HostedManifest = {
+    schema: 1,
+    revision: "a".repeat(64),
+    build: {
+      product: "wow_classic_era",
+      version: "1.15.9",
+      buildKey: "b".repeat(32),
+    },
+    chunks: Object.fromEntries(
+      hashes.map((hash, i) => [
+        hash,
+        { bytes: zipped[i].length, rawBytes: raws[i].length },
+      ]),
+    ),
+    files: {
+      "read:parallel.bin": {
+        parts: hashes.map((chunk) => ({ chunk, offset: 0, length: 3 })),
+        bytes: bytes.length,
+        sha256: sha(bytes),
+      },
+    },
+    appearanceInputs: [],
+  };
+  let active = 0,
+    peak = 0;
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    fetch: async (url) => {
+      if (String(url).endsWith("manifest.json")) return Response.json(manifest);
+      const index = hashes.findIndex((hash) => String(url).includes(hash));
+      peak = Math.max(peak, ++active);
+      await new Promise((resolve) => setTimeout(resolve, (8 - index) * 2));
+      active--;
+      return new Response(zipped[index]);
+    },
+  });
+  const results = await Promise.all(
+    Array.from({ length: 3 }, () => reader.read("parallel.bin")),
+  );
+  assert.equal(peak, 4);
+  for (const result of results)
+    assert.deepEqual(Buffer.from(result.bytes), bytes);
+  reader.close();
+});
+
+test("a terminal part failure surfaces before other transfers finish and stops assigning new parts", async () => {
+  const raws = Array.from({ length: 6 }, (_, i) => new Uint8Array([i]));
+  const zipped = raws.map((raw) => new Uint8Array(gzipSync(raw)));
+  const hashes = zipped.map(sha);
+  const manifest: HostedManifest = {
+    schema: 1,
+    revision: "a".repeat(64),
+    build: {
+      product: "wow_classic_era",
+      version: "1.15.9",
+      buildKey: "b".repeat(32),
+    },
+    chunks: Object.fromEntries(
+      hashes.map((h, i) => [h, { bytes: zipped[i].length, rawBytes: 1 }]),
+    ),
+    files: {
+      "read:failed.bin": {
+        parts: hashes.map((chunk) => ({ chunk, offset: 0, length: 1 })),
+        bytes: 6,
+        sha256: sha(Buffer.concat(raws)),
+      },
+    },
+    appearanceInputs: [],
+  };
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started: number[] = [];
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    cache: null,
+    fetch: async (url) => {
+      if (String(url).endsWith("manifest.json")) return Response.json(manifest);
+      const i = hashes.findIndex((h) => String(url).includes(h));
+      started.push(i);
+      if (i === 0) return new Response(null, { status: 404 });
+      await gate;
+      return new Response(zipped[i]);
+    },
+  });
+  try {
+    await assert.rejects(reader.read("failed.bin"), { name: "AssetUnavailableError" });
+    assert.deepEqual(started, [0, 1, 2, 3]);
+  } finally {
+    release();
+  }
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.deepEqual(started, [0, 1, 2, 3]);
+  reader.close();
+});

@@ -40,9 +40,46 @@ local function make(key)
     end
     return f
 end
-local function rect(t, f, x, y, w, h)
-    t:ClearAllPoints(); t:SetPoint('TOPLEFT', f, 'TOPLEFT', x, -y)
-    t:SetWidth(math.max(w, 0.1)); t:SetHeight(h)
+-- These private widgets retain exact arguments. Camera movement changes the
+-- parent anchor, not every font, texture and child rectangle on the plate.
+local function anchor(o, point, parent, relative, x, y)
+    local old=o._pfAnchor
+    if old and old[1]==point and old[2]==parent and old[3]==relative and old[4]==x and old[5]==y then return end
+    o:ClearAllPoints(); o:SetPoint(point,parent,relative,x,y)
+    o._pfAnchor={point,parent,relative,x,y}
+end
+local function size(o,w,h)
+    if o._pfWidth~=w then o:SetWidth(w);o._pfWidth=w end
+    if o._pfHeight~=h then o:SetHeight(h);o._pfHeight=h end
+end
+local function rect(o,p,x,y,w,h)
+    anchor(o,'TOPLEFT',p,'TOPLEFT',x,-y);size(o,math.max(w,0.1),h)
+end
+local function setfont(o,value)
+    if o._pfFontSize==value then return end
+    if o:SetFont(font,value,'OUTLINE') then o._pfFontSize=value end
+end
+local function settext(o,value)
+    if o._pfText==value then return end
+    o:SetText(value);o._pfText=value
+end
+local function settexture(o,value)
+    if o._pfTexture==value then return end
+    if o:SetTexture(value) then o._pfTexture=value end
+end
+local function rgba(o,method,r,g,b,a)
+    local old=o._pfColor
+    if old and old[1]==method and old[2]==r and old[3]==g and old[4]==b and old[5]==a then return end
+    o[method](o,r,g,b,a);o._pfColor={method,r,g,b,a}
+end
+local function shown(o,value)
+    if o._pfShown==value then return end
+    if value then o:Show() else o:Hide() end
+    o._pfShown=value
+end
+local function crop(o)
+    if o._pfCrop then return end
+    o:SetTexCoord(0.07,0.93,0.07,0.93);o._pfCrop=true
 end
 function PullFictionPlates_Update(units, u, looking)
     for key, f in pairs(PullFictionPlates) do f.seen = nil end
@@ -51,63 +88,62 @@ function PullFictionPlates_Update(units, u, looking)
         if not f then f = make(d.key); PullFictionPlates[d.key] = f end
         f.seen = true
         local w, h = d.w*u, d.h*u
-        f:ClearAllPoints(); f:SetPoint('TOPLEFT', WorldFrame, 'TOPLEFT', d.x*u, -d.y*u)
-        f:SetWidth(w); f:SetHeight(h); f:EnableMouse(not looking)
+        rect(f,WorldFrame,d.x*u,d.y*u,w,h)
+        if f._pfMouse~=(not looking) then f:EnableMouse(not looking);f._pfMouse=not looking end
         local r, g, b = d.r, d.g, d.b
         local iconrow = table.getn(d.auras) > 0 and 18*u or 0
         local namey = iconrow
         local barY = namey+13*u
         local barH = d.friendly and 5*u or 10*u
         if d.selected then barH = 10*u end
-        f.edge:SetVertexColor(d.selected and 1 or 0.015, d.selected and 0.79 or 0.02, d.selected and 0.3 or 0.03, 1)
-        f.edge:Show(); f.background:Show()
+        rgba(f.edge,'SetVertexColor',d.selected and 1 or 0.015, d.selected and 0.79 or 0.02, d.selected and 0.3 or 0.03, 1)
+        shown(f.edge,true); shown(f.background,true)
         rect(f.edge, f, -u, barY-u, w+2*u, barH+2*u)
         rect(f.background, f, 0, barY, w, barH)
         rect(f.fill, f, 0, barY, w*d.health, barH)
-        f.fill:SetVertexColor(r, g, b, 1)
-        if d.health <= 0 then f.fill:Hide() else f.fill:Show() end
-        f.name:ClearAllPoints(); f.name:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, -namey)
-        f.name:SetWidth(w); f.name:SetHeight(12*u); f.name:SetFont(font, (d.friendly and 10 or 11)*u, 'OUTLINE')
-        f.name:SetText(d.name); f.name:SetTextColor(d.friendly and math.min(1,r+0.18) or 1, d.friendly and math.min(1,g+0.18) or 0.92, d.friendly and math.min(1,b+0.18) or 0.85, 1)
-        f.hp:SetFont(font, 8*u, 'OUTLINE'); f.hp:SetJustifyH('RIGHT')
-        f.hp:ClearAllPoints(); f.hp:SetPoint('RIGHT', f, 'TOPRIGHT', -2*u, -barY-barH/2)
-        f.hp:SetWidth(38*u); f.hp:SetHeight(10*u)
-        if not d.friendly or d.selected then f.hp:SetText(d.hptext); f.hp:Show() else f.hp:Hide() end
+        rgba(f.fill,'SetVertexColor',r,g,b,1)
+        shown(f.fill,d.health>0)
+        anchor(f.name,'TOPLEFT',f,'TOPLEFT',0,-namey)
+        size(f.name,w,12*u);setfont(f.name,(d.friendly and 10 or 11)*u)
+        settext(f.name,d.name); rgba(f.name,'SetTextColor',d.friendly and math.min(1,r+0.18) or 1, d.friendly and math.min(1,g+0.18) or 0.92, d.friendly and math.min(1,b+0.18) or 0.85, 1)
+        setfont(f.hp,8*u);if not f.hp._pfRight then f.hp:SetJustifyH('RIGHT');f.hp._pfRight=true end
+        anchor(f.hp,'RIGHT',f,'TOPRIGHT',-2*u,-barY-barH/2)
+        size(f.hp,38*u,10*u)
+        if not d.friendly or d.selected then settext(f.hp,d.hptext);shown(f.hp,true) else shown(f.hp,false) end
         if d.cast then
             local cy = barY+barH+4*u; local ch = 10*u
             rect(f.castback, f, 0, cy, w, ch)
             rect(f.castfill, f, 0, cy, w*d.cast.progress, ch)
             rect(f.castic, f, -13*u, cy-u, 12*u, 12*u)
-            f.castic:SetTexture(d.cast.icon); f.castic:SetTexCoord(0.07,0.93,0.07,0.93)
-            f.casttext:SetFont(font, 8*u, 'OUTLINE'); f.casttext:ClearAllPoints()
-            f.casttext:SetPoint('TOPLEFT', f, 'TOPLEFT', 2*u, -cy)
-            f.casttext:SetWidth(w-28*u); f.casttext:SetHeight(ch); f.casttext:SetText(d.cast.name)
-            f.casttime:SetFont(font, 8*u, 'OUTLINE'); f.casttime:ClearAllPoints()
-            f.casttime:SetPoint('TOPRIGHT', f, 'TOPRIGHT', -2*u, -cy)
-            f.casttime:SetWidth(25*u); f.casttime:SetHeight(ch); f.casttime:SetText(d.cast.remaining)
-            f.casttime:SetJustifyH('RIGHT')
-            f.castback:Show(); f.castfill:Show(); f.casttext:Show(); f.casttime:Show(); f.castic:Show()
+            settexture(f.castic,d.cast.icon);crop(f.castic)
+            setfont(f.casttext,8*u);anchor(f.casttext,'TOPLEFT',f,'TOPLEFT',2*u,-cy)
+            size(f.casttext,w-28*u,ch);settext(f.casttext,d.cast.name)
+            setfont(f.casttime,8*u);anchor(f.casttime,'TOPRIGHT',f,'TOPRIGHT',-2*u,-cy)
+            size(f.casttime,25*u,ch);settext(f.casttime,d.cast.remaining)
+            if not f.casttime._pfRight then f.casttime:SetJustifyH('RIGHT');f.casttime._pfRight=true end
+            shown(f.castback,true);shown(f.castfill,true);shown(f.casttext,true);shown(f.casttime,true);shown(f.castic,true)
         else
-            f.castback:Hide(); f.castfill:Hide(); f.casttext:Hide(); f.casttime:Hide(); f.castic:Hide()
+            shown(f.castback,false);shown(f.castfill,false);shown(f.casttext,false);shown(f.casttime,false);shown(f.castic,false)
         end
         for i = 1, 4 do
             local a = d.auras[i]; local icon = f.icons[i]
             if a then
-                icon:ClearAllPoints(); icon:SetPoint('TOPLEFT', f, 'TOPLEFT', (i-1)*18*u, 0)
-                icon:SetWidth(15*u); icon:SetHeight(15*u)
+                anchor(icon,'TOPLEFT',f,'TOPLEFT',(i-1)*18*u,0);size(icon,15*u,15*u)
                 rect(icon.bg, icon, -u, -u, 17*u, 17*u)
-                icon.bg:SetVertexColor(a.debuff and 0.85 or 0.15, a.debuff and 0.23 or 0.5, a.debuff and 0.18 or 0.8, 1)
-                icon.tex:SetTexture(a.icon); icon.tex:SetTexCoord(0.07,0.93,0.07,0.93)
-                icon.stack:SetFont(font, 8*u, 'OUTLINE'); icon.stack:SetText(a.stack>1 and tostring(a.stack) or '')
-                icon:Show()
-            else icon:Hide() end
+                rgba(icon.bg,'SetVertexColor',a.debuff and 0.85 or 0.15, a.debuff and 0.23 or 0.5, a.debuff and 0.18 or 0.8, 1)
+                settexture(icon.tex,a.icon);crop(icon.tex)
+                setfont(icon.stack,8*u);settext(icon.stack,a.stack>1 and tostring(a.stack) or '')
+                shown(icon,true)
+            else shown(icon,false) end
         end
         if d.name_only then
-            f.edge:Hide(); f.background:Hide(); f.fill:Hide(); f.hp:Hide()
-            f.castback:Hide(); f.castfill:Hide(); f.casttext:Hide(); f.casttime:Hide(); f.castic:Hide()
-            for i = 1, 4 do f.icons[i]:Hide() end
+            shown(f.edge,false);shown(f.background,false);shown(f.fill,false);shown(f.hp,false)
+            shown(f.castback,false);shown(f.castfill,false);shown(f.casttext,false);shown(f.casttime,false);shown(f.castic,false)
+            for i=1,4 do shown(f.icons[i],false) end
         end
-        f:SetAlpha(d.selected and 1 or (d.friendly and 0.92 or 1)); f:Show()
+        local alpha=d.selected and 1 or (d.friendly and 0.92 or 1)
+        if f._pfAlpha~=alpha then f:SetAlpha(alpha);f._pfAlpha=alpha end
+        shown(f,true)
     end
-    for key, f in pairs(PullFictionPlates) do if not f.seen then f:Hide() end end
+    for key, f in pairs(PullFictionPlates) do if not f.seen then shown(f,false) end end
 end

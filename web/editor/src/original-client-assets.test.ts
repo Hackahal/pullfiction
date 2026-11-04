@@ -50,7 +50,19 @@ test("body atlas preparation matches the last descriptor write for repeated equi
       { slot: 9, display: 684817 },
     ],
   };
-  await prepareOriginalUnits(files, bridge, [unit]);
+  const progress: number[][] = [];
+  await prepareOriginalUnits(
+    files,
+    bridge,
+    [unit],
+    [],
+    undefined,
+    (completed, total) => progress.push([completed, total]),
+  );
+  assert.deepEqual(progress, [
+    [0, 1],
+    [1, 1],
+  ]);
   assert.deepEqual(resources, [
     bodyAppearanceResource({
       race: 1,
