@@ -5538,3 +5538,86 @@ test("large whole-file import can be cancelled during combat preparation", async
     c.stop();
   }
 });
+
+test("a cancelled floor-index listener does not cancel or hide a shared map build", async () => {
+  const c = new EditorController(undefined, {
+    projectStore: null,
+    clientCache: null,
+    clientFolders: null,
+  });
+  type Progress = (completed: number, total: number) => void;
+  const internals = c as unknown as {
+    browserBridge: { map: () => Promise<unknown> };
+    clientAbort: AbortController;
+
+    loadedFloors: Map<number, ReplayFloorGeometry>;
+    prepareFloorGeometry(
+      map: number,
+      signal?: AbortSignal,
+      progress?: Progress,
+    ): Promise<void>;
+  };
+  const count = 60_000;
+  let requests = 0;
+  internals.browserBridge = {
+    async map() {
+      requests++;
+      return {
+        floors: [
+          {
+            area: "room",
+            vertices: [
+              [0, 0, 4],
+              [1, 0, 4],
+              [0, 1, 4],
+            ],
+            indices: Array.from({ length: count * 3 }, (_, i) => i % 3),
+          },
+        ],
+        areas: [],
+      };
+    },
+  };
+  const abort = new AbortController();
+  const originalProgress: number[] = [],
+    sharedProgress: number[] = [];
+  let shared: Promise<void> | undefined;
+  const first = internals.prepareFloorGeometry(
+    409,
+    abort.signal,
+    (completed, total) => {
+      originalProgress.push(completed);
+      assert.equal(total, count);
+      assert.equal(internals.loadedFloors.has(409), false);
+      abort.abort();
+      shared = internals.prepareFloorGeometry(409, undefined, (done) =>
+        sharedProgress.push(done),
+      );
+    },
+  );
+  try {
+    await assert.rejects(first, { name: "AbortError" });
+    await shared;
+    assert.equal(requests, 1);
+    assert.deepEqual(originalProgress, [0]);
+    assert.equal(sharedProgress[0], 0);
+    assert.equal(sharedProgress.at(-1), count);
+    assert.ok(
+      sharedProgress.every((n, i) => i === 0 || n > sharedProgress[i - 1]),
+    );
+    assert.equal(
+      internals.loadedFloors.get(409)?.height(0.1, 0.1, 4, false),
+      4,
+    );
+    internals.clientAbort = new AbortController();
+    const teardownProgress: number[] = [];
+    await internals.prepareFloorGeometry(469, undefined, (done) => {
+      teardownProgress.push(done);
+      c.stop();
+    });
+    assert.deepEqual(teardownProgress, [0]);
+    assert.equal(internals.loadedFloors.has(469), false);
+  } finally {
+    c.stop();
+  }
+});

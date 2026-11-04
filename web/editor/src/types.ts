@@ -461,7 +461,7 @@ export interface Snapshot {
   clientProgress: string;
   clientLoadProgress?: import("./loading-progress").AssetProgress | null;
   replayPreparation?: {
-    unit?: "events";
+    unit?: "events" | "triangles";
     message: string;
     completed: number;
     total: number;

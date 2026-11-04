@@ -487,7 +487,11 @@ export class EditorController {
     null;
   private floorGeometry = new Map<
     number,
-    Promise<ReplayFloorGeometry | undefined>
+    {
+      promise: Promise<ReplayFloorGeometry | undefined>;
+      listeners: Set<(completed: number, total: number) => void>;
+      progress?: [number, number];
+    }
   >();
   private loadedFloors = new Map<number, ReplayFloorGeometry>();
   private actorFloorHeights = new ReplayHeightCache();
@@ -5294,7 +5298,30 @@ export class EditorController {
         });
       try {
         const { replay } = prepared;
-        await this.prepareFloorGeometry(replay.map, signal);
+        let lastGeometryProgress = -Infinity;
+        await this.prepareFloorGeometry(
+          replay.map,
+          signal,
+          (completed, total) => {
+            if (!reportable()) return;
+            const now = performance.now();
+            if (
+              completed > 0 &&
+              completed !== total &&
+              now - lastGeometryProgress < 100
+            )
+              return;
+            lastGeometryProgress = now;
+            this.patch({
+              [progressField]: {
+                message: "Indexing raid geometry",
+                completed,
+                total,
+                unit: "triangles",
+              },
+            });
+          },
+        );
         await prepareOriginalUnits(
           this.localFiles,
           this.browserBridge,
@@ -5360,33 +5387,68 @@ export class EditorController {
     }
     return prepared;
   }
-  private async prepareFloorGeometry(map: number, signal?: AbortSignal) {
+  private async prepareFloorGeometry(
+    map: number,
+    signal?: AbortSignal,
+    progress?: (completed: number, total: number) => void,
+  ) {
+    signal?.throwIfAborted();
     const bridge = this.browserBridge,
       raid = raidByMap(map);
     if (!bridge || !raid) return;
-    let pending = this.floorGeometry.get(map);
-    if (!pending) {
-      pending = bridge
-        .map(map, raid.directory)
-        .then((data) => {
-          const geometry = new ReplayFloorGeometry(
-            data.floors,
-            data.areas,
-            replayFloorAnchors(map),
-          );
-          if (this.browserBridge === bridge)
-            this.loadedFloors.set(map, geometry);
-          return geometry;
-        })
-        .catch((error) => {
-          if (this.browserBridge === bridge)
-            this.notify(`Floor context unavailable: ${message(error)}`);
-          return undefined;
-        });
-      this.floorGeometry.set(map, pending);
+    const clientSignal = this.clientAbort?.signal;
+    const current = () =>
+      this.browserBridge === bridge && !clientSignal?.aborted;
+    if (!current()) return;
+    let entry = this.floorGeometry.get(map);
+    if (!entry) {
+      const listeners = new Set<(completed: number, total: number) => void>();
+      const request = {
+        listeners,
+        progress: undefined as [number, number] | undefined,
+        promise: Promise.resolve()
+          .then(() => bridge.map(map, raid.directory))
+          .then((data) =>
+            ReplayFloorGeometry.prepare(
+              data.floors,
+              data.areas,
+              replayFloorAnchors(map),
+              (completed, total) => {
+                request.progress = [completed, total];
+                for (const listener of [...listeners])
+                  if (listeners.has(listener)) listener(completed, total);
+              },
+              current,
+            ),
+          )
+          .then((geometry) => {
+            if (geometry && current()) this.loadedFloors.set(map, geometry);
+            return geometry;
+          })
+          .catch((error) => {
+            if (current())
+              this.notify(`Floor context unavailable: ${message(error)}`);
+            return undefined;
+          }),
+      };
+      this.floorGeometry.set(map, request);
+      entry = request;
     }
-    await pending;
-    signal?.throwIfAborted();
+    const removeProgress = () => {
+      if (progress) entry.listeners.delete(progress);
+    };
+    try {
+      if (progress && !this.loadedFloors.has(map)) {
+        entry.listeners.add(progress);
+        signal?.addEventListener("abort", removeProgress, { once: true });
+        if (entry.progress) progress(...entry.progress);
+      }
+      await entry.promise;
+      signal?.throwIfAborted();
+    } finally {
+      signal?.removeEventListener("abort", removeProgress);
+      removeProgress();
+    }
   }
   private replayFloors(replay: Replay, lookupPose: typeof poseAt = poseAt) {
     const geometry = this.loadedFloors.get(replay.map),

@@ -36,6 +36,54 @@ export class ReplayFloorGeometry {
     areas: MapManifest["areas"] = [],
     anchors: FloorAnchor[] = [],
   ) {
+    for (const _ of this.index(floors, areas, anchors)) {
+      // Small callers build synchronously with the same indexing rules.
+    }
+  }
+
+  static async prepare(
+    floors: MapFloor[],
+    areas: MapManifest["areas"],
+    anchors: FloorAnchor[],
+    progress: (completed: number, total: number) => void,
+    current: () => boolean,
+  ): Promise<ReplayFloorGeometry | undefined> {
+    const total = floors.reduce(
+      (sum, floor) => sum + Math.ceil(floor.indices.length / 3),
+      0,
+    );
+    if (!current()) return undefined;
+    if (total < 50_000) return new ReplayFloorGeometry(floors, areas, anchors);
+
+    const geometry = new ReplayFloorGeometry([]);
+    const steps = geometry.index(floors, areas, anchors, true);
+    const yieldTask = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, 0));
+    progress(0, total);
+    await yieldTask();
+    let started = performance.now();
+    while (current()) {
+      const step = steps.next();
+      if (step.done) {
+        progress(total, total);
+        return geometry;
+      }
+      if (performance.now() - started >= 5) {
+        if (step.value !== undefined) progress(step.value, total);
+        await yieldTask();
+        started = performance.now();
+      }
+    }
+    return undefined;
+  }
+
+  private *index(
+    floors: MapFloor[],
+    areas: MapManifest["areas"],
+    anchors: FloorAnchor[],
+    sliced = false,
+  ): Generator<number | undefined, void> {
+    let completed = 0;
     const rooms = new Map(
       areas
         .filter((a) => Number.isFinite(a.height))
@@ -49,6 +97,10 @@ export class ReplayFloorGeometry {
         structure = floor.area !== "terrain",
         room = rooms.get(floor.area);
       for (let i = 0; i < indices.length; i += 3) {
+        if (sliced) {
+          if (completed && (completed & 511) === 0) yield completed;
+          completed++;
+        }
         const a = vertices[indices[i]],
           b = vertices[indices[i + 1]],
           c = vertices[indices[i + 2]];
@@ -81,7 +133,9 @@ export class ReplayFloorGeometry {
     }
     // A reference from another client/layout is useful only if this client's
     // walkable geometry actually supports it. Snap away NPC placement offsets.
-    for (const anchor of anchors) {
+    for (let i = 0; i < anchors.length; i++) {
+      if (sliced && (i & 15) === 0) yield;
+      const anchor = anchors[i];
       if (
         !Number.isInteger(anchor.entry) ||
         anchor.entry <= 0 ||

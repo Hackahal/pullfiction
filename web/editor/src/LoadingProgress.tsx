@@ -32,7 +32,7 @@ export function PreparationProgress({
     message: string;
     completed: number;
     total: number;
-    unit?: "events";
+    unit?: "events" | "triangles";
   };
 }) {
   return (
@@ -45,7 +45,7 @@ export function PreparationProgress({
       />
       <small>
         {progress.total > 0
-          ? `${progress.completed} / ${progress.total} ${progress.unit === "events" ? "events read" : "assets checked"}`
+          ? `${progress.completed} / ${progress.total} ${progress.unit === "events" ? "events read" : progress.unit === "triangles" ? "triangles checked" : "assets checked"}`
           : "Preparing the next step…"}
       </small>
     </div>
