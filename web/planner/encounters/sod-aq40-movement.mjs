@@ -27,10 +27,17 @@ export function encounterJumpEvents(replay) {
     if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) return [];
     return [{ chapter: c, encounterID, start: Math.max(0, start), end: Math.min(duration, end) }];
   });
-  const seen = new Set();
-  const rows = (raw.events ?? []).map((event, order) => ({ event, order, t: event.timestamp - origin }))
-    .filter(r => Number.isFinite(r.t) && r.t >= 0 && r.t <= duration)
-    .sort((a, b) => a.t - b.t || a.order - b.order);
+  if (!scopes.length) return result;
+  const seen = new Set(), rows = [], events = raw.events ?? [];
+  for (let order = 0; order < events.length; order++) {
+    const event = events[order];
+    if (event.type !== 'cast' && event.type !== 'applydebuff') continue;
+    const spell = event.abilityGameID ?? event.ability?.guid;
+    if (!(event.type === 'cast' ? TELEPORTS : ENTANGLES).has(spell)) continue;
+    const t = event.timestamp - origin;
+    if (Number.isFinite(t) && t >= 0 && t <= duration) rows.push({ event, order, t });
+  }
+  rows.sort((a, b) => a.t - b.t || a.order - b.order);
   for (const { event: e, order, t } of rows) {
     const spell = e.abilityGameID ?? e.ability?.guid;
     const sourceKey = key(e.sourceID, e.sourceInstance);

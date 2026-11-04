@@ -15,15 +15,19 @@ export function applyAq40IllusionPresentation(replay){
  if(replay.gameVersion!=='sod'||Number(replay.map)!==531)return replay;
  const origin=replay.raw?.fight?.startTime,duration=replay.duration;
  if(!Number.isFinite(origin)||!Number.isFinite(duration)||duration<=0)return replay;
- const events=(replay.raw.events??[]).map((event,order)=>({event,order,t:event.timestamp-origin}))
-  .filter(({t})=>Number.isFinite(t)&&0<=t&&t<=duration)
-  .sort((a,b)=>a.t-b.t||a.order-b.order);
  const byKey=new Map((replay.actors??[]).map(a=>[a.key,a]));
+ const events=replay.raw.events??[],rows=[];
+ for(let order=0;order<events.length;order++){
+  const e=events[order];if(e.type!=='cast')continue;
+  const id=spell(e);if(id!==BIRTH&&id!==SHATTER)continue;
+  const key=sourceKey(e);if(byKey.get(key)?.gameID!==NPC)continue;
+  const t=e.timestamp-origin;
+  if(Number.isFinite(t)&&0<=t&&t<=duration)rows.push({key,id,t,order});
+ }
+ rows.sort((a,b)=>a.t-b.t||a.order-b.order);
  const intervals=new Map(),open=new Map();
  const append=(key,row)=>{const rows=intervals.get(key)??[];rows.push(row);intervals.set(key,rows);};
- for(const {event:e,t}of events){
-  const key=sourceKey(e),actor=byKey.get(key),id=spell(e);
-  if(actor?.gameID!==NPC||e.type!=='cast')continue;
+ for(const {key,id,t}of rows){
   if(id===BIRTH){
    const previous=open.get(key);
    if(previous===t)continue; // duplicated event in the same update
