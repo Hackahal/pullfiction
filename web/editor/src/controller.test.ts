@@ -3,6 +3,7 @@ import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { EditorController } from "./controller";
+import * as spawnReferences from "./spawn-model";
 import type { Engine, NativeFrame, RawReplay } from "./types";
 import { STORAGE_KEY } from "./domain";
 import luaparse from "luaparse";
@@ -85,12 +86,15 @@ function fixture() {
     mapPicks: number[][] = [],
     selected = "";
   const memory = new Map<string, string>();
-  const c = new EditorController({
-    getItem: (key) => memory.get(key) ?? null,
-    setItem: (key, value) => {
-      memory.set(key, value);
+  const c = new EditorController(
+    {
+      getItem: (key) => memory.get(key) ?? null,
+      setItem: (key, value) => {
+        memory.set(key, value);
+      },
     },
-  });
+    { spawnReferences },
+  );
   const annotations: { marks: { id: string }[] }[] = [];
   const engine = {
     load_raid: (map: number) => maps.push(map),
@@ -3167,7 +3171,7 @@ test("log mode places Vanilla and SoD NPCs at their first log position without r
 });
 
 test("no-log reference spawns reach native frames, obey visibility and do not leak across maps or rulesets", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   let frame: NativeFrame[] = [];
   c.attachEngine({
     set_replay_frame: (json: string) => {
@@ -3199,7 +3203,7 @@ test("no-log reference spawns reach native frames, obey visibility and do not le
 });
 
 test("default NPC can be edited in a no-log plan without duplicating its reference slot", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   const actor = c.sceneActors()[0],
     pos = c.actorPose(actor)!.pos as [number, number, number];
@@ -3218,7 +3222,7 @@ test("default NPC can be edited in a no-log plan without duplicating its referen
 });
 
 test("untouched reference NPC selection supports group nudges, coordinates, rotation and attached ranges", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const actors = c.sceneActors().slice(0, 2),
@@ -3250,7 +3254,7 @@ test("untouched reference NPC selection supports group nudges, coordinates, rota
 });
 
 test("group drag moves both edited and untouched reference NPCs together", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const [a, b] = c.sceneActors();
@@ -3272,7 +3276,7 @@ test("group drag moves both edited and untouched reference NPCs together", () =>
 });
 
 test("Select All includes untouched and edited reference NPCs with drawings and respects selection filters", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   const keys = c.sceneActors().map((a) => a.key);
   assert.equal(c.snapshot(), undefined);
@@ -3302,7 +3306,7 @@ test("Select All includes untouched and edited reference NPCs with drawings and 
 });
 
 test("range attachment to an untouched reference NPC survives materialization and follows edits", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const actor = c.sceneActors()[0],
@@ -3695,7 +3699,7 @@ test("approximate room pins keep authored XY and nearby floor height through nat
 });
 
 test("nearby reference scans cache misses and invalidate for actor identity, hints and geometry", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.selectRaid(2856, true, "sod");
   const actor = c
     .sceneActors()
@@ -3725,7 +3729,7 @@ test("nearby reference scans cache misses and invalidate for actor identity, hin
 });
 
 test("planned and recorded reference poses share the edge cache and invalidate moved coordinates", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.selectRaid(2856, true, "sod");
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);

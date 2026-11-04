@@ -57,11 +57,6 @@ import {
   type Transform,
 } from "./editor-controls";
 import { gameVersion, reportSource } from "../../planner/game-versions.mjs";
-import {
-  referenceRaidActors,
-  referenceNpcModels,
-  referenceSpawnNotice,
-} from "./spawn-model";
 import { resolveAssetRoot } from "./asset-source";
 import { openHostedClient } from "./hosted-assets";
 import { parseBrowserPlates } from "./browser-plates";
@@ -118,7 +113,6 @@ import {
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import { MovementFloorCache } from "./replay-movement-floors";
-import { replayFloorAnchors } from "./replay-floor-anchors";
 import { ReplayHeightCache } from "./replay-height-cache";
 import { withReplayPoses } from "./replay-pose-phase";
 import { raidCameraSubjects, raidCameraCenter } from "./camera-model";
@@ -588,6 +582,10 @@ export class EditorController {
   private catalogs: Promise<void> | null = null;
   private models: Record<string, unknown> = {};
   private browserModels: NpcModels = { vanilla: {}, sod: {} };
+  private spawnReferences?: typeof import("./spawn-model");
+  private async loadSpawnReferences() {
+    return (this.spawnReferences ??= await import("./spawn-model"));
+  }
   private referenceModels: NpcModels = { vanilla: {}, sod: {} };
   private browserCreatures: Record<string, any> = {};
   private items: Record<string, unknown> = {};
@@ -630,8 +628,10 @@ export class EditorController {
       loadNpcIndex?: (signal?: AbortSignal) => Promise<unknown>;
       projectStore?: ProjectStore | null;
       rendererLab?: boolean;
+      spawnReferences?: typeof import("./spawn-model");
     } = {},
   ) {
+    this.spawnReferences = runtime.spawnReferences;
     // Production always downloads prepared assets. Folder/cache source injection is
     // retained only for isolated reader tests and development tooling.
     this.clientFolders = runtime.openClient
@@ -2566,14 +2566,22 @@ export class EditorController {
       cached.models === models
     )
       return cached.actors;
-    const actors = referenceRaidActors(map, version, models);
+    if (!this.spawnReferences) return [];
+    const actors = this.spawnReferences.referenceRaidActors(
+      map,
+      version,
+      models,
+    );
     this.defaultActorsCache = { map, version, models, actors };
     return actors;
   }
   referenceSpawnNotice() {
     return this.state.replay || this.displaySnapshot()?.report
       ? null
-      : referenceSpawnNotice(this.state.plan.mapId, this.state.gameVersion);
+      : (this.spawnReferences?.referenceSpawnNotice(
+          this.state.plan.mapId,
+          this.state.gameVersion,
+        ) ?? null);
   }
   sceneActors(): Actor[] {
     const snapshot =
@@ -4773,11 +4781,12 @@ export class EditorController {
   }
   private async loadBrowserCatalogs() {
     const bridge = this.browserBridge!;
-    const [creatures, items, spells, npcIndex] = await Promise.all([
+    const [creatures, items, spells, npcIndex, references] = await Promise.all([
       bridge.catalog("creatures"),
       bridge.catalog("items"),
       bridge.catalog("spells"),
       (this.runtime.loadNpcIndex ?? loadNpcIndex)(this.clientAbort?.signal),
+      this.loadSpawnReferences(),
     ]);
     // The bundled numeric reference resolves NPC entry IDs; actual display/model
     // availability is checked against this selected client's modern catalog.
@@ -4793,11 +4802,11 @@ export class EditorController {
     // Reference-only baseline models must not fill gaps in a SoD log catalog.
     this.referenceModels = {
       vanilla: {
-        ...referenceNpcModels(creatures),
+        ...references.referenceNpcModels(creatures),
         ...this.browserModels.vanilla,
       },
       sod: {
-        ...referenceNpcModels(creatures, "sod"),
+        ...references.referenceNpcModels(creatures, "sod"),
         ...this.browserModels.sod,
       },
     };
@@ -5434,12 +5443,17 @@ export class EditorController {
         listeners,
         progress: undefined as [number, number] | undefined,
         promise: Promise.resolve()
-          .then(() => bridge.map(map, raid.directory))
-          .then((data) =>
+          .then(() =>
+            Promise.all([
+              bridge.map(map, raid.directory),
+              this.loadSpawnReferences(),
+            ]),
+          )
+          .then(([data, references]) =>
             ReplayFloorGeometry.prepare(
               data.floors,
               data.areas,
-              replayFloorAnchors(map),
+              references.replayFloorAnchors(map),
               (completed, total) => {
                 request.progress = [completed, total];
                 for (const listener of [...listeners])
@@ -5537,13 +5551,17 @@ export class EditorController {
   }
   private async preparePlanAssets(plan: Plan, signal?: AbortSignal) {
     if (!this.localFiles || !this.browserBridge) return;
-    await this.prepareFloorGeometry(plan.mapId, signal);
+    const [references] = await Promise.all([
+      this.loadSpawnReferences(),
+      this.prepareFloorGeometry(plan.mapId, signal),
+    ]);
+    signal?.throwIfAborted();
     await prepareOriginalUnits(
       this.localFiles,
       this.browserBridge,
       [
         ...(plan.steps.some((step) => !step.snapshot?.report)
-          ? referenceRaidActors(
+          ? references.referenceRaidActors(
               plan.mapId,
               plan.gameVersion,
               this.referenceModels[plan.gameVersion],
@@ -6808,7 +6826,7 @@ export class EditorController {
       const engine = this.runtime.loadEngine
         ? await this.runtime.loadEngine()
         : ((await import(/* @vite-ignore */ modulePath)) as Engine);
-      await engine.default();
+      await Promise.all([engine.default(), this.loadSpawnReferences()]);
       signal?.throwIfAborted();
       engine.start();
       this.attachEngine(engine);

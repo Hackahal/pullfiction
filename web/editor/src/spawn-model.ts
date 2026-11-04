@@ -237,3 +237,5 @@ export function spawnStatus(actor: Actor, time: number): string | null {
   const dead = actor.deaths.filter(([t]) => t <= time).at(-1)?.[1] ?? false;
   return dead ? "Killed in log" : "Observed in log";
 }
+
+export { replayFloorAnchors } from "./replay-floor-anchors";
