@@ -2,11 +2,17 @@ type Field = { value: unknown; encoded: string };
 /** Versioned field deltas. A successful send is the only event that advances the baseline. */
 export class ReplayFrameTransport {
   private source = "";
+  private sourceJson = '""';
+  private order: string[] = [];
+  private orderJson = "[]";
   private rows = new Map<string, Map<string, Field>>();
   private fieldNames = new Map<string, string>();
   private generation?: object;
   reset() {
     this.source = "";
+    this.sourceJson = '""';
+    this.order = [];
+    this.orderJson = "[]";
     this.rows.clear();
     this.fieldNames.clear();
     this.generation = undefined;
@@ -18,7 +24,7 @@ export class ReplayFrameTransport {
     // Callers may promise that reused object references cannot mutate within
     // this generation. Omit it when nested values can change in place.
     generation?: object,
-    // Plain frame rows keep their own property set throughout serialization.
+    // Plain frame rows keep stable string keys and their own property set throughout serialization.
     plainRows = false,
   ) {
     const reset = this.source !== source;
@@ -31,7 +37,10 @@ export class ReplayFrameTransport {
       remove?: string[];
     }[] = [];
     const updates: string[] = [];
-    const order: string[] = [];
+    let order: string[] | undefined =
+      plainRows && !reset && actors.length === this.order.length
+        ? undefined
+        : [];
     const fieldName = (name: string) => {
       let encoded = this.fieldNames.get(name);
       if (encoded === undefined) {
@@ -40,9 +49,14 @@ export class ReplayFrameTransport {
       }
       return encoded;
     };
+    let rowIndex = 0;
     for (const actor of actors) {
       if (next.has(actor.key)) throw new Error("Duplicate replay actor key");
-      order.push(actor.key);
+      if (order) order.push(actor.key);
+      else if (this.order[rowIndex] !== actor.key) {
+        order = this.order.slice(0, rowIndex);
+        order.push(actor.key);
+      }
       const previous = reset ? undefined : this.rows.get(actor.key);
       const fields = previous ?? new Map<string, Field>();
       let set: [string, Field][] | undefined;
@@ -82,14 +96,24 @@ export class ReplayFrameTransport {
         for (const name of remove)
           (changed ??= []).push(`${fieldName(name)}:null`);
       if (changed) {
-        if (previous) changed.unshift(`"key":${JSON.stringify(actor.key)}`);
+        if (previous) {
+          const key =
+            (plainRows ? previous.get("key")?.encoded : undefined) ??
+            JSON.stringify(actor.key);
+          changed.unshift(`"key":${key}`);
+        }
         updates.push(`{${changed.join(",")}}`);
       }
       next.set(actor.key, fields);
       if (set || remove) patches.push({ fields, set, remove });
+      rowIndex++;
     }
+    if (!order && rowIndex !== this.order.length)
+      order = this.order.slice(0, rowIndex);
+    const sourceJson = reset ? JSON.stringify(source) : this.sourceJson;
+    const orderJson = order ? JSON.stringify(order) : this.orderJson;
     publish(
-      `{"version":1,"source":${JSON.stringify(source)},"reset":${reset},"order":${JSON.stringify(order)},"updates":[${updates.join(",")}]}`,
+      `{"version":1,"source":${sourceJson},"reset":${reset},"order":${orderJson},"updates":[${updates.join(",")}]}`,
     );
     // Retained maps belong to the successful baseline. Never edit them while
     // constructing a packet: failed serialization or publication must be retryable.
@@ -100,6 +124,9 @@ export class ReplayFrameTransport {
         for (const [name, field] of patch.set) patch.fields.set(name, field);
     }
     this.source = source;
+    this.sourceJson = sourceJson;
+    if (order) this.order = order;
+    this.orderJson = orderJson;
     this.rows = next;
     this.generation = generation;
   }

@@ -287,6 +287,44 @@ test("plain frame rows still clear omitted keys when another field replaces them
   );
   encoder.send("source", [next], publish, {}, true);
   assert.deepEqual(JSON.parse(packets[1]).updates, [
-    { key: "mage", movement: { fraction: 0.5 }, display: null, trajectory: null },
+    {
+      key: "mage",
+      movement: { fraction: 0.5 },
+      display: null,
+      trajectory: null,
+    },
   ]);
+});
+
+test("plain rows retain escaped order only after a successful packet", () => {
+  const encoder = new ReplayFrameTransport();
+  const source = 'source"\\';
+  const first = { key: 'first"\\', health: 20 };
+  const second = { key: "雪", health: 30 };
+  const packets: any[] = [];
+  const send = (rows: (typeof first)[], fail = false) =>
+    encoder.send(
+      source,
+      rows,
+      (json) => {
+        if (fail) throw Error("publish failed");
+        packets.push(JSON.parse(json));
+      },
+      undefined,
+      true,
+    );
+  send([first, second]);
+  assert.throws(() => send([second, first], true), /publish failed/);
+  send([{ ...first, health: 19 }, second]);
+  assert.deepEqual(packets[1], {
+    version: 1,
+    source,
+    reset: false,
+    order: [first.key, second.key],
+    updates: [{ key: first.key, health: 19 }],
+  });
+  send([second, { ...first, health: 19 }]);
+  assert.deepEqual(packets[2].order, [second.key, first.key]);
+  assert.deepEqual(packets[2].updates, []);
+  assert.throws(() => send([second, second]), /Duplicate replay actor key/);
 });
