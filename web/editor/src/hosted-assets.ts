@@ -190,9 +190,22 @@ export async function openHostedAssets(
   const fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
   const check = () => signal.throwIfAborted();
   const memory = new Map<string, Uint8Array>();
-  const pending = new Map<string, Promise<Uint8Array>>();
+  type ChunkJob = {
+    promise: Promise<Uint8Array>;
+    background: boolean;
+    start(): void;
+  };
+  const pending = new Map<string, ChunkJob>();
   let used = 0;
+  let recentMapBytes = 0;
   const budget = options.memoryBytes ?? 64 * 1024 * 1024;
+  const trimMemory = (limit: number) => {
+    while (used > limit && memory.size) {
+      const key = memory.keys().next().value!;
+      used -= memory.get(key)!.length;
+      memory.delete(key);
+    }
+  };
   const attempts = Math.max(1, Math.min(5, (options.retries ?? 2) + 1));
   async function request<T>(
     url: URL,
@@ -434,7 +447,26 @@ export async function openHostedAssets(
     check();
     return raw;
   }
-  async function loadChunk(sha: string): Promise<Uint8Array> {
+  // Keep one slot free of speculative work and start queued demand first.
+  let activeChunks = 0;
+  let activeBackground = 0;
+  const chunkWaiters = new Set<ChunkJob>();
+  function drainChunks() {
+    while (activeChunks < 4) {
+      let selected: ChunkJob | undefined;
+      for (const job of chunkWaiters) {
+        if (!job.background) {
+          selected = job;
+          break;
+        }
+        if (!selected && activeBackground < 3) selected = job;
+      }
+      if (!selected) break;
+      chunkWaiters.delete(selected);
+      selected.start();
+    }
+  }
+  async function loadChunkNow(sha: string): Promise<Uint8Array> {
     const url = new URL(`chunks/${sha}.bin.gz`, baseUrl);
     let raw: Uint8Array | undefined;
     try {
@@ -466,18 +498,15 @@ export async function openHostedAssets(
       }
     }
     check();
-    if (raw.length <= budget) {
-      while (used + raw.length > budget && memory.size) {
-        const key = memory.keys().next().value!;
-        used -= memory.get(key)!.length;
-        memory.delete(key);
-      }
+    const chunkBudget = budget - recentMapBytes;
+    if (raw.length <= chunkBudget) {
+      trimMemory(chunkBudget - raw.length);
       memory.set(sha, raw);
       used += raw.length;
     }
     return raw;
   }
-  function chunk(sha: string) {
+  function chunk(sha: string, background: boolean) {
     check();
     const hit = memory.get(sha);
     if (hit) {
@@ -485,14 +514,66 @@ export async function openHostedAssets(
       memory.set(sha, hit);
       return Promise.resolve(hit);
     }
-    let promise = pending.get(sha);
-    if (!promise) {
-      promise = loadChunk(sha).finally(() => pending.delete(sha));
-      pending.set(sha, promise);
+    let job = pending.get(sha);
+    if (!job) {
+      let resolve!: (bytes: Uint8Array) => void;
+      let reject!: (reason: unknown) => void;
+      job = {
+        promise: new Promise((yes, no) => {
+          resolve = yes;
+          reject = no;
+        }),
+        background,
+        start() {
+          const speculative = this.background;
+          activeChunks++;
+          if (speculative) activeBackground++;
+          void (async () => {
+            // Yield before checking cancellation so draining a closed reader
+            // cannot recurse synchronously through its queued jobs.
+            await Promise.resolve();
+            try {
+              check();
+              resolve(await loadChunkNow(sha));
+            } catch (error) {
+              reject(error);
+            } finally {
+              pending.delete(sha);
+              activeChunks--;
+              if (speculative) activeBackground--;
+              drainChunks();
+            }
+          })();
+        },
+      };
+      pending.set(sha, job);
+      chunkWaiters.add(job);
+    } else if (!background && chunkWaiters.has(job)) {
+      job.background = false;
     }
-    return promise;
+    drainChunks();
+    return job.promise;
   }
-  async function file(key: string): Promise<Uint8Array<ArrayBuffer>> {
+  let activeFiles = 0;
+  let completedBytes = 0;
+  let totalBytes = 0;
+  let lastProgress = -Infinity;
+  function reportProgress(message: string) {
+    const now = performance.now();
+    if (activeFiles && now - lastProgress < 100) return;
+    lastProgress = now;
+    progress({
+      stage: "assets",
+      message,
+      completedBytes,
+      totalBytes,
+      activeFiles,
+    });
+  }
+  async function file(
+    key: string,
+    background = false,
+  ): Promise<Uint8Array<ArrayBuffer>> {
     check();
     const entry = Object.hasOwn(manifest.files, key)
       ? manifest.files[key]
@@ -523,22 +604,67 @@ export async function openHostedAssets(
             : stage === "model"
               ? "Loading character and creature models"
               : "Loading textures and interface assets";
-    progress({ stage: "assets", message: label });
-    const bytes = new Uint8Array(entry.bytes);
-    let offset = 0;
-    for (const part of entry.parts) {
-      const raw = await chunk(part.chunk);
-      bytes.set(raw.subarray(part.offset, part.offset + part.length), offset);
-      offset += part.length;
+    if (!background) {
+      if (!activeFiles) {
+        completedBytes = 0;
+        totalBytes = 0;
+        lastProgress = -Infinity;
+      }
+      activeFiles++;
+      totalBytes += entry.bytes;
+      reportProgress(label);
     }
-    if ((await digest(bytes)) !== entry.sha256)
-      throw new Error(`Hosted resource integrity check failed: ${key}`);
-    check();
-    return bytes;
+    try {
+      const bytes = new Uint8Array(entry.bytes);
+      let next = 0;
+      let offset = 0;
+      let failed = false;
+      const copyParts = async () => {
+        while (!failed && next < entry.parts.length) {
+          check();
+          const part = entry.parts[next++];
+          const destination = offset;
+          offset += part.length;
+          let raw: Uint8Array;
+          try {
+            raw = await chunk(part.chunk, background);
+          } catch (error) {
+            failed = true;
+            throw error;
+          }
+          check();
+          if (failed) return;
+          bytes.set(
+            raw.subarray(part.offset, part.offset + part.length),
+            destination,
+          );
+          if (!background) {
+            completedBytes += part.length;
+            reportProgress(label);
+          }
+        }
+      };
+      // Workers copy directly into disjoint slices, retaining at most four
+      // chunks per file instead of collecting every decompressed part.
+      await Promise.all(
+        Array.from({ length: Math.min(4, entry.parts.length) }, copyParts),
+      );
+      if ((await digest(bytes)) !== entry.sha256)
+        throw new Error(`Hosted resource integrity check failed: ${key}`);
+      check();
+      return bytes;
+    } finally {
+      if (!background) {
+        activeFiles--;
+        reportProgress(label);
+      }
+    }
   }
-  async function json(key: string) {
+  async function json(key: string, background = false) {
     const value = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(await file(key)),
+      new TextDecoder("utf-8", { fatal: true }).decode(
+        await file(key, background),
+      ),
     );
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error(`Invalid hosted JSON: ${key}`);
@@ -553,34 +679,95 @@ export async function openHostedAssets(
   let appearance:
     ((request: Record<string, unknown>) => Promise<any>) | undefined;
   let appearanceModule: Promise<any> | undefined;
-  return {
-    build: manifest.build,
+  const pendingMaps = new Map<number, Promise<LocalMap>>();
+  // Geometry and the tactical map share immutable hosted metadata. Keep one
+  // decoded map so opening the tactical view does not decode it again.
+  // Reserve room for other assets; the input allowance also covers estimated
+  // non-geometry metadata. Geometry uses the tactical map's array estimates.
+  const mapCacheLimit = Math.floor((budget * 2) / 3);
+  function estimateMapBytes(value: LocalMap, inputBytes: number) {
+    let bytes = inputBytes;
+    for (const floor of value.floors) {
+      if (!Array.isArray(floor?.vertices) || !Array.isArray(floor?.indices))
+        return Infinity;
+      bytes += floor.vertices.length * 64 + floor.indices.length * 8;
+    }
+    return bytes;
+  }
+  let recentMap: LocalMap | undefined;
+  let requestedMap: number | undefined;
+  async function loadMap(
+    mapId: number,
+    background: boolean,
+  ): Promise<LocalMap> {
+    const value = await json(`map:${mapId}`, background);
+    if (
+      value.map !== mapId ||
+      !Array.isArray(value.bounds) ||
+      value.bounds.length !== 4 ||
+      !value.bounds.every(Number.isFinite) ||
+      ![value.areas, value.floors, value.tiles].every(Array.isArray)
+    )
+      throw new Error("Invalid hosted map");
+    return value;
+  }
+  const reads = (
+    background: boolean,
+  ): NonNullable<ClientReader["background"]> => ({
     read: async (resource) => ({
-      bytes: (await file(`read:${resourceKey(resource)}`)).buffer,
+      bytes: (await file(`read:${resourceKey(resource)}`, background)).buffer,
     }),
     model: async (resource) => ({
-      bytes: (await file(`model:${resourceKey(resource)}`)).buffer,
+      bytes: (await file(`model:${resourceKey(resource)}`, background)).buffer,
     }),
     world: async (resource) => ({
-      bytes: (await file(`world:${normalizeHostedResource(resource)}`)).buffer,
+      bytes: (
+        await file(`world:${normalizeHostedResource(resource)}`, background)
+      ).buffer,
     }),
     async catalog(kind: CatalogKind) {
-      const value = await json(`catalog:${kind}`);
+      const value = await json(`catalog:${kind}`, background);
       return value;
     },
     async map(mapId: number): Promise<LocalMap> {
       if (!integer(mapId, 0xffffffff)) throw new Error("Invalid hosted map ID");
-      const value = await json(`map:${mapId}`);
-      if (
-        value.map !== mapId ||
-        !Array.isArray(value.bounds) ||
-        value.bounds.length !== 4 ||
-        !value.bounds.every(Number.isFinite) ||
-        ![value.areas, value.floors, value.tiles].every(Array.isArray)
-      )
-        throw new Error("Invalid hosted map");
-      return value;
+      check();
+      if (background)
+        return recentMap?.map === mapId
+          ? recentMap
+          : (pendingMaps.get(mapId) ?? loadMap(mapId, true));
+      requestedMap = mapId;
+      if (recentMap?.map === mapId) return recentMap;
+      recentMap = undefined;
+      recentMapBytes = 0;
+      let request = pendingMaps.get(mapId);
+      if (!request) {
+        request = loadMap(mapId, false)
+          .then((value) => {
+            check();
+            if (requestedMap === mapId) {
+              const bytes = estimateMapBytes(
+                value,
+                manifest.files[`map:${mapId}`].bytes,
+              );
+              if (bytes <= mapCacheLimit) {
+                recentMap = value;
+                recentMapBytes = bytes;
+                trimMemory(budget - bytes);
+              }
+            }
+            return value;
+          })
+          .finally(() => pendingMaps.delete(mapId));
+        pendingMaps.set(mapId, request);
+      }
+      return request;
     },
+  });
+  return {
+    build: manifest.build,
+    ...reads(false),
+    background: reads(true),
     async appearance(request) {
       check();
       const path = "/archive/hosted-appearance.mjs";
@@ -603,6 +790,9 @@ export async function openHostedAssets(
       lifetime.abort(namedError("AbortError", "Hosted reader closed"));
       options.signal?.removeEventListener("abort", abort);
       memory.clear();
+      recentMap = undefined;
+      recentMapBytes = 0;
+      pendingMaps.clear();
       appearance = undefined;
       appearanceModule = undefined;
       used = 0;

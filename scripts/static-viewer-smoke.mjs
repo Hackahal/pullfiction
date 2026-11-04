@@ -7,12 +7,23 @@ import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 
-if (process.argv.length !== 3) throw new Error("Usage: node scripts/static-viewer-smoke.mjs RELEASE_DIRECTORY");
+const identity = process.argv[3] === "--identity";
+if (process.argv.length !== (identity ? 4 : 3)) {
+  throw new Error("Usage: node scripts/static-viewer-smoke.mjs RELEASE_DIRECTORY [--identity]");
+}
 const release = await realpath(resolve(process.argv[2]));
 const wasmUrl = pathToFileURL(resolve(release, "pullfiction_viewer_bg.wasm.gz"));
 const originalFetch = globalThis.fetch;
+const instantiateStreaming = WebAssembly.instantiateStreaming;
 let requests = 0;
+let streams = 0;
 try {
+  if (instantiateStreaming) {
+    WebAssembly.instantiateStreaming = (response, imports) => {
+      streams++;
+      return instantiateStreaming(response, imports);
+    };
+  }
   globalThis.fetch = async (url) => {
     assert.equal(new URL(url).href, wasmUrl.href, "The loader may only read its packaged gzip file");
     requests++;
@@ -20,14 +31,20 @@ try {
   };
   const viewer = await import(pathToFileURL(resolve(release, "pullfiction_viewer.js")));
   assert.equal(typeof viewer.start, "function");
-  viewer.enableRendererIdentity();
+  if (identity) viewer.enableRendererIdentity();
   const wasm = await viewer.default();
   assert.ok(wasm.memory instanceof WebAssembly.Memory);
   assert.equal(requests, 1);
-  assert.equal(viewer.rendererArtifactIdentity()?.wasmSha256, createHash("sha256").update(gunzipSync(await readFile(wasmUrl))).digest("hex"));
+  assert.equal(streams, !identity && instantiateStreaming ? 1 : 0);
+  if (identity) {
+    assert.equal(viewer.rendererArtifactIdentity()?.wasmSha256, createHash("sha256").update(gunzipSync(await readFile(wasmUrl))).digest("hex"));
+  } else {
+    assert.equal(viewer.rendererArtifactIdentity(), null);
+  }
   assert.equal(await viewer.default(), wasm);
   assert.equal(requests, 1);
-  console.log(`Static viewer initialized through gzip: ${Object.keys(wasm).length} WASM exports; no renderer start or network requests.`);
+  console.log(`Static viewer initialized through gzip (${identity ? "artifact identity" : "normal loader"}): ${Object.keys(wasm).length} WASM exports; no renderer start or network requests.`);
 } finally {
   globalThis.fetch = originalFetch;
+  if (instantiateStreaming) WebAssembly.instantiateStreaming = instantiateStreaming;
 }

@@ -540,8 +540,19 @@ pub mod renderer_fixture;
 
 #[cfg(target_arch = "wasm32")]
 mod planner_nameplates;
+#[cfg(test)]
+mod planner_nameplates_render_tests;
 #[cfg(any(target_arch = "wasm32", test))]
 mod planner_plate_layout;
+#[cfg(test)]
+mod planner_raid_render_tests;
+#[cfg(any(target_arch = "wasm32", test))]
+mod planner_replay_presentation;
+#[cfg(test)]
+#[path = "planner_replay_transport.rs"]
+mod planner_replay_transport_tests;
+#[cfg(any(target_arch = "wasm32", test))]
+mod planner_replay_types;
 
 #[cfg(target_arch = "wasm32")]
 pub use portrait::{ActorInspectionControl, ActorInspectionRequest};

@@ -366,6 +366,7 @@ export interface NativeTrajectoryReference {
   hold?: boolean;
 }
 export interface Engine {
+  set_performance_counter_enabled?(enabled: boolean): void;
   set_replay_trajectory_source?(source: string): void;
   submit_replay_trajectory?(json: string): void;
   request_movement_diagnostics?(token: number): void;
@@ -458,6 +459,14 @@ export interface Snapshot {
   browserAssets: boolean;
   clientStatus: "select" | "opening" | "ready" | "error";
   clientProgress: string;
+  clientLoadProgress?: import("./loading-progress").AssetProgress | null;
+  replayPreparation?: {
+    unit?: "events" | "triangles";
+    message: string;
+    completed: number;
+    total: number;
+  } | null;
+  bufferPreparation?: Snapshot["replayPreparation"];
   clientCanRemember: boolean;
   clientFolderName: string | null;
   clientRemembered: boolean;

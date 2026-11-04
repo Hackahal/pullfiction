@@ -3,6 +3,7 @@ import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { EditorController } from "./controller";
+import * as spawnReferences from "./spawn-model";
 import type { Engine, NativeFrame, RawReplay } from "./types";
 import { STORAGE_KEY } from "./domain";
 import luaparse from "luaparse";
@@ -85,12 +86,15 @@ function fixture() {
     mapPicks: number[][] = [],
     selected = "";
   const memory = new Map<string, string>();
-  const c = new EditorController({
-    getItem: (key) => memory.get(key) ?? null,
-    setItem: (key, value) => {
-      memory.set(key, value);
+  const c = new EditorController(
+    {
+      getItem: (key) => memory.get(key) ?? null,
+      setItem: (key, value) => {
+        memory.set(key, value);
+      },
     },
-  });
+    { spawnReferences },
+  );
   const annotations: { marks: { id: string }[] }[] = [];
   const engine = {
     load_raid: (map: number) => maps.push(map),
@@ -3167,7 +3171,7 @@ test("log mode places Vanilla and SoD NPCs at their first log position without r
 });
 
 test("no-log reference spawns reach native frames, obey visibility and do not leak across maps or rulesets", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   let frame: NativeFrame[] = [];
   c.attachEngine({
     set_replay_frame: (json: string) => {
@@ -3199,7 +3203,7 @@ test("no-log reference spawns reach native frames, obey visibility and do not le
 });
 
 test("default NPC can be edited in a no-log plan without duplicating its reference slot", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   const actor = c.sceneActors()[0],
     pos = c.actorPose(actor)!.pos as [number, number, number];
@@ -3218,7 +3222,7 @@ test("default NPC can be edited in a no-log plan without duplicating its referen
 });
 
 test("untouched reference NPC selection supports group nudges, coordinates, rotation and attached ranges", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const actors = c.sceneActors().slice(0, 2),
@@ -3250,7 +3254,7 @@ test("untouched reference NPC selection supports group nudges, coordinates, rota
 });
 
 test("group drag moves both edited and untouched reference NPCs together", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const [a, b] = c.sceneActors();
@@ -3272,7 +3276,7 @@ test("group drag moves both edited and untouched reference NPCs together", () =>
 });
 
 test("Select All includes untouched and edited reference NPCs with drawings and respects selection filters", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   const keys = c.sceneActors().map((a) => a.key);
   assert.equal(c.snapshot(), undefined);
@@ -3302,7 +3306,7 @@ test("Select All includes untouched and edited reference NPCs with drawings and 
 });
 
 test("range attachment to an untouched reference NPC survives materialization and follows edits", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
   const actor = c.sceneActors()[0],
@@ -3695,7 +3699,7 @@ test("approximate room pins keep authored XY and nearby floor height through nat
 });
 
 test("nearby reference scans cache misses and invalidate for actor identity, hints and geometry", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.selectRaid(2856, true, "sod");
   const actor = c
     .sceneActors()
@@ -3725,7 +3729,7 @@ test("nearby reference scans cache misses and invalidate for actor identity, hin
 });
 
 test("planned and recorded reference poses share the edge cache and invalidate moved coordinates", () => {
-  const c = new EditorController();
+  const c = new EditorController(undefined, { spawnReferences });
   c.selectRaid(2856, true, "sod");
   c.setWorkspaceMode("plan");
   c.setSnapBypass(true);
@@ -3818,6 +3822,42 @@ test("missing optional presentation cues preserve replay preparation but cancell
     }
     f.c.stop();
   }
+});
+
+test("Saved appearances stay scoped to their report and game version", async () => {
+  const code = raw.report.code;
+  const c = new EditorController({
+    getItem: (key) =>
+      key === "pullfiction.appearance.v1"
+        ? JSON.stringify({
+            [`${code}:1`]: { display: 11 },
+            [`sod:${code}:1`]: { display: 22 },
+          })
+        : null,
+    setItem: () => {},
+  });
+  const install = (
+    reportCode: string,
+    display: number,
+    gameVersion: "vanilla" | "sod" = "vanilla",
+  ) => {
+    c.installReplay({
+      ...raw,
+      gameVersion,
+      report: { ...raw.report, code: reportCode },
+      appearanceOverrides: { 1: { display } },
+    });
+    return c.getSnapshot().replay!.actors.find(({ id }) => id === 1)!;
+  };
+  assert.equal(c.appearance(install(code, 33)).display, 11);
+  assert.equal(c.appearance(install("AnotherReport", 44)).display, 44);
+  assert.equal(c.appearance(install("AnotherReport", 55)).display, 55);
+  const actor = install(code, 33, "sod");
+  assert.equal(c.appearance(actor).display, 22);
+  await c.setAppearance(actor, "display", 66);
+  assert.equal(c.appearance(actor).display, 66);
+  assert.equal(c.appearance(install(code, 33)).display, 11);
+  c.stop();
 });
 
 test("Appearance edits prepare before publishing and merge pending fields without stale commits", async () => {
@@ -5061,6 +5101,64 @@ test("speculative asset warming cannot block native playback preparation", () =>
   assert.equal(f.c.getSnapshot().playing, true);
 });
 
+test("scrubbing within an encounter retains its warmup but crossing encounters cancels it", async () => {
+  const { c, engine } = fixture();
+  const replay = c.getSnapshot().replay!;
+  replay.chapters = [
+    { id: 1, start: 0, end: 3000, name: "First" },
+    { id: 2, start: 3500, end: 10000, name: "Second" },
+  ];
+  const internals = c as unknown as {
+    localFiles: object | null;
+    browserBridge: object | null;
+    resetProject(project: null): void;
+    prepareFloorGeometry(map: number, signal: AbortSignal): Promise<void>;
+  };
+  internals.localFiles = {};
+  internals.browserBridge = {};
+  const leases: AbortSignal[] = [];
+  let started: (() => void) | undefined;
+  const nextLease = () => new Promise<void>((resolve) => (started = resolve));
+  internals.prepareFloorGeometry = (_map, signal) => {
+    leases.push(signal);
+    started?.();
+    return new Promise<void>((_, reject) =>
+      signal.addEventListener("abort", () => reject(signal.reason), {
+        once: true,
+      }),
+    );
+  };
+  try {
+    engine.prepare_replay_playback = () => {};
+    c.seek(1000);
+    c.toggle();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    assert.equal(leases.length, 0, "Play cancels the still pending warmup");
+    c.toggle();
+    const first = nextLease();
+    c.seek(1000);
+    c.seek(2000);
+    assert.equal(leases.length, 0);
+    await first;
+    assert.equal(leases.length, 1);
+    assert.equal(leases[0].aborted, false);
+    const second = nextLease();
+    c.seek(4000);
+    assert.equal(leases[0].aborted, true);
+    assert.equal(leases.length, 1);
+    await second;
+    assert.equal(leases.length, 2);
+    assert.equal(leases[1].aborted, false);
+    internals.resetProject(null);
+    assert.equal(c.getSnapshot().replay, null);
+    assert.equal(leases[1].aborted, true);
+  } finally {
+    internals.localFiles = null;
+    internals.browserBridge = null;
+    c.stop();
+  }
+});
+
 test("initial scene deadline cancels playback preparation and a healthy retry can complete", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const f = fixture();
@@ -5217,4 +5315,727 @@ test("rejected selected trajectories terminate preparation and invalidate late r
     }
     f.c.stop();
   }
+});
+
+test("scrubbing coalesces a burst to the latest target and commits on release", () => {
+  const { c } = fixture();
+  let publishes = 0;
+  const off = c.subscribe(() => publishes++);
+  for (let i = 1; i <= 100; i++) c.scrub(i * 50);
+  assert.equal(publishes, 0);
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 5000);
+  assert.ok(publishes < 5);
+  const after = publishes;
+  c.flushScrub();
+  assert.equal(publishes, after);
+  c.scrub(8000);
+  c.seek(1000);
+  c.flushScrub();
+  assert.equal(
+    c.getSnapshot().time,
+    1000,
+    "Explicit navigation cancels an older drag target",
+  );
+  off();
+  c.stop();
+});
+
+test("a queued scrub cannot seek a replacement replay", () => {
+  const { c } = fixture();
+  c.scrub(5000);
+  c.installReplay(structuredClone(raw));
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 0);
+  c.stop();
+});
+
+test("a queued scrub survives a new snapshot from the same replay buffer", () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    replayBuffer: { active: boolean; close(): void };
+    patch(update: { replay: import("./types").Replay }): void;
+  };
+  internals.replayBuffer = { active: false, close() {} };
+  c.scrub(5000);
+  internals.patch({ replay: { ...c.getSnapshot().replay! } });
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 5000);
+  c.stop();
+});
+
+test("a blocked replay section and buffered asset preparation report independently", async () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    loadInitialReplaySection(
+      buffer: { ensure(time: number): Promise<void> },
+      time: number,
+    ): Promise<void>;
+    prepareReplayForInstall(
+      value: typeof raw,
+      signal: AbortSignal | undefined,
+      visible: () => boolean,
+      field: "bufferPreparation",
+    ): Promise<unknown>;
+    prepareFloorGeometry(): Promise<void>;
+    localFiles: object | null;
+    browserBridge: object | null;
+  };
+  let finishSection!: () => void;
+  const initial = internals.loadInitialReplaySection(
+    {
+      ensure: async (time) => {
+        assert.equal(time, 5000);
+        await new Promise<void>((resolve) => {
+          finishSection = resolve;
+        });
+      },
+    },
+    5000,
+  );
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  let finishGeometry!: (reason: Error) => void;
+  internals.localFiles = {};
+  internals.browserBridge = { catalog: () => new Promise(() => {}) };
+  internals.prepareFloorGeometry = () =>
+    new Promise<void>((_, reject) => {
+      finishGeometry = reject;
+    });
+  const background = internals.prepareReplayForInstall(
+    raw,
+    undefined,
+    () => false,
+    "bufferPreparation",
+  );
+  assert.equal(c.getSnapshot().bufferPreparation, undefined);
+  finishGeometry(Error("test background stop"));
+  await assert.rejects(background, /test background stop/);
+
+  const foreground = internals.prepareReplayForInstall(
+    raw,
+    undefined,
+    () => true,
+    "bufferPreparation",
+  );
+  assert.match(c.getSnapshot().bufferPreparation!.message, /raid geometry/);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  finishGeometry(Error("test foreground stop"));
+  await assert.rejects(foreground, /test foreground stop/);
+  assert.equal(c.getSnapshot().bufferPreparation, null);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  finishSection();
+  await initial;
+  assert.equal(c.getSnapshot().replayPreparation, null);
+  internals.localFiles = null;
+  internals.browserBridge = null;
+  c.stop();
+});
+
+test("replay geometry and appearances overlap with one visible progress stage", async () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    prepareReplayForInstall(
+      value: typeof raw,
+      signal: AbortSignal | undefined,
+      visible: () => boolean,
+      field: "replayPreparation",
+      derived: undefined,
+      register: (publish: (() => void) | undefined) => void,
+    ): Promise<unknown>;
+    prepareFloorGeometry(
+      map: number,
+      signal: AbortSignal,
+      progress: (completed: number, total: number) => void,
+    ): Promise<void>;
+    localFiles: object | null;
+    browserBridge: object | null;
+  };
+  let finishGeometry!: () => void, finishAppearance!: () => void;
+  let appearanceStarted!: () => void;
+  const started = new Promise<void>((resolve) => {
+    appearanceStarted = resolve;
+  });
+  internals.prepareFloorGeometry = async (_map, _signal, progress) => {
+    progress(3, 10);
+    await new Promise<void>((resolve) => {
+      finishGeometry = resolve;
+    });
+  };
+  internals.browserBridge = {
+    catalog: async () => ({
+      sectionTextureTypes: Array.from({ length: 32 }, (_, i) => ({
+        race: i >> 1,
+        sex: i % 2,
+        types: [],
+      })),
+    }),
+  };
+  internals.localFiles = {
+    prepare: async (
+      keys: string[],
+      _signal: AbortSignal,
+      progress: (count: number) => void,
+    ) => {
+      if (keys.some((key) => key.startsWith("interface/icons/"))) return;
+      progress(0);
+      await new Promise<void>((resolve) => {
+        finishAppearance = resolve;
+        appearanceStarted();
+      });
+      progress(keys.length);
+    },
+  };
+  try {
+    let foreground = false;
+    let publish: (() => void) | undefined;
+    const ready = internals.prepareReplayForInstall(
+      raw,
+      undefined,
+      () => foreground,
+      "replayPreparation",
+      undefined,
+      (callback) => {
+        publish = callback;
+      },
+    );
+    await started;
+    assert.equal(c.getSnapshot().replayPreparation, undefined);
+    foreground = true;
+    publish?.();
+    assert.equal(c.getSnapshot().replayPreparation?.unit, "triangles");
+    assert.equal(c.getSnapshot().replayPreparation?.completed, 3);
+    finishGeometry();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.match(c.getSnapshot().replayPreparation!.message, /appearances/);
+    finishAppearance();
+    await ready;
+    assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(publish, undefined);
+  } finally {
+    internals.localFiles = null;
+    internals.browserBridge = null;
+    c.stop();
+  }
+});
+
+test("cancelling a file import prevents its delayed replay from installing", async () => {
+  const { c } = fixture();
+  const previous = c.getSnapshot().replay;
+  const internals = c as unknown as { loadCatalogs(): Promise<void> };
+  internals.loadCatalogs = async () => {};
+  let read!: () => void, finish!: (value: string) => void;
+  const reading = new Promise<void>((resolve) => {
+    read = resolve;
+  });
+  const pending = c.importFile(
+    {
+      size: 1,
+      text: () =>
+        new Promise<string>((resolve) => {
+          finish = resolve;
+          read();
+        }),
+    } as File,
+    "replay",
+  );
+  await reading;
+  assert.equal(c.getSnapshot().busy, true);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /Reading replay file/,
+  );
+  c.cancelImport();
+  finish(JSON.stringify(raw));
+  await pending;
+  assert.equal(c.getSnapshot().replay, previous);
+  assert.equal(c.getSnapshot().busy, false);
+  assert.equal(c.getSnapshot().replayPreparation, null);
+  c.stop();
+});
+
+test("a cancelled project load cannot clear a newer file import's progress", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const project = {
+    ...newProject(emptyPlan(409), replaySource(raw, 409)),
+    time: 4500,
+    mode: "analyse" as const,
+  };
+  const previous = newProject(emptyPlan(409));
+  await store.put(previous);
+  await store.putReplay(project.source!.cacheKey, raw);
+  await store.put(project);
+  const c = new EditorController(undefined, {
+    projectStore: store,
+    clientCache: null,
+    clientFolders: null,
+  });
+  assert.equal(await c.openProject(previous.id), true);
+  const internals = c as unknown as {
+    loadCatalogs(): Promise<void>;
+    prepareReplayForInstall(
+      input: typeof raw,
+      signal: AbortSignal,
+    ): Promise<never>;
+  };
+  internals.loadCatalogs = async () => {};
+  let ready!: () => void, rejectPreparation!: (error: Error) => void;
+  let oldSignal!: AbortSignal;
+  const preparing = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  const prepare = internals.prepareReplayForInstall.bind(c);
+  internals.prepareReplayForInstall = (_input, signal) => {
+    oldSignal = signal;
+    return new Promise((_, reject) => {
+      rejectPreparation = reject;
+      ready();
+    });
+  };
+  const old = c.openProject(project.id);
+  await preparing;
+  assert.equal(c.getSnapshot().projectId, previous.id);
+  c.cancelImport();
+  assert.equal(c.getSnapshot().projectId, previous.id);
+  assert.equal(oldSignal.aborted, true);
+  let reading!: () => void, finishRead!: (text: string) => void;
+  const read = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  const next = c.importFile(
+    {
+      size: 1,
+      text: () =>
+        new Promise<string>((resolve) => {
+          finishRead = resolve;
+          reading();
+        }),
+    } as File,
+    "replay",
+  );
+  await read;
+  rejectPreparation(Error("old load stopped"));
+  assert.equal(await old, false);
+  assert.equal(c.getSnapshot().busy, true);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /Reading replay file/,
+  );
+  c.cancelImport();
+  finishRead("{}");
+  await next;
+  const saved = await store.get(project.id);
+  assert.equal(saved?.time, 4500);
+  assert.equal(saved?.mode, "analyse");
+  internals.prepareReplayForInstall = prepare;
+  assert.equal(await c.openProject(project.id), true);
+  assert.equal(c.getSnapshot().time, 4500);
+  assert.equal(c.getSnapshot().workspaceMode, "analyse");
+  c.stop();
+});
+
+test("opening a cached replay on another raid keeps its own load request", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const source = {
+    ...raw,
+    fight: { ...raw.fight, gameZone: { name: "Blackwing Lair" } },
+  };
+  const project = newProject(emptyPlan(469), replaySource(source, 469));
+  await store.putReplay(project.source!.cacheKey, source);
+  await store.put(project);
+  const c = new EditorController(undefined, {
+    projectStore: store,
+    clientCache: null,
+    clientFolders: null,
+  });
+  assert.equal(await c.openProject(project.id), true);
+  assert.equal(c.getSnapshot().replay?.map, 469);
+  assert.equal(c.getSnapshot().busy, false);
+  c.stop();
+});
+
+test("opening a large saved replay yields before committing and can be cancelled", async () => {
+  const store = new IndexedProjectStore(new IDBFactory());
+  const source = {
+    ...raw,
+    events: Array.from({ length: 60_000 }, (_, i) => ({
+      timestamp: 1000 + Math.floor(i / 6),
+      type: "damage",
+      sourceID: 1,
+      targetID: 2,
+      amount: 2,
+    })),
+  } as RawReplay;
+  const project = {
+    ...newProject(emptyPlan(409), replaySource(source, 409)),
+    time: 4500,
+    mode: "analyse" as const,
+  };
+  await store.putReplay(project.source!.cacheKey, source);
+  await store.put(project);
+  const c = new EditorController(undefined, { projectStore: store });
+  const internals = c as unknown as {
+    patch(change: { browserAssets: true; clientStatus: "ready" }): void;
+    modernSpells: Record<number, { iconFile: number }>;
+  };
+  internals.patch({ browserAssets: true, clientStatus: "ready" });
+  internals.modernSpells = { 133: { iconFile: 100 } };
+  let catalogReplaced = false;
+  let scheduled = false;
+  const unsubscribe = c.subscribe(() => {
+    const phase = c.getSnapshot().replayPreparation?.message;
+    if (phase === "Finding spell icons…" && scheduled && !catalogReplaced) {
+      catalogReplaced = true;
+      setTimeout(() => {
+        internals.modernSpells = { 133: { iconFile: 200 } };
+      }, 0);
+    }
+    if (phase === "Reconstructing combat events…" && !scheduled) {
+      scheduled = true;
+      setTimeout(() => c.cancelImport(), 0);
+    }
+  });
+  try {
+    assert.equal(await c.openProject(project.id), false);
+    assert.equal(scheduled, true);
+    assert.equal(c.getSnapshot().projectId, null);
+    assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(await c.openProject(project.id), true);
+    assert.equal(c.getSnapshot().time, 4500);
+    assert.equal(c.getSnapshot().workspaceMode, "analyse");
+    const replay = c.getSnapshot().replay!;
+    assert.equal(replay.actors[0].id, 1);
+    assert.equal(replay.abilities.get(133)?.icon, "pf_200.blp");
+    assert.equal(replay.raw.abilities?.[0].icon, "spell_fire_flamebolt.jpg");
+  } finally {
+    unsubscribe();
+    c.stop();
+  }
+});
+
+test("large whole-file import can be cancelled during combat preparation", async () => {
+  const c = new EditorController(undefined, {
+    projectStore: null,
+    clientCache: null,
+    clientFolders: null,
+  });
+  (c as unknown as { loadCatalogs(): Promise<void> }).loadCatalogs =
+    async () => {};
+  const events = Array.from({ length: 60_000 }, (_, i) => ({
+    timestamp: 1000 + Math.floor(i / 6),
+    type: "damage",
+    sourceID: 1,
+    targetID: 2,
+    amount: 2,
+  }));
+  const text = JSON.stringify({ ...raw, events });
+  let cancelled = false;
+  let next: Promise<void> | undefined;
+  let finishNext!: (text: string) => void;
+  let readingNext!: () => void;
+  const readNext = new Promise<void>((resolve) => {
+    readingNext = resolve;
+  });
+  let scheduled = false;
+  const phases = new Set<string>();
+  const unsubscribe = c.subscribe(() => {
+    const phase = c.getSnapshot().replayPreparation?.message;
+    if (!phase) return;
+    phases.add(phase);
+    if (phase === "Reconstructing combat events…" && !scheduled) {
+      scheduled = true;
+      // The first timer runs before the phase's initial task yield. The
+      // second can cancel only after combat preparation has started yielding.
+      setTimeout(
+        () =>
+          setTimeout(() => {
+            cancelled = true;
+            c.cancelImport();
+            next = c.importFile(
+              {
+                size: 1,
+                text: () =>
+                  new Promise<string>((resolve) => {
+                    finishNext = resolve;
+                    readingNext();
+                  }),
+              } as File,
+              "replay",
+            );
+          }, 0),
+        0,
+      );
+    }
+  });
+  try {
+    await c.importFile(
+      { size: text.length, text: async () => text } as File,
+      "replay",
+    );
+    assert.equal(cancelled, true);
+    assert.equal(phases.has("Preparing movement tracks…"), true);
+    assert.equal(c.getSnapshot().replay, null);
+    await readNext;
+    assert.match(
+      c.getSnapshot().replayPreparation!.message,
+      /Reading replay file/,
+    );
+    assert.equal(c.getSnapshot().busy, true);
+    c.cancelImport();
+    finishNext("{}");
+    await next;
+    assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(c.getSnapshot().busy, false);
+  } finally {
+    unsubscribe();
+    c.stop();
+  }
+});
+
+test("a cancelled floor-index listener does not cancel or hide a shared map build", async () => {
+  const c = new EditorController(undefined, {
+    projectStore: null,
+    clientCache: null,
+    clientFolders: null,
+  });
+  type Progress = (completed: number, total: number) => void;
+  const internals = c as unknown as {
+    browserBridge: { map: () => Promise<unknown> };
+    clientAbort: AbortController;
+
+    loadedFloors: Map<number, ReplayFloorGeometry>;
+    prepareFloorGeometry(
+      map: number,
+      signal?: AbortSignal,
+      progress?: Progress,
+    ): Promise<void>;
+  };
+  const count = 60_000;
+  let requests = 0;
+  internals.browserBridge = {
+    async map() {
+      requests++;
+      return {
+        floors: [
+          {
+            area: "room",
+            vertices: [
+              [0, 0, 4],
+              [1, 0, 4],
+              [0, 1, 4],
+            ],
+            indices: Array.from({ length: count * 3 }, (_, i) => i % 3),
+          },
+        ],
+        areas: [],
+      };
+    },
+  };
+  const abort = new AbortController();
+  const originalProgress: number[] = [],
+    sharedProgress: number[] = [];
+  let shared: Promise<void> | undefined;
+  const first = internals.prepareFloorGeometry(
+    409,
+    abort.signal,
+    (completed, total) => {
+      originalProgress.push(completed);
+      assert.equal(total, count);
+      assert.equal(internals.loadedFloors.has(409), false);
+      abort.abort();
+      shared = internals.prepareFloorGeometry(409, undefined, (done) =>
+        sharedProgress.push(done),
+      );
+    },
+  );
+  try {
+    await assert.rejects(first, { name: "AbortError" });
+    await shared;
+    assert.equal(requests, 1);
+    assert.deepEqual(originalProgress, [0]);
+    assert.equal(sharedProgress[0], 0);
+    assert.equal(sharedProgress.at(-1), count);
+    assert.ok(
+      sharedProgress.every((n, i) => i === 0 || n > sharedProgress[i - 1]),
+    );
+    assert.equal(
+      internals.loadedFloors.get(409)?.height(0.1, 0.1, 4, false),
+      4,
+    );
+    internals.clientAbort = new AbortController();
+    const teardownProgress: number[] = [];
+    await internals.prepareFloorGeometry(469, undefined, (done) => {
+      teardownProgress.push(done);
+      c.stop();
+    });
+    assert.deepEqual(teardownProgress, [0]);
+    assert.equal(internals.loadedFloors.has(469), false);
+  } finally {
+    c.stop();
+  }
+});
+
+test("large buffered refreshes coalesce by revision and only install the newest result", async () => {
+  const { c } = fixture();
+  const initial = c.getSnapshot().replay!;
+  const internals = c as any;
+  internals.patch({ browserAssets: true });
+  internals.modernSpells = { 133: { iconFile: 100 } };
+  const snapshot = (revision: number): RawReplay => ({
+    ...raw,
+    events: Array(50000).fill(raw.events[0]),
+    stream: {
+      version: 1,
+      id: "sliced-buffer",
+      revision,
+      segments: 1,
+      reportEnd: raw.fight.endTime,
+      full: [[0, 1000]],
+      history: [],
+      stateEvents: [],
+      contextEvents: [],
+      foreign: [],
+    },
+  });
+  const buffer = {
+    revision: 1,
+    snapshot: () => snapshot(buffer.revision),
+    ready: () => true,
+    close() {},
+  };
+  internals.replayBuffer = buffer;
+  const starts: {
+    revision: number;
+    icon?: string | null;
+    current: () => boolean;
+    release: (error?: unknown) => void;
+  }[] = [];
+  let entered!: () => void;
+  const nextStart = () =>
+    new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+  internals.replayNormalizer.normalizeSliced = async (
+    input: RawReplay,
+    _models: unknown,
+    _items: unknown,
+    _spells: unknown,
+    current: () => boolean,
+  ) => {
+    await new Promise<void>((resolve, reject) => {
+      starts.push({
+        revision: input.stream!.revision,
+        icon: input.abilities?.find((ability) => ability.gameID === 133)?.icon,
+        current,
+        release: (error) => (error === undefined ? resolve() : reject(error)),
+      });
+      entered();
+    });
+    return { ...initial };
+  };
+  try {
+    const firstStart = nextStart();
+    const first = internals.refreshBuffered(buffer);
+    const same = internals.refreshBuffered(buffer);
+    await Promise.resolve();
+    internals.modernSpells = { 133: { iconFile: 200 } };
+    await firstStart;
+    assert.equal(starts[0].icon, "pf_200.blp");
+    assert.notEqual(
+      raw.abilities?.find((ability) => ability.gameID === 133)?.icon,
+      "pf_200.blp",
+    );
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].current(), true);
+    assert.equal(c.getSnapshot().bufferPreparation, undefined);
+    internals.patch({ buffering: true });
+    const request = ++internals.bufferRequest;
+    const foreground = internals.refreshBuffered(buffer, request);
+    assert.match(
+      c.getSnapshot().bufferPreparation!.message,
+      /Preparing replay events/,
+    );
+    const secondStart = nextStart();
+    buffer.revision = 2;
+    const latest = internals.refreshBuffered(buffer);
+    await secondStart;
+    assert.deepEqual(
+      starts.map((x) => x.revision),
+      [1, 2],
+    );
+    assert.equal(starts[0].current(), false);
+    starts[0].release();
+    await Promise.resolve();
+    assert.equal(c.getSnapshot().replay, initial);
+    starts[1].release();
+    await Promise.all([first, same, foreground, latest]);
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 2);
+    assert.equal(c.getSnapshot().bufferPreparation, null);
+    buffer.revision = 3;
+    const interrupted = nextStart();
+    const retrying = internals.refreshBuffered(buffer);
+    await interrupted;
+    const restarted = nextStart();
+    starts[2].release(
+      new DOMException("Replay preparation superseded", "AbortError"),
+    );
+    await restarted;
+    assert.deepEqual(
+      starts.map((x) => x.revision),
+      [1, 2, 3, 3],
+    );
+    starts[3].release();
+    await retrying;
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 3);
+    buffer.revision = 4;
+    const queued = internals.refreshBuffered(buffer);
+    c.stop();
+    await queued;
+    assert.equal(
+      starts.length,
+      4,
+      "stopping prevents queued refresh from beginning",
+    );
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 3);
+  } finally {
+    for (const work of starts) work.release();
+    c.stop();
+  }
+});
+
+test("stopping after a section fetch resolves prevents its range continuation from refreshing", async () => {
+  const { c } = fixture();
+  const internals = c as any;
+  let started!: () => void, finish!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let refreshes = 0;
+  internals.replayBuffer = {
+    duration: 1000,
+    ensure: () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+        started();
+      }),
+    close() {},
+  };
+  internals.refreshBuffered = async () => {
+    refreshes++;
+  };
+  const loading = c.loadReplayRange(0, 1000);
+  await entered;
+  finish();
+  c.stop();
+  await loading;
+  assert.equal(refreshes, 0);
 });

@@ -19,6 +19,8 @@ const merge = intervals => intervals.sort((a,b)=>a[0]-b[0]).reduce((out,interval
   return out;
 },[]);
 
+const lifecycle=new Set(['summon','create','destroy','death','resurrect']);
+
 export function applyCouncilPresentation(replay) {
   if (replay.gameVersion !== 'sod') return replay;
   const actors=replay.actors??[],byKey=new Map(actors.map(a=>[a.key,a]));
@@ -30,9 +32,19 @@ export function applyCouncilPresentation(replay) {
     end:Math.min(duration,Number.isFinite(c.endTime)?c.endTime-start:c.end??duration),
   })).filter(c=>c.start<c.end).sort((a,b)=>a.start-b.start);
   if(!scopes.length)return replay;
-  const events=(replay.raw.events??[]).map((event,order)=>({event,order,t:event.timestamp-start}))
-    .filter(e=>Number.isFinite(e.t)&&e.t>=0&&e.t<=duration)
-    .sort((a,b)=>a.t-b.t||a.order-b.order);
+  const events=[],rawEvents=replay.raw.events??[];
+  // Keep lifecycle evidence across the whole replay for linked Flame actors.
+  for(let order=0;order<rawEvents.length;order++){
+    const event=rawEvents[order],type=event.type;
+    if(type!=='encounterend'&&!lifecycle.has(type)){
+      if(type!=='applybuff'&&type!=='removebuff'&&type!=='cast')continue;
+      const id=spell(event);
+      if(id!==BASIN_AURA&&id!==FLAME_AURA)continue;
+    }
+    const t=event.timestamp-start;
+    if(Number.isFinite(t)&&t>=0&&t<=duration)events.push({event,order,t});
+  }
+  events.sort((a,b)=>a.t-b.t||a.order-b.order);
   const linked=new Map();
   for(const scope of scopes){
     const rows=events.filter(({event:e,t})=>t>=scope.start&&t<=scope.end&&
@@ -85,7 +97,7 @@ export function applyCouncilPresentation(replay) {
     if(!intervals?.length)return restored;
     const spans=[];let present=actor.initiallyPresent!==false,at=0;
     for(const {event:e,t}of events){
-      if(key(e,'target')!==actor.key||!['summon','create','destroy','death','resurrect'].includes(e.type))continue;
+      if(key(e,'target')!==actor.key||!lifecycle.has(e.type))continue;
       if(present&&t>at)spans.push([at,t]);
       present=['summon','create','resurrect'].includes(e.type);at=t;
     }

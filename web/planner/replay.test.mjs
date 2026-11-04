@@ -630,3 +630,22 @@ test('same-map zone changes preserve portal jumps instead of smoothing a walk th
  const ordinary=normalizeReplay({...input,events:events.filter(e=>e.type!=='zonechange')}).actors.find(a=>a.id===1);
  assert.equal(poseAt(ordinary,40000,true).estimated,true);
 });
+
+test('combat enrichment orders unsorted records while retaining original event IDs and ties',()=>{
+ const cast=(timestamp,abilityGameID)=>({timestamp,abilityGameID,type:'cast',sourceID:1,targetID:2});
+ const events=[cast(2200,101),cast(1300,102),cast(1300,103)];
+ const result=enrichCombat(normalizeReplay({...raw,events}));
+ assert.deepEqual(result.combat.filter(e=>e.kind==='go').map(e=>[e.id,e.t,e.spell]),[
+  [1,300,102],[2,300,103],[0,1200,101],
+ ]);
+ assert.deepEqual(events.map(e=>e.timestamp),[2200,1300,1300]);
+});
+
+test('combat enrichment discards an undated event before sorting a mixed import',()=>{
+ const cast=(timestamp,abilityGameID)=>({timestamp,abilityGameID,type:'cast',sourceID:1,targetID:2});
+ const events=[cast(150,101),cast(undefined,102),cast(50,103),cast(250,104),cast(null,105),cast('100',106)];
+ const result=enrichCombat(normalizeReplay({...raw,fight:{...raw.fight,startTime:0},events}));
+ assert.deepEqual(result.combat.filter(e=>e.kind==='go').map(e=>[e.id,e.t,e.spell]),[
+  [2,50,103],[0,150,101],[3,250,104],
+ ]);
+});

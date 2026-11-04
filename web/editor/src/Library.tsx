@@ -1,3 +1,4 @@
+import { LoadingProgress, PreparationProgress } from "./LoadingProgress";
 import { LandingPage } from "./LandingPage";
 import { SourceIcon } from "./IdentityIcon";
 import { useEffect, useRef, useState } from "react";
@@ -87,6 +88,13 @@ export function Library({
   const previewIntent = useRef(0);
   const activeProject = state.projects.find((p) => p.id === state.projectId);
   const disabled = state.busy || opening;
+  const showReconnect =
+    state.browserAssets && state.clientNeedsFiles && !state.clientPromptHidden;
+  const cancelLoading = () => {
+    controller.cancelImport();
+    if (opening && state.clientStatus !== "ready") controller.cancelClient();
+    setOpening(false);
+  };
   const allPlans = state.projects.filter(
     (p) => !p.deletedAt && p.kind === "plan",
   );
@@ -615,24 +623,30 @@ export function Library({
               Load game assets
             </button>
           )}
-          {(state.busy || opening) && (
-            <div className="library-loading" role="status">
+          {(state.busy || opening) && !showReconnect && (
+            <div
+              className="library-loading library-loading-overlay"
+              role="status"
+            >
               <span>
                 {opening && state.clientStatus !== "ready"
                   ? "Preparing raid assets…"
-                  : "Loading replay…"}
+                  : (state.replayPreparation?.message ??
+                    "Preparing replay assets…")}
               </span>
+              {state.replayPreparation ? (
+                <PreparationProgress progress={state.replayPreparation} />
+              ) : (
+                <LoadingProgress
+                  progress={
+                    state.clientLoadProgress?.activeFiles
+                      ? state.clientLoadProgress
+                      : null
+                  }
+                />
+              )}
               {(state.busy || state.clientStatus !== "ready") && (
-                <button
-                  onClick={() => {
-                    controller.cancelImport();
-                    if (opening && state.clientStatus !== "ready")
-                      controller.cancelClient();
-                    setOpening(false);
-                  }}
-                >
-                  Cancel loading
-                </button>
+                <button onClick={cancelLoading}>Cancel loading</button>
               )}
             </div>
           )}
@@ -1133,11 +1147,13 @@ export function Library({
           </main>
         </div>
       )}
-      {state.browserAssets &&
-        state.clientNeedsFiles &&
-        !state.clientPromptHidden && (
-          <BrowserClient state={state} controller={controller} />
-        )}
+      {showReconnect && (
+        <BrowserClient
+          state={state}
+          controller={controller}
+          onCancel={state.busy || opening ? cancelLoading : undefined}
+        />
+      )}
       <input
         hidden
         type="file"

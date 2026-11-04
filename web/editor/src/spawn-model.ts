@@ -136,8 +136,9 @@ export function referenceNpcModels(
             ...Object.keys(sodMaps),
           ]),
         ];
-  for (const map of mapIds)
-    for (const row of referenceCoverage(Number(map), version).rows) {
+  for (const map of mapIds) {
+    const coverage = referenceCoverage(Number(map), version);
+    for (const row of coverage.rows) {
       const display = creatures.displays?.[row.displayID];
       const model = creatures.models?.[display?.modelID];
       const scale = display?.scale * model?.scale;
@@ -148,12 +149,12 @@ export function referenceNpcModels(
           scale,
           displaySource:
             row.displaySourceURL ??
-            (referenceCoverage(Number(map), version).kind ===
-              "mixed-reference" && !row.kind
+            (coverage.kind === "mixed-reference" && !row.kind
               ? reference.sourceURL
-              : referenceCoverage(Number(map), version).sourceURL),
+              : coverage.sourceURL),
         };
     }
+  }
   return models;
 }
 
@@ -237,3 +238,5 @@ export function spawnStatus(actor: Actor, time: number): string | null {
   const dead = actor.deaths.filter(([t]) => t <= time).at(-1)?.[1] ?? false;
   return dead ? "Killed in log" : "Observed in log";
 }
+
+export { replayFloorAnchors } from "./replay-floor-anchors";

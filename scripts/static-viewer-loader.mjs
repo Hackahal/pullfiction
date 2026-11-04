@@ -30,9 +30,12 @@ async function loadViewer() {
   // Serve .gz as application/gzip without Content-Encoding. The browser decodes
   // this stream explicitly so the uploaded file stays below the hosting limit.
   const stream = response.body.pipeThrough(new DecompressionStream("gzip"));
-  const bytes = await new Response(stream).arrayBuffer();
-  const digest = identify ? crypto.subtle.digest("SHA-256", bytes) : null;
+  const wasm = new Response(stream, { headers: { "Content-Type": "application/wasm" } });
+  if (!identify) return initialize({ module_or_path: wasm });
+  // Renderer diagnostics need the exact uncompressed bytes for the artifact hash.
+  const bytes = await wasm.arrayBuffer();
+  const digest = crypto.subtle.digest("SHA-256", bytes);
   const instance = await initialize({ module_or_path: bytes });
-  if (digest) loadedArtifact = { schema: 1, wasmSha256: [...new Uint8Array(await digest)].map(b => b.toString(16).padStart(2,"0")).join("") };
+  loadedArtifact = { schema: 1, wasmSha256: [...new Uint8Array(await digest)].map(b => b.toString(16).padStart(2,"0")).join("") };
   return instance;
 }

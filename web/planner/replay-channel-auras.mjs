@@ -1,6 +1,6 @@
 // A finite targeted channel can end on its own source/victim aura removal.
 // Unattributed or overlapping removals must not stop another caster's channel.
-export function targetedChannelAuras(events,metadata,duration){
+export function* targetedChannelAuraSteps(events,metadata,duration){
  const buckets=new Map(),windows=new Map(),lastCast=new Map();
  const key=(e,side)=>`${e[side+'ID']}:${e[side+'Instance']||1}`;
  const spell=e=>e.abilityGameID??e.ability?.guid??0;
@@ -9,14 +9,18 @@ export function targetedChannelAuras(events,metadata,duration){
   const window=bucket.get(source);if(!window)return;
   window.end=t;window.recordedEnd=recorded;bucket.delete(source);
  };
- for(const {event:e,id,t}of events){
-  const s=spell(e),source=e.sourceID>0?key(e,'source'):null,target=e.targetID>0?key(e,'target'):null;
+ for(let i=0;i<events.length;i++){
+  if((i&255)===0)yield;
+  const {event:e,id,t}=events[i];
   if(e.type==='combatantinfo'){
-   for(const [k,bucket]of buckets)if(k.startsWith(`${key(e,'source')}/`))
+   const prefix=`${key(e,'source')}/`;
+   for(const [k,bucket]of buckets)if(k.startsWith(prefix))
     for(const owner of [...bucket.keys()])close(bucket,owner,t,false);
    continue;
   }
-  if(!metadata[s]?.channel||!target)continue;
+  const s=spell(e);
+  if(!metadata[s]?.channel||!(e.targetID>0))continue;
+  const source=e.sourceID>0?key(e,'source'):null,target=key(e,'target');
   if(e.type==='cast'&&source){lastCast.set(tuple(source,target,s),id);continue;}
   const bucketKey=`${target}/${s}`,bucket=buckets.get(bucketKey)??new Map();
   if(/^remove(buff|debuff)$/.test(e.type)){

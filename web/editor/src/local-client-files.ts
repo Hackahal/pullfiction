@@ -90,25 +90,43 @@ export class LocalClientFiles {
     throw new Error("A complete local client name index has not been prepared");
   }
 
-  async read(name: string, signal?: AbortSignal): Promise<Uint8Array> {
+  read(name: string, signal?: AbortSignal): Promise<Uint8Array> {
+    return this.readAndRetain(name, signal, true);
+  }
+
+  private readAndRetain(
+    name: string,
+    signal: AbortSignal | undefined,
+    copyForCaller: true,
+  ): Promise<Uint8Array>;
+  private readAndRetain(
+    name: string,
+    signal: AbortSignal | undefined,
+    copyForCaller: false,
+  ): Promise<void>;
+  private async readAndRetain(
+    name: string,
+    signal: AbortSignal | undefined,
+    copyForCaller: boolean,
+  ): Promise<Uint8Array | void> {
     signal?.throwIfAborted();
     this.assertOpen();
     const key = localFileKey(name);
     const prepared = this.bytes.get(key);
-    if (prepared) return prepared.slice();
+    if (prepared) return copyForCaller ? prepared.slice() : undefined;
     if (this.missing.has(key)) throw new LocalFileMissing(name);
     const bytes = await this.load(name, key, signal);
     signal?.throwIfAborted();
     this.assertOpen();
     const existing = this.bytes.get(key);
-    if (existing) return existing.slice();
+    if (existing) return copyForCaller ? existing.slice() : undefined;
     if (bytes.byteLength > this.maxBytes - this.size)
       throw new Error("Local client preparation exceeds its memory budget");
     const copy = bytes.slice();
     this.bytes.set(key, copy);
     this.size += copy.byteLength;
     this.unprepared.delete(key);
-    return copy.slice();
+    return copyForCaller ? copy.slice() : undefined;
   }
 
   // Bevy owns the decoded asset after an async load. Retaining every source buffer here
@@ -205,11 +223,44 @@ export class LocalClientFiles {
     });
   }
 
-  async prepare(names: readonly string[], signal?: AbortSignal): Promise<void> {
-    for (const name of names) {
-      signal?.throwIfAborted();
-      await this.read(name, signal);
-    }
+  async prepare(
+    names: readonly string[],
+    signal?: AbortSignal,
+    progress?: (completed: number, total: number) => void,
+    { allowMissing = false }: { allowMissing?: boolean } = {},
+  ): Promise<void> {
+    let completed = 0;
+    progress?.(completed, names.length);
+    let next = 0;
+    let failed = false;
+    const worker = async () => {
+      try {
+        while (!failed && next < names.length) {
+          signal?.throwIfAborted();
+          const name = names[next++];
+          try {
+            // Preparation needs retention, not a disposable copy of the bytes.
+            await this.readAndRetain(name, signal, false);
+          } catch (error) {
+            if (
+              !allowMissing ||
+              !(error instanceof Error) ||
+              error.name !== "NotFoundError"
+            )
+              throw error;
+          }
+          signal?.throwIfAborted();
+          if (failed) return;
+          progress?.(++completed, names.length);
+        }
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(4, names.length) }, worker),
+    );
     signal?.throwIfAborted();
   }
 

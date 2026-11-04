@@ -766,6 +766,12 @@ pub(crate) fn apply_window_mode(
     mut windows: Query<&mut Window, With<PrimaryWindow>>,
     mut last_restart: Local<u32>,
 ) {
+    // An embedded browser canvas belongs to the host page. Native gxWindow's
+    // fullscreen default must not take over the page when the player opens,
+    // nor may RestartGx resize the canvas outside its docked panel.
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
     // A `RestartGx()` re-asserts even when nothing moved, re-applying `gxResolution` to a window
     // that is already windowed.
     let forced = std::mem::replace(&mut *last_restart, restarts.0) != restarts.0;

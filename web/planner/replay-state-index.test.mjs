@@ -35,6 +35,12 @@ test('Indexed combat preserves exact forward, reverse and random seeks, overlaps
  assert.equal(combatStateAt(actor,20000).cast,null);
 });
 
+test('Aura checkpoints restore exact state on seeks across an already visited prefix',()=>{
+ const actor=actorFixture();
+ const times=[30000,-Infinity,16000,100,12900,NaN,12799.999,12800,Infinity,2000,17100];
+ for(const t of times)assert.deepEqual(combatStateAt(actor,t),expected(actor,t),`time ${t}`);
+});
+
 test('Actor array replacement and appended events invalidate cached combat data at the same time',()=>{
  const actor=actorFixture(),t=5000;
  assert.deepEqual(combatStateAt(actor,t),expected(actor,t));

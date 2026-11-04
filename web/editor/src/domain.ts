@@ -107,6 +107,12 @@ export const combatStateAt = data.combatStateAt as unknown as (
   cast: Cast | null;
   auras: Aura[];
 };
+export const frameCombatStateAt = data.frameCombatStateAt as unknown as (
+  actor: Actor,
+  t: number,
+) => Omit<ReturnType<typeof combatStateAt>, "resources" | "auras"> & {
+  auras: readonly Aura[];
+};
 export const eventsBetween = data.eventsBetween as unknown as (
   replay: Replay,
   from: number,

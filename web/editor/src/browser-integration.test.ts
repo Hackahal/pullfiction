@@ -1324,3 +1324,69 @@ test("front door initializes local storage without opening raid assets or the re
   assert.equal(c.getSnapshot().ready, false);
   assert.equal(c.getSnapshot().clientStatus, "select");
 });
+
+test("viewer preparation overlaps a requested client load without starting before assets", async (t) => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { gpu: {} },
+  });
+  const { reader } = readerFixture();
+  let starts = 0;
+  const { engine } = engineFixture(() => {
+    starts++;
+    assert.ok((globalThis as any).__pullfiction_local_files);
+  });
+  let opens = 0,
+    loads = 0,
+    preparations = 0;
+  let releaseAssets!: () => void, releaseRenderer!: () => void;
+  const assets = new Promise<void>((resolve) => {
+    releaseAssets = resolve;
+  });
+  const renderer = new Promise<void>((resolve) => {
+    releaseRenderer = resolve;
+  });
+  engine.default = async () => {
+    preparations++;
+    await renderer;
+  };
+  const c = new EditorController(undefined, {
+    browserAssets: true,
+    projectStore: null,
+    openClient: async () => {
+      if (++opens === 1) await assets;
+      return reader;
+    },
+    loadEngine: async () => {
+      loads++;
+      return engine;
+    },
+    loadNpcIndex: async () => ({
+      schema: 1,
+      provider: "Wowhead",
+      versions: {},
+    }),
+  });
+  t.after(() => {
+    c.stop();
+    if (original) Object.defineProperty(globalThis, "navigator", original);
+    else Reflect.deleteProperty(globalThis, "navigator");
+  });
+  await c.initializeFrontDoor();
+  assert.deepEqual([opens, loads, preparations, starts], [0, 0, 0, 0]);
+  const opening = c.openClient([]);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual([opens, loads, preparations, starts], [1, 1, 1, 0]);
+  releaseRenderer();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual([opens, loads, preparations, starts], [1, 1, 1, 0]);
+  c.cancelClient();
+  releaseAssets();
+  await opening;
+  assert.deepEqual([opens, loads, preparations, starts], [1, 1, 1, 0]);
+  assert.equal(c.getSnapshot().ready, false);
+  await c.openClient([]);
+  assert.deepEqual([opens, loads, preparations, starts], [2, 1, 1, 1]);
+  assert.equal(c.getSnapshot().ready, true);
+});

@@ -42,7 +42,7 @@ for target, source in package.METADATA_FILES.items():
     package.copy_file(root, source, output, target)
 (output / 'renderer-lab-runtime.json').write_text(json.dumps({'schema': 1, 'developmentOnly': True}))
 PY
-node scripts/static-viewer-smoke.mjs "$stage/runtime"
+node scripts/static-viewer-smoke.mjs "$stage/runtime" --identity
 mkdir -p "$(dirname "$output")"
 mv "$stage/runtime" "$output"
 printf 'Diagnostic runtime (do not deploy): %s\n' "$output"

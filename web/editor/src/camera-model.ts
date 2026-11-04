@@ -21,27 +21,37 @@ export function raidCameraSubjects(
   lookupPose: typeof poseAt = poseAt,
 ) {
   const friendly = new Set(replay.fight.friendlyPlayers);
-  const living = replay.actors.flatMap((actor) => {
-    const pose = lookupPose(actor, time, smooth);
-    return pose && !pose.dead ? [{ actor, pos: pose.pos }] : [];
-  });
-  const raid = living.filter(
-    (p) => p.actor.type === "Player" && friendly.has(p.actor.id),
-  );
   const enemies = combatCameraEnemies(replay, time);
-  const near = (p: (typeof living)[number]) =>
-    raid.some(
-      (r) => Math.hypot(r.pos[0] - p.pos[0], r.pos[1] - p.pos[1]) <= 90,
-    );
-  const extras = living.filter(
-    (p) =>
-      p.actor.type !== "Player" &&
-      near(p) &&
-      (p.actor.type === "Pet" || enemies.has(p.actor.key)),
-  );
-  return raid.length
-    ? [...raid, ...extras]
-    : living.filter((p) => p.actor.type === "NPC" && enemies.has(p.actor.key));
+  const raid: {
+    actor: Replay["actors"][number];
+    pos: [number, number, number | null];
+  }[] = [];
+  const others: typeof raid = [];
+  for (const actor of replay.actors) {
+    const player = actor.type === "Player";
+    // Actors that can never enter this frame do not need an interpolated pose.
+    if (
+      player
+        ? !friendly.has(actor.id)
+        : actor.type !== "Pet" && !enemies.has(actor.key)
+    )
+      continue;
+    const pose = lookupPose(actor, time, smooth);
+    if (pose && !pose.dead)
+      (player ? raid : others).push({ actor, pos: pose.pos });
+  }
+  if (!raid.length) return others.filter((p) => p.actor.type === "NPC");
+  const playerCount = raid.length;
+  for (const p of others) {
+    for (let i = 0; i < playerCount; i++) {
+      const r = raid[i];
+      if (Math.hypot(r.pos[0] - p.pos[0], r.pos[1] - p.pos[1]) <= 90) {
+        raid.push(p);
+        break;
+      }
+    }
+  }
+  return raid;
 }
 export function raidMapFrame(
   subjects: { pos: [number, number, number | null] }[],
@@ -86,15 +96,43 @@ export function easeMapCamera(
   };
 }
 
-const cameraActors = new WeakMap<
-  Replay,
-  Map<string, Replay["actors"][number]>
->();
+const CAMERA_EVENT_CACHE_SIZE = 4096;
+
+type CameraCombatWindow = {
+  actors: Map<string, Replay["actors"][number]>;
+  events: (Replay["combat"][number] | undefined)[];
+  enemies: (string | null)[];
+};
+const cameraWindows = new WeakMap<Replay, CameraCombatWindow>();
+
+function cameraEnemy(
+  index: CameraCombatWindow,
+  event: Replay["combat"][number],
+): string | null {
+  if (
+    event.kind !== "damage" &&
+    event.kind !== "start" &&
+    event.kind !== "go" &&
+    event.kind !== "interrupt"
+  )
+    return null;
+  const source = index.actors.get(event.source ?? ""),
+    target = index.actors.get(event.target ?? "");
+  if (!source || !target || (source.type === "NPC") === (target.type === "NPC"))
+    return null;
+  const enemy = source.type === "NPC" ? source : target;
+  const other = source === enemy ? target : source;
+  return other.type === "Player" || other.type === "Pet" ? enemy.key : null;
+}
 export function combatCameraEnemies(replay: Replay, time: number): Set<string> {
-  let actors = cameraActors.get(replay);
-  if (!actors) {
-    actors = new Map(replay.actors.map((a) => [a.key, a]));
-    cameraActors.set(replay, actors);
+  let index = cameraWindows.get(replay);
+  if (!index) {
+    index = {
+      actors: new Map(replay.actors.map((actor) => [actor.key, actor])),
+      events: new Array(CAMERA_EVENT_CACHE_SIZE),
+      enemies: new Array(CAMERA_EVENT_CACHE_SIZE),
+    };
+    cameraWindows.set(replay, index);
   }
   const events = replay.combat ?? [];
   let lo = 0,
@@ -106,19 +144,21 @@ export function combatCameraEnemies(replay: Replay, time: number): Set<string> {
   }
   const active = new Set<string>();
   for (let i = lo - 1; i >= 0 && events[i].t >= time - 8000; i--) {
-    const e = events[i];
-    if (!["damage", "start", "go", "interrupt"].includes(e.kind)) continue;
-    const source = actors.get(e.source ?? ""),
-      target = actors.get(e.target ?? "");
-    if (
-      !source ||
-      !target ||
-      (source.type === "NPC") === (target.type === "NPC")
-    )
+    const event = events[i];
+    // Neighboring frames overlap most of this window. Bound the cache to
+    // recent rows, checking identity so replacement events classify afresh.
+    if (lo - i > CAMERA_EVENT_CACHE_SIZE) {
+      const enemy = cameraEnemy(index, event);
+      if (enemy !== null) active.add(enemy);
       continue;
-    const enemy = source.type === "NPC" ? source : target;
-    const other = source === enemy ? target : source;
-    if (other.type === "Player" || other.type === "Pet") active.add(enemy.key);
+    }
+    const slot = i % CAMERA_EVENT_CACHE_SIZE;
+    if (index.events[slot] !== event) {
+      index.events[slot] = event;
+      index.enemies[slot] = cameraEnemy(index, event);
+    }
+    const enemy = index.enemies[slot];
+    if (enemy !== null) active.add(enemy);
   }
   return active;
 }

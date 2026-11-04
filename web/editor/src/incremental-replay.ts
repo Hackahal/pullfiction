@@ -1,4 +1,9 @@
 import { enrichCombat, normalizeReplay } from "./domain";
+import {
+  enrichCombatSteps,
+  normalizeReplaySteps,
+} from "../../planner/replay.mjs";
+import { drainReplayTasks } from "./replay-preparation";
 import type { Actor, RawReplay, Replay } from "./types";
 
 type Evidence = { events: unknown[]; indices: number[] };
@@ -20,7 +25,9 @@ export class IncrementalReplayNormalizer {
   private evidence = new Map<string, Evidence>();
   private header = "";
   private metadata: unknown[] = [];
+  private generation = 0;
   reset() {
+    this.generation++;
     this.previous = undefined;
     this.evidence.clear();
     this.header = "";
@@ -32,6 +39,42 @@ export class IncrementalReplayNormalizer {
     items: Record<string, unknown>,
     spells: Record<string, unknown>,
   ): Replay {
+    // Whole-file replays cannot reuse streamed actor derivations. Avoid
+    // indexing every event or retaining the previous streamed snapshot.
+    if (!raw.stream) {
+      this.reset();
+      return enrichCombat(normalizeReplay(raw, models), items, spells);
+    }
+    this.generation++;
+    const steps = this.streamSteps(raw, models, items, spells, false);
+    for (;;) {
+      const step = steps.next();
+      if (step.done) return step.value;
+    }
+  }
+  normalizeSliced(
+    raw: RawReplay,
+    models: Record<string, unknown>,
+    items: Record<string, unknown>,
+    spells: Record<string, unknown>,
+    current: () => boolean,
+  ): Promise<Replay> {
+    const generation = ++this.generation;
+    return drainReplayTasks(
+      this.streamSteps(raw, models, items, spells, true),
+      () => {
+        if (!current() || this.generation !== generation)
+          throw new DOMException("Replay preparation superseded", "AbortError");
+      },
+    );
+  }
+  private *streamSteps(
+    raw: RawReplay,
+    models: Record<string, unknown>,
+    items: Record<string, unknown>,
+    spells: Record<string, unknown>,
+    sliced: boolean,
+  ): Generator<unknown, Replay> {
     // Coverage changes do not change recorded actor content. The caller installs
     // current bufferedRanges independently, as in the ordinary normalization path.
     const header = JSON.stringify([
@@ -46,37 +89,42 @@ export class IncrementalReplayNormalizer {
     ]);
     const metadata = [models, items, spells];
     const canReuse =
-      !!raw.stream &&
       this.header === header &&
       metadata.every((value, i) => value === this.metadata[i]);
     const evidence = new Map<string, Evidence>();
     const global: Evidence = { events: [], indices: [] };
-    raw.events.forEach((value, i) => {
+    const record = (
+      value: unknown,
+      i: number,
+      id: number,
+      instance: number,
+    ) => {
+      if (!(id > 0)) return;
+      const key = `${id}:${instance || 1}`;
+      let row = evidence.get(key);
+      if (!row) evidence.set(key, (row = { events: [], indices: [] }));
+      row.events.push(value);
+      row.indices.push(i);
+    };
+    for (let i = 0; i < raw.events.length; i++) {
+      if (sliced && (i & 511) === 0) yield;
+      const value = raw.events[i];
       const event = value as Record<string, any>;
-      if (
-        [
-          "zonechange",
-          "encounterstart",
-          "encounterend",
-          "combatantinfo",
-        ].includes(event.type)
-      ) {
-        global.events.push(value);
-        global.indices.push(i);
+      switch (event.type) {
+        case "zonechange":
+        case "encounterstart":
+        case "encounterend":
+        case "combatantinfo":
+          global.events.push(value);
+          global.indices.push(i);
       }
-      for (const side of ["source", "target"]) {
-        const id = event[`${side}ID`];
-        if (!(id > 0)) continue;
-        const key = `${id}:${event[`${side}Instance`] || 1}`;
-        let row = evidence.get(key);
-        if (!row) evidence.set(key, (row = { events: [], indices: [] }));
-        row.events.push(value);
-        row.indices.push(i);
-      }
-    });
+      record(value, i, event.sourceID, event.sourceInstance);
+      record(value, i, event.targetID, event.targetInstance);
+    }
     const reused = new Map<string, Actor>();
     if (canReuse && sameEvidence(this.evidence.get("global"), global)) {
       for (const actor of this.previous!.actors) {
+        if (sliced) yield;
         const row = evidence.get(actor.key) ?? { events: [], indices: [] };
         if (sameEvidence(this.evidence.get(actor.key), row))
           reused.set(actor.key, actor);
@@ -95,12 +143,25 @@ export class IncrementalReplayNormalizer {
         )
           reused.delete(key);
     }
-    const replay = enrichCombat(
-      normalizeReplay(raw, models, reused),
-      items,
-      spells,
-      reused,
-    );
+    let replay: Replay;
+    if (sliced) {
+      const ordering: { eventOrder?: Uint32Array } = {};
+      const tracks = yield* normalizeReplaySteps(raw, models, reused, ordering);
+      replay = (yield* enrichCombatSteps(
+        tracks,
+        items,
+        spells,
+        reused,
+        ordering.eventOrder,
+      )) as Replay;
+    } else {
+      replay = enrichCombat(
+        normalizeReplay(raw, models, reused),
+        items,
+        spells,
+        reused,
+      );
+    }
     // Seeded roster/NPC actors can have no events at all.
     for (const actor of replay.actors)
       if (!evidence.has(actor.key))

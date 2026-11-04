@@ -1,6 +1,8 @@
 // Presentation rules for Classic movement. Unknown spells retain the observed profile.
 const SPEED = new Map([[2983, 1.5], [8696, 1.6], [11305, 1.7], [1850, 1.5], [9821, 1.6], [2379, 1.5]]);
 const BLINK = 1953;
+const DEFAULT_PROFILE = [[0, 1, 0]];
+const NO_BLINKS = [];
 const upper = (rows, time) => {
   let lo = 0, hi = rows.length;
   while (lo < hi) { const m = (lo + hi) >>> 1; if (rows[m][0] <= time) lo = m + 1; else hi = m; }
@@ -27,26 +29,30 @@ export function prepareMovement(actor) {
 
 export function movementBetween(actor, a, b, time) {
   const gap = b[0] - a[0];
-  const blinks = actor.movement?.blinks ?? [];
-  const index=upper(blinks,a[0]),atDeparture=actor.movement?.departureJumps?.includes(a[0]);
-  const next = atDeparture&&blinks[index-1]?.[0]===a[0]?blinks[index-1]:blinks[index];
-  // A destination sampled later is only an estimate of the landing. Never animate a walk
-  // across the jump, including when the observed displacement is below the teleport cutoff.
-  if (next && next[0] <= b[0]) return { blink: true, after: time >= next[0] };
-  const profile = actor.movement?.profile ?? [[0, 1, 0]];
-  const at = t => {
-    const p = profile[Math.max(0, upper(profile, t) - 1)];
-    return [p[2] + (t - p[0]) * p[1], p[1]];
-  };
-  const start = at(a[0])[0], end = at(b[0])[0], current = at(time);
-  const total = end - start;
+  const blinks = actor.movement?.blinks ?? NO_BLINKS;
+  if (blinks.length) {
+    const index=upper(blinks,a[0]),atDeparture=actor.movement?.departureJumps?.includes(a[0]);
+    const next = atDeparture&&blinks[index-1]?.[0]===a[0]?blinks[index-1]:blinks[index];
+    // A destination sampled later is only an estimate of the landing. Never animate a walk
+    // across the jump, including when the observed displacement is below the teleport cutoff.
+    if (next && next[0] <= b[0]) return { blink: true, after: time >= next[0] };
+  }
+  const profile = actor.movement?.profile ?? DEFAULT_PROFILE;
+  const first = profile.length === 1 ? profile[0] : null;
+  const startRow = first ?? profile[Math.max(0, upper(profile, a[0]) - 1)];
+  const endRow = first ?? profile[Math.max(0, upper(profile, b[0]) - 1)];
+  const currentRow = first ?? profile[Math.max(0, upper(profile, time) - 1)];
+  const start = startRow[2] + (a[0] - startRow[0]) * startRow[1];
+  const end = endRow[2] + (b[0] - endRow[0]) * endRow[1];
+  const current = currentRow[2] + (time - currentRow[0]) * currentRow[1];
+  const weight = currentRow[1], total = end - start;
   return {
     blink: false,
-    fraction: Math.max(0, Math.min(1, (current[0] - start) / total)),
-    rate: current[1] * 1000 / total,
-    weighted: (total !== gap || current[1] !== 1) && gap <= 2000,
+    fraction: Math.max(0, Math.min(1, (current - start) / total)),
+    rate: weight * 1000 / total,
+    weighted: (total !== gap || weight !== 1) && gap <= 2000,
     travel_budget: total * 7 / 1000,
-    run_speed: current[1] * 7,
+    run_speed: weight * 7,
   };
 }
 

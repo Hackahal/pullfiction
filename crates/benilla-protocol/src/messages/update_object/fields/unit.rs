@@ -59,6 +59,12 @@ impl ObjectFields {
     pub fn unit_channel_object(&self) -> Option<u64> {
         self.get_guid(FIELD_UNIT_CHANNEL_OBJECT).filter(|&g| g != 0)
     }
+    /// Whether both channel target dwords are explicitly present and unchanged.
+    pub fn has_channel_object_fields(&self, target: Option<u64>) -> bool {
+        let guid = target.unwrap_or(0);
+        self.get_raw(FIELD_UNIT_CHANNEL_OBJECT) == Some(guid as u32)
+            && self.get_raw(FIELD_UNIT_CHANNEL_OBJECT + 1) == Some((guid >> 32) as u32)
+    }
     /// `UNIT_CHANNEL_SPELL`: the spell being channelled, 0 for none.
     pub fn unit_channel_spell(&self) -> u32 {
         self.get_u32(FIELD_UNIT_CHANNEL_SPELL).unwrap_or(0)

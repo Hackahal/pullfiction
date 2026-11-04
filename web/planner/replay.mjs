@@ -1,7 +1,8 @@
+import {replayEventOrderSteps} from './replay-event-order.mjs';
 import {hakkarSnapshotPreservations} from './encounters/vanilla-hakkar.mjs';
 import {prepareMovement,movementBetween,runProgress} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
-import {reconstructCasts,buildVisualEvents} from './replay-actions.mjs';
+import {reconstructCastSteps,buildVisualEventSteps} from './replay-actions.mjs';
 import {applyCouncilPresentation} from './encounters/sod-reborn-council.mjs';
 import {applyMasonPresentation} from './encounters/sod-mason.mjs';
 import {applyAq40IllusionPresentation} from './encounters/sod-aq40-illusions.mjs';
@@ -15,7 +16,18 @@ export {reportSource} from './game-versions.mjs';
 export function reportCode(value) {return reportSource(value).code;}
 
 export const CLASS_COLORS = { Warrior:'#c79c6e',Paladin:'#f58cba',Hunter:'#abd473',Rogue:'#fff569',Priest:'#ffffff',Shaman:'#0070de',Mage:'#69ccf0',Warlock:'#9482c9',Druid:'#ff7d0a' };
+function finishSteps(steps) {
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 export function normalizeReplay(raw, models = {}, reused = new Map()) {
+  return finishSteps(normalizeReplaySteps(raw, models, reused));
+}
+
+/** @param {{eventOrder?: Uint32Array}} [cooperative] */
+export function* normalizeReplaySteps(raw, models = {}, reused = new Map(), cooperative = undefined) {
   const { report, fight, actors, events } = raw;
   const ruleset=gameVersion(raw.gameVersion??report?.gameVersion??'vanilla').id;
   if(raw.gameVersion&&report?.gameVersion&&raw.gameVersion!==report.gameVersion)throw new Error('Replay game versions disagree.');
@@ -23,6 +35,8 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   const raid = requireRaid(fight.gameZone,ruleset);
   if (!Number.isFinite(fight.startTime) || !(fight.endTime > fight.startTime)) throw new Error('Invalid encounter time range.');
   if (events.length > 2500000 || actors.length > 10000) throw new Error('Replay exceeds the prototype import limit.');
+  const eventOrder = cooperative ? yield* replayEventOrderSteps(events) : undefined;
+  if (cooperative) cooperative.eventOrder = eventOrder;
   const catalog = new Map(actors.map(a => [a.id, a]));
   const ownerFriendly = (actor) => {
     let owner=actor;const seen=new Set();
@@ -35,8 +49,15 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   };
   // A same-map zonechange can be a portal into another instance room. Its
   // timestamp is evidence of discontinuity, not evidence of a destination Z.
-  const positionBreaks = events.filter(e => e.type === 'zonechange' && Number.isFinite(e.timestamp))
-    .map(e => e.timestamp - fight.startTime).sort((a,b) => a-b);
+  const positionBreaks = [];
+  let chronological = true;
+  for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
+    const event=events[i];
+    if (event.type==='zonechange' && Number.isFinite(event.timestamp)) positionBreaks.push(event.timestamp-fight.startTime);
+    if (i && !(event.timestamp-events[i-1].timestamp>=0)) chronological=false;
+  }
+  positionBreaks.sort((a,b)=>a-b);
   const tracks = new Map();
   function track(id, instance = 1) {
     const actor = catalog.get(id); if (!actor || id <= 0) return null;
@@ -44,44 +65,48 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     if (!tracks.has(key)) tracks.set(key, reused.get(key) ?? { key, id, instance: instance || 1, name: actor.name, type: actor.type, friendly:actor.type==='Player'?undefined:ownerFriendly(actor), class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], lifeEvents: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
     return tracks.get(key);
   }
-  for (const id of fight.friendlyPlayers ?? []) track(id);
-  if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
-  for (const event of [...events].sort((a,b)=>a.timestamp-b.timestamp)) {
-    if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
-    const t = event.timestamp - fight.startTime;
-    for (const side of ['source', 'target']) {
-      const actor = track(event[`${side}ID`], event[`${side}Instance`]);
-      if (!actor || reused.has(actor.key)) continue;
-      actor.firstSeen=Math.min(actor.firstSeen,t);actor.lastSeen=Math.max(actor.lastSeen,t);
-      if(actor.type==='Player')actor.activity.push(t);
-      // Current WCL events flatten resources onto the event: 1=source, 2=target.
-      const r = event[`${side}Resources`] ?? (event.resourceActor === (side === 'source' ? 1 : 2) ? event : null);
-      if (r && Number.isFinite(r.x) && Number.isFinite(r.y) && (r.x !== 0 || r.y !== 0)) {
-        // WCL replay map axes: horizontal=-WoW Y, vertical=WoW X.
-        const x = r.y / 100, y = -r.x / 100;
-        if (Math.abs(x) <= 20000 && Math.abs(y) <= 20000) {
-          actor.samples.push([t,x,y,null]);
-          // WCL rotates map facing clockwise in hundredths of radians. Convert
-          // back to WoW heading, matching the movement vectors in these tracks.
-          if(Number.isFinite(r.facing))actor.facings.push([t,-r.facing/100-Math.PI/2]);
-        }
-      }
-      // Some postmortem damage ticks retain 1 HP alongside positive overkill.
-      // That contradictory damage snapshot cannot establish a resurrection.
-      if(Number.isFinite(r?.hitPoints)&&r.hitPoints>=0&&r.maxHitPoints>0&&
-        !(side==='target'&&r.hitPoints>0&&event.type==='damage'&&event.overkill>0))
-        actor.deaths.push([t,r.hitPoints===0]);
-      if (side === 'target' && event.type === 'death') actor.deaths.push([t,true]);
-      if (side === 'target' && event.type === 'resurrect') actor.deaths.push([t,false]);
-      if (side === 'target' && actor.type !== 'Player') {
-        if (event.type === 'summon' || event.type === 'create') {
-          actor.lifeEvents.push([t,true]);
-          actor.deaths.push([t,false]);
-        } else if (event.type === 'destroy') actor.lifeEvents.push([t,false]);
+  function record(actor, event, t, isTarget, r) {
+    if (!actor || reused.has(actor.key)) return;
+    actor.firstSeen=Math.min(actor.firstSeen,t);actor.lastSeen=Math.max(actor.lastSeen,t);
+    if(actor.type==='Player')actor.activity.push(t);
+    if (r && Number.isFinite(r.x) && Number.isFinite(r.y) && (r.x !== 0 || r.y !== 0)) {
+      // WCL replay map axes: horizontal=-WoW Y, vertical=WoW X.
+      const x = r.y / 100, y = -r.x / 100;
+      if (Math.abs(x) <= 20000 && Math.abs(y) <= 20000) {
+        actor.samples.push([t,x,y,null]);
+        // WCL rotates map facing clockwise in hundredths of radians. Convert
+        // back to WoW heading, matching the movement vectors in these tracks.
+        if(Number.isFinite(r.facing))actor.facings.push([t,-r.facing/100-Math.PI/2]);
       }
     }
+    // Some postmortem damage ticks retain 1 HP alongside positive overkill.
+    // That contradictory damage snapshot cannot establish a resurrection.
+    if(Number.isFinite(r?.hitPoints)&&r.hitPoints>=0&&r.maxHitPoints>0&&
+      !(isTarget&&r.hitPoints>0&&event.type==='damage'&&event.overkill>0))
+      actor.deaths.push([t,r.hitPoints===0]);
+    if (isTarget && event.type === 'death') actor.deaths.push([t,true]);
+    if (isTarget && event.type === 'resurrect') actor.deaths.push([t,false]);
+    if (isTarget && actor.type !== 'Player') {
+      if (event.type === 'summon' || event.type === 'create') {
+        actor.lifeEvents.push([t,true]);
+        actor.deaths.push([t,false]);
+      } else if (event.type === 'destroy') actor.lifeEvents.push([t,false]);
+    }
+  }
+  for (const id of fight.friendlyPlayers ?? []) track(id);
+  if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
+  const sorted=!eventOrder&&!chronological ? [...events].sort((a,b)=>a.timestamp-b.timestamp) : events;
+  for (let i=0;i<sorted.length;i++) {
+    if((i&255)===0)yield;
+    const event=sorted[eventOrder?.[i]??i];
+    if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
+    const t = event.timestamp - fight.startTime;
+    // Current WCL events flatten resources onto the event: 1=source, 2=target.
+    record(track(event.sourceID,event.sourceInstance),event,t,false,event.sourceResources??(event.resourceActor===1?event:null));
+    record(track(event.targetID,event.targetInstance),event,t,true,event.targetResources??(event.resourceActor===2?event:null));
   }
   for (const actor of tracks.values()) {
+    yield;
     if(reused.has(actor.key))continue;
     actor.activity=[...new Set(actor.activity)].sort((a,b)=>a-b);
     actor.samples.sort((a,b) => a[0]-b[0]);
@@ -121,9 +146,17 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     }
   }
   const gaps=chapters.slice(1).map((next,i)=>({start:chapters[i].end,end:next.start})).filter(g=>g.end>g.start);
-  for(const gap of gaps)gap.hasEvents=events.some(e=>e.timestamp>fight.startTime+gap.start&&e.timestamp<fight.startTime+gap.end);
+  for(const gap of gaps){
+    yield;
+    gap.hasEvents=events.some(e=>e.timestamp>fight.startTime+gap.start&&e.timestamp<fight.startTime+gap.end);
+  }
   const replay={ version:1, gameVersion:ruleset, map:raid.map, report, fight, duration: fight.endTime-fight.startTime, chapters, gaps, actors:[...tracks.values()], raw };
-  return applyViscidusPresentation(applyAq40IllusionPresentation(applyCouncilPresentation(replay)));
+  yield;
+  const council=applyCouncilPresentation(replay);
+  yield;
+  const illusions=applyAq40IllusionPresentation(council);
+  yield;
+  return applyViscidusPresentation(illusions);
 }
 // Activity is independent of positional confidence. Real casts and combat observations
 // keep the character model even when its location must be interpolated.
@@ -137,6 +170,21 @@ function coveredByActivity(actor,time) {
   const casts=actor.casts??[];lo=0;hi=casts.length;
   while(lo<hi){const mid=(lo+hi)>>>1;if(casts[mid].start<=time)lo=mid+1;else hi=mid;}
   return !!(lo&&casts[lo-1].end>time&&!casts[lo-1].instant);
+}
+function sampleTangent(left,right,axis) {
+  if(!left||!right||right[0]-left[0]>2000||left[axis]===null||right[axis]===null)return null;
+  return (right[axis]-left[axis])/(right[0]-left[0]);
+}
+const harmonicTangent=(d,q)=>q===null?d:q*d<=0?0:2*q*d/(q+d);
+
+function linearPosition(a,b,fraction) {
+  const pos=a.slice(1);
+  for(let i=0;i<pos.length;i++){
+    if(!(i in pos))continue;
+    const v=pos[i],w=b[i+1];
+    pos[i]=v===null||w===null?null:v+(w-v)*fraction;
+  }
+  return pos;
 }
 export function poseAt(actor, time, smoothGaps = false) {
   if(actor.presentationWindows && !actor.presentationWindows.some(([start,end])=>start<=time&&time<end))return null;
@@ -169,7 +217,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   const measuredCharge=!!b&&actor.chargeSegments?.some(([start,end])=>start===a[0]&&end===b[0]);
   let discontinuity=!!b&&((distance/(gap/1000)>35&&!measuredCharge)||lifeBoundary||zoneBoundary);
   const fresh = !beforeFirst && time-a[0] <= 2000;
-  let pos=a.slice(1), speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
+  let pos, speed=0, facing=actor.headings?.[Math.max(0,lo-1)]??0;
   const loadedBetween=!actor.bufferedRanges||actor.bufferedRanges.some(([start,end])=>start<=a[0]&&end>=b?.[0]);
   let estimated=!!(b && loadedBetween && !discontinuity && gap>2000 && smoothGaps && actor.type==='Player' && gap<=120000 && time>a[0]);
   const wisp=estimated&&!fresh&&distance>.25&&!coveredByActivity(actor,time);
@@ -184,36 +232,43 @@ export function poseAt(actor, time, smoothGaps = false) {
   if (b && loadedBetween && !beforeFirst && !discontinuity && (gap<=2000 || estimated)) {
     const fraction=timing&&(timing.weighted||estimated)?timing.fraction:(time-a[0])/gap;
     if(estimated){
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
+      pos=linearPosition(a,b,fraction);
       speed=distance/(gap/1000);
     }else if(actor.type!=='Player'){
       // Shape-preserving Hermite interpolation. Neighbouring stationary samples
       // produce zero tangents; no axis can overshoot its recorded endpoints.
       const previous=s[lo-2],next=s[lo+1];
-      const tangent=(left,right,axis)=>{
-        if(!left||!right||right[0]-left[0]>2000||left[axis]===null||right[axis]===null)return null;
-        return (right[axis]-left[axis])/(right[0]-left[0]);
-      };
-      const velocities=[];
-      pos=a.slice(1).map((v,i)=>{
-        const axis=i+1,w=b[axis];if(v===null||w===null){velocities.push(0);return null;}
-        const d=(w-v)/gap;
-        const harmonic=(q)=>q===null?d:q*d<=0?0:2*q*d/(q+d);
-        const m0=harmonic(tangent(previous,a,axis))*gap,m1=harmonic(tangent(b,next,axis))*gap;
-        const u=fraction,u2=u*u,u3=u2*u;
-        velocities.push(((6*u2-6*u)*v+(3*u2-4*u+1)*m0+(-6*u2+6*u)*w+(3*u2-2*u)*m1)/gap*1000);
-        return (2*u3-3*u2+1)*v+(u3-2*u2+u)*m0+(-2*u3+3*u2)*w+(u3-u2)*m1;
-      });
-      speed=Math.hypot(velocities[0],velocities[1]);
-      if(speed>.03)facing=Math.atan2(velocities[1],velocities[0]);
+      const u=fraction,u2=u*u,u3=u2*u;
+      const p0=2*u3-3*u2+1,t0=u3-2*u2+u,p1=-2*u3+3*u2,t1=u3-u2;
+      const v0=6*u2-6*u,mv0=3*u2-4*u+1,v1=-6*u2+6*u,mv1=3*u2-2*u;
+      let vx,vy,velocityCount=0;
+      pos=a.slice(1);
+      for(let i=0;i<pos.length;i++){
+        if(!(i in pos))continue;
+        const axis=i+1,v=pos[i],w=b[axis];
+        let velocity=0;
+        if(v===null||w===null)pos[i]=null;
+        else {
+          const d=(w-v)/gap;
+          const m0=harmonicTangent(d,sampleTangent(previous,a,axis))*gap;
+          const m1=harmonicTangent(d,sampleTangent(b,next,axis))*gap;
+          pos[i]=p0*v+t0*m0+p1*w+t1*m1;
+          if(velocityCount<2)velocity=(v0*v+mv0*m0+v1*w+mv1*m1)/gap*1000;
+        }
+        if(velocityCount===0)vx=velocity;
+        else if(velocityCount===1)vy=velocity;
+        velocityCount++;
+      }
+      speed=Math.hypot(vx,vy);
+      if(speed>.03)facing=Math.atan2(vy,vx);
     }
     if(actor.type==='Player'&&!estimated&&timing){
       const progress=runProgress(distance,timing.fraction,timing.rate,timing.travel_budget);
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*progress.fraction);
+      pos=linearPosition(a,b,progress.fraction);
       speed=distance*progress.rate;
       if(speed>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
     }else if(timing?.weighted){
-      pos=a.slice(1).map((v,i)=>v===null||b[i+1]===null?null:v+(b[i+1]-v)*fraction);
+      pos=linearPosition(a,b,fraction);
       speed=distance*timing.rate;
       if(distance>.03)facing=Math.atan2(b[2]-a[2],b[1]-a[1]);
     }
@@ -236,7 +291,7 @@ export function poseAt(actor, time, smoothGaps = false) {
   }
   let dead=false;
   for(const [t,value] of actor.deaths) { if(t>time) break; dead=value; }
-  return { pos, movement:dead?null:movement, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:timing?.blink&&timing.after?'ability jump estimate':beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
+  return { pos:pos??a.slice(1), movement:dead?null:movement, speed: dead?0:speed, facing, dead, stale:!fresh, estimated, wisp, discontinuity, sampleAge:beforeFirst?null:time-a[0], positionSource:timing?.blink&&timing.after?'ability jump estimate':beforeFirst?'first observed':estimated?'estimated':time===a[0]?'recorded':b&&!discontinuity&&gap<=2000?'interpolated':'held' };
 }
 export class ReplayClock {
   constructor(duration=0) { this.duration=duration; this.time=0; this.playing=false; this.rate=1; }
@@ -251,12 +306,32 @@ export function latestAt(samples,t) {
   let lo=0,hi=samples.length;while(lo<hi){const mid=(lo+hi)>>>1;if(samples[mid][0]<=t)lo=mid+1;else hi=mid;}
   return lo?samples[lo-1][1]:null;
 }
+function recordCombatResources(actor,t,r) {
+  if(!r)return;
+  if(Number.isFinite(r.hitPoints)&&r.maxHitPoints>0)actor.health.push([t,{current:r.hitPoints,max:r.maxHitPoints,percent:Math.max(0,Math.min(1,r.hitPoints/r.maxHitPoints))}]);
+  const p=r.classResources?.find(p=>p.max>0&&Number.isFinite(p.amount)&&p.type>=0&&p.type<=3);
+  if(p)actor.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
+}
 export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
+  return finishSteps(enrichCombatSteps(replay, itemModels, spellMetadata, reused));
+}
+
+/** @param {Uint32Array} [eventOrder] */
+export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reused = new Map(), eventOrder = undefined) {
   const {raw}=replay;
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
   const abilities=new Map((raw.abilities??[]).map(a=>[a.gameID,a]));
   const details=Object.values(raw.playerDetails?.data?.playerDetails??{}).flat();
-  const info=new Map(raw.events.filter(e=>e.type==='combatantinfo').map(e=>[e.sourceID,e]));
+  const events=raw.events, info=new Map();
+  let chronological=true;
+  for(let i=0;i<events.length;i++){
+    if((i&255)===0)yield;
+    const e=events[i];
+    if(e.type==='combatantinfo')info.set(e.sourceID,e);
+    if(i&&!(e.timestamp-events[i-1].timestamp>=0))chronological=false;
+  }
+  // Cast identities use original indices, including for tied timestamps.
+  const order=eventOrder??(chronological?null:events.map((_,i)=>i).sort((a,b)=>events[a].timestamp-events[b].timestamp));
   for(const a of all){
     if(reused.has(a.key))continue;
     combatIndexes.delete(a);
@@ -271,22 +346,22 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     a.icon=raw.actors.find(x=>x.id===a.id)?.icon??null;
     if(a.type==='Pet'&&!a.displayID&&a.gameID>100000){a.displayID=447;a.petModelSource='Representative wolf; original model not recorded';}
   }
+  yield;
   const snapshotPreservations=hakkarSnapshotPreservations(raw);
   const combat=[],auraSources=new Map(all.map(a=>[a.key,new Map()]));
-  for(const [i,e] of raw.events.map((e,i)=>[i,e]).sort((a,b)=>a[1].timestamp-b[1].timestamp)){
-    const t=e.timestamp-raw.fight.startTime;if(t<0||t>replay.duration)continue;
+  for(let j=0;j<events.length;j++){
+    if((j&255)===0)yield;
+    const i=order?.[j]??j,e=events[i];
+    if(!Number.isFinite(e.timestamp))continue;
+    const t=e.timestamp-raw.fight.startTime;if(!Number.isFinite(t)||t<0||t>replay.duration)continue;
     const source=index.get(`${e.sourceID}:${e.sourceInstance||1}`), target=index.get(`${e.targetID}:${e.targetInstance||1}`);
     const loggedSpell=e.abilityGameID??e.ability?.guid??0;
     // WCL uses -4 for some melee events; the client uses spell 1 for melee.
     const spell=loggedSpell===-4?1:Math.max(0,loggedSpell);
     const ability=abilities.get(loggedSpell)??{name:`Spell ${spell}`,icon:null};
     if(source&&!reused.has(source.key)&&e.type==='cast'&&RACIAL_RACES[spell]){source.race=RACIAL_RACES[spell];source.raceSource=`Recorded ${ability.name}`;}
-    for(const [side,a] of [['source',source],['target',target]]){
-      if(!a||reused.has(a.key))continue;
-      const r=e[`${side}Resources`]??(e.resourceActor===(side==='source'?1:2)?e:null);
-      if(r&&Number.isFinite(r.hitPoints)&&r.maxHitPoints>0)a.health.push([t,{current:r.hitPoints,max:r.maxHitPoints,percent:Math.max(0,Math.min(1,r.hitPoints/r.maxHitPoints))}]);
-      const p=r?.classResources?.find(p=>p.max>0&&Number.isFinite(p.amount)&&p.type>=0&&p.type<=3);if(p)a.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
-    }
+    if(source&&!reused.has(source.key))recordCombatResources(source,t,e.sourceResources??(e.resourceActor===1?e:null));
+    if(target&&!reused.has(target.key))recordCombatResources(target,t,e.targetResources??(e.resourceActor===2?e:null));
     if(e.type==='resourcechange'&&target&&!reused.has(target.key)&&Number.isInteger(e.resourceChangeType)&&Number.isFinite(e.resourceChange)){
       const type=e.resourceChangeType,max=Number.isFinite(e.maxResourceAmount)&&e.maxResourceAmount>0?e.maxResourceAmount:null;
       target.resourceChanges.push([t,{type,gain:e.resourceChange,waste:Number.isFinite(e.waste)?e.waste:0,max,spell,name:ability.name,icon:ability.icon}]);
@@ -316,10 +391,11 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     if(target&&(e.type==='damage'||e.type==='heal'))combat.push({id:i,t,kind:e.type,source:source?.key??null,target:target.key,spell,name:ability.name,amount:e.amount??0,melee:!!e.melee||spell===1,tick:!!e.tick,
       environmental:e.sourceID===-1&&ability.name==='Falling'});
   }
-  for(const a of all){if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
+  for(const a of all){yield;if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
-  reconstructCasts(replay,spellMetadata,reused);
-  for(const actor of all)if(!reused.has(actor.key))prepareMovement(actor);
+  yield* reconstructCastSteps(replay,spellMetadata,reused,eventOrder);
+  for(const actor of all){yield;if(!reused.has(actor.key))prepareMovement(actor);}
+  yield;
   for(const [key,events]of encounterJumpEvents(replay)){
     // Reused actors already carry these derived boundaries; never append twice.
     if(reused.has(key))continue;
@@ -330,7 +406,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   }
   // Stream reuse promises immutable prior actor derivations.
   applyMasonPresentation(reused.size?{...replay,actors:all.filter(a=>!reused.has(a.key))}:replay);
-  replay.visualEvents=buildVisualEvents(replay);
+  yield;
+  replay.visualEvents=yield* buildVisualEventSteps(replay);
   return replay;
 }
 const combatIndexes = new WeakMap();
@@ -365,7 +442,7 @@ function combatIndex(actor) {
   index={casts,castLength:casts.length,auras,auraLength:auras.length,
     initial,initialLength:initial.length,resources,resourceLength:resources.length,
     ends,size,sortedCasts,sortedResources,sortedAuras,state,cursor:0,values:[...state.values()],
-    checkpoints:new Map([[0,[...state]]])};
+    checkpoints:new Map([[0,[...state]]]),lastCheckpoint:0};
   combatIndexes.set(actor,index);
   return index;
 }
@@ -386,10 +463,10 @@ function activeCast(index,t) {
   return found<0?null:casts[found];
 }
 function resetAuraState(state,aura) {
-  const retained=(aura.preserve??[]).map(spell=>state.get(spell)).filter(Boolean);
+  const retained=aura.preserve==null?null:aura.preserve.map(spell=>state.get(spell)).filter(Boolean);
   state.clear();
   for(const spell of aura.reset)state.set(spell,{spell,name:`Spell ${spell}`,stack:1,debuff:false});
-  for(const entry of retained)state.set(entry.spell,entry);
+  if(retained)for(const entry of retained)state.set(entry.spell,entry);
 }
 function auraState(index,t) {
   const events=index.auras;
@@ -402,12 +479,17 @@ function auraState(index,t) {
     }
     return [...state.values()];
   }
-  let lo=0,hi=events.length;
+  const cursor=index.cursor;
+  const pastPrevious=cursor===0||!(events[cursor-1][0]>t);
+  const beforeNext=cursor===events.length||events[cursor][0]>t;
+  if(pastPrevious&&beforeNext)return index.values;
+  let lo=pastPrevious?cursor:0,hi=pastPrevious?events.length:cursor;
   while(lo<hi){const mid=(lo+hi)>>>1;if(events[mid][0]>t)hi=mid;else lo=mid+1;}
   const target=lo;
-  if(target===index.cursor)return index.values;
-  if(target<index.cursor){
-    const checkpoint=Math.floor(target/AURA_CHECKPOINT)*AURA_CHECKPOINT;
+  // Checkpoints form a contiguous prefix. On a forward seek after rewinding,
+  // use the latest saved state at or before the target instead of replaying it.
+  const checkpoint=Math.min(index.lastCheckpoint,Math.floor(target/AURA_CHECKPOINT)*AURA_CHECKPOINT);
+  if(target<cursor||checkpoint>cursor){
     index.state=new Map(index.checkpoints.get(checkpoint));
     index.cursor=checkpoint;
   }
@@ -416,13 +498,17 @@ function auraState(index,t) {
     if(a.reset)resetAuraState(state,a);
     else if(a.remove)state.delete(a.spell);
     else state.set(a.spell,a);
-    if(index.cursor%AURA_CHECKPOINT===0&&!index.checkpoints.has(index.cursor))
+    if(index.cursor%AURA_CHECKPOINT===0&&index.cursor>index.lastCheckpoint){
       index.checkpoints.set(index.cursor,[...state]);
+      index.lastCheckpoint=index.cursor;
+    }
   }
   index.values=[...index.state.values()];
   return index.values;
 }
-export function combatStateAt(actor,t){
+// Native frame rendering has no resource chart consumer and treats the
+// stable aura snapshot as read-only. Public inspection keeps its own array.
+export function frameCombatStateAt(actor,t){
   const index=combatIndex(actor),cast=activeCast(index,t),auras=auraState(index,t);
   let health=latestAt(actor.health??[],t);
   let power=latestAt(actor.power??[],t);
@@ -435,7 +521,11 @@ export function combatStateAt(actor,t){
     const max=actor.health?.[0]?.[1]?.max??100;
     health={current:max,max,percent:1,initial:true};
   }
-  return {health,power,resources:resourcesAt(actor,t),cast:cast?{...cast,progress:Math.min(1,(t-cast.start)/Math.max(1,cast.end-cast.start))}:null,auras:auras.slice()};
+  return {health,power,cast:cast?{...cast,progress:Math.min(1,(t-cast.start)/Math.max(1,cast.end-cast.start))}:null,auras};
+}
+export function combatStateAt(actor,t){
+  const {health,power,cast,auras}=frameCombatStateAt(actor,t);
+  return {health,power,resources:resourcesAt(actor,t),cast,auras:auras.slice()};
 }
 export function eventsBetween(replay,from,to){
   if(to<from)return [];

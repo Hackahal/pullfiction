@@ -1,4 +1,5 @@
 import { BROWSER_ASSETS, schematicIcon } from "./browser-mode";
+import type { Actor } from "./types";
 export type MapPoint = [number, number];
 export interface MapCamera {
   x: number;
@@ -26,6 +27,42 @@ export interface MapFloor {
 // North up: +WoW X is screen up; +WoW Y is screen left.
 export const mapPoint = (x: number, y: number): MapPoint => [-y, -x];
 export const worldPoint = (x: number, y: number): MapPoint => [-y, -x];
+export type MapBounds = [
+  left: number,
+  top: number,
+  right: number,
+  bottom: number,
+];
+
+export function mapBounds(points: readonly MapPoint[]): MapBounds | undefined {
+  let left = Infinity,
+    top = Infinity,
+    right = -Infinity,
+    bottom = -Infinity;
+  for (const [x, y] of points) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+    if (x < left) left = x;
+    if (x > right) right = x;
+    if (y < top) top = y;
+    if (y > bottom) bottom = y;
+  }
+  if (left !== Infinity) return [left, top, right, bottom];
+}
+
+export function intersectsMapViewport(
+  bounds: MapBounds | undefined,
+  topLeft: MapPoint,
+  bottomRight: MapPoint,
+  padding: number,
+) {
+  return (
+    !bounds ||
+    (bounds[2] + padding >= topLeft[0] &&
+      bounds[3] + padding >= topLeft[1] &&
+      bounds[0] - padding <= bottomRight[0] &&
+      bounds[1] - padding <= bottomRight[1])
+  );
+}
 export function mapScreen(
   p: MapPoint,
   camera: MapCamera,
@@ -116,15 +153,47 @@ export const CLASS_CELLS: Record<string, [number, number]> = {
   Paladin: [0, 2],
 };
 
+export function mapActorIsBoss(actor: Pick<Actor, "type" | "class">) {
+  return actor.type === "NPC" && actor.class === "Boss";
+}
+
+export function mapActorDrawOrder<
+  T extends Pick<Actor, "key" | "type" | "class">,
+>(actors: readonly T[], selected: string | null) {
+  const other: T[] = [],
+    players: T[] = [],
+    bosses: T[] = [],
+    focused: T[] = [];
+  for (const actor of actors) {
+    if (actor.key === selected) focused.push(actor);
+    else if (mapActorIsBoss(actor)) bosses.push(actor);
+    else if (actor.type === "Player") players.push(actor);
+    else other.push(actor);
+  }
+  return other.concat(players, bosses, focused);
+}
+
+export function mapActorZoom(zoom: number) {
+  return Math.max(0.75, Math.min(2, Math.sqrt(Math.max(0.01, zoom))));
+}
+
+export function mapActorRadius(
+  type: Actor["type"],
+  boss: boolean,
+  factor: number,
+) {
+  return (
+    factor * (type === "Player" ? 9 : boss ? 20 : type === "Pet" ? 10 : 12)
+  );
+}
+
 export function mapActorToken(
-  actor: Pick<import("./types").Actor, "type" | "class" | "icon">,
+  actor: Pick<Actor, "type" | "class" | "icon">,
   zoom = 1,
 ) {
-  const boss = actor.type === "NPC" && actor.class === "Boss";
-  const factor = Math.max(0.75, Math.min(2, Math.sqrt(Math.max(0.01, zoom))));
-  const radius =
-    factor *
-    (actor.type === "Player" ? 9 : boss ? 20 : actor.type === "Pet" ? 10 : 12);
+  const boss = mapActorIsBoss(actor);
+  const factor = mapActorZoom(zoom);
+  const radius = mapActorRadius(actor.type, boss, factor);
   const raw = actor.icon?.replace(/^custom-icon-/i, "");
   const stem = raw?.split(/[\\/]/).pop()?.split(".")[0];
   const icon =

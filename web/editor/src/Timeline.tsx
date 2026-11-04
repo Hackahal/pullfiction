@@ -193,7 +193,7 @@ export function Timeline({
   );
   const x = (t: number) => LABEL + (t - start) * scale;
   const seek = (pixel: number) =>
-    controller.seek(start + Math.max(0, pixel - LABEL) / scale);
+    controller.scrub(start + Math.max(0, pixel - LABEL) / scale);
   const step =
     [
       100, 250, 500, 1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000,
@@ -432,6 +432,7 @@ export function Timeline({
               if (p && p.x >= LABEL && p.y < RULER) seek(p.x);
             }
           }}
+          onMouseUp={() => controller.flushScrub()}
           onWheel={(e) => {
             e.evt.preventDefault();
             setHover(null);
@@ -690,6 +691,7 @@ export function Timeline({
                     y: 0,
                   })}
                   onDragMove={(e) => seek(e.target.x())}
+                  onDragEnd={() => controller.flushScrub()}
                 >
                   <Rect
                     x={-7}

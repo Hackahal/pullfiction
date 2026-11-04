@@ -353,6 +353,7 @@ class CachedClientReader implements PreparedClient {
     key: string,
     method: string,
     args: any[],
+    background = false,
   ): Promise<any> {
     if (this.closed)
       throw new DOMException("Client access was cancelled", "AbortError");
@@ -375,9 +376,10 @@ class CachedClientReader implements PreparedClient {
     }
     if (this.source) {
       try {
-        const fn = (this.source as any)[method];
+        const reader = (background && this.source.background) || this.source;
+        const fn = (reader as any)[method];
         if (!fn) throw new Error(`The client reader cannot prepare ${method}`);
-        const value = await fn.apply(this.source, args);
+        const value = await fn.apply(reader, args);
         if (this.closed)
           throw new DOMException("Client access was cancelled", "AbortError");
         await this.remember(key, { kind: "value", value });
@@ -432,7 +434,7 @@ class CachedClientReader implements PreparedClient {
       this.needs();
     }
     await waiting;
-    return this.request(key, method, args);
+    return this.request(key, method, args, background);
   }
   /** Cache supported content after scene readiness, yielding to foreground reads between assets.
    * A separate versioned marker avoids rescanning a fully prepared build on later visits.
@@ -490,10 +492,15 @@ class CachedClientReader implements PreparedClient {
       next.delete(key);
       seen.add(key);
       try {
-        const pending = this.request(key, task.method, task.args).finally(() =>
-          this.inFlight.delete(key),
+        // Hosted demand joins the same chunks through the foreground path so
+        // it can promote queued chunks, even for the same file.
+        const separate = !!this.source.background;
+        const pending = this.request(key, task.method, task.args, true).finally(
+          () => {
+            if (!separate) this.inFlight.delete(key);
+          },
         );
-        this.inFlight.set(key, pending);
+        if (!separate) this.inFlight.set(key, pending);
         const value = await pending;
         options.signal.throwIfAborted();
         if (task.method === "catalog") {

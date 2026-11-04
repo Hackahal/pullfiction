@@ -1,6 +1,6 @@
 //! Keep recorded player identity current when another report reuses actor keys.
 use crate::{names::NameCache, query_cache::Ask};
-use benilla_protocol::{messages::ObjectType, ObjectFields};
+use benilla_protocol::{messages::ObjectType, ObjectFields, ObjectValuesScratch};
 
 /// Synthetic actors still need a typed create, just like wire-backed units.
 /// Without it `net::write_fields` merges later snapshots without notifying the
@@ -11,6 +11,44 @@ pub(crate) fn initial_fields(player: bool, fields: &[(u16, u32)]) -> ObjectField
     } else {
         ObjectType::Unit
     })
+}
+
+/// Replay submits complete descriptors at render cadence. Preserve native
+/// field events while avoiding Changed<ObjectStore> for identical snapshots.
+pub(crate) fn write_replay_fields(
+    store: &mut bevy::prelude::Mut<crate::net::ObjectStore>,
+    delta: ObjectFields,
+) -> Vec<(u16, u32, u32)> {
+    use bevy::ecs::change_detection::DetectChangesMut;
+    let initialized = store.0.created_as().is_some();
+    let moved = crate::net::write_fields(&mut store.bypass_change_detection().0, delta);
+    if !initialized || !moved.is_empty() {
+        store.set_changed();
+    }
+    moved
+}
+
+pub(crate) fn write_replay_value_pairs(
+    store: &mut bevy::prelude::Mut<crate::net::ObjectStore>,
+    scratch: &mut ObjectValuesScratch,
+    pairs: &[(u16, u32)],
+) -> Vec<(u16, u32, u32)> {
+    use bevy::ecs::change_detection::DetectChangesMut;
+    let initialized = store.0.created_as().is_some();
+    let mut moved = Vec::new();
+    scratch.apply(
+        &mut store.bypass_change_detection().0,
+        pairs,
+        |index, old, new| {
+            if initialized {
+                moved.push((index, old, new));
+            }
+        },
+    );
+    if !initialized || !moved.is_empty() {
+        store.set_changed();
+    }
+    moved
 }
 
 pub(crate) fn channel_target_fields(target: Option<u64>) -> ObjectFields {
@@ -49,6 +87,64 @@ pub(crate) fn refresh_player(names: &mut NameCache, guid: u64, name: &str, trait
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identical_replay_descriptors_do_not_wake_component_observers() {
+        use bevy::prelude::*;
+        let mut world = World::new();
+        let entity = world
+            .spawn(crate::net::ObjectStore(initial_fields(
+                true,
+                &[(22, 100), (144, 0)],
+            )))
+            .id();
+        world.clear_trackers();
+        {
+            let mut store = world.get_mut::<crate::net::ObjectStore>(entity).unwrap();
+            assert!(write_replay_fields(
+                &mut store,
+                ObjectFields::from_pairs(&[(22, 100), (144, 0)])
+            )
+            .is_empty());
+            assert!(!store.is_changed());
+        }
+        {
+            let mut store = world.get_mut::<crate::net::ObjectStore>(entity).unwrap();
+            assert_eq!(
+                write_replay_fields(&mut store, ObjectFields::from_pairs(&[(22, 80)])),
+                vec![(22, 100, 80)]
+            );
+            assert!(store.is_changed());
+            assert_eq!(store.0.unit_health(), Some(80));
+        }
+        world.clear_trackers();
+        let mut store = world.get_mut::<crate::net::ObjectStore>(entity).unwrap();
+        assert!(write_replay_fields(&mut store, ObjectFields::from_pairs(&[(22, 80)])).is_empty());
+        assert!(!store.is_changed());
+    }
+
+    #[test]
+    fn reusable_replay_pairs_preserve_field_edges_and_change_ticks() {
+        use bevy::prelude::*;
+        let mut world = World::new();
+        let entity = world
+            .spawn(crate::net::ObjectStore(initial_fields(true, &[(22, 100)])))
+            .id();
+        let mut scratch = ObjectValuesScratch::default();
+        world.clear_trackers();
+        {
+            let mut store = world.get_mut::<crate::net::ObjectStore>(entity).unwrap();
+            assert_eq!(
+                write_replay_value_pairs(&mut store, &mut scratch, &[(22, 70), (22, 80)]),
+                [(22, 100, 80)]
+            );
+            assert!(store.is_changed());
+        }
+        world.clear_trackers();
+        let mut store = world.get_mut::<crate::net::ObjectStore>(entity).unwrap();
+        assert!(write_replay_value_pairs(&mut store, &mut scratch, &[(22, 80)]).is_empty());
+        assert!(!store.is_changed());
+    }
 
     #[test]
     fn channel_object_descriptor_preserves_guid_and_clears_without_target_evidence() {

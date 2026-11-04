@@ -62,9 +62,18 @@ export function applyViscidusPresentation(replay) {
       end: Math.min(duration, Number.isFinite(c.endTime) ? c.endTime - origin : c.end ?? duration),
     })).filter(c => Number.isFinite(c.start) && Number.isFinite(c.end) && c.start < c.end);
   if (!scopes.length) return finish(clean);
-  const events = (replay.raw?.events ?? []).map((event, index) => ({event, index, t: event.timestamp - origin}))
-    .filter(({t}) => Number.isFinite(t) && t >= 0 && t <= duration)
-    .sort((a, b) => a.t - b.t || a.index - b.index);
+  const events = [], rawEvents = replay.raw?.events ?? [];
+  for (let index = 0; index < rawEvents.length; index++) {
+    const event = rawEvents[index], t = event.timestamp - origin;
+    if (!Number.isFinite(t)) continue;
+    for (const scope of scopes) {
+      if (scope.start <= t && t <= scope.end && sameFight(event, scope)) {
+        events.push({event, index, t});
+        break;
+      }
+    }
+  }
+  events.sort((a, b) => a.t - b.t || a.index - b.index);
   const byKey = new Map(clean.map(a => [a.key, a])), retired = new Map();
   for (const scope of scopes) {
     const rows = events.filter(({event, t}) => scope.start <= t && t <= scope.end && sameFight(event, scope));

@@ -56,6 +56,15 @@ The retained engine crates support the browser renderer and native game UI. The 
 
 ## Verification
 
+To compare replay frame preparation across revisions, run the same whole-file replay in each checkout:
+
+```sh
+npm run bench:frame --prefix web/editor -- /path/to/replay.json
+```
+
+Match the fixture checksum and Node version. Pass `--expect-packets SHA256` with the baseline's packet checksum when a change should preserve the exact native frame stream. Compare playback and seek timings separately across several trials. The benchmark runs without a browser or GPU. For browser FPS comparisons, use a fixed viewport (for example, 1440 × 810 at device pixel ratio 1) and keep the scene canvas, camera, and replay interval fixed. Measure first use and warmed playback separately.
+
+
 Use the [renderer workbench](web/editor/src/renderer-lab/README.md) for repeatable local GPU captures. It separates conversion checks, rendered pixels, visual review and frozen-frame regressions. Keep real game imagery and captures local.
 
 Run `python3 scripts/repository-audit.py` to check the current source and reachable Git history for forbidden artifacts and known credential signatures. Use `--tree-only` to inspect the current source without history. These checks do not prove that every possible secret is absent. The static package has its own stricter allowlist and content audit.

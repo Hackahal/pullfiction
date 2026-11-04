@@ -715,6 +715,72 @@ fn merge_diff_reports_each_moved_dword_once_with_its_old_value() {
     assert_eq!(store.unit_flags(), 8);
 }
 
+#[test]
+fn merge_diff_retains_explicit_zero_without_notifying() {
+    let mut store = ObjectFields::from_pairs(&[(21, 7)]).into_created(ObjectType::Unit);
+    assert_eq!(store.unit_channel_object(), None);
+    store.merge_diff(ObjectFields::from_pairs(&[(20, 0), (21, 7)]), |_, _, _| {
+        panic!("an absent zero and an unchanged value are silent")
+    });
+    assert_eq!(store.unit_channel_object(), Some(7u64 << 32));
+    assert_eq!(store.get_raw(20), Some(0));
+}
+
+#[test]
+fn raw_fields_walk_only_set_bits_in_ascending_order() {
+    let fields =
+        ObjectFields::from_pairs(&[(u16::MAX, 1), (128, 0), (31, 2), (32, 3), (0, 4), (31, 5)]);
+    assert_eq!(
+        fields.raw_fields().collect::<Vec<_>>(),
+        [(0, 4), (31, 5), (32, 3), (128, 0), (u16::MAX, 1)]
+    );
+}
+
+#[test]
+fn reusable_values_preserve_ascending_edges_and_drop_stale_scratch_fields() {
+    let mut scratch = ObjectValuesScratch::default();
+    let initial = ObjectFields::from_pairs(&[(22, 100)]).into_created(ObjectType::Player);
+    let mut reusable = initial.clone();
+    let mut expected = initial;
+    for pairs in [
+        &[(477, 3), (22, 50), (477, 8), (20, 0), (21, 9)][..],
+        &[(477, 4), (21, 0)][..],
+        &[(22, 0), (477, 0), (477, 4)][..],
+        &[],
+    ] {
+        let mut actual_edges = Vec::new();
+        let mut expected_edges = Vec::new();
+        scratch.apply(&mut reusable, pairs, |i, old, new| {
+            actual_edges.push((i, old, new))
+        });
+        expected.merge_diff(ObjectFields::from_pairs(pairs), |i, old, new| {
+            expected_edges.push((i, old, new))
+        });
+        assert_eq!(actual_edges, expected_edges);
+        assert_eq!(
+            reusable.raw_fields().collect::<Vec<_>>(),
+            expected.raw_fields().collect::<Vec<_>>()
+        );
+        assert_eq!(reusable.created_as(), Some(ObjectType::Player));
+    }
+}
+
+#[test]
+fn channel_object_equality_requires_both_explicit_dwords() {
+    let absent = ObjectFields::from_pairs(&[]).into_created(ObjectType::Unit);
+    assert!(!absent.has_channel_object_fields(None));
+    let high_only = ObjectFields::from_pairs(&[(21, 7)]).into_created(ObjectType::Unit);
+    assert!(!high_only.has_channel_object_fields(Some(7u64 << 32)));
+    let low_only = ObjectFields::from_pairs(&[(20, 3)]).into_created(ObjectType::Unit);
+    assert!(!low_only.has_channel_object_fields(Some(3)));
+    let clear = ObjectFields::from_pairs(&[(20, 0), (21, 0)]).into_created(ObjectType::Unit);
+    assert!(clear.has_channel_object_fields(None));
+    let target = ObjectFields::from_pairs(&[(20, 0), (21, 7)]).into_created(ObjectType::Unit);
+    assert!(target.has_channel_object_fields(Some(7u64 << 32)));
+    assert!(!target.has_channel_object_fields(None));
+    assert!(!target.has_channel_object_fields(Some(8u64 << 32)));
+}
+
 /// A re-create refreshes a live guid in place and notifies over both masks: an omitted field is
 /// an edge to 0.
 #[test]

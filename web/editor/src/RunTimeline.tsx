@@ -425,7 +425,7 @@ export function RunTimeline({
                   ),
                 );
               else
-                controller.seek(
+                controller.scrub(
                   runTimeAt(
                     e.clientX - e.currentTarget.getBoundingClientRect().left,
                     d.width,
@@ -435,16 +435,19 @@ export function RunTimeline({
                 );
             }}
             onPointerUp={(e) => {
+              controller.flushScrub();
               drag.current = null;
               setPanning(false);
               if (e.currentTarget.hasPointerCapture(e.pointerId))
                 e.currentTarget.releasePointerCapture(e.pointerId);
             }}
             onPointerCancel={() => {
+              controller.flushScrub();
               drag.current = null;
               setPanning(false);
             }}
             onLostPointerCapture={() => {
+              controller.flushScrub();
               drag.current = null;
               setPanning(false);
             }}

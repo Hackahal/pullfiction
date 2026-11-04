@@ -423,20 +423,23 @@ pub(crate) fn face_billboards(
     let cam_moved = cam_tf.is_changed() || cam_local.as_ref().is_some_and(|l| l.is_changed());
     let (fwd, right, up) = (*cam_tf.forward(), *cam_tf.right(), *cam_tf.up());
     let elapsed_ms = time.elapsed().as_millis() as u32;
+    let mut spherical = None;
     for (entity, mut card, mut tf, mut global, tag) in &mut cards {
         // A track-less card is a pure function of the camera and its owner, so it is skipped
         // when neither moved, unless it has never been placed (no attach stamp yet).
-        let tracked = card.scale_anim.is_some()
-            || card.seq_translation.is_some()
-            || card.gseq_attach_ms.is_none();
+        let unplaced = card.gseq_attach_ms.is_none();
+        let tracked = card.scale_anim.is_some() || card.seq_translation.is_some() || unplaced;
         if let Some(owner) = card.follow {
             match owners.get(owner) {
                 Ok(gt) => {
                     if !tracked && !cam_moved && !gt.is_changed() {
                         continue;
                     }
-                    let pivot = card.local_pivot;
-                    card.re_place(gt.compute_transform(), pivot);
+                    // Camera motion and animation time do not change the owner's placement.
+                    if unplaced || gt.is_changed() || card.is_changed() {
+                        let pivot = card.local_pivot;
+                        card.re_place(gt.compute_transform(), pivot);
+                    }
                     // The `card` trace (`WOW_MOVE_TRACE`, ~2 Hz): each following card's place,
                     // scale and alpha, the three causes of an invisible card. `enabled_for`, so
                     // `WOW_MOVE_TRACE_TAGS` drops this busiest tag cheaply.
@@ -461,9 +464,18 @@ pub(crate) fn face_billboards(
             continue;
         }
         // The gseq attach anchor, stamped on the first placement pass (`CM2Model+0x68`).
-        let attach_ms = *card.gseq_attach_ms.get_or_insert(elapsed_ms);
+        let attach_ms = card.gseq_attach_ms.unwrap_or_else(|| {
+            card.gseq_attach_ms = Some(elapsed_ms);
+            elapsed_ms
+        });
         let card = &*card;
-        let rotation = billboard_basis(card.kind, card.placement_rot, fwd, right, up);
+        let rotation = if card.kind == BillboardKind::Spherical {
+            *spherical.get_or_insert_with(|| {
+                billboard_basis(BillboardKind::Spherical, Quat::IDENTITY, fwd, right, up)
+            })
+        } else {
+            billboard_basis(card.kind, card.placement_rot, fwd, right, up)
+        };
         // The global-sequence scale pulse on the instance's anchored cursor, `sceneNow − attach`.
         let pulse = card.scale_anim.as_ref().map_or(Vec3::ONE, |a| {
             Vec3::from_array(a.sample(elapsed_ms.wrapping_sub(attach_ms)))

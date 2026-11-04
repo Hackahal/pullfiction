@@ -36,38 +36,84 @@ export class ReplayFloorGeometry {
     areas: MapManifest["areas"] = [],
     anchors: FloorAnchor[] = [],
   ) {
+    for (const _ of this.index(floors, areas, anchors)) {
+      // Small callers build synchronously with the same indexing rules.
+    }
+  }
+
+  static async prepare(
+    floors: MapFloor[],
+    areas: MapManifest["areas"],
+    anchors: FloorAnchor[],
+    progress: (completed: number, total: number) => void,
+    current: () => boolean,
+  ): Promise<ReplayFloorGeometry | undefined> {
+    const total = floors.reduce(
+      (sum, floor) => sum + Math.ceil(floor.indices.length / 3),
+      0,
+    );
+    if (!current()) return undefined;
+    if (total < 50_000) return new ReplayFloorGeometry(floors, areas, anchors);
+
+    const geometry = new ReplayFloorGeometry([]);
+    const steps = geometry.index(floors, areas, anchors, true);
+    const yieldTask = () =>
+      new Promise<void>((resolve) => setTimeout(resolve, 0));
+    progress(0, total);
+    await yieldTask();
+    let started = performance.now();
+    while (current()) {
+      const step = steps.next();
+      if (step.done) {
+        progress(total, total);
+        return geometry;
+      }
+      if (performance.now() - started >= 5) {
+        if (step.value !== undefined) progress(step.value, total);
+        await yieldTask();
+        started = performance.now();
+      }
+    }
+    return undefined;
+  }
+
+  private *index(
+    floors: MapFloor[],
+    areas: MapManifest["areas"],
+    anchors: FloorAnchor[],
+    sliced = false,
+  ): Generator<number | undefined, void> {
+    let completed = 0;
     const rooms = new Map(
       areas
         .filter((a) => Number.isFinite(a.height))
         .map((a) => [a.id, a.height]),
     );
+    const validPoint = (point: Point | undefined) =>
+      point?.length === 3 && point.every(Number.isFinite);
     for (const floor of floors) {
-      for (let i = 0; i < floor.indices.length; i += 3) {
-        const [a, b, c] = floor.indices
-          .slice(i, i + 3)
-          .map((j) => floor.vertices[j]);
-        if (
-          ![a, b, c].every((p) => p?.length === 3 && p.every(Number.isFinite))
-        )
+      const { indices, vertices } = floor;
+      const interior = floor.interior === true,
+        structure = floor.area !== "terrain",
+        room = rooms.get(floor.area);
+      for (let i = 0; i < indices.length; i += 3) {
+        if (sliced) {
+          if (completed && (completed & 511) === 0) yield completed;
+          completed++;
+        }
+        const a = vertices[indices[i]],
+          b = vertices[indices[i + 1]],
+          c = vertices[indices[i + 2]];
+        if (!validPoint(a) || !validPoint(b) || !validPoint(c))
           throw new Error("Invalid replay floor geometry");
-        const ab = b.map((v, j) => v - a[j]) as Point;
-        const ac = c.map((v, j) => v - a[j]) as Point;
-        const n = [
-          ab[1] * ac[2] - ab[2] * ac[1],
-          ab[2] * ac[0] - ab[0] * ac[2],
-          ab[0] * ac[1] - ab[1] * ac[0],
-        ];
-        if (n[2] / Math.hypot(...n) < 0.45 || !n[2]) continue;
+        const ab: Point = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const ac: Point = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const nx = ab[1] * ac[2] - ab[2] * ac[1],
+          ny = ab[2] * ac[0] - ab[0] * ac[2],
+          nz = ab[0] * ac[1] - ab[1] * ac[0];
+        if (nz / Math.hypot(nx, ny, nz) < 0.45 || !nz) continue;
         const id =
-          this.triangles.push({
-            a,
-            ab,
-            ac,
-            nz: n[2],
-            interior: floor.interior === true,
-            structure: floor.area !== "terrain",
-            room: rooms.get(floor.area),
-          }) - 1;
+          this.triangles.push({ a, ab, ac, nz, interior, structure, room }) - 1;
         const minX = Math.floor(Math.min(a[0], b[0], c[0]) / CELL),
           maxX = Math.floor(Math.max(a[0], b[0], c[0]) / CELL);
         const minY = Math.floor(Math.min(a[1], b[1], c[1]) / CELL),
@@ -78,16 +124,18 @@ export class ReplayFloorGeometry {
         }
         for (let x = minX; x <= maxX; x++)
           for (let y = minY; y <= maxY; y++) {
-            const key = `${x}:${y}`,
-              list = this.columns.get(key) ?? [];
-            list.push(id);
-            this.columns.set(key, list);
+            const key = `${x}:${y}`;
+            const list = this.columns.get(key);
+            if (list) list.push(id);
+            else this.columns.set(key, [id]);
           }
       }
     }
     // A reference from another client/layout is useful only if this client's
     // walkable geometry actually supports it. Snap away NPC placement offsets.
-    for (const anchor of anchors) {
+    for (let i = 0; i < anchors.length; i++) {
+      if (sliced && (i & 15) === 0) yield;
+      const anchor = anchors[i];
       if (
         !Number.isInteger(anchor.entry) ||
         anchor.entry <= 0 ||
@@ -225,28 +273,36 @@ export class ReplayFloorGeometry {
       ? undefined
       : this.height(x, y, context, false);
   }
-  private *crossings(
+  private visitCrossings(
     x: number,
     y: number,
-  ): IterableIterator<[number, Triangle]> {
-    const ids =
-      this.columns.get(`${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`) ?? [];
-    for (const id of [...ids, ...this.broad]) {
+    visit: (z: number, triangle: Triangle) => void,
+  ): void {
+    const ids = this.columns.get(
+      `${Math.floor(x / CELL)}:${Math.floor(y / CELL)}`,
+    );
+    const localCount = ids?.length ?? 0;
+    const count = localCount + this.broad.length;
+    for (let i = 0; i < count; i++) {
+      const id = i < localCount ? ids![i] : this.broad[i - localCount];
       const tri = this.triangles[id],
         { a, ab, ac, nz } = tri;
-      const u = ((x - a[0]) * ac[1] - (y - a[1]) * ac[0]) / nz;
-      const v = (ab[0] * (y - a[1]) - ab[1] * (x - a[0])) / nz;
+      const dx = x - a[0],
+        dy = y - a[1];
+      const u = (dx * ac[1] - dy * ac[0]) / nz;
+      const v = (ab[0] * dy - ab[1] * dx) / nz;
       if (u < -1e-5 || v < -1e-5 || u + v > 1.00001) continue;
-      yield [a[2] + u * ab[2] + v * ac[2], tri];
+      visit(a[2] + u * ab[2] + v * ac[2], tri);
     }
   }
   private stepHeight(x: number, y: number, from: number): number | undefined {
     let best: number | undefined;
     // A walking down-ray finds the highest support within step-up reach, not
     // the numerically closest floor below a ramp laid over a lower surface.
-    for (const [z] of this.crossings(x, y))
+    this.visitCrossings(x, y, (z) => {
       if (z <= from + 1.1 && z >= from - 2 && (best === undefined || z > best))
         best = z;
+    });
     return best;
   }
 
@@ -256,10 +312,11 @@ export class ReplayFloorGeometry {
     const key = `${x}:${y}`;
     const cached = this.candidateColumns.get(key);
     if (cached) return cached;
-    const levels = [...this.crossings(x, y)]
-      .filter(([, triangle]) => triangle.structure)
-      .map(([z]) => z)
-      .sort((a, b) => a - b);
+    const levels: number[] = [];
+    this.visitCrossings(x, y, (z, triangle) => {
+      if (triangle.structure) levels.push(z);
+    });
+    levels.sort((a, b) => a - b);
     const unique: number[] = [];
     for (const z of levels)
       if (!unique.length || z - unique[unique.length - 1] > 0.05)
@@ -285,7 +342,7 @@ export class ReplayFloorGeometry {
       const calibrated = this.calibratedHeight(x, y, hint);
       if (calibrated !== undefined) return calibrated;
     }
-    for (const [z, { interior, structure: built }] of this.crossings(x, y)) {
+    this.visitCrossings(x, y, (z, { interior, structure: built }) => {
       if (best === undefined || Math.abs(z - hint) < Math.abs(best - hint))
         best = z;
       if (
@@ -299,7 +356,7 @@ export class ReplayFloorGeometry {
           Math.abs(z - hint) < Math.abs(structure - hint))
       )
         structure = z;
-    }
+    });
     // Open cloisters and decks are authored exterior groups, but still carry
     // the walkable floor above or below the terrain. Never treat them as terrain.
     return preferInterior ? (inside ?? structure ?? best) : best;
@@ -316,8 +373,8 @@ export class ReplayFloorGeometry {
       if (![x, y, hint].every(Number.isFinite)) return;
       if (!preferInterior) return this.height(x, y, hint, false);
       let best: { z: number; level: number; depth: number } | undefined;
-      for (const [z, { interior, room }] of this.crossings(x, y)) {
-        if (!interior || room === undefined || z > room + 0.01) continue;
+      this.visitCrossings(x, y, (z, { interior, room }) => {
+        if (!interior || room === undefined || z > room + 0.01) return;
         const level = Math.abs(room - hint),
           depth = room - z;
         if (
@@ -326,7 +383,7 @@ export class ReplayFloorGeometry {
           (level === best.level && depth < best.depth)
         )
           best = { z, level, depth };
-      }
+      });
       return best?.z ?? this.height(x, y, hint, true);
     },
   };

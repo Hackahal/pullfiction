@@ -133,12 +133,14 @@ export async function prepareOriginalUnits(
   units: readonly OriginalUnitAssets[],
   icons: readonly string[] = [],
   signal?: AbortSignal,
+  progress?: (completed: number, total: number) => void,
 ): Promise<void> {
   const [characters, creatures, items] = await Promise.all([
     bridge.catalog("characters"),
     bridge.catalog("creatures"),
     bridge.catalog("items"),
   ]);
+  signal?.throwIfAborted();
   const resources = new Set<string>();
   const iconResources = new Set<string>();
   for (const unit of units) {
@@ -188,14 +190,19 @@ export async function prepareOriginalUnits(
     if (stem && /^[a-z0-9_-]{1,160}$/i.test(stem))
       iconResources.add(`interface/icons/${stem.toLowerCase()}.blp`);
   }
-  await files.prepare([...resources], signal);
-  for (const icon of iconResources) {
-    signal?.throwIfAborted();
-    try {
-      await files.read(icon);
-    } catch (error) {
-      if (!(error instanceof Error) || error.name !== "NotFoundError")
-        throw error;
-    }
-  }
+  const total = resources.size + iconResources.size;
+  await files.prepare([...resources], signal, (count) => {
+    progress?.(count, total);
+  });
+  // Keep optional icon misses distinct from required texture failures. Use the
+  // same bounded read pool as appearances instead of waiting for each icon.
+  if (iconResources.size)
+    await files.prepare(
+      [...iconResources],
+      signal,
+      (count) => {
+        if (count) progress?.(resources.size + count, total);
+      },
+      { allowMissing: true },
+    );
 }

@@ -63,6 +63,7 @@ export function replayFloorHints(
   catalog: Record<string, unknown>,
   ownHints?: Map<string, number>,
   candidates?: ReadonlySet<string>,
+  lookupPose: typeof poseAt = poseAt,
 ): Map<string, number> {
   const seeds = seedIndex(catalog).get(replay.map);
   const result = new Map<string, number>();
@@ -114,7 +115,7 @@ export function replayFloorHints(
       (actor.firstSeen > chapter.end || actor.lastSeen < chapter.start)
     )
       continue;
-    const pose = poseAt(actor, time, false);
+    const pose = lookupPose(actor, time, false);
     if (!pose || pose.dead) continue;
     anchors.push({
       x: pose.pos[0],
@@ -126,8 +127,9 @@ export function replayFloorHints(
   }
   const bosses = anchors.filter((a) => a.boss);
   for (const actor of replay.actors) {
-    if (result.has(actor.key) || (candidates && !candidates.has(actor.key))) continue;
-    const pose = poseAt(actor, time, false);
+    if (result.has(actor.key) || (candidates && !candidates.has(actor.key)))
+      continue;
+    const pose = lookupPose(actor, time, false);
     if (!pose) continue;
     const point = [pose.pos[0], pose.pos[1]];
     const anchor =

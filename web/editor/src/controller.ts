@@ -1,3 +1,12 @@
+import { ReplayFramePresentation } from "./replay-frame-presentation";
+import { readReplayFile } from "./replay-file";
+import {
+  prepareWholeReplay,
+  SLICED_IMPORT_MIN_EVENTS,
+  drainReplayTasks,
+} from "./replay-preparation";
+import { assetProgress } from "./loading-progress";
+import { framePerformance, type FramePerformance } from "./frame-performance";
 import {
   shareSnapshot,
   readSharedSnapshot,
@@ -49,11 +58,6 @@ import {
   type Transform,
 } from "./editor-controls";
 import { gameVersion, reportSource } from "../../planner/game-versions.mjs";
-import {
-  referenceRaidActors,
-  referenceNpcModels,
-  referenceSpawnNotice,
-} from "./spawn-model";
 import { resolveAssetRoot } from "./asset-source";
 import { openHostedClient } from "./hosted-assets";
 import { parseBrowserPlates } from "./browser-plates";
@@ -69,7 +73,7 @@ import {
 } from "./original-client-assets";
 import { prepareOriginalSpellEffects } from "./original-spell-assets";
 import { installLocalUiArt } from "./local-ui-art";
-import { localSpellReplay } from "./local-spell-assets";
+import { localSpellReplay, localSpellReplaySteps } from "./local-spell-assets";
 import { setLocalTalentsProvider, type TalentCatalog } from "./local-talents";
 import {
   assetBridge,
@@ -109,8 +113,7 @@ import {
 } from "./replay-trajectory-packets";
 import { replayFloorHints } from "./floor-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
-import { movementFloorCandidates } from "./replay-movement-floors";
-import { replayFloorAnchors } from "./replay-floor-anchors";
+import { MovementFloorCache } from "./replay-movement-floors";
 import { ReplayHeightCache } from "./replay-height-cache";
 import { withReplayPoses } from "./replay-pose-phase";
 import { raidCameraSubjects, raidCameraCenter } from "./camera-model";
@@ -144,7 +147,7 @@ import {
   normalizeReplay,
   enrichCombat,
   poseAt,
-  combatStateAt,
+  frameCombatStateAt,
   visualEventsBetween,
   chapterAt,
   classIDs,
@@ -198,7 +201,16 @@ export class EditorController {
   private loadingBuffer: ReplayBuffer | null = null;
   private bufferRestore: Promise<void> = Promise.resolve();
   private bufferRequest = 0;
-  private bufferUpdate = 0;
+  private bufferRefreshEpoch = 0;
+  private bufferRefresh?: {
+    buffer: ReplayBuffer;
+    revision: number;
+    request?: number;
+    promise: Promise<void>;
+    processing?: boolean;
+    progressEpoch?: number;
+    assetProgress?: () => void;
+  };
   private appliedBufferRevision = -1;
   private bufferTarget = 0;
   private prefetchAfter = 0;
@@ -271,6 +283,12 @@ export class EditorController {
     { plan: Plan; saved: string; undo: Plan[]; redo: Plan[] }
   >();
   private appearances: Record<string, Appearance> = {};
+  private appearanceReport: string | null = null;
+  private appearanceVersion?: GameVersion;
+  private readonly savedAppearanceByActor = new Map<
+    number,
+    Appearance | null
+  >();
   private engine: Engine | null = null;
   private mapView = false;
   private sceneFocused = false;
@@ -296,6 +314,11 @@ export class EditorController {
     renderModels: Record<string, unknown>;
     itemModels: Record<string, unknown>;
   };
+  private resetEncounterWarmup() {
+    this.encounterWarmEpoch++;
+    this.encounterWarmer.cancel();
+    this.warmedEncounter = "";
+  }
   private warmEncounter() {
     // Speculative conversions use idle time; demand loading owns playback bandwidth.
     if (this.state.playing || this.state.playPreparing) return;
@@ -345,7 +368,10 @@ export class EditorController {
             for (const id of ids) {
               signal.throwIfAborted();
               const temporary = new LocalClientFiles(
-                { read: (name) => files.readStreaming(name, signal) },
+                {
+                  read: (name, readSignal) =>
+                    files.readStreaming(name, readSignal),
+                },
                 `${files.identity}:warm:${id}`,
                 32 * 1024 * 1024,
               );
@@ -462,6 +488,10 @@ export class EditorController {
         `${this.trajectorySource || replayIdentity(this.state.replay)}:frame-${this.trajectoryEpoch}`,
         frame,
         (json) => engine.set_replay_frame_delta!(json),
+        // renderFrame replaces metadata before publishing edits. Pose updates
+        // spread each row and allocate their changing vectors separately.
+        this.frame,
+        true, // Native rows are plain objects whose keys stay fixed during serialization.
       );
     } else {
       this.frameTransport.reset();
@@ -475,7 +505,11 @@ export class EditorController {
     null;
   private floorGeometry = new Map<
     number,
-    Promise<ReplayFloorGeometry | undefined>
+    {
+      promise: Promise<ReplayFloorGeometry | undefined>;
+      listeners: Set<(completed: number, total: number) => void>;
+      progress?: [number, number];
+    }
   >();
   private loadedFloors = new Map<number, ReplayFloorGeometry>();
   private actorFloorHeights = new ReplayHeightCache();
@@ -491,6 +525,7 @@ export class EditorController {
   >();
   private fromFloorHeights = new ReplayHeightCache();
   private toFloorHeights = new ReplayHeightCache();
+  private movementFloors = new MovementFloorCache();
   private floorHintCache: {
     replay: Replay;
     time: number;
@@ -568,6 +603,10 @@ export class EditorController {
   private catalogs: Promise<void> | null = null;
   private models: Record<string, unknown> = {};
   private browserModels: NpcModels = { vanilla: {}, sod: {} };
+  private spawnReferences?: typeof import("./spawn-model");
+  private async loadSpawnReferences() {
+    return (this.spawnReferences ??= await import("./spawn-model"));
+  }
   private referenceModels: NpcModels = { vanilla: {}, sod: {} };
   private browserCreatures: Record<string, any> = {};
   private items: Record<string, unknown> = {};
@@ -599,6 +638,7 @@ export class EditorController {
   private browserLogs: BrowserLogs | null = null;
   private authStarted = false;
   private bootPromise: Promise<void> | null = null;
+  private enginePreparation: Promise<Engine> | null = null;
   constructor(
     private storage?: StoragePort,
     private runtime: {
@@ -610,8 +650,10 @@ export class EditorController {
       loadNpcIndex?: (signal?: AbortSignal) => Promise<unknown>;
       projectStore?: ProjectStore | null;
       rendererLab?: boolean;
+      spawnReferences?: typeof import("./spawn-model");
     } = {},
   ) {
+    this.spawnReferences = runtime.spawnReferences;
     // Production always downloads prepared assets. Folder/cache source injection is
     // retained only for isolated reader tests and development tooling.
     this.clientFolders = runtime.openClient
@@ -771,6 +813,8 @@ export class EditorController {
     const cameraBefore = this.state.cameraMode,
       targetBefore = this.state.orbitTarget;
     const dimensionBefore = this.state.dimensionInput;
+    if (change.replay === null && this.state.replay)
+      this.resetEncounterWarmup();
     this.state = { ...this.state, ...change };
     if (this.state.cameraMode === "orbit" && change.selected) {
       const player = this.sceneActors().find(
@@ -1359,77 +1403,124 @@ export class EditorController {
     }
   }
   async openProject(id: string) {
+    let epoch: number | undefined;
+    let abort: AbortController | undefined;
+    let clientSignal: AbortSignal | undefined;
+    const cancel = () => abort?.abort(clientSignal?.reason);
+    const restore = (operation: () => void) => {
+      const previous = this.restoringProject;
+      this.restoringProject = true;
+      try {
+        operation();
+      } finally {
+        this.restoringProject = previous;
+      }
+    };
     try {
       await this.flushProject();
       await this.replayCacheWrite;
       const project = await this.projectStore?.get(id);
       if (!project || project.deletedAt !== null)
         throw new Error("Local project not found");
-      const epoch = ++this.request;
+      this.cancelImport();
+      epoch = ++this.request;
+      abort = this.importAbort = new AbortController();
+      const signal = abort.signal;
+      clientSignal = this.clientAbort?.signal;
+      clientSignal?.addEventListener("abort", cancel, { once: true });
+      if (clientSignal?.aborted) cancel();
       this.patch({ busy: true, playing: false });
       const raw = project.source
         ? await this.projectStore!.getReplay(project.source.cacheKey)
         : null;
+      signal.throwIfAborted();
       if (epoch !== this.request) return false;
       if (!this.state.browserAssets || this.state.clientStatus === "ready")
-        await this.preparePlanAssets(project.plan, this.clientAbort?.signal);
+        await this.preparePlanAssets(project.plan, signal);
+      signal.throwIfAborted();
       if (epoch !== this.request) return false;
-      this.restoringProject = true;
-      this.mapDrafts.clear();
-      this.selectRaid(project.plan.mapId, true, project.plan.gameVersion);
-      this.patch({ busy: true });
+      const prepareReplay =
+        raw &&
+        (!this.state.browserAssets || this.state.clientStatus === "ready");
+      const current = () => epoch === this.request && !signal.aborted;
+      const derived = prepareReplay
+        ? await this.deriveLargeWholeReplay(raw, signal, current)
+        : undefined;
+      signal.throwIfAborted();
+      if (!current()) return false;
+      const prepared = prepareReplay
+        ? await this.prepareReplayForInstall(
+            raw,
+            signal,
+            current,
+            "replayPreparation",
+            derived,
+          )
+        : null;
+      signal.throwIfAborted();
+      if (epoch !== this.request) return false;
       if (raw && project.source)
         project.source = {
           ...project.source,
           summary: summarizeRun(raw, project.plan.mapId),
         };
-      this.resetProject(project);
-      this.saved = JSON.stringify(project.plan);
-      this.undoStack = [];
-      this.redoStack = [];
-      this.planState(project.plan);
-      this.patch({
-        activeStep: initialStep(project.plan),
-        selectedMark: null,
-        selectedMarks: [],
-        selectedActors: [],
-      });
-      if (
-        raw &&
-        (!this.state.browserAssets || this.state.clientStatus === "ready")
-      ) {
-        const prepared = await this.prepareReplayForInstall(
-          raw,
-          this.clientAbort?.signal,
+      // Keep the previous project active until all cancellable work succeeds.
+      restore(() => {
+        this.mapDrafts.clear();
+        this.selectRaid(
+          project.plan.mapId,
+          true,
+          project.plan.gameVersion,
+          true,
         );
-        if (epoch !== this.request) return false;
-        this.installReplay(raw, prepared);
-        this.seek(project.time);
-        this.patch({ sourceStatus: "cached" });
-      } else if (raw) {
-        this.pendingProjectReplay = {
-          raw,
-          time: project.time,
-          mode: project.mode,
-        };
-        this.patch({ sourceStatus: "cached" });
-      } else {
-        this.clockTime = project.time;
-        this.patch({ time: project.time });
-        if (project.source)
-          this.notify(
-            "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
-          );
-      }
-      this.setWorkspaceMode(project.mode);
+        this.resetProject(project);
+        this.saved = JSON.stringify(project.plan);
+        this.undoStack = [];
+        this.redoStack = [];
+        this.planState(project.plan);
+        this.patch({
+          activeStep: initialStep(project.plan),
+          selectedMark: null,
+          selectedMarks: [],
+          selectedActors: [],
+        });
+        if (raw && prepared) {
+          if (derived) this.replayNormalizer.reset();
+          this.installReplay(raw, prepared);
+          this.seek(project.time);
+          this.patch({ sourceStatus: "cached" });
+        } else if (raw) {
+          this.pendingProjectReplay = {
+            raw,
+            time: project.time,
+            mode: project.mode,
+          };
+          this.patch({ sourceStatus: "cached" });
+        } else {
+          this.clockTime = project.time;
+          this.patch({ time: project.time });
+          if (project.source)
+            this.notify(
+              "Plan opened. Its source replay is not cached; reconnect to reload the source log.",
+            );
+        }
+        this.setWorkspaceMode(project.mode);
+      });
       await this.updateProjectMetadata(id, { lastViewedAt: Date.now() });
       return true;
     } catch (error) {
-      this.notify(`Could not open project: ${message(error)}`);
+      if (
+        (epoch === undefined || epoch === this.request) &&
+        !abort?.signal.aborted
+      )
+        this.notify(`Could not open project: ${message(error)}`);
       return false;
     } finally {
-      this.restoringProject = false;
-      this.patch({ busy: false });
+      clientSignal?.removeEventListener("abort", cancel);
+      if (epoch !== undefined && epoch === this.request) {
+        this.importAbort = null;
+        this.patch({ busy: false, replayPreparation: null });
+      }
     }
   }
   async initializeFrontDoor() {
@@ -1826,9 +1917,11 @@ export class EditorController {
               source.map,
               { signal: this.importAbort!.signal },
             );
+            if (request !== this.request)
+              throw new DOMException("Replay load superseded", "AbortError");
             buffered = this.makeReplayBuffer(header, true);
             this.loadingBuffer = buffered;
-            await buffered.ensure(project.time);
+            await this.loadInitialReplaySection(buffered, project.time);
             return buffered.snapshot();
           })()
         : await this.api(
@@ -2507,14 +2600,22 @@ export class EditorController {
       cached.models === models
     )
       return cached.actors;
-    const actors = referenceRaidActors(map, version, models);
+    if (!this.spawnReferences) return [];
+    const actors = this.spawnReferences.referenceRaidActors(
+      map,
+      version,
+      models,
+    );
     this.defaultActorsCache = { map, version, models, actors };
     return actors;
   }
   referenceSpawnNotice() {
     return this.state.replay || this.displaySnapshot()?.report
       ? null
-      : referenceSpawnNotice(this.state.plan.mapId, this.state.gameVersion);
+      : (this.spawnReferences?.referenceSpawnNotice(
+          this.state.plan.mapId,
+          this.state.gameVersion,
+        ) ?? null);
   }
   sceneActors(): Actor[] {
     const snapshot =
@@ -4097,6 +4198,7 @@ export class EditorController {
     map: number,
     clearReplay = true,
     version: GameVersion = this.state.gameVersion,
+    keepImport = false,
   ) {
     const raid = raidByMap(map, version);
     if (!raid) throw new Error("Unsupported raid map for this game version");
@@ -4140,13 +4242,7 @@ export class EditorController {
       this.resetProject(null);
       this.mapDrafts.clear();
     }
-    if (clearReplay) {
-      this.loadingBuffer?.close();
-      this.loadingBuffer = null;
-      this.importAbort?.abort();
-      this.request++;
-      this.patch({ busy: false });
-    }
+    if (clearReplay && !keepImport) this.cancelImport();
     try {
       this.storage?.setItem(ACTIVE_RAID_KEY, String(map));
       this.storage?.setItem("pullfiction.gameVersion.v1", version);
@@ -4401,14 +4497,43 @@ export class EditorController {
     this.render();
     if (this.activeProject && !this.state.playing) this.scheduleAutosave();
   }
+  private pendingScrub: {
+    time: number;
+    replay: Snapshot["replay"];
+    buffer: ReplayBuffer | null;
+    epoch: number;
+    plan: Snapshot["plan"];
+  } | null = null;
+  /** Coalesce high-frequency drag input to the latest target on the next frame. */
+  scrub(time: number) {
+    if (Number.isFinite(time))
+      this.pendingScrub = {
+        time,
+        replay: this.state.replay,
+        buffer: this.replayBuffer,
+        epoch: this.trajectoryEpoch,
+        plan: this.state.plan,
+      };
+  }
+  flushScrub() {
+    const pending = this.pendingScrub;
+    this.pendingScrub = null;
+    if (
+      pending &&
+      pending.epoch === this.trajectoryEpoch &&
+      (pending.replay === this.state.replay ||
+        (pending.buffer !== null && pending.buffer === this.replayBuffer)) &&
+      pending.plan === this.state.plan
+    )
+      this.seek(pending.time);
+  }
   seek(time: number) {
+    this.pendingScrub = null;
     if (!Number.isFinite(time)) return;
     this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
     if (this.state.downloadingReplay) this.cancelReplayDownload();
     this.trajectoryCoverageBlocked = false;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
     this.clockTime = Math.max(0, Math.min(this.duration(), time));
     this.resetEvents = true;
     this.patch({ playing: false, time: this.clockTime });
@@ -4545,16 +4670,26 @@ export class EditorController {
     return !!actor;
   }
   appearance(actor: Actor) {
-    return (
-      this.appearances[
-        `${this.state.gameVersion}:${this.state.reportCode}:${actor.id}`
-      ] ??
-      (this.state.gameVersion === "vanilla"
-        ? this.appearances[`${this.state.reportCode}:${actor.id}`]
-        : undefined) ??
-      this.state.replay?.raw.appearanceOverrides?.[actor.id] ??
-      {}
-    );
+    const { gameVersion, reportCode, replay } = this.state;
+    if (
+      this.appearanceReport !== reportCode ||
+      this.appearanceVersion !== gameVersion
+    ) {
+      this.savedAppearanceByActor.clear();
+      this.appearanceReport = reportCode;
+      this.appearanceVersion = gameVersion;
+    }
+    let saved = this.savedAppearanceByActor.get(actor.id);
+    if (saved === undefined) {
+      saved =
+        this.appearances[`${gameVersion}:${reportCode}:${actor.id}`] ??
+        (gameVersion === "vanilla"
+          ? this.appearances[`${reportCode}:${actor.id}`]
+          : undefined) ??
+        null;
+      this.savedAppearanceByActor.set(actor.id, saved);
+    }
+    return saved ?? replay?.raw.appearanceOverrides?.[actor.id] ?? {};
   }
   async setAppearance(
     actor: Actor,
@@ -4621,6 +4756,7 @@ export class EditorController {
     this.pendingAppearances.delete(id);
     // Publish only after the synchronous native texture reads can succeed.
     this.appearances[id] = next;
+    this.savedAppearanceByActor.delete(actor.id);
     try {
       this.storage?.setItem(APPEARANCE_KEY, JSON.stringify(this.appearances));
     } catch {
@@ -4688,11 +4824,12 @@ export class EditorController {
   }
   private async loadBrowserCatalogs() {
     const bridge = this.browserBridge!;
-    const [creatures, items, spells, npcIndex] = await Promise.all([
+    const [creatures, items, spells, npcIndex, references] = await Promise.all([
       bridge.catalog("creatures"),
       bridge.catalog("items"),
       bridge.catalog("spells"),
       (this.runtime.loadNpcIndex ?? loadNpcIndex)(this.clientAbort?.signal),
+      this.loadSpawnReferences(),
     ]);
     // The bundled numeric reference resolves NPC entry IDs; actual display/model
     // availability is checked against this selected client's modern catalog.
@@ -4708,11 +4845,11 @@ export class EditorController {
     // Reference-only baseline models must not fill gaps in a SoD log catalog.
     this.referenceModels = {
       vanilla: {
-        ...referenceNpcModels(creatures),
+        ...references.referenceNpcModels(creatures),
         ...this.browserModels.vanilla,
       },
       sod: {
-        ...referenceNpcModels(creatures, "sod"),
+        ...references.referenceNpcModels(creatures, "sod"),
         ...this.browserModels.sod,
       },
     };
@@ -4750,7 +4887,8 @@ export class EditorController {
     this.importAbort = null;
     this.loadingBuffer?.close();
     this.loadingBuffer = null;
-    this.patch({ busy: false });
+    this.preparationEpochs.replayPreparation++;
+    this.patch({ busy: false, replayPreparation: null });
   }
   private async initializeWcl() {
     if (this.authStarted || typeof window === "undefined") return;
@@ -4863,10 +5001,11 @@ export class EditorController {
               map,
               { signal: this.importAbort!.signal },
             );
+            if (request !== this.request)
+              throw new DOMException("Replay load superseded", "AbortError");
             buffered = this.makeReplayBuffer(header, true);
             this.loadingBuffer = buffered;
-            this.patch({ status: "Loading the first replay section…" });
-            await buffered.ensure(0);
+            await this.loadInitialReplaySection(buffered, 0);
             return buffered.snapshot();
           })()
         : await this.api(
@@ -4905,6 +5044,20 @@ export class EditorController {
       if (request === this.request) this.patch({ busy: false });
     }
   }
+  private async loadInitialReplaySection(buffer: ReplayBuffer, time: number) {
+    const epoch = ++this.preparationEpochs.replayPreparation;
+    const message = "Loading the first replay section…";
+    this.patch({
+      status: message,
+      replayPreparation: { message, completed: 0, total: 0 },
+    });
+    try {
+      await buffer.ensure(time);
+    } finally {
+      if (epoch === this.preparationEpochs.replayPreparation)
+        this.patch({ replayPreparation: null });
+    }
+  }
   private makeReplayBuffer(raw: RawReplay, fresh = false) {
     return new ReplayBuffer(
       raw,
@@ -4931,13 +5084,162 @@ export class EditorController {
       analysisAvailable(replay, t, Math.min(replay.duration, t + 0.001))
     );
   }
-  private async refreshBuffered(buffer: ReplayBuffer) {
-    const revision = buffer.revision;
-    if (this.appliedBufferRevision === revision) return;
-    const update = ++this.bufferUpdate;
+  private bufferRefreshVisible(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    return (
+      this.bufferRefresh === job &&
+      this.replayBuffer === job.buffer &&
+      job.buffer.revision === job.revision &&
+      job.request !== undefined &&
+      job.request === this.bufferRequest &&
+      this.state.buffering === true &&
+      !this.state.busy
+    );
+  }
+  private reportBufferedProcessing(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    if (!job.processing || !this.bufferRefreshVisible(job)) return;
+    if (
+      job.progressEpoch === this.preparationEpochs.bufferPreparation &&
+      this.state.bufferPreparation
+    )
+      return;
+    job.progressEpoch = ++this.preparationEpochs.bufferPreparation;
+    this.patch({
+      bufferPreparation: {
+        message: "Preparing replay events…",
+        completed: 0,
+        total: 0,
+      },
+    });
+  }
+  private async refreshBuffered(buffer: ReplayBuffer, request?: number) {
+    const epoch = this.bufferRefreshEpoch;
+    while (
+      epoch === this.bufferRefreshEpoch &&
+      buffer === this.replayBuffer &&
+      this.appliedBufferRevision !== buffer.revision &&
+      (request === undefined || request === this.bufferRequest)
+    ) {
+      const revision = buffer.revision;
+      let job = this.bufferRefresh;
+      if (job?.buffer === buffer && job.revision === revision) {
+        if (request !== undefined) {
+          job.request = request;
+          this.reportBufferedProcessing(job);
+          job.assetProgress?.();
+        }
+      } else {
+        const next: NonNullable<EditorController["bufferRefresh"]> = {
+          buffer,
+          revision,
+          request,
+          promise: Promise.resolve()
+            .then(() => this.applyBufferedRefresh(next))
+            .catch((error) => {
+              if (
+                this.replayBuffer === buffer &&
+                this.bufferRefresh === next &&
+                buffer.revision === revision
+              )
+                throw error;
+            }),
+        };
+        job = this.bufferRefresh = next;
+        void next.promise
+          .finally(() => {
+            if (this.bufferRefresh === next) this.bufferRefresh = undefined;
+          })
+          .catch(() => {});
+      }
+      await job.promise;
+    }
+  }
+  private async applyBufferedRefresh(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    const { buffer, revision } = job;
+    const current = () =>
+      this.replayBuffer === buffer &&
+      this.bufferRefresh === job &&
+      buffer.revision === revision;
+    if (!current()) return;
     const raw = buffer.snapshot();
-    const prepared = await this.prepareReplayForInstall(raw);
-    if (this.replayBuffer !== buffer || update !== this.bufferUpdate) return;
+    const visible = () => this.bufferRefreshVisible(job);
+    let derived: ReturnType<EditorController["replayForInstall"]> | undefined;
+    const stream = raw.stream!;
+    if (
+      raw.events.length +
+        stream.stateEvents.length +
+        stream.contextEvents.length >=
+      SLICED_IMPORT_MIN_EVENTS
+    ) {
+      job.processing = true;
+      this.reportBufferedProcessing(job);
+      try {
+        const catalog = this.modernSpells;
+        const inputCurrent = () => current() && this.modernSpells === catalog;
+        const input = this.state.browserAssets
+          ? await drainReplayTasks(
+              localSpellReplaySteps(
+                { ...raw, events: normalizationEvents(raw) },
+                catalog,
+              ),
+              () => {
+                if (!inputCurrent())
+                  throw new DOMException(
+                    "Replay preparation superseded",
+                    "AbortError",
+                  );
+              },
+            )
+          : undefined;
+        if (!inputCurrent()) return;
+        const {
+          input: normalizedInput,
+          models,
+          renderModels,
+          itemModels,
+          spells,
+        } = this.replayInput(raw, input);
+        const replay = await this.replayNormalizer.normalizeSliced(
+          normalizedInput,
+          renderModels,
+          itemModels,
+          spells,
+          inputCurrent,
+        );
+        if (!inputCurrent()) return;
+        derived = this.completeReplayForInstall(raw, replay, models);
+      } catch (error) {
+        if (
+          current() &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        )
+          throw error;
+        // Resetting actor evidence (for example, on engine attach) leaves the
+        // same revision eligible for a fresh attempt by its current waiter.
+        return;
+      } finally {
+        job.processing = false;
+        if (job.progressEpoch === this.preparationEpochs.bufferPreparation)
+          this.patch({ bufferPreparation: null });
+      }
+    }
+    if (!current()) return;
+    const prepared = await this.prepareReplayForInstall(
+      raw,
+      undefined,
+      visible,
+      "bufferPreparation",
+      derived,
+      (publish) => {
+        job.assetProgress = publish;
+      },
+    );
+    if (!current()) return;
     this.models = prepared.models;
     this.appliedBufferRevision = revision;
     this.resetEvents = true;
@@ -4961,7 +5263,6 @@ export class EditorController {
     }
     this.patch({ replay: prepared.replay, detail: nextDetail });
     this.render();
-    if (buffer.revision !== revision) await this.refreshBuffered(buffer);
   }
   private async ensureBuffered(time: number) {
     const buffer = this.replayBuffer;
@@ -4969,7 +5270,11 @@ export class EditorController {
     this.bufferTarget = time;
     const request = ++this.bufferRequest;
     if (!this.bufferedReady(time)) {
-      this.patch({ buffering: true, bufferError: null });
+      this.patch({
+        buffering: true,
+        bufferError: null,
+        bufferPreparation: null,
+      });
       this.engine?.replay_clock?.(this.clockTime, this.state.rate, false);
     }
     try {
@@ -4979,7 +5284,7 @@ export class EditorController {
       await buffer.ensure(time);
       if (this.replayBuffer !== buffer || request !== this.bufferRequest)
         return;
-      await this.refreshBuffered(buffer);
+      await this.refreshBuffered(buffer, request);
       if (this.replayBuffer !== buffer || request !== this.bufferRequest)
         return;
       this.patch({ buffering: false, bufferError: null });
@@ -5073,13 +5378,17 @@ export class EditorController {
       throw new Error("Connect Warcraft Logs or import a replay JSON file.");
     return this.browserLogs;
   }
-  private replayForInstall(raw: RawReplay) {
-    const context = raw.stream
-      ? { ...raw, events: normalizationEvents(raw) }
-      : raw;
-    const input = this.state.browserAssets
-      ? localSpellReplay(context, this.modernSpells)
-      : context;
+  private replayInput(raw: RawReplay, preparedInput?: RawReplay) {
+    const input =
+      preparedInput ??
+      (() => {
+        const context = raw.stream
+          ? { ...raw, events: normalizationEvents(raw) }
+          : raw;
+        return this.state.browserAssets
+          ? localSpellReplay(context, this.modernSpells)
+          : context;
+      })();
     const version = gameVersion(
       raw.gameVersion ?? raw.report?.gameVersion ?? "vanilla",
     ).id as GameVersion;
@@ -5112,12 +5421,69 @@ export class EditorController {
         itemModels: sod ? { ...this.items, ...this.modernItems } : this.items,
       };
     }
+    return {
+      input,
+      models,
+      renderModels: metadata.renderModels,
+      itemModels: metadata.itemModels,
+      spells: this.state.browserAssets || sod ? this.modernSpells : this.spells,
+    };
+  }
+  private replayForInstall(raw: RawReplay) {
+    const { input, models, renderModels, itemModels, spells } =
+      this.replayInput(raw);
     const replay = this.replayNormalizer.normalize(
       input,
-      metadata.renderModels,
-      metadata.itemModels,
-      this.state.browserAssets || sod ? this.modernSpells : this.spells,
+      renderModels,
+      itemModels,
+      spells,
     );
+    return this.completeReplayForInstall(raw, replay, models);
+  }
+  private async deriveLargeWholeReplay(
+    raw: RawReplay,
+    signal: AbortSignal,
+    current: () => boolean,
+  ) {
+    if (
+      raw.stream ||
+      !Array.isArray(raw.events) ||
+      raw.events.length < SLICED_IMPORT_MIN_EVENTS
+    )
+      return;
+    const phase = (message: string) => {
+      if (current())
+        this.patch({ replayPreparation: { message, completed: 0, total: 0 } });
+    };
+    let inputWithIcons: RawReplay | undefined;
+    if (this.state.browserAssets) {
+      phase("Finding spell icons…");
+      for (;;) {
+        const catalog = this.modernSpells;
+        inputWithIcons = await drainReplayTasks(
+          localSpellReplaySteps(raw, catalog),
+          () => signal.throwIfAborted(),
+        );
+        if (catalog === this.modernSpells) break;
+      }
+    }
+    const { input, models, renderModels, itemModels, spells } =
+      this.replayInput(raw, inputWithIcons);
+    const replay = await prepareWholeReplay(
+      input,
+      renderModels,
+      itemModels,
+      spells,
+      signal,
+      phase,
+    );
+    return this.completeReplayForInstall(raw, replay, models);
+  }
+  private completeReplayForInstall(
+    raw: RawReplay,
+    replay: Replay,
+    models: Record<string, unknown>,
+  ) {
     replay.raw = raw;
     if (raw.stream)
       for (const actor of replay.actors) actor.bufferedRanges = raw.stream.full;
@@ -5125,89 +5491,230 @@ export class EditorController {
       throw new Error("Too many actors in this report");
     return { replay, models };
   }
-  private async prepareReplayForInstall(raw: RawReplay, signal?: AbortSignal) {
-    const prepared = this.replayForInstall(raw);
-    if (this.localFiles && this.browserBridge) {
-      const { replay } = prepared;
-      await this.prepareFloorGeometry(replay.map, signal);
-      await prepareOriginalUnits(
-        this.localFiles,
-        this.browserBridge,
-        replay.actors.map((actor) => {
-          const appearance =
-            this.appearances[
-              `${replay.gameVersion}:${replay.report.code}:${actor.id}`
-            ] ??
-            (replay.gameVersion === "vanilla"
-              ? this.appearances[`${replay.report.code}:${actor.id}`]
-              : undefined) ??
-            raw.appearanceOverrides?.[actor.id] ??
-            {};
-          return {
-            player: actor.type === "Player",
-            race: appearance.race ?? actor.race,
-            sex: appearance.sex ?? actor.sex,
-            look: appearance.look ?? [0, 0, 0, 0, 0],
-            display: appearance.display ?? actor.displayID,
-            gear: actor.gear
-              .filter((gear) => gear.model)
-              .map((gear) => ({
-                slot: gear.slot,
-                display: gear.model?.display,
-              })),
-          };
-        }),
-        [...replay.abilities.values()].flatMap((ability) =>
-          ability.icon ? [ability.icon] : [],
-        ),
-        signal,
-      );
+  private preparationEpochs = { replayPreparation: 0, bufferPreparation: 0 };
+  private async prepareReplayForInstall(
+    raw: RawReplay,
+    signal?: AbortSignal,
+    visible = () => true,
+    progressField:
+      "replayPreparation" | "bufferPreparation" = "replayPreparation",
+    derived?: ReturnType<EditorController["replayForInstall"]>,
+    registerProgress?: (publish: (() => void) | undefined) => void,
+  ) {
+    const prepared = derived ?? this.replayForInstall(raw);
+    const files = this.localFiles,
+      bridge = this.browserBridge;
+    if (files && bridge) {
+      signal?.throwIfAborted();
+      const owner = new AbortController();
+      const requestSignal = signal
+        ? AbortSignal.any([signal, owner.signal])
+        : owner.signal;
+      let epoch = visible() ? ++this.preparationEpochs[progressField] : null;
+      let latest: NonNullable<Snapshot["replayPreparation"]> = {
+        message: "Preparing raid geometry",
+        completed: 0,
+        total: 0,
+      };
+      const reportable = () =>
+        epoch !== null &&
+        epoch === this.preparationEpochs[progressField] &&
+        !requestSignal.aborted &&
+        this.localFiles === files &&
+        this.browserBridge === bridge &&
+        visible();
+      const publish = () => {
+        if (
+          epoch === null &&
+          registerProgress &&
+          !requestSignal.aborted &&
+          this.localFiles === files &&
+          this.browserBridge === bridge &&
+          visible()
+        )
+          epoch = ++this.preparationEpochs[progressField];
+        if (reportable()) this.patch({ [progressField]: latest });
+      };
+      let lastProgress = -Infinity;
+      let geometryDone = false;
+      let appearanceProgress = { completed: 0, total: 0 };
+      const progress = (completed: number, total: number) => {
+        appearanceProgress = { completed, total };
+        if (!geometryDone) return;
+        latest = {
+          message: "Preparing appearances and icons",
+          completed,
+          total,
+        };
+        const now = performance.now();
+        if (completed !== total && now - lastProgress < 100) return;
+        lastProgress = now;
+        publish();
+      };
+      registerProgress?.(publish);
+      publish();
       try {
-        const spellGraph = await this.browserBridge.catalog("spells");
-        await prepareOriginalSpellEffects(
-          this.localFiles,
-          this.browserBridge,
-          [...replay.abilities.keys()].filter(
-            (id) => spellGraph.spells?.[id]?.summonCue,
+        const { replay } = prepared;
+        let lastGeometryProgress = -Infinity;
+        const geometry = this.prepareFloorGeometry(
+          replay.map,
+          requestSignal,
+          (completed, total) => {
+            latest = {
+              message: "Indexing raid geometry",
+              completed,
+              total,
+              unit: "triangles",
+            };
+            const now = performance.now();
+            if (
+              completed > 0 &&
+              completed !== total &&
+              now - lastGeometryProgress < 100
+            )
+              return;
+            lastGeometryProgress = now;
+            publish();
+          },
+        ).then(() => {
+          geometryDone = true;
+          if (
+            appearanceProgress.total === 0 ||
+            appearanceProgress.completed < appearanceProgress.total
+          )
+            progress(appearanceProgress.completed, appearanceProgress.total);
+        });
+        const appearances = prepareOriginalUnits(
+          files,
+          bridge,
+          replay.actors.map((actor) => {
+            const appearance =
+              this.appearances[
+                `${replay.gameVersion}:${replay.report.code}:${actor.id}`
+              ] ??
+              (replay.gameVersion === "vanilla"
+                ? this.appearances[`${replay.report.code}:${actor.id}`]
+                : undefined) ??
+              raw.appearanceOverrides?.[actor.id] ??
+              {};
+            return {
+              player: actor.type === "Player",
+              race: appearance.race ?? actor.race,
+              sex: appearance.sex ?? actor.sex,
+              look: appearance.look ?? [0, 0, 0, 0, 0],
+              display: appearance.display ?? actor.displayID,
+              gear: actor.gear
+                .filter((gear) => gear.model)
+                .map((gear) => ({
+                  slot: gear.slot,
+                  display: gear.model?.display,
+                })),
+            };
+          }),
+          [...replay.abilities.values()].flatMap((ability) =>
+            ability.icon ? [ability.icon] : [],
           ),
-          signal,
+          requestSignal,
+          progress,
         );
-      } catch (error) {
-        signal?.throwIfAborted();
-        if (error instanceof Error && error.name === "AbortError") throw error;
-        // These illustrative cues are optional; unavailable effects must not block the run.
-        this.notify(`Some spell effects are unavailable: ${message(error)}`);
+        await Promise.all([geometry, appearances]);
+        requestSignal.throwIfAborted();
+        latest = { message: "Preparing spell effects", completed: 0, total: 0 };
+        publish();
+        try {
+          const spellGraph = await bridge.catalog("spells");
+          requestSignal.throwIfAborted();
+          await prepareOriginalSpellEffects(
+            files,
+            bridge,
+            [...replay.abilities.keys()].filter(
+              (id) => spellGraph.spells?.[id]?.summonCue,
+            ),
+            requestSignal,
+          );
+        } catch (error) {
+          requestSignal.throwIfAborted();
+          if (error instanceof Error && error.name === "AbortError")
+            throw error;
+          // These illustrative cues are optional; unavailable effects must not block the run.
+          this.notify(`Some spell effects are unavailable: ${message(error)}`);
+        }
+      } finally {
+        registerProgress?.(undefined);
+        owner.abort();
+        if (epoch !== null && epoch === this.preparationEpochs[progressField])
+          this.patch({ [progressField]: null });
       }
     }
     return prepared;
   }
-  private async prepareFloorGeometry(map: number, signal?: AbortSignal) {
+  private async prepareFloorGeometry(
+    map: number,
+    signal?: AbortSignal,
+    progress?: (completed: number, total: number) => void,
+  ) {
+    signal?.throwIfAborted();
     const bridge = this.browserBridge,
       raid = raidByMap(map);
     if (!bridge || !raid) return;
-    let pending = this.floorGeometry.get(map);
-    if (!pending) {
-      pending = bridge
-        .map(map, raid.directory)
-        .then((data) => {
-          const geometry = new ReplayFloorGeometry(
-            data.floors,
-            data.areas,
-            replayFloorAnchors(map),
-          );
-          if (this.browserBridge === bridge)
-            this.loadedFloors.set(map, geometry);
-          return geometry;
-        })
-        .catch((error) => {
-          if (this.browserBridge === bridge)
-            this.notify(`Floor context unavailable: ${message(error)}`);
-          return undefined;
-        });
-      this.floorGeometry.set(map, pending);
+    const clientSignal = this.clientAbort?.signal;
+    const current = () =>
+      this.browserBridge === bridge && !clientSignal?.aborted;
+    if (!current()) return;
+    let entry = this.floorGeometry.get(map);
+    if (!entry) {
+      const listeners = new Set<(completed: number, total: number) => void>();
+      const request = {
+        listeners,
+        progress: undefined as [number, number] | undefined,
+        promise: Promise.resolve()
+          .then(() =>
+            Promise.all([
+              bridge.map(map, raid.directory),
+              this.loadSpawnReferences(),
+            ]),
+          )
+          .then(([data, references]) =>
+            ReplayFloorGeometry.prepare(
+              data.floors,
+              data.areas,
+              references.replayFloorAnchors(map),
+              (completed, total) => {
+                request.progress = [completed, total];
+                for (const listener of [...listeners])
+                  if (listeners.has(listener)) listener(completed, total);
+              },
+              current,
+            ),
+          )
+          .then((geometry) => {
+            if (geometry && current()) this.loadedFloors.set(map, geometry);
+            return geometry;
+          })
+          .catch((error) => {
+            if (current())
+              this.notify(`Floor context unavailable: ${message(error)}`);
+            return undefined;
+          }),
+      };
+      this.floorGeometry.set(map, request);
+      entry = request;
     }
-    await pending;
-    signal?.throwIfAborted();
+    const removeProgress = () => {
+      if (progress) entry.listeners.delete(progress);
+    };
+    try {
+      if (progress && !this.loadedFloors.has(map)) {
+        entry.listeners.add(progress);
+        signal?.addEventListener("abort", removeProgress, { once: true });
+        if (entry.progress) progress(...entry.progress);
+      }
+      await entry.promise;
+      signal?.throwIfAborted();
+    } finally {
+      signal?.removeEventListener("abort", removeProgress);
+      removeProgress();
+    }
   }
   private replayFloors(replay: Replay, lookupPose: typeof poseAt = poseAt) {
     const geometry = this.loadedFloors.get(replay.map),
@@ -5231,6 +5738,7 @@ export class EditorController {
       geometry?.contextCatalog(replay.map, this.models) ?? this.models,
       seeds,
       candidates ?? undefined,
+      lookupPose,
     );
     if (geometry) {
       const fallback = raidByMap(replay.map)?.spawn[2] ?? 0;
@@ -5268,13 +5776,17 @@ export class EditorController {
   }
   private async preparePlanAssets(plan: Plan, signal?: AbortSignal) {
     if (!this.localFiles || !this.browserBridge) return;
-    await this.prepareFloorGeometry(plan.mapId, signal);
+    const [references] = await Promise.all([
+      this.loadSpawnReferences(),
+      this.prepareFloorGeometry(plan.mapId, signal),
+    ]);
+    signal?.throwIfAborted();
     await prepareOriginalUnits(
       this.localFiles,
       this.browserBridge,
       [
         ...(plan.steps.some((step) => !step.snapshot?.report)
-          ? referenceRaidActors(
+          ? references.referenceRaidActors(
               plan.mapId,
               plan.gameVersion,
               this.referenceModels[plan.gameVersion],
@@ -5299,9 +5811,7 @@ export class EditorController {
     buffer?: ReplayBuffer,
   ) {
     this.cancelPlayPreparation();
-    this.encounterWarmEpoch++;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.clearTrajectoryRetries();
     this.trajectoryEpoch++;
     this.trajectoryCoverageBlocked = false;
@@ -5379,31 +5889,100 @@ export class EditorController {
     if (this.state.sceneReady) this.focusCurrent();
   }
   async importFile(file: File, kind: "plan" | "replay") {
+    if (kind === "replay") return this.importReplayFile(file);
     try {
       await this.flushProject();
-      if (file.size > (kind === "plan" ? 400000 : 150000000))
-        throw new Error("File exceeds import limit");
-      const text = await file.text();
-      if (kind === "plan") {
-        const plan = parsePlan(text);
-        await this.preparePlanAssets(plan, this.clientAbort?.signal);
-        if (this.projectStore) {
-          this.resetProject(null);
-          this.saved = "";
-        }
-        this.selectRaid(plan.mapId, true, plan.gameVersion);
-        this.editPlan(plan);
-      } else {
-        await this.loadCatalogs();
-        const raw = JSON.parse(text) as RawReplay;
-        const prepared = await this.prepareReplayForInstall(
-          raw,
-          this.clientAbort?.signal,
-        );
+      if (file.size > 400000) throw new Error("File exceeds import limit");
+      const plan = parsePlan(await file.text());
+      await this.preparePlanAssets(plan, this.clientAbort?.signal);
+      if (this.projectStore) {
+        this.resetProject(null);
+        this.saved = "";
+      }
+      this.selectRaid(plan.mapId, true, plan.gameVersion);
+      this.editPlan(plan);
+    } catch (e) {
+      this.notify(message(e));
+    }
+  }
+  private async importReplayFile(file: File) {
+    if (this.state.busy) return;
+    this.cancelPlayPreparation();
+    const request = ++this.request;
+    const abort = (this.importAbort = new AbortController());
+    const signal = abort.signal;
+    const clientSignal = this.clientAbort?.signal;
+    const cancel = () => abort.abort(clientSignal?.reason);
+    clientSignal?.addEventListener("abort", cancel, { once: true });
+    if (clientSignal?.aborted) cancel();
+    let lastProgress = -Infinity;
+    this.patch({
+      busy: true,
+      playing: false,
+      replayPreparation: {
+        message: "Reading replay file…",
+        completed: 0,
+        total: 0,
+      },
+    });
+    try {
+      if (file.size > 150000000) throw new Error("File exceeds import limit");
+      await this.flushProject();
+      signal.throwIfAborted();
+      const [raw] = await Promise.all([
+        readReplayFile(file, signal, (completed, total) => {
+          if (signal.aborted || request !== this.request) return;
+          const now = performance.now();
+          if (completed !== total && now - lastProgress < 100) return;
+          lastProgress = now;
+          this.patch({
+            replayPreparation: {
+              message: "Reading replay events…",
+              completed,
+              total,
+              unit: "events",
+            },
+          });
+        }),
+        this.loadCatalogs(),
+      ]);
+      signal.throwIfAborted();
+      if (request !== this.request) return;
+      this.patch({
+        replayPreparation: {
+          message: "Preparing replay data…",
+          completed: 0,
+          total: 0,
+        },
+      });
+      const derived = await this.deriveLargeWholeReplay(
+        raw,
+        signal,
+        () => request === this.request && !signal.aborted,
+      );
+      signal.throwIfAborted();
+      if (request !== this.request) return;
+      const prepared = await this.prepareReplayForInstall(
+        raw,
+        signal,
+        () => request === this.request,
+        "replayPreparation",
+        derived,
+      );
+      signal.throwIfAborted();
+      if (request === this.request) {
+        if (derived) this.replayNormalizer.reset();
         this.installReplay(raw, prepared);
       }
     } catch (e) {
-      this.notify(message(e));
+      if (!signal.aborted && request === this.request) this.notify(message(e));
+    } finally {
+      clientSignal?.removeEventListener("abort", cancel);
+      abort.abort();
+      if (request === this.request) {
+        this.importAbort = null;
+        this.patch({ busy: false, replayPreparation: null });
+      }
     }
   }
   exportFile(kind: "plan" | "replay") {
@@ -5431,16 +6010,24 @@ export class EditorController {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  private performanceCounterEnabled = false;
+  setPerformanceCounter(enabled: boolean): boolean {
+    if (enabled !== this.performanceCounterEnabled) {
+      this.performanceCounterEnabled = enabled;
+      this.engine?.set_performance_counter_enabled?.(enabled);
+    }
+    return !!this.engine?.set_performance_counter_enabled;
+  }
   attachEngine(engine: Engine) {
     this.cancelPlayPreparation();
     this.clearTrajectoryRetries();
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.replayNormalizer.reset();
     this.replayMetadata = undefined;
     this.trajectoryEpoch++; // Late notifications from a previous installation are stale.
     this.trajectoryRetryStopped = false;
     this.engine = engine;
+    engine.set_performance_counter_enabled?.(this.performanceCounterEnabled);
     try {
       const stored = JSON.parse(
         this.storage?.getItem("pullfiction.raidFrames.size.v1") ?? "null",
@@ -5740,6 +6327,25 @@ export class EditorController {
       });
       if (first && this.state.cameraMode !== "orbit") this.focusCurrent();
       this.startClientPrefetch();
+    } else if (kind === "framePerformance") {
+      try {
+        const data = JSON.parse(value) as FramePerformance;
+        if (
+          this.performanceCounterEnabled &&
+          data.source === "renderer" &&
+          [
+            data.fps,
+            data.p95,
+            data.p99,
+            data.worst,
+            data.slow,
+            data.frames,
+          ].every((n) => Number.isFinite(n) && n >= 0)
+        )
+          framePerformance.publish(data);
+      } catch {
+        /* Optional diagnostics cannot interrupt playback. */
+      }
     } else if (kind === "status") {
       this.patch({ status: value });
     } else if (kind === "visualDiagnostics")
@@ -5972,6 +6578,7 @@ export class EditorController {
       // No storage lookup or other await before the native permission request.
       const permissionRequest = this.clientFolders.permission(handle, true);
       this.patch({
+        clientLoadProgress: null,
         clientStatus: "opening",
         clientProgress: "Requesting access to your saved client folder",
         error: null,
@@ -6109,7 +6716,10 @@ export class EditorController {
         files,
         (value) => {
           if (!abort.signal.aborted)
-            this.patch({ clientProgress: progressText(value) });
+            this.patch({
+              clientProgress: progressText(value),
+              clientLoadProgress: assetProgress(value),
+            });
         },
         { signal: abort.signal },
       );
@@ -6158,6 +6768,7 @@ export class EditorController {
     const abort = new AbortController();
     this.clientAbort = abort;
     this.patch({
+      clientLoadProgress: null,
       clientStatus: "opening",
       clientProgress: restored
         ? "Opening saved game assets"
@@ -6173,16 +6784,23 @@ export class EditorController {
     let releasePreparedFiles: (() => void) | null = null;
     let releasePreparedArt: (() => void) | null = null;
     try {
-      reader =
+      const opening =
         restored ??
-        (await (this.runtime.openClient ?? openHostedClient)(
+        (this.runtime.openClient ?? openHostedClient)(
           files,
           (value) => {
             if (!abort.signal.aborted)
-              this.patch({ clientProgress: progressText(value) });
+              this.patch({
+                clientProgress: progressText(value),
+                clientLoadProgress: assetProgress(value),
+              });
           },
           { signal: abort.signal },
-        ));
+        );
+      // This prepares only the module. The current client still owns the start gate.
+      if (!abort.signal.aborted && globalThis.navigator?.gpu)
+        void this.prepareEngine().catch(() => {});
+      reader = await opening;
       abort.signal.throwIfAborted();
       if (!restored && this.clientCache) {
         try {
@@ -6392,6 +7010,19 @@ export class EditorController {
       throw new Error("Renderer diagnostics are not enabled");
     this.needClientSource();
   }
+  private prepareEngine() {
+    return (this.enginePreparation ??= (async () => {
+      const modulePath = "/pullfiction_viewer.js";
+      const engine = this.runtime.loadEngine
+        ? await this.runtime.loadEngine()
+        : ((await import(/* @vite-ignore */ modulePath)) as Engine);
+      await engine.default();
+      return engine;
+    })().catch((error) => {
+      this.enginePreparation = null;
+      throw error;
+    }));
+  }
   private async bootEngine(signal?: AbortSignal) {
     try {
       signal?.throwIfAborted();
@@ -6412,11 +7043,10 @@ export class EditorController {
         )
           throw new Error("Invalid local game data");
       }
-      const modulePath = "/pullfiction_viewer.js";
-      const engine = this.runtime.loadEngine
-        ? await this.runtime.loadEngine()
-        : ((await import(/* @vite-ignore */ modulePath)) as Engine);
-      await engine.default();
+      const [engine] = await Promise.all([
+        this.prepareEngine(),
+        this.loadSpawnReferences(),
+      ]);
       signal?.throwIfAborted();
       engine.start();
       this.attachEngine(engine);
@@ -6435,6 +7065,7 @@ export class EditorController {
     this.trajectoryRetryStopped = false;
     if (this.raf) return;
     const tick = (now: number) => {
+      this.flushScrub();
       if (this.previousTick) {
         const delta = Math.min(250, now - this.previousTick);
         this.advance(delta);
@@ -6466,10 +7097,9 @@ export class EditorController {
     this.raf = requestAnimationFrame(tick);
   }
   stop() {
+    this.pendingScrub = null;
     this.cancelPlayPreparation();
-    this.encounterWarmEpoch++;
-    this.encounterWarmer.cancel();
-    this.warmedEncounter = "";
+    this.resetEncounterWarmup();
     this.replayNormalizer.reset();
     this.replayMetadata = undefined;
     this.clearTrajectoryRetries();
@@ -6479,7 +7109,10 @@ export class EditorController {
     this.clientAttachAbort?.abort();
     this.closeActorInspection();
     setLocalTalentsProvider(null);
+    this.bufferRefreshEpoch++;
+    this.bufferRefresh = undefined;
     this.replayBuffer?.close();
+    this.replayBuffer = null;
     this.loadingBuffer?.close();
     this.bufferRequest++;
     clearTimeout(this.autosaveTimer);
@@ -6543,6 +7176,7 @@ export class EditorController {
     this.renderFrame();
     this.renderedInputs = inputs;
   }
+  private readonly framePresentation = new ReplayFramePresentation();
   private renderFrame() {
     // The diagnostic runner owns actors, annotations and scene presentation.
     // Async editor bootstrap/floor callbacks must not inject reference spawns
@@ -6589,8 +7223,12 @@ export class EditorController {
     this.frame = this.sceneActors()
       .filter((actor) => !candidates || candidates.has(actor.key))
       .map((actor) => {
-        const state = combatStateAt(actor, this.clockTime),
+        const state = frameCombatStateAt(actor, this.clockTime),
           appearance = this.appearance(actor);
+        const { plate_auras, auras, self_auras } = this.framePresentation.auras(
+          state.auras,
+          replay.abilities,
+        );
         return {
           key: actor.key,
           name: actor.name,
@@ -6614,17 +7252,7 @@ export class EditorController {
           race: appearance.race ?? actor.race,
           sex: appearance.sex ?? actor.sex,
           look: appearance.look ?? [0, 0, 0, 0, 0],
-          gear: actor.gear
-            .filter((g) => g.model)
-            .map((g) => ({
-              id: g.id,
-              slot: g.slot,
-              ...g.model,
-              name: g.name ?? g.model?.name ?? `Item ${g.id}`,
-              quality: g.quality ?? g.model?.quality ?? 0,
-              enchant: g.permanentEnchant ?? 0,
-              temporary: g.temporaryEnchant ?? 0,
-            })),
+          gear: this.framePresentation.equipment(actor.gear),
           health: state.health?.current ?? null,
           max_health: state.health?.max ?? null,
           power: state.power?.current ?? null,
@@ -6639,26 +7267,14 @@ export class EditorController {
                   remaining: (state.cast.end - this.clockTime) / 1000,
                 }
               : null,
-          plate_auras: state.auras.slice(0, 48).map((a) => ({
-            spell: a.spell,
-            name:
-              replay.abilities.get(a.spell)?.name ??
-              a.name ??
-              `Spell ${a.spell}`,
-            icon: replay.abilities.get(a.spell)?.icon ?? a.icon ?? "",
-            stack: a.stack ?? 1,
-            debuff: !!a.debuff,
-          })),
+          plate_auras,
           channel: !!state.cast?.channel,
           channel_target: state.cast?.channel
             ? (state.cast.target ?? null)
             : null,
           cast: state.cast && !state.cast.instant ? state.cast.spell : 0,
-          auras: state.auras.slice(0, 48).map((a) => a.spell),
-          self_auras: state.auras
-            .slice(0, 48)
-            .filter((a) => a.selfCast)
-            .map((a) => a.spell),
+          auras,
+          self_auras,
         };
       });
     this.sendPositions();
@@ -7142,53 +7758,56 @@ export class EditorController {
       const actors = this.indexActors(this.sceneActors());
       const loggedActors = this.indexActors(replay.actors);
       const present = this.presentReplayActors();
-      const frame = this.frame
-        .filter((unit) => !present || present.has(unit.key))
-        .map((unit) => {
-          const actor = actors.get(unit.key);
-          const pose =
-            options.actors && actor ? this.actorPose(actor, lookupPose) : null;
-          const movement = pose?.movement;
-          const hint = floorHints.get(unit.key);
-          const geometry = this.loadedFloors.get(replay.map);
-          const seed = this.floorHintCache?.seeds.get(unit.key);
-          const endpointHeight = (
-            point: number[] | undefined,
-            cache: ReplayHeightCache,
-          ) =>
-            point?.[2] ??
-            (actor && geometry && point
-              ? (cache.height(
-                  actor,
-                  geometry,
-                  point[0],
-                  point[1],
-                  seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
-                  seed === undefined,
-                ) ?? hint)
-              : hint);
-          const fromHeight = endpointHeight(
-            movement?.from as number[] | undefined,
-            this.fromFloorHeights,
-          );
-          const toHeight = endpointHeight(
-            movement?.to as number[] | undefined,
-            this.toFloorHeights,
-          );
-          const nativeMovement =
-            movement &&
-            typeof fromHeight === "number" &&
-            Number.isFinite(fromHeight) &&
-            typeof toHeight === "number" &&
-            Number.isFinite(toHeight)
-              ? {
-                  ...movement,
-                  from: [movement.from[0], movement.from[1], fromHeight],
-                  to: [movement.to[0], movement.to[1], toHeight],
-                  from_inferred: movement.from[2] == null && seed === undefined,
-                  to_inferred: movement.to[2] == null && seed === undefined,
-                  floor_candidates: geometry
-                    ? movementFloorCandidates(
+      const frame: (NativeFrame &
+        ReturnType<EditorController["trajectoryBinding"]>)[] = [];
+      for (const unit of this.frame) {
+        if (present && !present.has(unit.key)) continue;
+        const actor = actors.get(unit.key);
+        const pose =
+          options.actors && actor ? this.actorPose(actor, lookupPose) : null;
+        const movement = pose?.movement;
+        const hint = floorHints.get(unit.key);
+        const geometry = this.loadedFloors.get(replay.map);
+        const seed = this.floorHintCache?.seeds.get(unit.key);
+        const endpointHeight = (
+          point: number[] | undefined,
+          cache: ReplayHeightCache,
+        ) =>
+          point?.[2] ??
+          (actor && geometry && point
+            ? (cache.height(
+                actor,
+                geometry,
+                point[0],
+                point[1],
+                seed ?? hint ?? raidByMap(replay.map)?.spawn[2] ?? 0,
+                seed === undefined,
+              ) ?? hint)
+            : hint);
+        const fromHeight = endpointHeight(
+          movement?.from as number[] | undefined,
+          this.fromFloorHeights,
+        );
+        const toHeight = endpointHeight(
+          movement?.to as number[] | undefined,
+          this.toFloorHeights,
+        );
+        const nativeMovement =
+          movement &&
+          typeof fromHeight === "number" &&
+          Number.isFinite(fromHeight) &&
+          typeof toHeight === "number" &&
+          Number.isFinite(toHeight)
+            ? {
+                ...movement,
+                from: [movement.from[0], movement.from[1], fromHeight],
+                to: [movement.to[0], movement.to[1], toHeight],
+                from_inferred: movement.from[2] == null && seed === undefined,
+                to_inferred: movement.to[2] == null && seed === undefined,
+                floor_candidates:
+                  geometry && actor
+                    ? this.movementFloors.candidates(
+                        actor,
                         geometry,
                         movement.from as number[],
                         movement.to as number[],
@@ -7198,49 +7817,51 @@ export class EditorController {
                         movement.to[2] == null && seed === undefined,
                       )
                     : [],
-                }
-              : null;
-          // Unknown route endpoints are not permission to draw a line through walls.
-          const holding = !!movement && !nativeMovement;
-          const trajectory = this.trajectoryBinding(
-            loggedActors.get(unit.key),
-            pose,
-          );
-          return {
-            ...unit,
-            ...trajectory,
-            position:
-              pose && !pose.dead
-                ? holding
-                  ? [
-                      movement!.from[0],
-                      movement!.from[1],
-                      fromHeight ?? movement!.from[2] ?? 0,
-                    ]
-                  : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
-                : null,
-            ground:
-              !!(
-                this.state.workspaceMode === "plan" && this.displaySnapshot()
-              ) || pose?.pos[2] == null,
-            floor_hint:
-              (holding ? fromHeight : undefined) ??
-              (this.state.workspaceMode === "plan" && this.displaySnapshot()
-                ? pose?.pos[2]
-                : undefined) ??
-              floorHints.get(unit.key) ??
-              null,
-            movement: nativeMovement,
-            facing: pose?.facing ?? 0,
-            speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
-            dead: pose?.dead ?? false,
-            estimated: !!pose?.estimated || holding,
-            wisp: !!pose?.wisp,
-            plate_auras: options.auras ? unit.plate_auras : [],
-            auras: options.auras ? unit.auras : [],
-            self_auras: options.auras ? unit.self_auras : [],
-          };
-        });
+              }
+            : null;
+        // Unknown route endpoints are not permission to draw a line through walls.
+        const holding = !!movement && !nativeMovement;
+        const trajectory = this.trajectoryBinding(
+          loggedActors.get(unit.key),
+          pose,
+        );
+        const position: NativeFrame["position"] =
+          pose && !pose.dead
+            ? holding
+              ? [
+                  movement!.from[0],
+                  movement!.from[1],
+                  fromHeight ?? movement!.from[2] ?? 0,
+                ]
+              : [pose.pos[0], pose.pos[1], pose.pos[2] ?? 0]
+            : null;
+        if (!unit.player && !position) continue;
+        const row = {
+          ...unit,
+          ...trajectory,
+          position,
+          ground:
+            !!(this.state.workspaceMode === "plan" && this.displaySnapshot()) ||
+            pose?.pos[2] == null,
+          floor_hint:
+            (holding ? fromHeight : undefined) ??
+            (this.state.workspaceMode === "plan" && this.displaySnapshot()
+              ? pose?.pos[2]
+              : undefined) ??
+            floorHints.get(unit.key) ??
+            null,
+          movement: nativeMovement,
+          facing: pose?.facing ?? 0,
+          speed: this.state.playing && !holding ? (pose?.speed ?? 0) : 0,
+          dead: pose?.dead ?? false,
+          estimated: !!pose?.estimated || holding,
+          wisp: !!pose?.wisp,
+          plate_auras: options.auras ? unit.plate_auras : [],
+          auras: options.auras ? unit.auras : [],
+          self_auras: options.auras ? unit.self_auras : [],
+        };
+        frame.push(row);
+      }
       this.engine!.configure_replay_camera?.(
         this.state.cameraMaxDistance,
         options.lockCamera ? (this.state.selected ?? "") : "",
@@ -7306,7 +7927,7 @@ export class EditorController {
           cameraKeys.push(locked.key);
       }
       this.engine!.set_replay_camera?.(JSON.stringify(cameraKeys));
-      this.publishReplayFrame(frame.filter((a) => a.player || a.position));
+      this.publishReplayFrame(frame);
     });
     for (const key of this.trajectoryRetries.keys()) {
       if (!this.trajectoryDemands.has(key)) this.trajectoryRetries.delete(key);

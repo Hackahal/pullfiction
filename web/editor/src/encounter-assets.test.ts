@@ -34,6 +34,17 @@ test("encounter preparation selects inclusive boundaries and at most one adjacen
   assert.throws(() => encounterAssets(replay, 150, 2), /window/);
   assert.throws(() => encounterAssets(replay, NaN), /window/);
 });
+test("window scanning keeps equal-time combat rows at both edges in original order", () => {
+  const bounded = {
+    ...replay,
+    combat: [99, 100, 100, 190, 190, 191].map((t, i) => ({
+      t,
+      source: "1:1",
+      spell: i + 1,
+    })),
+  } as Replay;
+  assert.deepEqual(encounterAssets(bounded, 150).spells, [2, 3, 4, 5]);
+});
 test("preparation limits retained selections independently of replay duration", () => {
   const large = {
     ...replay,
@@ -50,6 +61,42 @@ test("preparation limits retained selections independently of replay duration", 
   assert.equal(selection.spells.length, 256);
   assert.equal(selection.omittedActors, 488);
   assert.equal(selection.omittedSpells, 744);
+});
+test("a superseded warmup never starts geometry or asset selection", async () => {
+  const warmer = new EncounterAssetWarmer();
+  const calls: string[] = [];
+  let scans = 0;
+  const counted = {
+    ...replay,
+    get combat() {
+      scans++;
+      return replay.combat;
+    },
+  };
+  const old = warmer.prepare(counted, 0, {
+    geometry: async () => {
+      calls.push("old");
+    },
+    units: async () => {},
+    spells: async () => {},
+  });
+  const next = warmer.prepare(counted, 150, {
+    geometry: async () => {
+      calls.push("latest");
+    },
+    units: async () => {},
+    spells: async () => {},
+  });
+  assert.deepEqual(calls, []);
+  assert.equal(scans, 0);
+  const cancelled = assert.rejects(old, { name: "AbortError" });
+  await Promise.resolve();
+  assert.deepEqual(calls, [], "selection waits past the microtask checkpoint");
+  assert.equal(scans, 0);
+  await cancelled;
+  await next;
+  assert.deepEqual(calls, ["latest"]);
+  assert.equal(scans, 1);
 });
 test("seek replacement aborts preparation and prevents late spell preparation", async () => {
   const warmer = new EncounterAssetWarmer();
@@ -92,16 +139,21 @@ test("seek replacement aborts preparation and prevents late spell preparation", 
 });
 test("report replacement cannot continue after an uncancellable callback returns late", async () => {
   const warmer = new EncounterAssetWarmer();
-  let release!: () => void;
+  let release!: () => void, started!: () => void;
+  const running = new Promise<void>((resolve) => (started = resolve));
   const ready = new Promise<void>((resolve) => (release = resolve));
   let units = 0;
   const pending = warmer.prepare(replay, 0, {
-    geometry: () => ready,
+    geometry: () => {
+      started();
+      return ready;
+    },
     units: async () => {
       units++;
     },
     spells: async () => {},
   });
+  await running;
   warmer.close();
   release();
   await assert.rejects(pending, { name: "AbortError" });

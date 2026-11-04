@@ -38,10 +38,15 @@ import type { Actor, Snapshot } from "./types";
 import type { EditorController } from "./controller";
 import {
   CLASS_CELLS,
-  mapActorToken,
+  mapActorDrawOrder,
+  mapActorIsBoss,
+  mapActorRadius,
+  mapActorZoom,
   fitMap,
   frameMapSelection,
   mapPoint,
+  mapBounds,
+  intersectsMapViewport,
   mapScreen,
   screenMap,
   worldPoint,
@@ -50,6 +55,25 @@ import {
   type MapCamera,
   type MapPoint,
 } from "./map-model";
+function prepareMapCanvas(
+  node: HTMLCanvasElement | null,
+  size: { width: number; height: number },
+  dpr: number,
+) {
+  if (!node) return;
+  const width = Math.max(1, Math.round(size.width * dpr)),
+    height = Math.max(1, Math.round(size.height * dpr));
+  if (node.width !== width) node.width = width;
+  if (node.height !== height) node.height = height;
+  const ctx = node.getContext("2d");
+  if (!ctx) return;
+  // Reset paths and styles without resizing a stable backing store.
+  if (typeof ctx.reset === "function") ctx.reset();
+  else node.width = width;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
 export function MapView({
   state: inputState,
   controller,
@@ -59,7 +83,8 @@ export function MapView({
 }) {
   const state = useBufferedView(inputState);
   const host = useRef<HTMLDivElement>(null),
-    canvas = useRef<HTMLCanvasElement>(null);
+    canvas = useRef<HTMLCanvasElement>(null),
+    terrain = useRef<HTMLCanvasElement>(null);
   const hoverGrip = useRef<{ id: string; index: number } | null>(null);
   const labelRects = useRef<(LabelRect & { id: string })[]>([]);
   const [editHover, setEditHover] = useState<{
@@ -81,10 +106,13 @@ export function MapView({
   // Zero dimensions defer the initial fit instead of fitting a placeholder size.
   const [size, setSize] = useState({ width: 0, height: 0 }),
     [camera, setCamera] = useState<MapCamera>({ x: 0, y: 0, scale: 1 });
+  const [dpr, setDpr] = useState(() => globalThis.devicePixelRatio || 1);
+  const [terrainArt, setTerrainArt] = useState(0);
   const [art, setArt] = useState(0),
     [hover, setHover] = useState<{ actor: Actor; x: number; y: number } | null>(
       null,
     );
+  const terrainImages = useRef(new Map<string, HTMLImageElement>());
   const images = useRef(new Map<string, HTMLImageElement>()),
     drag = useRef<{
       x: number;
@@ -116,6 +144,9 @@ export function MapView({
       dead: boolean;
     }[]
   >([]);
+  const terrainImageLoader = useRef<MapViewImages | null>(null);
+  if (!terrainImageLoader.current)
+    terrainImageLoader.current = new MapViewImages(terrainImages.current);
   const imageLoader = useRef<MapViewImages | null>(null);
   if (!imageLoader.current)
     imageLoader.current = new MapViewImages(images.current);
@@ -328,8 +359,14 @@ export function MapView({
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
   }, [state.options.followRaid, state.replay]);
-  const tiles =
-    manifest?.tiles.filter((t) => area === "*" || t.area === area) ?? [];
+  const tiles = useMemo(
+    () =>
+      (manifest?.tiles ?? []).map((tile) => {
+        const corners = tile.corners.map((point) => mapPoint(...point));
+        return { ...tile, corners, bounds: mapBounds(corners) };
+      }),
+    [manifest],
+  );
   const floorPaths = useMemo(() => {
     return (manifest?.floors ?? [])
       .map((floor) => {
@@ -346,6 +383,7 @@ export function MapView({
         }
         return {
           area: floor.area,
+          bounds: mapBounds(vertices),
           path,
           height:
             manifest?.areas.find((area) => area.id === floor.area)?.height ?? 0,
@@ -374,7 +412,6 @@ export function MapView({
       ...marks
         .filter((a) => !/^[1-8]$/.test(a.icon))
         .map((a) => `/game-ui/icons/${a.icon}.png`),
-      ...(manifest?.tiles.map((t) => t.src) ?? []),
       ...(state.replay?.actors
         .filter((a) => a.type !== "Player")
         .flatMap((a) => [
@@ -388,7 +425,6 @@ export function MapView({
       () => setArt((n) => n + 1),
     );
   }, [
-    manifest,
     state.replay,
     state.portraitVersion,
     state.browserAssets,
@@ -397,27 +433,35 @@ export function MapView({
     localUiArt,
     localIcons,
   ]);
+  useEffect(() => {
+    terrainImageLoader.current!.update(
+      manifest?.tiles.map((tile) => tile.src) ?? [],
+      { browser: state.browserAssets },
+      () => setTerrainArt((n) => n + 1),
+    );
+  }, [manifest, state.browserAssets]);
   useEffect(
     () => () => {
       imageLoader.current?.dispose();
+      terrainImageLoader.current?.dispose();
     },
     [],
   );
   useEffect(() => {
-    const node = canvas.current;
-    if (!node) return;
-    const dpr = window.devicePixelRatio || 1,
-      width = Math.max(1, Math.round(size.width * dpr)),
-      height = Math.max(1, Math.round(size.height * dpr));
-    if (node.width !== width) node.width = width;
-    if (node.height !== height) node.height = height;
-    const ctx = node.getContext("2d");
+    let resolution: MediaQueryList | undefined;
+    const track = () => {
+      resolution?.removeEventListener("change", track);
+      const next = globalThis.devicePixelRatio || 1;
+      setDpr(next);
+      resolution = globalThis.matchMedia?.(`(resolution: ${next}dppx)`);
+      resolution?.addEventListener("change", track);
+    };
+    track();
+    return () => resolution?.removeEventListener("change", track);
+  }, []);
+  useEffect(() => {
+    const ctx = prepareMapCanvas(terrain.current, size, dpr);
     if (!ctx) return;
-    // Match the previous resize reset, including clips, paths and styles, while
-    // keeping unchanged backing dimensions. Retain the legacy path if needed.
-    if (typeof ctx.reset === "function") ctx.reset();
-    else node.width = width;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#13191c";
     ctx.fillRect(0, 0, size.width, size.height);
     const screen = (p: MapPoint) =>
@@ -450,24 +494,30 @@ export function MapView({
     ctx.fillStyle = "#38484d";
     ctx.strokeStyle = "#6b848955";
     ctx.lineWidth = Math.min(0.8, 0.5 / camera.scale);
+    // Allow for miter joins and antialiasing beyond the projected floor bounds.
+    const floorPadding = 8 / camera.scale;
     for (const floor of floorPaths) {
-      if (area !== "*" && floor.area !== area) continue;
+      if (
+        (area !== "*" && floor.area !== area) ||
+        !intersectsMapViewport(floor.bounds, a, b, floorPadding)
+      )
+        continue;
       ctx.fill(floor.path);
       ctx.stroke(floor.path);
     }
     ctx.restore();
+    const tilePadding = 1 / camera.scale;
     for (const tile of tiles) {
-      const image = images.current.get(tile.src);
-      if (!image?.complete || !image.naturalWidth) continue;
-      const points = tile.corners.map((p) => screen(mapPoint(...p))),
-        [tl, tr, , bl] = points;
       if (
-        points.every((p) => p[0] < 0) ||
-        points.every((p) => p[0] > size.width) ||
-        points.every((p) => p[1] < 0) ||
-        points.every((p) => p[1] > size.height)
+        (area !== "*" && tile.area !== area) ||
+        !intersectsMapViewport(tile.bounds, a, b, tilePadding)
       )
         continue;
+      const image = terrainImages.current.get(tile.src);
+      if (!image?.complete || !image.naturalWidth) continue;
+      const tl = screen(tile.corners[0]),
+        tr = screen(tile.corners[1]),
+        bl = screen(tile.corners[3]);
       ctx.save();
       ctx.transform(
         (tr[0] - tl[0]) / image.naturalWidth,
@@ -480,6 +530,12 @@ export function MapView({
       ctx.drawImage(image, 0, 0);
       ctx.restore();
     }
+  }, [camera, size, area, terrainArt, dpr, floorPaths, tiles]);
+  useEffect(() => {
+    const ctx = prepareMapCanvas(canvas.current, size, dpr);
+    if (!ctx) return;
+    const screen = (p: MapPoint) =>
+      mapScreen(p, camera, size.width, size.height);
     const raidIcons = images.current.get("/game-ui/raid-icons.png");
     const drawPath = (path: (typeof marks)[number]["paths"][number]) => {
       ctx.beginPath();
@@ -611,23 +667,14 @@ export function MapView({
         labels.block({ x: x - 9, y: y - 9, width: 18, height: 18 });
       }
     const actors = state.options.actors ? controller.sceneActors() : [];
-    const ordered = [...actors].sort((a, b) => {
-      const rank = (a: Actor) =>
-        a.key === state.selected
-          ? 4
-          : mapActorToken(a).boss
-            ? 3
-            : a.type === "Player"
-              ? 2
-              : 1;
-      return rank(a) - rank(b);
-    });
+    const ordered = mapActorDrawOrder(actors, state.selected);
+    const actorZoom = mapActorZoom(camera.scale / fitScale.current);
     const atlas = images.current.get("/game-ui/class-icons.png");
     for (const actor of ordered) {
       const pose = controller.actorPose(actor);
       if (!pose || (pose.dead && actor.type !== "Player")) continue;
-      const token = mapActorToken(actor, camera.scale / fitScale.current),
-        r = token.radius;
+      const boss = mapActorIsBoss(actor),
+        r = mapActorRadius(actor.type, boss, actorZoom);
       const [x, y] = screen(mapPoint(pose.pos[0], pose.pos[1]));
       if (x < -r || y < -r || x > size.width + r || y > size.height + r)
         continue;
@@ -710,21 +757,21 @@ export function MapView({
           ctx.fillStyle = "#dcc6a3";
           ctx.font = `${r}px sans-serif`;
           ctx.textAlign = "center";
-          ctx.fillText(token.boss ? "☠" : "◆", x, y + r * 0.35);
+          ctx.fillText(boss ? "☠" : "◆", x, y + r * 0.35);
         }
-        ctx.strokeStyle = token.boss
+        ctx.strokeStyle = boss
           ? "#c7a05d"
           : actor.type === "Pet"
             ? "#9cafbd"
             : "#a46c55";
-        ctx.lineWidth = token.boss ? 2 : 1;
+        ctx.lineWidth = boss ? 2 : 1;
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.stroke();
         if (healthBars) {
           const health = combatStateAt(actor, state.time).health,
             w = r * 2 + 4,
-            h = (token.boss ? 5 : 3) * token.factor,
+            h = (boss ? 5 : 3) * actorZoom,
             top = y + r + 4;
           ctx.fillStyle = "#080b0fec";
           ctx.fillRect(x - w / 2 - 1, top - 1, w + 2, h + 2);
@@ -837,7 +884,18 @@ export function MapView({
     ctx.font = "11px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText("N ↑", size.width - 12, 20);
-  }, [state, camera, size, manifest, area, art, healthBars, controller, marks]);
+  }, [
+    state,
+    camera,
+    size,
+    manifest,
+    area,
+    art,
+    healthBars,
+    controller,
+    marks,
+    dpr,
+  ]);
   const pixel = (e: { clientX: number; clientY: number }): MapPoint => {
     const r = host.current!.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
@@ -923,6 +981,7 @@ export function MapView({
     hover?.actor.deaths.filter(([t]) => t <= state.time).at(-1)?.[1] ?? false;
   return (
     <div className="tactical-map" ref={host}>
+      <canvas ref={terrain} className="tactical-terrain" aria-hidden="true" />
       {boxRect && <div className="selection-box" style={boxRect} />}
       <canvas
         ref={canvas}
@@ -1434,7 +1493,7 @@ export function MapView({
         >
           <strong>
             {hover.actor.name}
-            {mapActorToken(hover.actor).boss ? " · Boss" : ""}
+            {mapActorIsBoss(hover.actor) ? " · Boss" : ""}
           </strong>
           <span>
             {hover.actor.class ?? hover.actor.type} ·{" "}

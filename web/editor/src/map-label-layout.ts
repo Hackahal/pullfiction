@@ -8,15 +8,12 @@ export function hitMapLabel(
   labels: readonly (LabelRect & { id: string })[],
   point: readonly number[],
 ) {
-  return [...labels]
-    .reverse()
-    .find(
-      (r) =>
-        point[0] >= r.x &&
-        point[0] <= r.x + r.width &&
-        point[1] >= r.y &&
-        point[1] <= r.y + r.height,
-    )?.id;
+  const [x, y] = point;
+  for (let i = labels.length - 1; i >= 0; i--) {
+    const r = labels[i];
+    if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+      return r.id;
+  }
 }
 const overlaps = (a: LabelRect, b: LabelRect) =>
   a.x < b.x + b.width &&
@@ -24,26 +21,52 @@ const overlaps = (a: LabelRect, b: LabelRect) =>
   a.y < b.y + b.height &&
   a.y + a.height > b.y;
 
+const CELL_SIZE = 64;
+const LABEL_OFFSETS = [
+  [0, 0],
+  [0, -28],
+  [0, 28],
+  [-1, 0],
+  [1, 0],
+  [-1, -28],
+  [1, -28],
+  [0, -56],
+  [0, 56],
+] as const;
+
 /** Screen-space only: actor positions and authored geometry never move. */
 export function mapLabelLayout(width: number, height: number) {
-  const cells = new Map<string, LabelRect[]>();
-  function keys(r: LabelRect) {
-    const result: string[] = [];
-    for (
-      let y = Math.floor(r.y / 64);
-      y <= Math.floor((r.y + r.height) / 64);
-      y++
-    )
-      for (
-        let x = Math.floor(r.x / 64);
-        x <= Math.floor((r.x + r.width) / 64);
-        x++
-      )
-        result.push(`${x}:${y}`);
-    return result;
-  }
+  const rows = new Map<number, Map<number, LabelRect[]>>();
   function block(r: LabelRect) {
-    for (const key of keys(r)) cells.set(key, [...(cells.get(key) ?? []), r]);
+    const left = Math.floor(r.x / CELL_SIZE),
+      right = Math.floor((r.x + r.width) / CELL_SIZE);
+    const top = Math.floor(r.y / CELL_SIZE),
+      bottom = Math.floor((r.y + r.height) / CELL_SIZE);
+    for (let y = top; y <= bottom; y++) {
+      let row = rows.get(y);
+      if (!row) rows.set(y, (row = new Map()));
+      for (let x = left; x <= right; x++) {
+        const cell = row.get(x);
+        if (cell) cell.push(r);
+        else row.set(x, [r]);
+      }
+    }
+  }
+  function isFree(r: LabelRect) {
+    const left = Math.floor(r.x / CELL_SIZE),
+      right = Math.floor((r.x + r.width) / CELL_SIZE);
+    const top = Math.floor(r.y / CELL_SIZE),
+      bottom = Math.floor((r.y + r.height) / CELL_SIZE);
+    for (let y = top; y <= bottom; y++) {
+      const row = rows.get(y);
+      if (!row) continue;
+      for (let x = left; x <= right; x++) {
+        const cell = row.get(x);
+        if (!cell) continue;
+        for (const blocked of cell) if (overlaps(r, blocked)) return false;
+      }
+    }
+    return true;
   }
   function place(
     preferred: LabelRect,
@@ -60,29 +83,20 @@ export function mapLabelLayout(width: number, height: number) {
       return null;
     const w = Math.min(preferred.width, Math.max(0, width - 12)),
       h = preferred.height;
-    const offsets = [
-      [0, 0],
-      [0, -28],
-      [0, 28],
-      [-w - 12, 0],
-      [w + 12, 0],
-      [-w - 12, -28],
-      [w + 12, -28],
-      [0, -56],
-      [0, 56],
-    ];
-    const candidates = offsets.map(([dx, dy]) => ({
-      x: Math.max(6, Math.min(width - w - 6, preferred.x + dx)),
-      y: Math.max(6, Math.min(height - h - 6, preferred.y + dy)),
-      width: w,
-      height: h,
-    }));
-    const free = candidates.find((r) =>
-      keys(r).every(
-        (key) => !(cells.get(key) ?? []).some((b) => overlaps(r, b)),
-      ),
-    );
-    const result = free ?? (required ? candidates[0] : null);
+    let result: LabelRect | null = null;
+    for (const [side, dy] of LABEL_OFFSETS) {
+      const candidate = {
+        x: Math.max(6, Math.min(width - w - 6, preferred.x + side * (w + 12))),
+        y: Math.max(6, Math.min(height - h - 6, preferred.y + dy)),
+        width: w,
+        height: h,
+      };
+      if (isFree(candidate)) {
+        result = candidate;
+        break;
+      }
+      if (required && !result) result = candidate;
+    }
     if (result)
       block({
         x: result.x - 3,

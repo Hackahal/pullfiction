@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { localSpellReplay } from "./local-spell-assets";
+import { localSpellReplay, localSpellReplaySteps } from "./local-spell-assets";
 import { normalizeReplay, enrichCombat } from "./domain";
 import type { Aura, RawReplay } from "./types";
 
@@ -67,4 +67,24 @@ test("Missing or invalid local icon IDs retain recorded icons and never invent f
     assert.equal(result.abilities?.[0].icon, "question.jpg");
     assert.equal(result.abilities?.length, 1);
   }
+});
+
+test("sliced spell metadata keeps spell order, event references and catalog fallbacks", () => {
+  const raw = source();
+  raw.events = Array.from(
+    { length: 1600 },
+    (_, i) => raw.events[i % raw.events.length],
+  );
+  const steps = localSpellReplaySteps(raw, catalog);
+  let checkpoints = 0;
+  for (;;) {
+    const step = steps.next();
+    if (step.done) {
+      assert.deepEqual(step.value, localSpellReplay(raw, catalog));
+      assert.equal(step.value.events, raw.events);
+      break;
+    }
+    checkpoints++;
+  }
+  assert.ok(checkpoints > 1);
 });

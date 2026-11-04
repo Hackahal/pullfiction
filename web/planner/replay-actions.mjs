@@ -1,6 +1,6 @@
 // Recorded timestamps always win. DBC/observed timing hints only bound missing ends.
 import {isBeatrixCannonPulse} from './encounters/sod-beatrix.mjs';
-import {targetedChannelAuras} from './replay-channel-auras.mjs';
+import {targetedChannelAuraSteps} from './replay-channel-auras.mjs';
 import {aq40ResultPolicy} from './encounters/sod-aq40-results.mjs';
 import {raidResultPolicy} from './encounters/sod-raid-results.mjs';
 import {recordedOssirianTargets} from './encounters/sod-ossirian.mjs';
@@ -8,16 +8,22 @@ const spellOf = (e) => {
   const id = e.abilityGameID ?? e.ability?.guid ?? 0;
   return id === -4 ? 1 : Math.max(0, id);
 };
-export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
+/** @param {Uint32Array} [eventOrder] */
+export function* reconstructCastSteps(replay, metadata = {}, reused = new Map(), eventOrder = undefined) {
   const actors = new Map(replay.actors.map((a) => [a.key, a]));
-  const events = replay.raw.events
-    .map((e, id) => ({
-      event: e,
-      id,
-      t: e.timestamp - replay.raw.fight.startTime,
-    }))
-    .filter((e) => e.t >= 0 && e.t <= replay.duration)
-    .sort((a, b) => a.t - b.t || a.id - b.id);
+  const rawEvents=replay.raw.events, events=[];
+  const start=replay.raw.fight.startTime;
+  let ordered=true;
+  for(let i=0;i<rawEvents.length;i++){
+    if((i&255)===0)yield;
+    const id=eventOrder?.[i]??i,event=rawEvents[id],t=event.timestamp-start;
+    if(t>=0&&t<=replay.duration){
+      const previous=events.at(-1);
+      if(previous&&(previous.t>t||(previous.t===t&&previous.id>id)))ordered=false;
+      events.push({event,id,t});
+    }
+  }
+  if(!ordered)events.sort((a,b)=>a.t-b.t||a.id-b.id);
   const pending = new Map(),
     channels = new Map(),
     observed = new Map();
@@ -58,7 +64,9 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
   // First pass measures this actor's successfully paired casts. A missing end must
   // never inherit the next encounter's completion, nor a different spell's proc.
   const starts = new Map();
-  for (const { event: e, id, t } of events) {
+  for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
+    const { event: e, id, t }=events[i];
     const k = key(e, "source"),
       spell = spellOf(e);
     if (e.type === "begincast") starts.set(k, { spell, t });
@@ -111,7 +119,9 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
     map.delete(k);
   };
   for (const a of actors.values()) if (!reused.has(a.key)) a.casts = [];
-  for (const { event: e, id, t } of events) {
+  for (let i=0;i<events.length;i++) {
+    if((i&255)===0)yield;
+    const { event: e, id, t }=events[i];
     const k = key(e, "source"),
       tk = key(e, "target"),
       a = actors.get(k),
@@ -184,7 +194,8 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
         const selfAura = channelAura(a, spell, t);
         const hintedEnd = Math.min(replay.duration, t + h.ms);
         const ownAura = selfAura && (metadata[spell]?.durationMs === -1 || selfAura.end <= hintedEnd) ? selfAura : null;
-        if(!ownAura&&h.ms>0&&k!==tk)targetAura??=targetedChannelAuras(events,metadata,replay.duration);
+        if(!ownAura&&h.ms>0&&k!==tk&&!targetAura)
+          targetAura=yield* targetedChannelAuraSteps(events,metadata,replay.duration);
         const victimAura = !ownAura&&h.ms>0&&k!==tk?targetAura(k,tk,spell,id,t,hintedEnd):null;
         const aura = ownAura??victimAura;
         const channel = {
@@ -215,11 +226,13 @@ export function reconstructCasts(replay, metadata = {}, reused = new Map()) {
 
 // Build once per import, not once per rendered frame. Each recorded direct result
 // is emitted once; periodic ticks remain available to charts without replaying a missile.
-export function buildVisualEvents(replay) {
+export function* buildVisualEventSteps(replay) {
   const auraTargets=recordedOssirianTargets(replay);
   const visual = [],
     launches = new Map(), areaPulses = new WeakSet();
-  for (const e of replay.combat) {
+  for (let i=0;i<replay.combat.length;i++) {
+    if((i&255)===0)yield;
+    const e=replay.combat[i];
     if (e.kind === "summon-cue") {
       visual.push(e);
     } else if (e.kind === "go") {
