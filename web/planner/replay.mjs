@@ -35,8 +35,14 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   };
   // A same-map zonechange can be a portal into another instance room. Its
   // timestamp is evidence of discontinuity, not evidence of a destination Z.
-  const positionBreaks = events.filter(e => e.type === 'zonechange' && Number.isFinite(e.timestamp))
-    .map(e => e.timestamp - fight.startTime).sort((a,b) => a-b);
+  const positionBreaks = [];
+  let chronological = true;
+  for (let i=0;i<events.length;i++) {
+    const event=events[i];
+    if (event.type==='zonechange' && Number.isFinite(event.timestamp)) positionBreaks.push(event.timestamp-fight.startTime);
+    if (i && !(event.timestamp-events[i-1].timestamp>=0)) chronological=false;
+  }
+  positionBreaks.sort((a,b)=>a-b);
   const tracks = new Map();
   function track(id, instance = 1) {
     const actor = catalog.get(id); if (!actor || id <= 0) return null;
@@ -44,42 +50,42 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
     if (!tracks.has(key)) tracks.set(key, reused.get(key) ?? { key, id, instance: instance || 1, name: actor.name, type: actor.type, friendly:actor.type==='Player'?undefined:ownerFriendly(actor), class: actor.subType, gameID: actor.gameID, displayID: models[actor.gameID]?.displayID ?? null, scale: models[actor.gameID]?.scale ?? 1, activity: [], samples: [], facings: [], deaths: [], lifeEvents: [], positionBreaks, firstSeen:Infinity, lastSeen:-Infinity });
     return tracks.get(key);
   }
-  for (const id of fight.friendlyPlayers ?? []) track(id);
-  if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
-  for (const event of [...events].sort((a,b)=>a.timestamp-b.timestamp)) {
-    if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
-    const t = event.timestamp - fight.startTime;
-    for (const side of ['source', 'target']) {
-      const actor = track(event[`${side}ID`], event[`${side}Instance`]);
-      if (!actor || reused.has(actor.key)) continue;
-      actor.firstSeen=Math.min(actor.firstSeen,t);actor.lastSeen=Math.max(actor.lastSeen,t);
-      if(actor.type==='Player')actor.activity.push(t);
-      // Current WCL events flatten resources onto the event: 1=source, 2=target.
-      const r = event[`${side}Resources`] ?? (event.resourceActor === (side === 'source' ? 1 : 2) ? event : null);
-      if (r && Number.isFinite(r.x) && Number.isFinite(r.y) && (r.x !== 0 || r.y !== 0)) {
-        // WCL replay map axes: horizontal=-WoW Y, vertical=WoW X.
-        const x = r.y / 100, y = -r.x / 100;
-        if (Math.abs(x) <= 20000 && Math.abs(y) <= 20000) {
-          actor.samples.push([t,x,y,null]);
-          // WCL rotates map facing clockwise in hundredths of radians. Convert
-          // back to WoW heading, matching the movement vectors in these tracks.
-          if(Number.isFinite(r.facing))actor.facings.push([t,-r.facing/100-Math.PI/2]);
-        }
-      }
-      // Some postmortem damage ticks retain 1 HP alongside positive overkill.
-      // That contradictory damage snapshot cannot establish a resurrection.
-      if(Number.isFinite(r?.hitPoints)&&r.hitPoints>=0&&r.maxHitPoints>0&&
-        !(side==='target'&&r.hitPoints>0&&event.type==='damage'&&event.overkill>0))
-        actor.deaths.push([t,r.hitPoints===0]);
-      if (side === 'target' && event.type === 'death') actor.deaths.push([t,true]);
-      if (side === 'target' && event.type === 'resurrect') actor.deaths.push([t,false]);
-      if (side === 'target' && actor.type !== 'Player') {
-        if (event.type === 'summon' || event.type === 'create') {
-          actor.lifeEvents.push([t,true]);
-          actor.deaths.push([t,false]);
-        } else if (event.type === 'destroy') actor.lifeEvents.push([t,false]);
+  function record(actor, event, t, isTarget, r) {
+    if (!actor || reused.has(actor.key)) return;
+    actor.firstSeen=Math.min(actor.firstSeen,t);actor.lastSeen=Math.max(actor.lastSeen,t);
+    if(actor.type==='Player')actor.activity.push(t);
+    if (r && Number.isFinite(r.x) && Number.isFinite(r.y) && (r.x !== 0 || r.y !== 0)) {
+      // WCL replay map axes: horizontal=-WoW Y, vertical=WoW X.
+      const x = r.y / 100, y = -r.x / 100;
+      if (Math.abs(x) <= 20000 && Math.abs(y) <= 20000) {
+        actor.samples.push([t,x,y,null]);
+        // WCL rotates map facing clockwise in hundredths of radians. Convert
+        // back to WoW heading, matching the movement vectors in these tracks.
+        if(Number.isFinite(r.facing))actor.facings.push([t,-r.facing/100-Math.PI/2]);
       }
     }
+    // Some postmortem damage ticks retain 1 HP alongside positive overkill.
+    // That contradictory damage snapshot cannot establish a resurrection.
+    if(Number.isFinite(r?.hitPoints)&&r.hitPoints>=0&&r.maxHitPoints>0&&
+      !(isTarget&&r.hitPoints>0&&event.type==='damage'&&event.overkill>0))
+      actor.deaths.push([t,r.hitPoints===0]);
+    if (isTarget && event.type === 'death') actor.deaths.push([t,true]);
+    if (isTarget && event.type === 'resurrect') actor.deaths.push([t,false]);
+    if (isTarget && actor.type !== 'Player') {
+      if (event.type === 'summon' || event.type === 'create') {
+        actor.lifeEvents.push([t,true]);
+        actor.deaths.push([t,false]);
+      } else if (event.type === 'destroy') actor.lifeEvents.push([t,false]);
+    }
+  }
+  for (const id of fight.friendlyPlayers ?? []) track(id);
+  if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
+  for (const event of chronological ? events : [...events].sort((a,b)=>a.timestamp-b.timestamp)) {
+    if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
+    const t = event.timestamp - fight.startTime;
+    // Current WCL events flatten resources onto the event: 1=source, 2=target.
+    record(track(event.sourceID,event.sourceInstance),event,t,false,event.sourceResources??(event.resourceActor===1?event:null));
+    record(track(event.targetID,event.targetInstance),event,t,true,event.targetResources??(event.resourceActor===2?event:null));
   }
   for (const actor of tracks.values()) {
     if(reused.has(actor.key))continue;
@@ -251,6 +257,12 @@ export function latestAt(samples,t) {
   let lo=0,hi=samples.length;while(lo<hi){const mid=(lo+hi)>>>1;if(samples[mid][0]<=t)lo=mid+1;else hi=mid;}
   return lo?samples[lo-1][1]:null;
 }
+function recordCombatResources(actor,t,r) {
+  if(!r)return;
+  if(Number.isFinite(r.hitPoints)&&r.maxHitPoints>0)actor.health.push([t,{current:r.hitPoints,max:r.maxHitPoints,percent:Math.max(0,Math.min(1,r.hitPoints/r.maxHitPoints))}]);
+  const p=r.classResources?.find(p=>p.max>0&&Number.isFinite(p.amount)&&p.type>=0&&p.type<=3);
+  if(p)actor.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
+}
 export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
   const {raw}=replay;
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
@@ -290,12 +302,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
     const spell=loggedSpell===-4?1:Math.max(0,loggedSpell);
     const ability=abilities.get(loggedSpell)??{name:`Spell ${spell}`,icon:null};
     if(source&&!reused.has(source.key)&&e.type==='cast'&&RACIAL_RACES[spell]){source.race=RACIAL_RACES[spell];source.raceSource=`Recorded ${ability.name}`;}
-    for(const [side,a] of [['source',source],['target',target]]){
-      if(!a||reused.has(a.key))continue;
-      const r=e[`${side}Resources`]??(e.resourceActor===(side==='source'?1:2)?e:null);
-      if(r&&Number.isFinite(r.hitPoints)&&r.maxHitPoints>0)a.health.push([t,{current:r.hitPoints,max:r.maxHitPoints,percent:Math.max(0,Math.min(1,r.hitPoints/r.maxHitPoints))}]);
-      const p=r?.classResources?.find(p=>p.max>0&&Number.isFinite(p.amount)&&p.type>=0&&p.type<=3);if(p)a.power.push([t,{current:Math.max(0,Math.min(p.max,p.amount)),max:p.max,type:p.type}]);
-    }
+    if(source&&!reused.has(source.key))recordCombatResources(source,t,e.sourceResources??(e.resourceActor===1?e:null));
+    if(target&&!reused.has(target.key))recordCombatResources(target,t,e.targetResources??(e.resourceActor===2?e:null));
     if(e.type==='resourcechange'&&target&&!reused.has(target.key)&&Number.isInteger(e.resourceChangeType)&&Number.isFinite(e.resourceChange)){
       const type=e.resourceChangeType,max=Number.isFinite(e.maxResourceAmount)&&e.maxResourceAmount>0?e.maxResourceAmount:null;
       target.resourceChanges.push([t,{type,gain:e.resourceChange,waste:Number.isFinite(e.waste)?e.waste:0,max,spell,name:ability.name,icon:ability.icon}]);

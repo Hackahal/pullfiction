@@ -32,6 +32,12 @@ export class IncrementalReplayNormalizer {
     items: Record<string, unknown>,
     spells: Record<string, unknown>,
   ): Replay {
+    // Whole-file replays cannot reuse streamed actor derivations. Avoid
+    // indexing every event or retaining the previous streamed snapshot.
+    if (!raw.stream) {
+      this.reset();
+      return enrichCombat(normalizeReplay(raw, models), items, spells);
+    }
     // Coverage changes do not change recorded actor content. The caller installs
     // current bufferedRanges independently, as in the ordinary normalization path.
     const header = JSON.stringify([
@@ -46,7 +52,6 @@ export class IncrementalReplayNormalizer {
     ]);
     const metadata = [models, items, spells];
     const canReuse =
-      !!raw.stream &&
       this.header === header &&
       metadata.every((value, i) => value === this.metadata[i]);
     const evidence = new Map<string, Evidence>();
