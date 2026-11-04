@@ -18,6 +18,11 @@ export interface ClientReader {
   map?(mapId: number, directory: string): Promise<LocalMap>;
   catalog(kind: CatalogKind): Promise<ModernCatalog>;
   appearance(request: Record<string, unknown>): Promise<any>;
+  /** Optional lower-priority path for speculative cache population. */
+  background?: Pick<
+    ClientReader,
+    "read" | "model" | "world" | "map" | "catalog"
+  >;
   close(): void;
 }
 export interface BrowserAssetBridge {

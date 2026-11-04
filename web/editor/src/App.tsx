@@ -1,4 +1,4 @@
-import { LoadingProgress } from "./LoadingProgress";
+import { LoadingProgress, PreparationProgress } from "./LoadingProgress";
 import { FramePerformanceCounter } from "./FramePerformance";
 import { FPS_STORAGE } from "./frame-performance";
 import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
@@ -1909,9 +1909,16 @@ function Viewport({
         {state.sceneReady && state.buffering && (
           <div className="scene-loading loading-surface" role="status">
             <strong>
-              {state.bufferError ?? "Loading this replay section…"}
+              {state.bufferError ??
+                state.bufferPreparation?.message ??
+                "Loading this replay section…"}
             </strong>
-            {!state.bufferError && <LoadingProgress label="Replay section" />}
+            {!state.bufferError &&
+              (state.bufferPreparation ? (
+                <PreparationProgress progress={state.bufferPreparation} />
+              ) : (
+                <LoadingProgress label="Replay section" />
+              ))}
             {state.bufferError && (
               <button onClick={() => controller.retryReplaySection()}>
                 Retry

@@ -628,7 +628,13 @@ impl ObjectFields {
             *self = delta;
         } else {
             for (index, value) in delta.raw_fields() {
-                let old = self.get_raw(index).unwrap_or(0);
+                let previous = self.get_raw(index);
+                if previous == Some(value) {
+                    continue;
+                }
+                // A missing zero still needs its presence bit, even though it
+                // emits no change notification.
+                let old = previous.unwrap_or(0);
                 if old != value {
                     changed(index, old, value);
                 }

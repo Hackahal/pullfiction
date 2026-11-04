@@ -190,7 +190,12 @@ export async function openHostedAssets(
   const fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
   const check = () => signal.throwIfAborted();
   const memory = new Map<string, Uint8Array>();
-  const pending = new Map<string, Promise<Uint8Array>>();
+  type ChunkJob = {
+    promise: Promise<Uint8Array>;
+    background: boolean;
+    start(): void;
+  };
+  const pending = new Map<string, ChunkJob>();
   let used = 0;
   const budget = options.memoryBytes ?? 64 * 1024 * 1024;
   const attempts = Math.max(1, Math.min(5, (options.retries ?? 2) + 1));
@@ -434,20 +439,23 @@ export async function openHostedAssets(
     check();
     return raw;
   }
-  // Bound downloads, decompression and cache writes across all concurrent files.
+  // Keep one slot free of speculative work and start queued demand first.
   let activeChunks = 0;
-  const chunkWaiters: (() => void)[] = [];
-  async function loadChunk(sha: string): Promise<Uint8Array> {
-    if (activeChunks >= 4)
-      await new Promise<void>((resolve) => chunkWaiters.push(resolve));
-    else activeChunks++;
-    try {
-      check();
-      return await loadChunkNow(sha);
-    } finally {
-      const next = chunkWaiters.shift();
-      if (next) next();
-      else activeChunks--;
+  let activeBackground = 0;
+  const chunkWaiters = new Set<ChunkJob>();
+  function drainChunks() {
+    while (activeChunks < 4) {
+      let selected: ChunkJob | undefined;
+      for (const job of chunkWaiters) {
+        if (!job.background) {
+          selected = job;
+          break;
+        }
+        if (!selected && activeBackground < 3) selected = job;
+      }
+      if (!selected) break;
+      chunkWaiters.delete(selected);
+      selected.start();
     }
   }
   async function loadChunkNow(sha: string): Promise<Uint8Array> {
@@ -493,7 +501,7 @@ export async function openHostedAssets(
     }
     return raw;
   }
-  function chunk(sha: string) {
+  function chunk(sha: string, background: boolean) {
     check();
     const hit = memory.get(sha);
     if (hit) {
@@ -501,12 +509,45 @@ export async function openHostedAssets(
       memory.set(sha, hit);
       return Promise.resolve(hit);
     }
-    let promise = pending.get(sha);
-    if (!promise) {
-      promise = loadChunk(sha).finally(() => pending.delete(sha));
-      pending.set(sha, promise);
+    let job = pending.get(sha);
+    if (!job) {
+      let resolve!: (bytes: Uint8Array) => void;
+      let reject!: (reason: unknown) => void;
+      job = {
+        promise: new Promise((yes, no) => {
+          resolve = yes;
+          reject = no;
+        }),
+        background,
+        start() {
+          const speculative = this.background;
+          activeChunks++;
+          if (speculative) activeBackground++;
+          void (async () => {
+            // Yield before checking cancellation so draining a closed reader
+            // cannot recurse synchronously through its queued jobs.
+            await Promise.resolve();
+            try {
+              check();
+              resolve(await loadChunkNow(sha));
+            } catch (error) {
+              reject(error);
+            } finally {
+              pending.delete(sha);
+              activeChunks--;
+              if (speculative) activeBackground--;
+              drainChunks();
+            }
+          })();
+        },
+      };
+      pending.set(sha, job);
+      chunkWaiters.add(job);
+    } else if (!background && chunkWaiters.has(job)) {
+      job.background = false;
     }
-    return promise;
+    drainChunks();
+    return job.promise;
   }
   let activeFiles = 0;
   let completedBytes = 0;
@@ -524,7 +565,10 @@ export async function openHostedAssets(
       activeFiles,
     });
   }
-  async function file(key: string): Promise<Uint8Array<ArrayBuffer>> {
+  async function file(
+    key: string,
+    background = false,
+  ): Promise<Uint8Array<ArrayBuffer>> {
     check();
     const entry = Object.hasOwn(manifest.files, key)
       ? manifest.files[key]
@@ -555,14 +599,16 @@ export async function openHostedAssets(
             : stage === "model"
               ? "Loading character and creature models"
               : "Loading textures and interface assets";
-    if (!activeFiles) {
-      completedBytes = 0;
-      totalBytes = 0;
-      lastProgress = -Infinity;
+    if (!background) {
+      if (!activeFiles) {
+        completedBytes = 0;
+        totalBytes = 0;
+        lastProgress = -Infinity;
+      }
+      activeFiles++;
+      totalBytes += entry.bytes;
+      reportProgress(label);
     }
-    activeFiles++;
-    totalBytes += entry.bytes;
-    reportProgress(label);
     try {
       const bytes = new Uint8Array(entry.bytes);
       let next = 0;
@@ -576,7 +622,7 @@ export async function openHostedAssets(
           offset += part.length;
           let raw: Uint8Array;
           try {
-            raw = await chunk(part.chunk);
+            raw = await chunk(part.chunk, background);
           } catch (error) {
             failed = true;
             throw error;
@@ -587,8 +633,10 @@ export async function openHostedAssets(
             raw.subarray(part.offset, part.offset + part.length),
             destination,
           );
-          completedBytes += part.length;
-          reportProgress(label);
+          if (!background) {
+            completedBytes += part.length;
+            reportProgress(label);
+          }
         }
       };
       // Workers copy directly into disjoint slices, retaining at most four
@@ -601,13 +649,17 @@ export async function openHostedAssets(
       check();
       return bytes;
     } finally {
-      activeFiles--;
-      reportProgress(label);
+      if (!background) {
+        activeFiles--;
+        reportProgress(label);
+      }
     }
   }
-  async function json(key: string) {
+  async function json(key: string, background = false) {
     const value = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(await file(key)),
+      new TextDecoder("utf-8", { fatal: true }).decode(
+        await file(key, background),
+      ),
     );
     if (!value || typeof value !== "object" || Array.isArray(value))
       throw new Error(`Invalid hosted JSON: ${key}`);
@@ -622,24 +674,27 @@ export async function openHostedAssets(
   let appearance:
     ((request: Record<string, unknown>) => Promise<any>) | undefined;
   let appearanceModule: Promise<any> | undefined;
-  return {
-    build: manifest.build,
+  const reads = (
+    background: boolean,
+  ): NonNullable<ClientReader["background"]> => ({
     read: async (resource) => ({
-      bytes: (await file(`read:${resourceKey(resource)}`)).buffer,
+      bytes: (await file(`read:${resourceKey(resource)}`, background)).buffer,
     }),
     model: async (resource) => ({
-      bytes: (await file(`model:${resourceKey(resource)}`)).buffer,
+      bytes: (await file(`model:${resourceKey(resource)}`, background)).buffer,
     }),
     world: async (resource) => ({
-      bytes: (await file(`world:${normalizeHostedResource(resource)}`)).buffer,
+      bytes: (
+        await file(`world:${normalizeHostedResource(resource)}`, background)
+      ).buffer,
     }),
     async catalog(kind: CatalogKind) {
-      const value = await json(`catalog:${kind}`);
+      const value = await json(`catalog:${kind}`, background);
       return value;
     },
     async map(mapId: number): Promise<LocalMap> {
       if (!integer(mapId, 0xffffffff)) throw new Error("Invalid hosted map ID");
-      const value = await json(`map:${mapId}`);
+      const value = await json(`map:${mapId}`, background);
       if (
         value.map !== mapId ||
         !Array.isArray(value.bounds) ||
@@ -650,6 +705,11 @@ export async function openHostedAssets(
         throw new Error("Invalid hosted map");
       return value;
     },
+  });
+  return {
+    build: manifest.build,
+    ...reads(false),
+    background: reads(true),
     async appearance(request) {
       check();
       const path = "/archive/hosted-appearance.mjs";

@@ -465,6 +465,7 @@ export interface Snapshot {
     completed: number;
     total: number;
   } | null;
+  bufferPreparation?: Snapshot["replayPreparation"];
   clientCanRemember: boolean;
   clientFolderName: string | null;
   clientRemembered: boolean;

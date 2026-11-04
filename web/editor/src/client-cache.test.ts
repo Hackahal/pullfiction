@@ -497,3 +497,54 @@ test("A partial prefetch does not mark its inventory complete", async () => {
   live.close();
   await cache.close();
 });
+
+test(
+  "a priority-aware reader receives same-file demand while prefetch is pending",
+  { timeout: 5000 },
+  async () => {
+    const cache = new IndexedClientAssetCache(
+      new IDBFactory(),
+      "priority-reader",
+    );
+    const f = fixture();
+    let started!: () => void, release!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    f.reader.background = {
+      read: f.reader.read,
+      model: f.reader.model,
+      catalog: async (kind) => {
+        if (kind === "world") {
+          started();
+          await gate;
+        }
+        return { kind };
+      },
+    };
+    const live = await cache.wrap(f.reader, () => assert.fail("live source"));
+    const abort = new AbortController();
+    const prefetch = live.prefetch({
+      raids: [],
+      signal: abort.signal,
+      ready: () => true,
+      progress: () => {},
+    });
+    try {
+      await waiting;
+      assert.deepEqual(await live.catalog("world"), {
+        schema: 1,
+        kind: "world",
+      });
+      assert.deepEqual(f.calls, ["catalog:world"]);
+    } finally {
+      release();
+      await prefetch;
+      live.close();
+      await cache.close();
+    }
+  },
+);

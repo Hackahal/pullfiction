@@ -715,6 +715,17 @@ fn merge_diff_reports_each_moved_dword_once_with_its_old_value() {
     assert_eq!(store.unit_flags(), 8);
 }
 
+#[test]
+fn merge_diff_retains_explicit_zero_without_notifying() {
+    let mut store = ObjectFields::from_pairs(&[(21, 7)]).into_created(ObjectType::Unit);
+    assert_eq!(store.unit_channel_object(), None);
+    store.merge_diff(ObjectFields::from_pairs(&[(20, 0), (21, 7)]), |_, _, _| {
+        panic!("an absent zero and an unchanged value are silent")
+    });
+    assert_eq!(store.unit_channel_object(), Some(7u64 << 32));
+    assert_eq!(store.get_raw(20), Some(0));
+}
+
 /// A re-create refreshes a live guid in place and notifies over both masks: an omitted field is
 /// an edge to 0.
 #[test]

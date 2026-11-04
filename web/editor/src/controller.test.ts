@@ -5251,3 +5251,93 @@ test("a queued scrub cannot seek a replacement replay", () => {
   assert.equal(c.getSnapshot().time, 0);
   c.stop();
 });
+
+test("a queued scrub survives a new snapshot from the same replay buffer", () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    replayBuffer: { active: boolean; close(): void };
+    patch(update: { replay: import("./types").Replay }): void;
+  };
+  internals.replayBuffer = { active: false, close() {} };
+  c.scrub(5000);
+  internals.patch({ replay: { ...c.getSnapshot().replay! } });
+  c.flushScrub();
+  assert.equal(c.getSnapshot().time, 5000);
+  c.stop();
+});
+
+test("a blocked replay section and buffered asset preparation report independently", async () => {
+  const { c } = fixture();
+  const internals = c as unknown as {
+    loadInitialReplaySection(
+      buffer: { ensure(time: number): Promise<void> },
+      time: number,
+    ): Promise<void>;
+    prepareReplayForInstall(
+      value: typeof raw,
+      signal: AbortSignal | undefined,
+      visible: () => boolean,
+      field: "bufferPreparation",
+    ): Promise<unknown>;
+    prepareFloorGeometry(): Promise<void>;
+    localFiles: object | null;
+    browserBridge: object | null;
+  };
+  let finishSection!: () => void;
+  const initial = internals.loadInitialReplaySection(
+    {
+      ensure: async (time) => {
+        assert.equal(time, 5000);
+        await new Promise<void>((resolve) => {
+          finishSection = resolve;
+        });
+      },
+    },
+    5000,
+  );
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  let finishGeometry!: (reason: Error) => void;
+  internals.localFiles = {};
+  internals.browserBridge = {};
+  internals.prepareFloorGeometry = () =>
+    new Promise<void>((_, reject) => {
+      finishGeometry = reject;
+    });
+  const background = internals.prepareReplayForInstall(
+    raw,
+    undefined,
+    () => false,
+    "bufferPreparation",
+  );
+  assert.equal(c.getSnapshot().bufferPreparation, undefined);
+  finishGeometry(Error("test background stop"));
+  await assert.rejects(background, /test background stop/);
+
+  const foreground = internals.prepareReplayForInstall(
+    raw,
+    undefined,
+    () => true,
+    "bufferPreparation",
+  );
+  assert.match(c.getSnapshot().bufferPreparation!.message, /raid geometry/);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  finishGeometry(Error("test foreground stop"));
+  await assert.rejects(foreground, /test foreground stop/);
+  assert.equal(c.getSnapshot().bufferPreparation, null);
+  assert.match(
+    c.getSnapshot().replayPreparation!.message,
+    /first replay section/,
+  );
+  finishSection();
+  await initial;
+  assert.equal(c.getSnapshot().replayPreparation, null);
+  internals.localFiles = null;
+  internals.browserBridge = null;
+  c.stop();
+});

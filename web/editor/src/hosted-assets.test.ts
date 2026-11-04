@@ -845,7 +845,9 @@ test("a terminal part failure surfaces before other transfers finish and stops a
     },
   });
   try {
-    await assert.rejects(reader.read("failed.bin"), { name: "AssetUnavailableError" });
+    await assert.rejects(reader.read("failed.bin"), {
+      name: "AssetUnavailableError",
+    });
     assert.deepEqual(started, [0, 1, 2, 3]);
   } finally {
     release();
@@ -853,4 +855,65 @@ test("a terminal part failure surfaces before other transfers finish and stops a
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.deepEqual(started, [0, 1, 2, 3]);
   reader.close();
+});
+
+test("stalled background chunks leave room for demand and queued shared chunks can be promoted", async () => {
+  const raws = Array.from({ length: 5 }, (_, i) => new Uint8Array([i]));
+  const zipped = raws.map((raw) => new Uint8Array(gzipSync(raw)));
+  const hashes = zipped.map(sha);
+  const f = fixture();
+  f.manifest.chunks = Object.fromEntries(
+    hashes.map((hash, i) => [hash, { bytes: zipped[i].length, rawBytes: 1 }]),
+  );
+  const entry = (indices: number[]) => ({
+    parts: indices.map((i) => ({ chunk: hashes[i], offset: 0, length: 1 })),
+    bytes: indices.length,
+    sha256: sha(new Uint8Array(indices)),
+  });
+  f.manifest.files = {
+    "read:bg.bin": entry([0, 1, 2, 3]),
+    "read:foreground.bin": entry([4]),
+    "read:shared.bin": entry([3]),
+  };
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started: number[] = [];
+  const progress: { totalBytes: number }[] = [];
+  const reader = await openHostedAssets(
+    "https://assets.example",
+    (value) => progress.push(value as { totalBytes: number }),
+    {
+      cache: null,
+      fetch: async (url) => {
+        if (String(url).endsWith("manifest.json"))
+          return Response.json(f.manifest);
+        const i = hashes.findIndex((hash) => String(url).includes(hash));
+        started.push(i);
+        if (i < 3) await gate;
+        return new Response(zipped[i]);
+      },
+    },
+  );
+  const background = reader.background!.read("bg.bin");
+  try {
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(started, [0, 1, 2]);
+    assert.equal(progress.length, 0);
+    const demand = reader.read("foreground.bin");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(started, [0, 1, 2, 4]);
+    assert.deepEqual([...new Uint8Array((await demand).bytes)], [4]);
+    const shared = reader.read("shared.bin");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(started, [0, 1, 2, 4, 3]);
+    assert.deepEqual([...new Uint8Array((await shared).bytes)], [3]);
+  } finally {
+    release();
+    await background;
+    reader.close();
+    assert.ok(progress.length > 0);
+    assert.ok(progress.every((event) => event.totalBytes === 1));
+  }
 });

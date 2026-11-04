@@ -1832,9 +1832,11 @@ export class EditorController {
               source.map,
               { signal: this.importAbort!.signal },
             );
+            if (request !== this.request)
+              throw new DOMException("Replay load superseded", "AbortError");
             buffered = this.makeReplayBuffer(header, true);
             this.loadingBuffer = buffered;
-            await buffered.ensure(project.time);
+            await this.loadInitialReplaySection(buffered, project.time);
             return buffered.snapshot();
           })()
         : await this.api(
@@ -4410,6 +4412,8 @@ export class EditorController {
   private pendingScrub: {
     time: number;
     replay: Snapshot["replay"];
+    buffer: ReplayBuffer | null;
+    epoch: number;
     plan: Snapshot["plan"];
   } | null = null;
   /** Coalesce high-frequency drag input to the latest target on the next frame. */
@@ -4418,6 +4422,8 @@ export class EditorController {
       this.pendingScrub = {
         time,
         replay: this.state.replay,
+        buffer: this.replayBuffer,
+        epoch: this.trajectoryEpoch,
         plan: this.state.plan,
       };
   }
@@ -4426,7 +4432,9 @@ export class EditorController {
     this.pendingScrub = null;
     if (
       pending &&
-      pending.replay === this.state.replay &&
+      pending.epoch === this.trajectoryEpoch &&
+      (pending.replay === this.state.replay ||
+        (pending.buffer !== null && pending.buffer === this.replayBuffer)) &&
       pending.plan === this.state.plan
     )
       this.seek(pending.time);
@@ -4894,10 +4902,11 @@ export class EditorController {
               map,
               { signal: this.importAbort!.signal },
             );
+            if (request !== this.request)
+              throw new DOMException("Replay load superseded", "AbortError");
             buffered = this.makeReplayBuffer(header, true);
             this.loadingBuffer = buffered;
-            this.patch({ status: "Loading the first replay section…" });
-            await buffered.ensure(0);
+            await this.loadInitialReplaySection(buffered, 0);
             return buffered.snapshot();
           })()
         : await this.api(
@@ -4936,6 +4945,20 @@ export class EditorController {
       if (request === this.request) this.patch({ busy: false });
     }
   }
+  private async loadInitialReplaySection(buffer: ReplayBuffer, time: number) {
+    const epoch = ++this.preparationEpochs.replayPreparation;
+    const message = "Loading the first replay section…";
+    this.patch({
+      status: message,
+      replayPreparation: { message, completed: 0, total: 0 },
+    });
+    try {
+      await buffer.ensure(time);
+    } finally {
+      if (epoch === this.preparationEpochs.replayPreparation)
+        this.patch({ replayPreparation: null });
+    }
+  }
   private makeReplayBuffer(raw: RawReplay, fresh = false) {
     return new ReplayBuffer(
       raw,
@@ -4962,12 +4985,23 @@ export class EditorController {
       analysisAvailable(replay, t, Math.min(replay.duration, t + 0.001))
     );
   }
-  private async refreshBuffered(buffer: ReplayBuffer) {
+  private async refreshBuffered(buffer: ReplayBuffer, request?: number) {
     const revision = buffer.revision;
     if (this.appliedBufferRevision === revision) return;
     const update = ++this.bufferUpdate;
     const raw = buffer.snapshot();
-    const prepared = await this.prepareReplayForInstall(raw);
+    const visible = () =>
+      request !== undefined &&
+      request === this.bufferRequest &&
+      buffer === this.replayBuffer &&
+      this.state.buffering === true &&
+      !this.state.busy;
+    const prepared = await this.prepareReplayForInstall(
+      raw,
+      undefined,
+      visible,
+      "bufferPreparation",
+    );
     if (this.replayBuffer !== buffer || update !== this.bufferUpdate) return;
     this.models = prepared.models;
     this.appliedBufferRevision = revision;
@@ -4992,7 +5026,8 @@ export class EditorController {
     }
     this.patch({ replay: prepared.replay, detail: nextDetail });
     this.render();
-    if (buffer.revision !== revision) await this.refreshBuffered(buffer);
+    if (buffer.revision !== revision)
+      await this.refreshBuffered(buffer, request);
   }
   private async ensureBuffered(time: number) {
     const buffer = this.replayBuffer;
@@ -5000,7 +5035,11 @@ export class EditorController {
     this.bufferTarget = time;
     const request = ++this.bufferRequest;
     if (!this.bufferedReady(time)) {
-      this.patch({ buffering: true, bufferError: null });
+      this.patch({
+        buffering: true,
+        bufferError: null,
+        bufferPreparation: null,
+      });
       this.engine?.replay_clock?.(this.clockTime, this.state.rate, false);
     }
     try {
@@ -5010,7 +5049,7 @@ export class EditorController {
       await buffer.ensure(time);
       if (this.replayBuffer !== buffer || request !== this.bufferRequest)
         return;
-      await this.refreshBuffered(buffer);
+      await this.refreshBuffered(buffer, request);
       if (this.replayBuffer !== buffer || request !== this.bufferRequest)
         return;
       this.patch({ buffering: false, bufferError: null });
@@ -5156,32 +5195,44 @@ export class EditorController {
       throw new Error("Too many actors in this report");
     return { replay, models };
   }
-  private replayPreparationEpoch = 0;
-  private async prepareReplayForInstall(raw: RawReplay, signal?: AbortSignal) {
+  private preparationEpochs = { replayPreparation: 0, bufferPreparation: 0 };
+  private async prepareReplayForInstall(
+    raw: RawReplay,
+    signal?: AbortSignal,
+    visible = () => true,
+    progressField:
+      "replayPreparation" | "bufferPreparation" = "replayPreparation",
+  ) {
     const prepared = this.replayForInstall(raw);
     if (this.localFiles && this.browserBridge) {
-      const epoch = ++this.replayPreparationEpoch;
+      const epoch = visible() ? ++this.preparationEpochs[progressField] : null;
+      const reportable = () =>
+        epoch !== null &&
+        epoch === this.preparationEpochs[progressField] &&
+        !signal?.aborted &&
+        visible();
       let lastProgress = -Infinity;
       const progress = (completed: number, total: number) => {
-        if (epoch !== this.replayPreparationEpoch || signal?.aborted) return;
+        if (!reportable()) return;
         const now = performance.now();
         if (completed !== total && now - lastProgress < 100) return;
         lastProgress = now;
         this.patch({
-          replayPreparation: {
+          [progressField]: {
             message: "Preparing appearances and icons",
             completed,
             total,
           },
         });
       };
-      this.patch({
-        replayPreparation: {
-          message: "Preparing raid geometry",
-          completed: 0,
-          total: 0,
-        },
-      });
+      if (reportable())
+        this.patch({
+          [progressField]: {
+            message: "Preparing raid geometry",
+            completed: 0,
+            total: 0,
+          },
+        });
       try {
         const { replay } = prepared;
         await this.prepareFloorGeometry(replay.map, signal);
@@ -5218,9 +5269,9 @@ export class EditorController {
           signal,
           progress,
         );
-        if (epoch === this.replayPreparationEpoch)
+        if (reportable())
           this.patch({
-            replayPreparation: {
+            [progressField]: {
               message: "Preparing spell effects",
               completed: 0,
               total: 0,
@@ -5244,8 +5295,8 @@ export class EditorController {
           this.notify(`Some spell effects are unavailable: ${message(error)}`);
         }
       } finally {
-        if (epoch === this.replayPreparationEpoch)
-          this.patch({ replayPreparation: null });
+        if (epoch !== null && epoch === this.preparationEpochs[progressField])
+          this.patch({ [progressField]: null });
       }
     }
     return prepared;
@@ -7295,18 +7346,19 @@ export class EditorController {
                   to: [movement.to[0], movement.to[1], toHeight],
                   from_inferred: movement.from[2] == null && seed === undefined,
                   to_inferred: movement.to[2] == null && seed === undefined,
-                  floor_candidates: geometry && actor
-                    ? this.movementFloors.candidates(
-                        actor,
-                        geometry,
-                        movement.from as number[],
-                        movement.to as number[],
-                        fromHeight,
-                        toHeight,
-                        movement.from[2] == null && seed === undefined,
-                        movement.to[2] == null && seed === undefined,
-                      )
-                    : [],
+                  floor_candidates:
+                    geometry && actor
+                      ? this.movementFloors.candidates(
+                          actor,
+                          geometry,
+                          movement.from as number[],
+                          movement.to as number[],
+                          fromHeight,
+                          toHeight,
+                          movement.from[2] == null && seed === undefined,
+                          movement.to[2] == null && seed === undefined,
+                        )
+                      : [],
                 }
               : null;
           // Unknown route endpoints are not permission to draw a line through walls.
