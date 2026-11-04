@@ -7,7 +7,7 @@ use benilla_formats::ParticleEmitterDef;
 use bevy::prelude::*;
 
 use super::buffer::{EffectQuads, EffectVertex, ParticleVertexData};
-use super::{rand01, Particle};
+use super::{Particle, rand01};
 
 /// The 128-entry twinkle noise table, uniform in [0, 1) like the reference's `0xcf58f0` (filled at
 /// startup by `0x706790`); a fixed seed, so the distribution matches but not the stream.
@@ -184,10 +184,8 @@ fn expand_quads_inner(
         let center = particle_center(frame, placement, p);
         // `size` is the half-extent (corners ±1.0, `0x7b2d0c`), times the gated twinkle and the
         // flagged instance scale; a twinkle range with min == max burns steady.
-        let (mut half, mut half_y) = (
-            size * def.twinkle(noise) * scale,
-            ol.size_y * def.twinkle(noise) * scale,
-        );
+        let twinkle = def.twinkle(noise);
+        let (mut half, mut half_y) = (size * twinkle * scale, ol.size_y * twinkle * scale);
         let mut modern_angle = None;
         if let Some(v) = def.modern_variation {
             // Stable birth samples derived from the particle's existing random seed.
@@ -204,14 +202,48 @@ fn expand_quads_inner(
             half_y *= (1. + y * v[1]).max(0.);
             modern_angle = Some(v[2] + sample(3) * v[3] + p.age * (v[4] + sample(4) * v[5]));
         }
+        let mut particle_data = ParticleVertexData::default();
+        let layers = if let Some(material) = def
+            .modern_material
+            .as_ref()
+            .filter(|_| material_out.is_some())
+        {
+            particle_data.material = [material.cutoff(u_age), material.shader_mode()];
+            material.multi_texture().then(|| {
+                // Adapted from WhiteoutFlakes particle2_emitter.cpp and
+                // particle_geometry.cpp, BSD-3-Clause. Each layer shares one
+                // symmetric velocity sample across U/V; origins are independent.
+                let sample = |salt: u32| {
+                    let mut seed = p.phase.wrapping_add(salt).wrapping_mul(0x9e3779b9) | 1;
+                    rand01(&mut seed)
+                };
+                let mut offsets = [0.; 4];
+                for layer in 0..2 {
+                    let variation = sample(10 + layer as u32 * 3) * 2. - 1.;
+                    for axis in 0..2 {
+                        let origin = sample(11 + layer as u32 * 3 + axis as u32);
+                        let speed = material.uv_velocity[layer][axis]
+                            + variation * material.uv_velocity_variation[layer][axis];
+                        offsets[layer * 2 + axis] = (origin + p.age * speed).rem_euclid(1.);
+                    }
+                }
+                (offsets, material.uv_scale)
+            })
+        } else {
+            None
+        };
         // Deviation: quads keep pool order within a cloud, without the reference's back-to-front
         // sort (`0x7b3a10`), because only an alpha-blended cloud can show the order; between
         // clouds, each draw record's anchor sorts it.
         let mut push_quad = |corners: [Vec3; 4], quv: [[f32; 2]; 4]| {
-            let lo: [f32; 2] =
-                std::array::from_fn(|i| quv.iter().map(|uv| uv[i]).fold(f32::INFINITY, f32::min));
-            let hi: [f32; 2] = std::array::from_fn(|i| {
-                quv.iter().map(|uv| uv[i]).fold(f32::NEG_INFINITY, f32::max)
+            let bounds = layers.map(|_| {
+                let lo: [f32; 2] = std::array::from_fn(|i| {
+                    quv.iter().map(|uv| uv[i]).fold(f32::INFINITY, f32::min)
+                });
+                let hi: [f32; 2] = std::array::from_fn(|i| {
+                    quv.iter().map(|uv| uv[i]).fold(f32::NEG_INFINITY, f32::max)
+                });
+                (lo, hi)
             });
             for (c, t) in corners.iter().zip(quv) {
                 out.push(EffectVertex {
@@ -220,34 +252,16 @@ fn expand_quads_inner(
                     color: rgba,
                 });
                 if let Some(extra) = material_out.as_deref_mut() {
-                    let mut data = ParticleVertexData::default();
-                    if let Some(material) = &def.modern_material {
-                        data.material = [material.cutoff(u_age), material.shader_mode()];
-                        if material.multi_texture() {
-                            // Adapted from WhiteoutFlakes particle2_emitter.cpp and
-                            // particle_geometry.cpp, BSD-3-Clause. Each layer shares one
-                            // symmetric velocity sample across U/V; origins are independent.
-                            let sample = |salt: u32| {
-                                let mut seed =
-                                    p.phase.wrapping_add(salt).wrapping_mul(0x9e3779b9) | 1;
-                                rand01(&mut seed)
+                    let mut data = particle_data;
+                    if let (Some((offsets, scales)), Some((lo, hi))) = (layers, bounds) {
+                        for axis in 0..2 {
+                            let corner = if hi[axis] > lo[axis] {
+                                (t[axis] - lo[axis]) / (hi[axis] - lo[axis])
+                            } else {
+                                0.
                             };
-                            for layer in 0..2 {
-                                let variation = sample(10 + layer as u32 * 3) * 2. - 1.;
-                                for axis in 0..2 {
-                                    let origin = sample(11 + layer as u32 * 3 + axis as u32);
-                                    let speed = material.uv_velocity[layer][axis]
-                                        + variation * material.uv_velocity_variation[layer][axis];
-                                    let at = (origin + p.age * speed).rem_euclid(1.);
-                                    let corner = if hi[axis] > lo[axis] {
-                                        (t[axis] - lo[axis]) / (hi[axis] - lo[axis])
-                                    } else {
-                                        0.
-                                    };
-                                    data.uv_layers[layer * 2 + axis] =
-                                        at + corner * material.uv_scale[layer];
-                                }
-                            }
+                            data.uv_layers[axis] = offsets[axis] + corner * scales[0];
+                            data.uv_layers[axis + 2] = offsets[axis + 2] + corner * scales[1];
                         }
                     }
                     extra.push(data);
@@ -329,7 +343,7 @@ fn expand_quads_inner(
 
 #[cfg(test)]
 mod tests {
-    use super::{expand_quads, spin_angle, CamBasis, DrawFrame, Particle};
+    use super::{CamBasis, DrawFrame, Particle, expand_quads, spin_angle};
     use bevy::prelude::{Quat, Transform, Vec3};
 
     #[test]
