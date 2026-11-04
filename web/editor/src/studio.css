@@ -383,19 +383,20 @@
   border-bottom: 1px solid var(--studio-edge);
 }
 
-.editor .page-properties .page-navigation {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
+.page-switch {
+  margin-top: 7px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.editor .page-navigation select {
+.page-switch > summary {
+  cursor: pointer;
+}
+
+.editor .page-switch select {
   width: 100%;
+  margin-top: 4px;
   background: var(--studio-toolbar);
-  font-weight: 650;
 }
 
 .page-source-facts {
@@ -1647,4 +1648,60 @@
     top: 1px;
     height: 21px;
   }
+}
+
+.edits-view-switch {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--studio-toolbar);
+  border-bottom: 1px solid var(--studio-edge);
+}
+
+.edits-view-switch button {
+  flex: 1;
+  min-height: 26px;
+  padding: 3px 8px;
+  color: var(--muted);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.edits-view-switch button[aria-pressed="true"] {
+  color: var(--text);
+  background: var(--accent-fill);
+  border-color: #52759e;
+}
+
+.edits-panel > .edits-page-view {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  padding: 0;
+}
+
+.page-inspector-title {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.run-navigator[data-workspace="analyse"] .run-lane-labels {
+  min-width: 0;
+}
+
+.run-navigator[data-workspace="analyse"] .layer-row-label input {
+  width: 0;
+}
+
+.edits-browser-view:not([hidden]) {
+  display: contents;
+}
+
+.edits-browser-view > .plan-add-actor {
+  margin: 0 10px 8px;
 }

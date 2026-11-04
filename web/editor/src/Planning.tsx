@@ -48,26 +48,7 @@ export function PageProperties({
       aria-label="Page properties"
     >
       <header className="page-identity">
-        <label className="page-navigation">
-          <span>Current page</span>
-          <select
-            aria-label="Current page"
-            value={step.id}
-            onChange={(e) => controller.setActiveStep(e.target.value, false)}
-          >
-            {state.plan.layers.map((layer) => (
-              <optgroup key={layer.id} label={layer.name}>
-                {state.plan.steps
-                  .filter((page) => page.layerId === layer.id)
-                  .map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.name}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <h3 className="page-inspector-title">{step.name || "Untitled page"}</h3>
         {step.snapshot && (
           <dl className="page-source-facts" aria-label="Recorded capture">
             <div>
@@ -81,6 +62,28 @@ export function PageProperties({
               <dd>{step.snapshot.actors.length.toLocaleString()}</dd>
             </div>
           </dl>
+        )}
+        {state.plan.steps.length > 1 && (
+          <details className="page-switch">
+            <summary>Switch page</summary>
+            <select
+              aria-label="Switch page"
+              value={step.id}
+              onChange={(e) => controller.setActiveStep(e.target.value, false)}
+            >
+              {state.plan.layers.map((layer) => (
+                <optgroup key={layer.id} label={layer.name}>
+                  {state.plan.steps
+                    .filter((page) => page.layerId === layer.id)
+                    .map((page) => (
+                      <option key={page.id} value={page.id}>
+                        {page.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </details>
         )}
       </header>
       <div className="page-name-fields">

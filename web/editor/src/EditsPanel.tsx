@@ -31,6 +31,7 @@ export function EditsPanel({
   const hasSelection = !!(
     state.selectedMarks.length || state.selectedActors.length
   );
+  const pageView = pageDetails && state.workspaceMode === "plan";
   const search = query.trim().toLowerCase();
   const matches = (name: string) => name.toLowerCase().includes(search);
   const outline = (
@@ -197,77 +198,102 @@ export function EditsPanel({
       aria-label="Edits panel"
       data-input-context="edits"
     >
-      <div className="edits-list-toolbar">
-        <input
-          className="edits-search"
-          ref={searchInput}
-          aria-label="Find edits"
-          placeholder="Find edits…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        {query && (
+      {state.workspaceMode === "plan" && (
+        <div
+          className="edits-view-switch"
+          role="group"
+          aria-label="Edits panel view"
+        >
           <button
-            aria-label="Clear edit search"
+            aria-pressed={pageView}
             onClick={() => {
-              setQuery("");
-              searchInput.current?.focus();
+              if (!pageView) onPageDetails?.(true);
             }}
           >
-            Clear
+            Page
           </button>
-        )}
-        <details className="edits-actions">
-          <summary aria-label="Edit actions" title="Edit actions">
-            <EditorIcon name="more" />
-          </summary>
-          <div>
-            <button
-              onClick={(e) => {
-                controller.selectAllMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Select all
-            </button>
-            <button
-              disabled={!state.selectedMarks.length}
-              onClick={(e) => {
-                controller.copyMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Copy drawings
-            </button>
-            <button
-              onClick={(e) => {
-                controller.pasteMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Paste drawings
-            </button>
-          </div>
-        </details>
-      </div>
-      {search && outline}
-      {!search && state.workspaceMode === "plan" && (
-        <AddPlanPlayer controller={controller} />
+          <button
+            aria-pressed={!pageView}
+            onClick={() => onPageDetails?.(false)}
+          >
+            Edits
+          </button>
+        </div>
       )}
-      {pageDetails && state.workspaceMode === "plan" ? (
-        <div className="edits-properties">
+      {pageView && (
+        <div className="edits-properties edits-page-view">
           <PageProperties state={state} controller={controller} />
         </div>
-      ) : hasSelection ? (
-        <div className="edits-properties">
-          <MarkEditor state={state} controller={controller} />
-        </div>
-      ) : (
-        <p className="edits-selection-hint">
-          Select an edit to change its properties.
-        </p>
       )}
-      {!search && outline}
+      <div className="edits-browser-view" hidden={pageView}>
+        <div className="edits-list-toolbar">
+          <input
+            className="edits-search"
+            ref={searchInput}
+            aria-label="Find edits"
+            placeholder="Find edits…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button
+              aria-label="Clear edit search"
+              onClick={() => {
+                setQuery("");
+                searchInput.current?.focus();
+              }}
+            >
+              Clear
+            </button>
+          )}
+          <details className="edits-actions">
+            <summary aria-label="Edit actions" title="Edit actions">
+              <EditorIcon name="more" />
+            </summary>
+            <div>
+              <button
+                onClick={(e) => {
+                  controller.selectAllMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Select all
+              </button>
+              <button
+                disabled={!state.selectedMarks.length}
+                onClick={(e) => {
+                  controller.copyMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Copy drawings
+              </button>
+              <button
+                onClick={(e) => {
+                  controller.pasteMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Paste drawings
+              </button>
+            </div>
+          </details>
+        </div>
+        {search && outline}
+        {!search && state.workspaceMode === "plan" && (
+          <AddPlanPlayer controller={controller} />
+        )}
+        {hasSelection ? (
+          <div className="edits-properties">
+            <MarkEditor state={state} controller={controller} />
+          </div>
+        ) : (
+          <p className="edits-selection-hint">
+            Select an edit to change its properties.
+          </p>
+        )}
+        {!search && outline}
+      </div>
     </section>
   );
 }

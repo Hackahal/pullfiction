@@ -26,7 +26,7 @@ test("Timeline page details can select empty and notes-only pages", () => {
     }),
   );
   const selector = markup.match(
-    /<select[^>]*aria-label="Current page"[^>]*>[\s\S]*?<\/select>/,
+    /<select[^>]*aria-label="Switch page"[^>]*>[\s\S]*?<\/select>/,
   )?.[0];
   assert.ok(selector);
   assert.match(selector, />Empty page<\/option>/);
@@ -80,8 +80,14 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
       p.startsWith('<section data-pane="playbook"'),
     )!;
   assert.match(edits, /^<section[^>]*display:flex/);
-  assert.match(edits, /aria-label="Saved edits"/);
-  assert.doesNotMatch(edits, /aria-label="Page layer"|aria-label="Pages"/);
+  assert.match(edits, /aria-label="Edits panel view"/);
+  assert.match(edits, /aria-pressed="true">Page<\/button>/);
+  assert.match(edits, /aria-label="Page layer"/);
+  assert.match(
+    edits,
+    /class="edits-browser-view" hidden=""[\s\S]*aria-label="Saved edits"/,
+  );
+  assert.doesNotMatch(edits, /aria-label="Pages"/);
   const properties = renderToString(
     createElement(PageProperties, {
       state: controller.getSnapshot(),

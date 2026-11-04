@@ -101,7 +101,7 @@ export function App({ controller }: { controller: EditorController }) {
       };
       return { analyse: read("analyse"), plan: read("plan") };
     }),
-    [pageDetails, setPageDetails] = useState(false),
+    [pageDetails, setPageDetails] = useState(state.workspaceMode === "plan"),
     [timelineRange, setTimelineRange] = useState<[number, number]>([0, 60000]),
     [source, setSource] = useState(
       "https://vanilla.warcraftlogs.com/reports/DyN7vF94QR8aj1Lc",
@@ -136,6 +136,21 @@ export function App({ controller }: { controller: EditorController }) {
     }
     setPageDetails(on);
   }
+  const previousProject = useRef(state.projectId);
+  useEffect(() => {
+    setPageDetails(state.workspaceMode === "plan");
+  }, [state.workspaceMode]);
+  useEffect(() => {
+    const previous = previousProject.current;
+    previousProject.current = state.projectId;
+    // Acquiring a project ID on the first save does not change the active view.
+    if (
+      previous &&
+      previous !== state.projectId &&
+      state.workspaceMode === "plan"
+    )
+      setPageDetails(true);
+  }, [state.projectId, state.workspaceMode]);
   useEffect(() => {
     if (
       state.selectedMarks.length ||
