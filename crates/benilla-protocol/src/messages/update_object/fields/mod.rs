@@ -384,6 +384,27 @@ fn descriptor_len(object_type: ObjectType) -> u16 {
 /// Mask words of the widest descriptor, `PLAYER_END`; no 1.12 object needs more.
 const MAX_MASK_WORDS: usize = 1282usize.div_ceil(32);
 
+/// Reusable storage for a values-only delta assembled from field pairs.
+#[derive(Default)]
+pub struct ObjectValuesScratch(ObjectFields);
+
+impl ObjectValuesScratch {
+    /// Overlay pairs in ascending field order, using the last value of
+    /// duplicates. An absent field set to zero gains presence without an edge.
+    pub fn apply(
+        &mut self,
+        store: &mut ObjectFields,
+        pairs: &[(u16, u32)],
+        changed: impl FnMut(u16, u32, u32),
+    ) {
+        self.0.present.fill(0);
+        for &(index, value) in pairs {
+            self.0.insert(index, value);
+        }
+        store.merge_values_diff(&self.0, changed);
+    }
+}
+
 impl ObjectFields {
     pub(super) fn read(r: &mut impl Read) -> io::Result<Self> {
         let amount_of_blocks = read_u8(r)?;
@@ -627,19 +648,27 @@ impl ObjectFields {
             }
             *self = delta;
         } else {
-            for (index, value) in delta.raw_fields() {
-                let previous = self.get_raw(index);
-                if previous == Some(value) {
-                    continue;
-                }
-                // A missing zero still needs its presence bit, even though it
-                // emits no change notification.
-                let old = previous.unwrap_or(0);
-                if old != value {
-                    changed(index, old, value);
-                }
-                self.insert(index, value);
+            self.merge_values_diff(&delta, changed);
+        }
+    }
+
+    fn merge_values_diff(
+        &mut self,
+        delta: &ObjectFields,
+        mut changed: impl FnMut(u16, u32, u32),
+    ) {
+        for (index, value) in delta.raw_fields() {
+            let previous = self.get_raw(index);
+            if previous == Some(value) {
+                continue;
             }
+            // A missing zero still needs its presence bit, even though it
+            // emits no change notification.
+            let old = previous.unwrap_or(0);
+            if old != value {
+                changed(index, old, value);
+            }
+            self.insert(index, value);
         }
     }
 

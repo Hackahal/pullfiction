@@ -10,7 +10,7 @@ use crate::{
     net,
 };
 use benilla_assets::coords::wow_to_bevy;
-use benilla_protocol::{messages::ObjectType, EntityKind, ObjectFields};
+use benilla_protocol::{messages::ObjectType, EntityKind};
 use benilla_world::{collision::WorldCollision, schedule::WorldStage, view::WorldCamera};
 use bevy::prelude::*;
 use std::{
@@ -734,6 +734,8 @@ pub(crate) fn apply(
                 false
             }
         });
+        let mut field_pairs = Vec::new();
+        let mut descriptor_scratch = benilla_protocol::ObjectValuesScratch::default();
         for unit in batch {
             if !unit.player || unit.dead || unit.position.is_none() || unit.movement.is_none() {
                 routes.remove(&unit.key);
@@ -954,7 +956,9 @@ pub(crate) fn apply(
                 unit.health.unwrap_or(max)
             };
             let power_type = unit.power_type.min(4);
-            let mut fields = vec![
+            let fields = &mut field_pairs;
+            fields.clear();
+            fields.extend([
                 (4, unit.scale.to_bits()),
                 (22, health),
                 (28, max),
@@ -976,7 +980,7 @@ pub(crate) fn apply(
                         | (u32::from(unit.look[3]) << 24),
                 ),
                 (194, u32::from(unit.look[4]) | (2 << 24)),
-            ];
+            ]);
             for ty in 0..5u8 {
                 fields.push((
                     23 + u16::from(ty),
@@ -1122,9 +1126,10 @@ pub(crate) fn apply(
                             ),
                         );
                     }
-                    for (field, old, new) in crate::planner_replay_identity::write_replay_fields(
+                    for (field, old, new) in crate::planner_replay_identity::write_replay_value_pairs(
                         &mut store,
-                        ObjectFields::from_pairs(&fields),
+                        &mut descriptor_scratch,
+                        fields,
                     ) {
                         changes.write(net::FieldChanged {
                             at: crate::lanes::stamp(),
@@ -1245,7 +1250,7 @@ pub(crate) fn apply(
                     net::Guid(guid),
                     net::ObjectStore(crate::planner_replay_identity::initial_fields(
                         unit.player,
-                        &fields,
+                        fields,
                     )),
                     transform,
                     visibility,

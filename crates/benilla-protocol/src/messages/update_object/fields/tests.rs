@@ -727,6 +727,33 @@ fn merge_diff_retains_explicit_zero_without_notifying() {
 }
 
 #[test]
+fn reusable_values_preserve_ascending_edges_and_drop_stale_scratch_fields() {
+    let mut scratch = ObjectValuesScratch::default();
+    let initial = ObjectFields::from_pairs(&[(22, 100)]).into_created(ObjectType::Player);
+    let mut reusable = initial.clone();
+    let mut expected = initial;
+    for pairs in [
+        &[(477, 3), (22, 50), (477, 8), (20, 0), (21, 9)][..],
+        &[(477, 4), (21, 0)][..],
+        &[(22, 0), (477, 0), (477, 4)][..],
+        &[],
+    ] {
+        let mut actual_edges = Vec::new();
+        let mut expected_edges = Vec::new();
+        scratch.apply(&mut reusable, pairs, |i, old, new| actual_edges.push((i, old, new)));
+        expected.merge_diff(ObjectFields::from_pairs(pairs), |i, old, new| {
+            expected_edges.push((i, old, new))
+        });
+        assert_eq!(actual_edges, expected_edges);
+        assert_eq!(
+            reusable.raw_fields().collect::<Vec<_>>(),
+            expected.raw_fields().collect::<Vec<_>>()
+        );
+        assert_eq!(reusable.created_as(), Some(ObjectType::Player));
+    }
+}
+
+#[test]
 fn channel_object_equality_requires_both_explicit_dwords() {
     let absent = ObjectFields::from_pairs(&[]).into_created(ObjectType::Unit);
     assert!(!absent.has_channel_object_fields(None));
