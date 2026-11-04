@@ -2,7 +2,18 @@ import { useState } from "react";
 import { MarkEditor, AddPlanPlayer, PageProperties } from "./Planning";
 import { EditorIcon } from "./EditorIcon";
 import type { EditorController } from "./controller";
-import type { Snapshot } from "./types";
+import type { PlannedActor, Snapshot } from "./types";
+function placementStatus(actor: PlannedActor) {
+  if (!actor.recorded) return "Added";
+  if (
+    actor.recorded.some((value, axis) => value !== actor.position[axis]) ||
+    (actor.recordedFacing !== undefined &&
+      actor.recordedFacing !== actor.facing)
+  )
+    return "Adjusted";
+  return "Captured";
+}
+
 export function EditsPanel({
   state,
   controller,
@@ -92,6 +103,43 @@ export function EditsPanel({
               matches(a.name),
             );
           if (!marks.length && !actors.length) return null;
+          const captured = actors.filter(
+            (actor) => placementStatus(actor) === "Captured",
+          );
+          const edits = actors.filter(
+            (actor) => placementStatus(actor) !== "Captured",
+          );
+          const placement = (actor: PlannedActor) => {
+            const selected =
+              page.id === state.activeStep &&
+              state.selectedActors.includes(actor.key);
+            return (
+              <button
+                key={actor.key}
+                className={`edit-outline-row actor-edit ${selected ? "active" : ""}`}
+                aria-pressed={selected}
+                onClick={(e) => {
+                  controller.revealActorEdit(
+                    actor.key,
+                    page.id,
+                    e.shiftKey || e.ctrlKey || e.metaKey,
+                  );
+                }}
+              >
+                <EditorIcon
+                  name={
+                    actor.class === "Boss"
+                      ? "skull"
+                      : actor.type === "Player"
+                        ? "person"
+                        : "creature"
+                  }
+                />
+                <span>{actor.name}</span>
+                <small>{placementStatus(actor)}</small>
+              </button>
+            );
+          };
           return (
             <section key={page.id}>
               <div className="edits-page-heading">
@@ -151,31 +199,27 @@ export function EditsPanel({
                   </button>
                 </div>
               ))}
-              {actors.map((actor) => (
-                <button
-                  key={actor.key}
-                  className={`edit-outline-row actor-edit ${state.selectedActors.includes(actor.key) ? "active" : ""}`}
-                  onClick={(e) => {
-                    controller.revealActorEdit(
-                      actor.key,
-                      page.id,
-                      e.shiftKey || e.ctrlKey || e.metaKey,
-                    );
-                  }}
-                >
-                  <EditorIcon
-                    name={
-                      actor.class === "Boss"
-                        ? "skull"
-                        : actor.type === "Player"
-                          ? "person"
-                          : "creature"
-                    }
-                  />
-                  <span>{actor.name}</span>
-                  <small>Placement</small>
-                </button>
-              ))}
+              {edits.map(placement)}
+              {query.trim()
+                ? captured.map(placement)
+                : captured.length > 0 && (
+                    <details
+                      className="captured-placements"
+                      open={
+                        page.id === state.activeStep &&
+                        captured.some((actor) =>
+                          state.selectedActors.includes(actor.key),
+                        )
+                          ? true
+                          : undefined
+                      }
+                    >
+                      <summary>
+                        Captured positions <span>{captured.length}</span>
+                      </summary>
+                      {captured.map(placement)}
+                    </details>
+                  )}
             </section>
           );
         })}

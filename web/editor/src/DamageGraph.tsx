@@ -264,6 +264,29 @@ export function DamageGraph({
   const selectedPlayers = config.scope === "players" ? config.players : [];
   const [start, end] = bounds;
   const duration = replay?.duration ?? 1;
+  const plottedEncounter =
+    config.window === "encounter"
+      ? (summaryRange.chapter ??
+        replay?.chapters.find(
+          (chapter) => chapter.start === start && chapter.end === end,
+        ))
+      : undefined;
+  const plotScope = brush
+    ? "Selected range"
+    : plottedEncounter
+      ? plottedEncounter.name
+      : config.window === "encounter" &&
+          !replay?.chapters.length &&
+          replay?.fight.encounterID
+        ? replay.fight.name
+        : config.window === "10" ||
+            config.window === "30" ||
+            config.window === "60"
+          ? `${config.window}s view`
+          : start <= 0 && end >= duration
+            ? "Full run"
+            : "Timeline range";
+
   const source = analysisDataIdentity(replay);
   const neededRanges = useMemo<[number, number][]>(() => {
     if (!replay) return [];
@@ -970,11 +993,14 @@ export function DamageGraph({
           </div>
         </PanelSettings>
       </div>
-      <div className="chart-summary">
-        <span>
-          {preciseTime(start)} – {preciseTime(end)}
+      <div className="chart-summary chart-plot-summary" aria-label="Plot range">
+        <div className="chart-range-label">
+          <strong>Plot · {plotScope}</strong>
+          <span>
+            {preciseTime(start)} – {preciseTime(end)}
+          </span>
           {brush && <button onClick={() => setBrush(null)}>Clear range</button>}
-        </span>
+        </div>
         <span>
           {Math.round(result?.total ?? 0).toLocaleString()}
           {replay?.raw.stream && !streamComplete(replay.raw)
@@ -1132,7 +1158,7 @@ export function DamageGraph({
                 x2={clock / 1000}
                 y1="0"
                 y2={height}
-                stroke="#e5c67e"
+                stroke="var(--accent)"
               />
             )}
             {hover &&
@@ -1231,10 +1257,10 @@ export function DamageGraph({
             aria-label="Table time basis"
             title={`${preciseTime(summaryRange.start)} – ${preciseTime(summaryRange.end)} · ${elapsed.toLocaleString(undefined, { maximumFractionDigits: 3 })}s${config.window === "elapsed" && !brush ? " combat time" : " elapsed"}`}
           >
-            <span>
-              {summaryRange.label}
+            <strong>
+              Table · {summaryRange.label}
               {summaryRange.between ? " · Finished" : ""}
-            </span>
+            </strong>
             <span>
               {elapsed.toLocaleString(undefined, { maximumFractionDigits: 3 })}s
               {config.window === "elapsed" && !brush ? " combat" : ""}

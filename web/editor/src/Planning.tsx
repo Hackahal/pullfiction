@@ -200,13 +200,16 @@ export function PageProperties({
           </details>
         </>
       )}
-      <textarea
-        aria-label="Step notes"
-        placeholder="Pull instructions, assignments…"
-        value={step.notes}
-        maxLength={4000}
-        onChange={(e) => controller.updateStep({ notes: e.target.value })}
-      />
+      <label className="page-notes">
+        Notes
+        <textarea
+          aria-label="Step notes"
+          placeholder="Pull instructions, assignments…"
+          value={step.notes}
+          maxLength={4000}
+          onChange={(e) => controller.updateStep({ notes: e.target.value })}
+        />
+      </label>
       <div className="planning-actions">
         <button
           title="Move step earlier"
@@ -329,6 +332,14 @@ export function MarkEditor({
       {(selected || selectedActor || multi) && (
         <details className="planning-advanced">
           <summary>Position and transform</summary>
+          {selectedActor && state.compareRecorded && (
+            <p className="placement-source">
+              {selectedActor.name}:{" "}
+              {selectedActor.recorded
+                ? "recorded position"
+                : "no recorded position · showing planned placement"}
+            </p>
+          )}
           {selectedActor && (
             <div className="plan-form-row">
               {([0, 1] as const).map((axis) => (
@@ -336,7 +347,11 @@ export function MarkEditor({
                   {axis === 0 ? "X" : "Y"} yd
                   <ExactNumber
                     label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
-                    value={selectedActor.position[axis]}
+                    value={
+                      (state.compareRecorded
+                        ? selectedActor.recorded
+                        : undefined)?.[axis] ?? selectedActor.position[axis]
+                    }
                     onCommit={(n) => controller.positionActors(axis, n)}
                     disabled={state.compareRecorded}
                   />

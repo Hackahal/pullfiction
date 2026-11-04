@@ -142,7 +142,8 @@ test("Planning without a log displays ordered layer pages on the run navigator a
   assert.match(markup, /aria-label="Plan steps"/);
   assert.match(markup, /Layer 1 name/);
   assert.match(markup, /Layer 2 name/);
-  assert.match(markup, /\+ Layer/);
+  assert.match(markup, /aria-label="Timeline options"/);
+  assert.match(markup, />Add layer<\/button>/);
   assert.doesNotMatch(
     markup,
     /class="plan-timeline"|class="run-ruler"|Step start seconds/,

@@ -445,3 +445,205 @@
 .editor .resource-bars .focus-bar > :is(span, strong) {
   color: #f2f4f6;
 }
+
+.editor .transport {
+  gap: 4px 8px;
+}
+
+.transport :is(.transport-core, .transport-options, .transport-actions) {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.transport .transport-core {
+  flex-wrap: wrap;
+}
+
+.transport .transport-context {
+  min-width: 0;
+}
+
+.transport .transport-context select {
+  width: 100%;
+  max-width: min(21ch, 100%);
+}
+
+.transport .transport-actions {
+  margin-inline-start: auto;
+  justify-content: flex-end;
+}
+
+.editor .transport .play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.playback-clocks .timecode b {
+  min-width: 8ch;
+}
+
+.editor .scene-chrome {
+  background: var(--studio-panel);
+}
+
+.editor .panel-settings-trigger[aria-expanded="true"] {
+  background: #ffffff0e;
+  border-color: #555960;
+  color: var(--text);
+}
+
+.page-name-fields label,
+.page-notes {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.page-notes {
+  display: grid;
+  gap: 4px;
+}
+
+.run-timeline-options {
+  display: grid;
+  gap: 10px;
+}
+
+.run-timeline-options fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--studio-edge);
+}
+
+.run-timeline-options legend {
+  color: var(--muted);
+}
+
+.run-timeline-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run-timeline-options > button {
+  justify-self: start;
+}
+
+.timeline-zoom-controls {
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.run-mobs .run-segment b {
+  position: static;
+  flex-shrink: 0;
+  background: #15181d;
+}
+
+.recorded-view-label {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #d2e7ff;
+  background: var(--accent-fill);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recorded-view-label > span {
+  color: #b7c9df;
+  font-weight: 400;
+}
+
+.editor .run-navigator-tools .panel-settings-trigger.has-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.chart-range-label {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.editor .chart-summary {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.editor .chart-summary strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.editor .chart-footnote {
+  gap: 6px 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--studio-edge);
+  color: var(--muted);
+}
+
+@container chart-dock (max-width: 699px) {
+  .editor .chart-plot {
+    flex: 1 1 110px;
+    min-height: 96px;
+  }
+
+  .editor .chart-table {
+    flex: 1 1 150px;
+    min-height: 116px;
+    max-height: none;
+  }
+}
+
+.captured-placements {
+  margin: 3px 0 6px;
+  border-top: 1px solid var(--studio-edge);
+}
+
+.captured-placements > summary {
+  padding: 7px 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.captured-placements > summary > span {
+  margin-inline-start: 4px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor .actor-edit[aria-pressed="true"] {
+  background: var(--accent-fill);
+  border-color: #52759e;
+  color: var(--text);
+}
+
+.page-properties {
+  container-type: inline-size;
+}
+
+@container (min-width: 300px) {
+  .page-name-fields {
+    grid-template-columns: minmax(0, 2fr) minmax(110px, 1fr);
+  }
+
+  .page-name-fields :is(input, select) {
+    width: 100%;
+  }
+}
+
+.placement-source {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}

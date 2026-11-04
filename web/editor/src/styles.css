@@ -2745,13 +2745,6 @@ a {
   border: 1px solid #8c784a;
   border-radius: 3px;
 }
-.snapshot-source {
-  color: var(--muted);
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 11px;
-}
 .actor-plan-list {
   max-height: 190px;
   overflow: auto;
@@ -3773,23 +3766,7 @@ select:hover:not(:disabled) {
 .page-properties .planning-actions button {
   flex: 1 1 auto;
 }
-.run-plan-options {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  color: var(--text);
-  border: 1px solid var(--line);
-  width: 240px;
-  padding: 10px;
-  background: #202326;
-  box-shadow: 0 4px 16px #0009;
-}
-.run-plan-options label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-}
+
 .edits-panel > .plan-add-actor {
   margin: 0 10px 8px;
 }

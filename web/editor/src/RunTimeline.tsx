@@ -1,7 +1,8 @@
+import { PanelSettings } from "./PanelSettings";
 import { GameIcon } from "./GameIcon";
 import { replayIdentity } from "./replay-buffer";
 import { LayerHeaders, LayerTracks } from "./LayerTracks";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
@@ -29,9 +30,6 @@ export function RunTimeline({
   const duration = controller.duration();
   const pull = replay && pullAt(replay, state.time);
   const host = useRef<HTMLDivElement>(null);
-  const optionsId = useId(),
-    optionsMenu = useRef<HTMLDivElement>(null);
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const drag = useRef<{
     x: number;
     start: number;
@@ -161,29 +159,6 @@ export function RunTimeline({
             <span>
               {time(view.start)} – {time(view.start + view.span)}
             </span>
-            <button aria-pressed={follow} onClick={() => setFollow(!follow)}>
-              Follow
-            </button>
-            <button
-              aria-label="Zoom out raid scrubber"
-              onClick={() => zoom(0.5)}
-            >
-              −
-            </button>
-            <input
-              aria-label="Raid scrubber zoom"
-              type="range"
-              min={0}
-              max={Math.log2(Math.max(1, duration / Math.min(1000, duration)))}
-              step={0.1}
-              value={Math.log2(duration / view.span)}
-              onChange={(e) =>
-                zoom(view.span / (duration / 2 ** Number(e.target.value)))
-              }
-            />
-            <button aria-label="Zoom in raid scrubber" onClick={() => zoom(2)}>
-              +
-            </button>
             <button
               disabled={!pull}
               title="Zoom this timeline to the current pull without moving the playhead"
@@ -236,76 +211,97 @@ export function RunTimeline({
             >
               Page details
             </button>
-            <button
-              aria-expanded={optionsOpen}
-              aria-controls={optionsId}
-              onClick={(e) => {
-                const menu = optionsMenu.current;
-                if (!menu) return;
-                if (menu.matches(":popover-open")) {
-                  menu.hidePopover();
-                  return;
-                }
-                const r = e.currentTarget.getBoundingClientRect();
-                menu.showPopover();
-                menu.style.left = `${Math.max(8, Math.min(window.innerWidth - menu.offsetWidth - 8, r.left))}px`;
-                menu.style.top = `${Math.max(8, r.top - menu.offsetHeight - 4)}px`;
-              }}
-            >
-              Plan options
-            </button>
-            <div
-              id={optionsId}
-              ref={optionsMenu}
-              popover="auto"
-              className="run-plan-options"
-              onToggle={(e) =>
-                setOptionsOpen(e.currentTarget.matches(":popover-open"))
-              }
-            >
-              <label>
-                <input
-                  type="checkbox"
-                  checked={state.followSteps}
-                  onChange={(e) =>
-                    controller.setStepView({ followSteps: e.target.checked })
-                  }
-                />
-                Use replay timing
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={state.showAllSteps}
-                  onChange={(e) =>
-                    controller.setStepView({ showAllSteps: e.target.checked })
-                  }
-                />
-                Preview all pages
-              </label>
-              <button
-                disabled={!replay}
-                onClick={() => {
-                  controller.stepsFromLog();
-                  optionsMenu.current?.hidePopover();
-                }}
-              >
-                Create pages from log
-              </button>
-            </div>
           </>
         )}
         <div className="menu-spacer" />
-        {replay && (
-          <button
-            aria-pressed={layerSnap}
-            onClick={() => setLayerSnap((v) => !v)}
-            title="Snap to playhead, encounters and other page edges"
-          >
-            Snap
-          </button>
-        )}
-        <button onClick={() => controller.addLayer()}>+ Layer</button>
+        <PanelSettings title="Timeline options" label="Options" width={320}>
+          <div className="run-timeline-options">
+            {replay && (
+              <>
+                <fieldset>
+                  <legend>Timeline zoom</legend>
+                  <div className="timeline-zoom-controls">
+                    <button
+                      aria-label="Zoom out raid scrubber"
+                      onClick={() => zoom(0.5)}
+                    >
+                      −
+                    </button>
+                    <input
+                      aria-label="Raid scrubber zoom"
+                      type="range"
+                      min={0}
+                      max={Math.log2(
+                        Math.max(1, duration / Math.min(1000, duration)),
+                      )}
+                      step={0.1}
+                      value={Math.log2(duration / view.span)}
+                      onChange={(e) =>
+                        zoom(
+                          view.span / (duration / 2 ** Number(e.target.value)),
+                        )
+                      }
+                    />
+                    <button
+                      aria-label="Zoom in raid scrubber"
+                      onClick={() => zoom(2)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </fieldset>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={follow}
+                    onChange={(e) => setFollow(e.target.checked)}
+                  />
+                  Follow playhead
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={layerSnap}
+                    onChange={(e) => setLayerSnap(e.target.checked)}
+                  />
+                  Snap pages to playhead and edges
+                </label>
+              </>
+            )}
+            {state.workspaceMode === "plan" && (
+              <fieldset>
+                <legend>Plan pages</legend>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={state.followSteps}
+                    onChange={(e) =>
+                      controller.setStepView({ followSteps: e.target.checked })
+                    }
+                  />
+                  Use replay timing
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={state.showAllSteps}
+                    onChange={(e) =>
+                      controller.setStepView({ showAllSteps: e.target.checked })
+                    }
+                  />
+                  Preview all pages
+                </label>
+                <button
+                  disabled={!replay}
+                  onClick={() => controller.stepsFromLog()}
+                >
+                  Create pages from log
+                </button>
+              </fieldset>
+            )}
+            <button onClick={() => controller.addLayer()}>Add layer</button>
+          </div>
+        </PanelSettings>
       </div>
       <div className="run-timeline-workspace">
         <div className="run-navigator-body">
@@ -476,11 +472,13 @@ export function RunTimeline({
                       }}
                     />
                   ))}
-                  {ticks.map((t) => (
-                    <span key={t} style={{ left: `${percent(t)}%` }}>
-                      {time(t)}
-                    </span>
-                  ))}
+                  {ticks
+                    .filter((t) => ((100 - percent(t)) / 100) * width >= 32)
+                    .map((t) => (
+                      <span key={t} style={{ left: `${percent(t)}%` }}>
+                        {time(t)}
+                      </span>
+                    ))}
                 </div>
                 <div className="run-bosses">
                   {segments.bosses

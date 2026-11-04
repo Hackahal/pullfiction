@@ -42,13 +42,14 @@ export function useGameIcon(request: IconRequest, enabled = true) {
     ? result.url
     : schematicIcon;
 }
-export function useGameIconImage(request: IconRequest) {
+export function useGameIconImage(request: IconRequest, showPlaceholder = true) {
   const url = useGameIcon(request);
   const [result, setResult] = useState<{
     url: string;
     image: HTMLImageElement;
   }>();
   useEffect(() => {
+    if (!showPlaceholder && url === schematicIcon) return;
     let active = true;
     const image = new Image();
     image.onload = () => {
@@ -64,8 +65,10 @@ export function useGameIconImage(request: IconRequest) {
       image.onload = null;
       image.onerror = null;
     };
-  }, [url]);
-  return result?.url === url ? result.image : undefined;
+  }, [url, showPlaceholder]);
+  return result?.url === url && (showPlaceholder || url !== schematicIcon)
+    ? result.image
+    : undefined;
 }
 export function GameIcon({
   name,
