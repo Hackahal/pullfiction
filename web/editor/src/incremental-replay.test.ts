@@ -234,3 +234,37 @@ test("source-free victim aura removal rebuilds its targeted channel caster while
     untouched,
   );
 });
+
+test("sliced streamed refresh preserves exact output and reuse and cannot publish a replaced generation", async () => {
+  const cache = new IncrementalReplayNormalizer();
+  const first = raw([
+    event(100, 1, "begincast"),
+    event(1100, 1, "cast"),
+    event(2000, 2),
+  ]);
+  const initial = cache.normalize(first, models, items, spells);
+  const changed = raw([...first.events, event(60000, 2)]);
+  const old = cache.normalizeSliced(changed, models, items, spells, () => true);
+  const latest = raw([...first.events, event(65000, 2)]);
+  const next = cache.normalizeSliced(latest, models, items, spells, () => true);
+  await assert.rejects(old, { name: "AbortError" });
+  const actual = await next;
+  assert.deepEqual(
+    actual,
+    enrichCombat(normalizeReplay(latest, models), items, spells),
+  );
+  assert.equal(actual.actors[0], initial.actors[0]);
+  const stopped = cache.normalizeSliced(
+    changed,
+    models,
+    items,
+    spells,
+    () => true,
+  );
+  cache.reset();
+  await assert.rejects(stopped, { name: "AbortError" });
+  assert.notEqual(
+    cache.normalize(latest, models, items, spells).actors[0],
+    actual.actors[0],
+  );
+});

@@ -200,7 +200,16 @@ export class EditorController {
   private loadingBuffer: ReplayBuffer | null = null;
   private bufferRestore: Promise<void> = Promise.resolve();
   private bufferRequest = 0;
-  private bufferUpdate = 0;
+  private bufferRefreshEpoch = 0;
+  private bufferRefresh?: {
+    buffer: ReplayBuffer;
+    revision: number;
+    request?: number;
+    promise: Promise<void>;
+    processing?: boolean;
+    progressEpoch?: number;
+    assetProgress?: () => void;
+  };
   private appliedBufferRevision = -1;
   private bufferTarget = 0;
   private prefetchAfter = 0;
@@ -5047,24 +5056,139 @@ export class EditorController {
       analysisAvailable(replay, t, Math.min(replay.duration, t + 0.001))
     );
   }
-  private async refreshBuffered(buffer: ReplayBuffer, request?: number) {
-    const revision = buffer.revision;
-    if (this.appliedBufferRevision === revision) return;
-    const update = ++this.bufferUpdate;
-    const raw = buffer.snapshot();
-    const visible = () =>
-      request !== undefined &&
-      request === this.bufferRequest &&
-      buffer === this.replayBuffer &&
+  private bufferRefreshVisible(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    return (
+      this.bufferRefresh === job &&
+      this.replayBuffer === job.buffer &&
+      job.buffer.revision === job.revision &&
+      job.request !== undefined &&
+      job.request === this.bufferRequest &&
       this.state.buffering === true &&
-      !this.state.busy;
+      !this.state.busy
+    );
+  }
+  private reportBufferedProcessing(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    if (!job.processing || !this.bufferRefreshVisible(job)) return;
+    if (
+      job.progressEpoch === this.preparationEpochs.bufferPreparation &&
+      this.state.bufferPreparation
+    )
+      return;
+    job.progressEpoch = ++this.preparationEpochs.bufferPreparation;
+    this.patch({
+      bufferPreparation: {
+        message: "Preparing replay events…",
+        completed: 0,
+        total: 0,
+      },
+    });
+  }
+  private async refreshBuffered(buffer: ReplayBuffer, request?: number) {
+    const epoch = this.bufferRefreshEpoch;
+    while (
+      epoch === this.bufferRefreshEpoch &&
+      buffer === this.replayBuffer &&
+      this.appliedBufferRevision !== buffer.revision &&
+      (request === undefined || request === this.bufferRequest)
+    ) {
+      const revision = buffer.revision;
+      let job = this.bufferRefresh;
+      if (job?.buffer === buffer && job.revision === revision) {
+        if (request !== undefined) {
+          job.request = request;
+          this.reportBufferedProcessing(job);
+          job.assetProgress?.();
+        }
+      } else {
+        const next: NonNullable<EditorController["bufferRefresh"]> = {
+          buffer,
+          revision,
+          request,
+          promise: Promise.resolve()
+            .then(() => this.applyBufferedRefresh(next))
+            .catch((error) => {
+              if (
+                this.replayBuffer === buffer &&
+                this.bufferRefresh === next &&
+                buffer.revision === revision
+              )
+                throw error;
+            }),
+        };
+        job = this.bufferRefresh = next;
+        void next.promise
+          .finally(() => {
+            if (this.bufferRefresh === next) this.bufferRefresh = undefined;
+          })
+          .catch(() => {});
+      }
+      await job.promise;
+    }
+  }
+  private async applyBufferedRefresh(
+    job: NonNullable<EditorController["bufferRefresh"]>,
+  ) {
+    const { buffer, revision } = job;
+    const current = () =>
+      this.replayBuffer === buffer &&
+      this.bufferRefresh === job &&
+      buffer.revision === revision;
+    if (!current()) return;
+    const raw = buffer.snapshot();
+    const visible = () => this.bufferRefreshVisible(job);
+    let derived: ReturnType<EditorController["replayForInstall"]> | undefined;
+    const stream = raw.stream!;
+    if (
+      raw.events.length +
+        stream.stateEvents.length +
+        stream.contextEvents.length >=
+      SLICED_IMPORT_MIN_EVENTS
+    ) {
+      job.processing = true;
+      this.reportBufferedProcessing(job);
+      try {
+        const { input, models, renderModels, itemModels, spells } =
+          this.replayInput(raw);
+        const replay = await this.replayNormalizer.normalizeSliced(
+          input,
+          renderModels,
+          itemModels,
+          spells,
+          current,
+        );
+        if (!current()) return;
+        derived = this.completeReplayForInstall(raw, replay, models);
+      } catch (error) {
+        if (
+          current() &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        )
+          throw error;
+        // Resetting actor evidence (for example, on engine attach) leaves the
+        // same revision eligible for a fresh attempt by its current waiter.
+        return;
+      } finally {
+        job.processing = false;
+        if (job.progressEpoch === this.preparationEpochs.bufferPreparation)
+          this.patch({ bufferPreparation: null });
+      }
+    }
+    if (!current()) return;
     const prepared = await this.prepareReplayForInstall(
       raw,
       undefined,
       visible,
       "bufferPreparation",
+      derived,
+      (publish) => {
+        job.assetProgress = publish;
+      },
     );
-    if (this.replayBuffer !== buffer || update !== this.bufferUpdate) return;
+    if (!current()) return;
     this.models = prepared.models;
     this.appliedBufferRevision = revision;
     this.resetEvents = true;
@@ -5088,8 +5212,6 @@ export class EditorController {
     }
     this.patch({ replay: prepared.replay, detail: nextDetail });
     this.render();
-    if (buffer.revision !== revision)
-      await this.refreshBuffered(buffer, request);
   }
   private async ensureBuffered(time: number) {
     const buffer = this.replayBuffer;
@@ -5283,6 +5405,7 @@ export class EditorController {
     progressField:
       "replayPreparation" | "bufferPreparation" = "replayPreparation",
     derived?: ReturnType<EditorController["replayForInstall"]>,
+    registerProgress?: (publish: (() => void) | undefined) => void,
   ) {
     const prepared = derived ?? this.replayForInstall(raw);
     const files = this.localFiles,
@@ -5293,7 +5416,12 @@ export class EditorController {
       const requestSignal = signal
         ? AbortSignal.any([signal, owner.signal])
         : owner.signal;
-      const epoch = visible() ? ++this.preparationEpochs[progressField] : null;
+      let epoch = visible() ? ++this.preparationEpochs[progressField] : null;
+      let latest: NonNullable<Snapshot["replayPreparation"]> = {
+        message: "Preparing raid geometry",
+        completed: 0,
+        total: 0,
+      };
       const reportable = () =>
         epoch !== null &&
         epoch === this.preparationEpochs[progressField] &&
@@ -5301,32 +5429,36 @@ export class EditorController {
         this.localFiles === files &&
         this.browserBridge === bridge &&
         visible();
+      const publish = () => {
+        if (
+          epoch === null &&
+          registerProgress &&
+          !requestSignal.aborted &&
+          this.localFiles === files &&
+          this.browserBridge === bridge &&
+          visible()
+        )
+          epoch = ++this.preparationEpochs[progressField];
+        if (reportable()) this.patch({ [progressField]: latest });
+      };
       let lastProgress = -Infinity;
       let geometryDone = false;
       let appearanceProgress = { completed: 0, total: 0 };
       const progress = (completed: number, total: number) => {
         appearanceProgress = { completed, total };
         if (!geometryDone) return;
-        if (!reportable()) return;
+        latest = {
+          message: "Preparing appearances and icons",
+          completed,
+          total,
+        };
         const now = performance.now();
         if (completed !== total && now - lastProgress < 100) return;
         lastProgress = now;
-        this.patch({
-          [progressField]: {
-            message: "Preparing appearances and icons",
-            completed,
-            total,
-          },
-        });
+        publish();
       };
-      if (reportable())
-        this.patch({
-          [progressField]: {
-            message: "Preparing raid geometry",
-            completed: 0,
-            total: 0,
-          },
-        });
+      registerProgress?.(publish);
+      publish();
       try {
         const { replay } = prepared;
         let lastGeometryProgress = -Infinity;
@@ -5334,7 +5466,12 @@ export class EditorController {
           replay.map,
           requestSignal,
           (completed, total) => {
-            if (!reportable()) return;
+            latest = {
+              message: "Indexing raid geometry",
+              completed,
+              total,
+              unit: "triangles",
+            };
             const now = performance.now();
             if (
               completed > 0 &&
@@ -5343,14 +5480,7 @@ export class EditorController {
             )
               return;
             lastGeometryProgress = now;
-            this.patch({
-              [progressField]: {
-                message: "Indexing raid geometry",
-                completed,
-                total,
-                unit: "triangles",
-              },
-            });
+            publish();
           },
         ).then(() => {
           geometryDone = true;
@@ -5395,14 +5525,8 @@ export class EditorController {
         );
         await Promise.all([geometry, appearances]);
         requestSignal.throwIfAborted();
-        if (reportable())
-          this.patch({
-            [progressField]: {
-              message: "Preparing spell effects",
-              completed: 0,
-              total: 0,
-            },
-          });
+        latest = { message: "Preparing spell effects", completed: 0, total: 0 };
+        publish();
         try {
           const spellGraph = await bridge.catalog("spells");
           requestSignal.throwIfAborted();
@@ -5422,6 +5546,7 @@ export class EditorController {
           this.notify(`Some spell effects are unavailable: ${message(error)}`);
         }
       } finally {
+        registerProgress?.(undefined);
         owner.abort();
         if (epoch !== null && epoch === this.preparationEpochs[progressField])
           this.patch({ [progressField]: null });
@@ -6908,7 +7033,10 @@ export class EditorController {
     this.clientAttachAbort?.abort();
     this.closeActorInspection();
     setLocalTalentsProvider(null);
+    this.bufferRefreshEpoch++;
+    this.bufferRefresh = undefined;
     this.replayBuffer?.close();
+    this.replayBuffer = null;
     this.loadingBuffer?.close();
     this.bufferRequest++;
     clearTimeout(this.autosaveTimer);

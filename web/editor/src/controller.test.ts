@@ -5407,7 +5407,14 @@ test("a blocked replay section and buffered asset preparation report independent
 test("replay geometry and appearances overlap with one visible progress stage", async () => {
   const { c } = fixture();
   const internals = c as unknown as {
-    prepareReplayForInstall(value: typeof raw): Promise<unknown>;
+    prepareReplayForInstall(
+      value: typeof raw,
+      signal: AbortSignal | undefined,
+      visible: () => boolean,
+      field: "replayPreparation",
+      derived: undefined,
+      register: (publish: (() => void) | undefined) => void,
+    ): Promise<unknown>;
     prepareFloorGeometry(
       map: number,
       signal: AbortSignal,
@@ -5452,8 +5459,22 @@ test("replay geometry and appearances overlap with one visible progress stage", 
     },
   };
   try {
-    const ready = internals.prepareReplayForInstall(raw);
+    let foreground = false;
+    let publish: (() => void) | undefined;
+    const ready = internals.prepareReplayForInstall(
+      raw,
+      undefined,
+      () => foreground,
+      "replayPreparation",
+      undefined,
+      (callback) => {
+        publish = callback;
+      },
+    );
     await started;
+    assert.equal(c.getSnapshot().replayPreparation, undefined);
+    foreground = true;
+    publish?.();
     assert.equal(c.getSnapshot().replayPreparation?.unit, "triangles");
     assert.equal(c.getSnapshot().replayPreparation?.completed, 3);
     finishGeometry();
@@ -5463,6 +5484,7 @@ test("replay geometry and appearances overlap with one visible progress stage", 
     finishAppearance();
     await ready;
     assert.equal(c.getSnapshot().replayPreparation, null);
+    assert.equal(publish, undefined);
   } finally {
     internals.localFiles = null;
     internals.browserBridge = null;
@@ -5748,4 +5770,149 @@ test("a cancelled floor-index listener does not cancel or hide a shared map buil
   } finally {
     c.stop();
   }
+});
+
+test("large buffered refreshes coalesce by revision and only install the newest result", async () => {
+  const { c } = fixture();
+  const initial = c.getSnapshot().replay!;
+  const internals = c as any;
+  const snapshot = (revision: number): RawReplay => ({
+    ...raw,
+    events: Array(50000).fill(raw.events[0]),
+    stream: {
+      version: 1,
+      id: "sliced-buffer",
+      revision,
+      segments: 1,
+      reportEnd: raw.fight.endTime,
+      full: [[0, 1000]],
+      history: [],
+      stateEvents: [],
+      contextEvents: [],
+      foreign: [],
+    },
+  });
+  const buffer = {
+    revision: 1,
+    snapshot: () => snapshot(buffer.revision),
+    ready: () => true,
+    close() {},
+  };
+  internals.replayBuffer = buffer;
+  const starts: {
+    revision: number;
+    current: () => boolean;
+    release: (error?: unknown) => void;
+  }[] = [];
+  let entered!: () => void;
+  const nextStart = () =>
+    new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+  internals.replayNormalizer.normalizeSliced = async (
+    input: RawReplay,
+    _models: unknown,
+    _items: unknown,
+    _spells: unknown,
+    current: () => boolean,
+  ) => {
+    await new Promise<void>((resolve, reject) => {
+      starts.push({
+        revision: input.stream!.revision,
+        current,
+        release: (error) => (error === undefined ? resolve() : reject(error)),
+      });
+      entered();
+    });
+    return { ...initial };
+  };
+  try {
+    const firstStart = nextStart();
+    const first = internals.refreshBuffered(buffer);
+    const same = internals.refreshBuffered(buffer);
+    await firstStart;
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].current(), true);
+    assert.equal(c.getSnapshot().bufferPreparation, undefined);
+    internals.patch({ buffering: true });
+    const request = ++internals.bufferRequest;
+    const foreground = internals.refreshBuffered(buffer, request);
+    assert.match(
+      c.getSnapshot().bufferPreparation!.message,
+      /Preparing replay events/,
+    );
+    const secondStart = nextStart();
+    buffer.revision = 2;
+    const latest = internals.refreshBuffered(buffer);
+    await secondStart;
+    assert.deepEqual(
+      starts.map((x) => x.revision),
+      [1, 2],
+    );
+    assert.equal(starts[0].current(), false);
+    starts[0].release();
+    await Promise.resolve();
+    assert.equal(c.getSnapshot().replay, initial);
+    starts[1].release();
+    await Promise.all([first, same, foreground, latest]);
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 2);
+    assert.equal(c.getSnapshot().bufferPreparation, null);
+    buffer.revision = 3;
+    const interrupted = nextStart();
+    const retrying = internals.refreshBuffered(buffer);
+    await interrupted;
+    const restarted = nextStart();
+    starts[2].release(
+      new DOMException("Replay preparation superseded", "AbortError"),
+    );
+    await restarted;
+    assert.deepEqual(
+      starts.map((x) => x.revision),
+      [1, 2, 3, 3],
+    );
+    starts[3].release();
+    await retrying;
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 3);
+    buffer.revision = 4;
+    const queued = internals.refreshBuffered(buffer);
+    c.stop();
+    await queued;
+    assert.equal(
+      starts.length,
+      4,
+      "stopping prevents queued refresh from beginning",
+    );
+    assert.equal(c.getSnapshot().replay?.raw.stream?.revision, 3);
+  } finally {
+    for (const work of starts) work.release();
+    c.stop();
+  }
+});
+
+test("stopping after a section fetch resolves prevents its range continuation from refreshing", async () => {
+  const { c } = fixture();
+  const internals = c as any;
+  let started!: () => void, finish!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let refreshes = 0;
+  internals.replayBuffer = {
+    duration: 1000,
+    ensure: () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+        started();
+      }),
+    close() {},
+  };
+  internals.refreshBuffered = async () => {
+    refreshes++;
+  };
+  const loading = c.loadReplayRange(0, 1000);
+  await entered;
+  finish();
+  c.stop();
+  await loading;
+  assert.equal(refreshes, 0);
 });

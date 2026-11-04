@@ -6,6 +6,24 @@ import type { RawReplay, Replay } from "./types";
 
 export const SLICED_IMPORT_MIN_EVENTS = 50_000;
 const SLICE_MS = 5;
+const yieldTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+export async function drainReplayTasks<T>(
+  steps: Generator<unknown, T>,
+  check: () => void,
+) {
+  await yieldTask();
+  let started = performance.now();
+  while (true) {
+    check();
+    const step = steps.next();
+    if (step.done) return step.value;
+    if (performance.now() - started >= SLICE_MS) {
+      await yieldTask();
+      started = performance.now();
+    }
+  }
+}
 
 /** Derive a fresh whole-file replay without holding the event loop for the import. */
 export async function prepareWholeReplay(
@@ -17,33 +35,17 @@ export async function prepareWholeReplay(
   phase: (message: string) => void,
 ): Promise<Replay> {
   signal.throwIfAborted();
-  // Yield a task, so input and timers can run between preparation slices.
-  const yieldTask = () =>
-    new Promise<void>((resolve) => setTimeout(resolve, 0));
-
-  async function drain<T>(steps: Generator<unknown, T>): Promise<T> {
-    let started = performance.now();
-    while (true) {
-      signal.throwIfAborted();
-      const step = steps.next();
-      if (step.done) return step.value;
-      if (performance.now() - started >= SLICE_MS) {
-        await yieldTask();
-        started = performance.now();
-      }
-    }
-  }
-
+  const check = () => signal.throwIfAborted();
   phase("Preparing movement tracks…");
-  await yieldTask();
   const ordering: { eventOrder?: Uint32Array } = {};
-  const tracks = (await drain(
+  const tracks = (await drainReplayTasks(
     trackSteps(raw, models, undefined, ordering),
+    check,
   )) as Replay;
   signal.throwIfAborted();
   phase("Reconstructing combat events…");
-  await yieldTask();
-  return drain(
+  return drainReplayTasks(
     combatSteps(tracks, items, spells, undefined, ordering.eventOrder),
+    check,
   ) as Promise<Replay>;
 }
