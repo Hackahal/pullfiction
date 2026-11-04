@@ -1315,3 +1315,36 @@
   padding-inline-start: 5px;
   font-size: 11px;
 }
+
+.page-timecode-field {
+  min-width: 0;
+}
+
+.editor .page-timecode-field input {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-timecode-field input[aria-invalid="true"] {
+  border-color: #d98d76;
+}
+
+.page-timecode-field > small {
+  display: block;
+  margin-top: 3px;
+  color: #edaf9c;
+  font-size: 11px;
+}
+
+.page-timing-hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.layer-clip.active > i[data-edge="start"] {
+  border-left: 2px solid #f2d392;
+}
+
+.layer-clip.active > i[data-edge="end"] {
+  border-right: 2px solid #f2d392;
+}

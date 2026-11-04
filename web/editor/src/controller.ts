@@ -182,7 +182,12 @@ const API = BROWSER_ASSETS
     : "http://127.0.0.1:8091";
 const initialStep = (plan: Plan) =>
   plan.steps.find(
-    (s) => s.snapshot || s.annotations.length || s.notes || s.start !== null,
+    (s) =>
+      s.snapshot ||
+      s.annotations.length ||
+      s.notes ||
+      s.start !== null ||
+      s.end !== null,
   )?.id ?? plan.steps[0].id;
 type StoragePort = Pick<Storage, "getItem" | "setItem">;
 export class EditorController {
@@ -3203,11 +3208,10 @@ export class EditorController {
     if (!page) return;
     if (
       this.state.replay &&
-      page.start !== null &&
-      (this.clockTime < page.start ||
+      (this.clockTime < (page.start ?? 0) ||
         (page.end !== null && this.clockTime >= page.end))
     )
-      this.seek(page.start);
+      this.seek(page.start ?? 0);
     this.selectMark(id);
   }
   revealActorEdit(key: string, pageId: string, toggle = false) {
@@ -3218,11 +3222,10 @@ export class EditorController {
     if (page.id !== this.state.activeStep) this.setActiveStep(page.id, false);
     if (
       this.state.replay &&
-      page.start !== null &&
-      (this.clockTime < page.start ||
+      (this.clockTime < (page.start ?? 0) ||
         (page.end !== null && this.clockTime >= page.end))
     )
-      this.seek(page.start);
+      this.seek(page.start ?? 0);
     this.selectActor(key, toggle);
   }
   // Resolve the release hit instead of using the throttled scene-hover snapshot.
@@ -3618,7 +3621,8 @@ export class EditorController {
     this.sendPositions();
     this.sendAnnotations();
     const step = this.state.plan.steps.find((s) => s.id === id);
-    if (seek && step && step.start !== null) this.seek(step!.start!);
+    if (seek && step && (step.start !== null || step.end !== null))
+      this.seek(step.start ?? 0);
   }
   updateStep(change: Partial<PlanStep>) {
     this.editPlan({
@@ -3709,7 +3713,8 @@ export class EditorController {
           },
         ];
     const existing = this.state.plan.steps.filter(
-      (s) => s.annotations.length || s.notes || s.start !== null,
+      (s) =>
+        s.annotations.length || s.notes || s.start !== null || s.end !== null,
     );
     const steps = chapters.slice(0, 128 - existing.length).map((c) => ({
       ...newStep(c.name, c.encounterID ? "boss" : "pull"),
@@ -4927,7 +4932,8 @@ export class EditorController {
                   step.snapshot ||
                   step.annotations.length ||
                   step.notes ||
-                  step.start !== null,
+                  step.start !== null ||
+                  step.end !== null,
               ),
             });
           } else this.setWorkspaceMode("analyse");

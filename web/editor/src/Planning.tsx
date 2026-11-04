@@ -2,6 +2,8 @@ import { tacticalMarker } from "./icon-fallbacks";
 import { GameIcon } from "./GameIcon";
 import { AttachmentControl } from "./AttachmentControl";
 import { ExactNumber } from "./ExactNumber";
+import { PlanTimecodeInput } from "./PlanTimecodeInput";
+import { planRangeLabel } from "./plan-timecode";
 import { EditorIcon } from "./EditorIcon";
 import { useState, useEffect } from "react";
 import type { EditorController } from "./controller";
@@ -128,62 +130,29 @@ export function PageProperties({
             <span>
               <strong>Replay timing</strong>
               <span className="page-timing-range">
-                {step.start === null && step.end === null
-                  ? "Always visible"
-                  : `${step.start === null ? "Beginning" : preciseTime(step.start)} – ${step.end === null ? "End" : preciseTime(step.end)}`}
+                {planRangeLabel(step.start, step.end)}
               </span>
             </span>
             <EditorIcon name="down" />
           </summary>
           <div className="page-timing-editor">
-            <div className="page-timing-fields">
-              <label>
-                Start (seconds)
-                <input
-                  aria-label="Step start seconds"
-                  type="number"
-                  min="0"
-                  step=".001"
-                  value={step.start === null ? "" : step.start / 1000}
-                  onChange={(e) => {
-                    if (e.currentTarget.validity.badInput) return;
-                    const raw = e.currentTarget.value;
-                    const n = Math.round(Number(raw) * 1000);
-                    if (
-                      raw === "" ||
-                      (Number.isFinite(n) &&
-                        n >= 0 &&
-                        (step.end === null || n < step.end))
-                    )
-                      controller.updateStep({
-                        start: raw === "" ? null : n,
-                      });
-                  }}
-                />
-              </label>
-              <label>
-                End (seconds)
-                <input
-                  aria-label="Step end seconds"
-                  type="number"
-                  min="0"
-                  step=".001"
-                  value={step.end === null ? "" : step.end / 1000}
-                  onChange={(e) => {
-                    if (e.currentTarget.validity.badInput) return;
-                    const raw = e.currentTarget.value;
-                    const n = Math.round(Number(raw) * 1000);
-                    if (
-                      raw === "" ||
-                      (Number.isFinite(n) && n > (step.start ?? 0))
-                    )
-                      controller.updateStep({
-                        end: raw === "" ? null : n,
-                      });
-                  }}
-                />
-              </label>
+            <div className="page-timing-fields" key={step.id}>
+              <PlanTimecodeInput
+                edge="start"
+                value={step.start}
+                opposite={step.end}
+                onCommit={(start) => controller.updateStep({ start })}
+              />
+              <PlanTimecodeInput
+                edge="end"
+                value={step.end}
+                opposite={step.start}
+                onCommit={(end) => controller.updateStep({ end })}
+              />
             </div>
+            <small className="page-timing-hint">
+              Use m:ss.mmm. Leave a field blank for an open bound.
+            </small>
             <div className="page-timing-actions">
               <button
                 title="Set step start to playhead"

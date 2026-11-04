@@ -963,6 +963,30 @@ test("Timed page visibility follows replay boundaries while editor selection and
   f.c.stop();
 });
 
+test("An end-only page remains timed, seekable and retained when adding log pages", () => {
+  const f = fixture();
+  f.c.addStep();
+  f.c.updateStep({ name: "Opening", start: null, end: 2000 });
+  const page = f.c.getSnapshot().activeStep;
+  f.c.setStepView({ followSteps: true });
+  f.c.seek(5000);
+  assert.ok(!f.c.visiblePages().some((step) => step.id === page));
+  f.c.setActiveStep(page, false);
+  assert.equal(f.c.getSnapshot().time, 5000);
+  f.c.setActiveStep(page);
+  assert.equal(f.c.getSnapshot().time, 0);
+  assert.ok(f.c.visiblePages().some((step) => step.id === page));
+  f.c.stepsFromLog();
+  assert.ok(
+    f.c
+      .getSnapshot()
+      .plan.steps.some(
+        (step) => step.id === page && step.start === null && step.end === 2000,
+      ),
+  );
+  f.c.stop();
+});
+
 test("Editor and Playback modes keep the separate Playbook window independent", () => {
   const f = fixture();
   assert.equal(f.c.getSnapshot().workspaceMode, "analyse");

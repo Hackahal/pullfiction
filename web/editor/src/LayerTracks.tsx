@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EditorController } from "./controller";
 import type { PlanLayer, Snapshot } from "./types";
-import { time } from "./domain";
+import { planRangeLabel } from "./plan-timecode";
 import { adjustedStepRange, selectedPeriod } from "./layer-model";
 export function LayerHeaders({
   state,
@@ -159,6 +159,15 @@ export function LayerTracks({
       .filter((s) => s.id !== drag.current?.id)
       .flatMap((s) => [s.start, s.end].filter((t) => t !== null) as number[]),
   ];
+  const previewPage = preview?.id
+    ? state.plan.steps.find((page) => page.id === preview.id)
+    : undefined;
+  function previewBounds(p: Preview) {
+    return [
+      previewPage?.start === null && p.start === 0 ? null : p.start,
+      previewPage?.end === null && p.end === duration ? null : p.end,
+    ] as const;
+  }
   const percent = (t: number) => ((t - start) / span) * 100;
   function pointAt(x: number, width: number) {
     return Math.max(
@@ -201,6 +210,15 @@ export function LayerTracks({
         ),
       };
     if (d.id) {
+      if (Math.abs(e.clientX - d.x) <= 3 && layerId !== d.layerId)
+        return {
+          id: d.id,
+          layerId,
+          start: d.start,
+          end: d.end,
+          guide: null,
+          order: d.order,
+        };
       const range = adjustedStepRange(
         d.start,
         d.end,
@@ -249,27 +267,31 @@ export function LayerTracks({
             e.stopPropagation();
             e.preventDefault();
             e.currentTarget.closest<HTMLElement>(".run-tracks")?.focus();
+            // Focus may commit a timecode field before the gesture starts.
+            const current = controller.getSnapshot();
             const block = (e.target as HTMLElement).closest<HTMLElement>(
                 "[data-page]",
               ),
-              page = state.plan.steps.find((s) => s.id === block?.dataset.page);
+              page = current.plan.steps.find(
+                (s) => s.id === block?.dataset.page,
+              );
             const box = e.currentTarget.getBoundingClientRect();
             if (!state.replay && !page) {
               controller.addLayerPage(layer.id);
               return;
             }
             if (state.playing) controller.seek(state.time);
-            const startAt =
-              page?.start ??
-              snap(
-                pointAt(e.clientX - box.left, box.width),
-                e.altKey,
-                box.width,
-              ).t;
+            const timed = page && (page.start !== null || page.end !== null);
+            const startAt = timed
+              ? (page.start ?? 0)
+              : snap(
+                  pointAt(e.clientX - box.left, box.width),
+                  e.altKey,
+                  box.width,
+                ).t;
             const edge = (e.target as HTMLElement).dataset.edge as
               "start" | "end" | undefined;
-            const clipId =
-              page?.start === null && !ordered ? undefined : page?.id;
+            const clipId = ordered || timed ? page?.id : undefined;
             const gesture: Gesture = {
               id: clipId,
               layerId: layer.id,
@@ -277,9 +299,9 @@ export function LayerTracks({
               width: Math.max(1, box.width),
               start: startAt,
               end: clipId ? (page?.end ?? duration) : startAt,
-              edge: page?.start === null ? "move" : (edge ?? "move"),
+              edge: edge ?? "move",
               moved: false,
-              order: page ? state.plan.steps.indexOf(page) : 0,
+              order: page ? current.plan.steps.indexOf(page) : 0,
             };
             if (page) {
               controller.setActiveStep(page.id, false);
@@ -328,8 +350,12 @@ export function LayerTracks({
                 else
                   controller.updateStep({
                     layerId: next.layerId,
-                    start: next.start,
-                    end: next.end,
+                    ...(d.edge !== "end" && next.start !== d.start
+                      ? { start: Math.round(next.start) }
+                      : {}),
+                    ...(d.edge !== "start" && next.end !== d.end
+                      ? { end: Math.round(next.end) }
+                      : {}),
                   });
               } else {
                 controller.setActiveStep(d.id);
@@ -360,22 +386,24 @@ export function LayerTracks({
               const p = preview?.id === page.id ? preview : null;
               if (p && p.layerId !== layer.id) return null;
               const index = state.plan.steps.indexOf(page),
+                always = page.start === null && page.end === null,
+                [startBound, endBound] = p
+                  ? previewBounds(p)
+                  : [page.start, page.end],
                 position = ordered
                   ? ((p?.order ?? index) / count) * 100
-                  : page.start === null
+                  : always
                     ? 0
-                    : percent(p?.start ?? page.start);
-              const width = ordered
-                ? 100 / count
-                : page.start === null
-                  ? 100
-                  : (((p?.end ?? page.end ?? duration) -
-                      (p?.start ?? page.start)) /
-                      span) *
-                    100;
+                    : percent(startBound ?? 0),
+                width = ordered
+                  ? 100 / count
+                  : always
+                    ? 100
+                    : (((endBound ?? duration) - (startBound ?? 0)) / span) *
+                      100;
               const emptyAlways =
                 !ordered &&
-                page.start === null &&
+                always &&
                 !page.annotations.length &&
                 !page.snapshot &&
                 !page.notes;
@@ -384,7 +412,7 @@ export function LayerTracks({
                 <div
                   key={page.id}
                   data-page={page.id}
-                  className={`layer-clip ${page.id === state.activeStep ? "active" : ""} ${page.start === null && !ordered ? "always" : ""}`}
+                  className={`layer-clip ${page.id === state.activeStep ? "active" : ""} ${always && !ordered ? "always" : ""}`}
                   style={{
                     left: `${position}%`,
                     width: `${Math.max(0.15, width)}%`,
@@ -392,16 +420,20 @@ export function LayerTracks({
                   title={
                     ordered
                       ? `${index + 1}. ${page.name}`
-                      : `${page.name} · ${page.start === null ? "Always" : `${time(p?.start ?? page.start)}–${time(p?.end ?? page.end ?? duration)}`} · ${page.annotations.length} drawings`
+                      : `${page.name} · ${planRangeLabel(startBound, endBound)} · ${page.annotations.length} drawings`
                   }
                 >
-                  {!ordered && page.start !== null && <i data-edge="start" />}
+                  {!ordered && !always && (
+                    <i data-edge="start" title="Trim page start" />
+                  )}
                   <span>
                     {ordered ? `${index + 1}. ` : ""}
                     {page.name}
-                    {page.start === null && !ordered ? " · Always" : ""}
+                    {always && !ordered ? " · Always" : ""}
                   </span>
-                  {!ordered && page.start !== null && <i data-edge="end" />}
+                  {!ordered && !always && (
+                    <i data-edge="end" title="Trim page end" />
+                  )}
                 </div>
               );
             })}
@@ -418,9 +450,7 @@ export function LayerTracks({
                   width: `${Math.max(0.15, ((preview.end - preview.start) / span) * 100)}%`,
                 }}
               >
-                <span>
-                  {time(preview.start)} – {time(preview.end)}
-                </span>
+                <span>{planRangeLabel(...previewBounds(preview))}</span>
               </div>
             )}
           {preview &&
