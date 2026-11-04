@@ -496,6 +496,7 @@ export interface Snapshot {
   selectedActors: string[];
   compareRecorded: boolean;
   frameRequest: number;
+  recordedMapFramePoint?: readonly [number, number];
   spacePan: boolean;
   navigationTool: "select" | "pan" | "orbit";
   cameraMode: "free" | "orbit";

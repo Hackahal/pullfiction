@@ -168,6 +168,15 @@ export function MapView({
   }, [controller]);
   useEffect(() => {
     if (!state.frameRequest) return;
+    if (state.recordedMapFramePoint) {
+      const next = frameMapSelection(
+        [mapPoint(...state.recordedMapFramePoint)],
+        size.width,
+        size.height,
+      );
+      if (next) setCamera(next);
+      return;
+    }
     const selectedMarks = controller
       .displayMarks()
       .filter(

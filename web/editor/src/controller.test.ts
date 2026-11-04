@@ -559,8 +559,18 @@ test("Event actor focus uses the current living pose and frames the map without 
   const sceneCalls = f.focus.length;
   assert.equal(f.c.focusRecordedActor("1:1"), true);
   assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);
+  const sampledPoint = f.c.getSnapshot().recordedMapFramePoint;
+  assert.deepEqual(
+    sampledPoint,
+    f.c
+      .actorPose(
+        f.c.getSnapshot().replay!.actors.find((actor) => actor.key === "1:1")!,
+      )
+      ?.pos.slice(0, 2),
+  );
   assert.equal(f.focus.length, sceneCalls);
   f.c.seek(9000);
+  assert.deepEqual(f.c.getSnapshot().recordedMapFramePoint, sampledPoint);
   assert.equal(f.c.focusRecordedActor("2:1"), false);
   assert.equal(f.c.getSnapshot().selected, "1:1");
   assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);

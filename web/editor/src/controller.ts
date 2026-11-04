@@ -3111,7 +3111,10 @@ export class EditorController {
     )
       this.focus(this.state.selected, false);
     else if (!this.focusCurrent()) this.engine?.home();
-    this.patch({ frameRequest: this.state.frameRequest + 1 });
+    this.patch({
+      frameRequest: this.state.frameRequest + 1,
+      recordedMapFramePoint: undefined,
+    });
   }
   cameraPresentation(map = this.mapView) {
     const actor = this.orbitCandidate();
@@ -4085,7 +4088,7 @@ export class EditorController {
     this.mapView = on;
     if (on && this.state.cameraMode === "orbit") this.setCameraMode("free");
     this.syncKeyboardCapture();
-    if (changed) this.patch({});
+    if (changed) this.patch(on ? {} : { recordedMapFramePoint: undefined });
   }
   setTyping(on: boolean) {
     this.typing = on;
@@ -4536,7 +4539,11 @@ export class EditorController {
     if (!pose) return false;
     this.setOption("followRaid", false);
     this.select(key);
-    if (this.mapView) this.patch({ frameRequest: this.state.frameRequest + 1 });
+    if (this.mapView)
+      this.patch({
+        frameRequest: this.state.frameRequest + 1,
+        recordedMapFramePoint: [pose.pos[0], pose.pos[1]],
+      });
     else this.centerReplayActor(key, pose.pos);
     return true;
   }
