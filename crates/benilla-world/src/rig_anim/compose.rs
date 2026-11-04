@@ -6,6 +6,7 @@
 //! must run in the model pass, since the anchors are seated from it.
 
 use bevy::mesh::skinning::SkinnedMeshInverseBindposes;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 
 use crate::billboard::{billboard_basis, parent_arm_matrix, BillboardJointRig};
@@ -120,6 +121,15 @@ pub(crate) fn seed_rig_rows(
     palettes.write_rig_worlds(skin, &worlds, ibp, origin);
 }
 
+/// Temporary data retained by the world pass between frames.
+#[derive(Default)]
+pub struct RigFinalizeScratch {
+    refresh: Vec<Entity>,
+    fx_roots: HashSet<Entity>,
+    cascade: HashSet<Entity>,
+    stack: Vec<(Entity, GlobalTransform)>,
+}
+
 /// The world pass: palette rows, anchor re-seats and the seat-frame cascade.
 #[allow(clippy::type_complexity)]
 pub fn finalize_rig_worlds(
@@ -143,6 +153,7 @@ pub fn finalize_rig_worlds(
     frames: Query<&RigFrame>,
     ibps: Res<Assets<SkinnedMeshInverseBindposes>>,
     mut palettes: ResMut<RigPalettes>,
+    mut workspace: Local<RigFinalizeScratch>,
     #[cfg(not(target_os = "macos"))] mut scratch: Local<compose_scratch::RigWorldScratch>,
 ) {
     let cam_basis = cam
@@ -151,32 +162,40 @@ pub fn finalize_rig_worlds(
         .map(|t| (*t.forward(), *t.right(), *t.up()));
     // Refresh a rig that is pose-dirty, whose model frame moved or that billboards, never a parked
     // one: its rows go stale on purpose, and the wake re-raises `pose_dirty` before this runs.
-    let refresh: Vec<Entity> = {
+    let RigFinalizeScratch {
+        refresh,
+        fx_roots,
+        cascade,
+        stack,
+    } = &mut *workspace;
+    refresh.clear();
+    {
         let roots_changed = worlds_params.p0();
-        rigs.iter()
-            .filter(|(_, rig, _, parked, _)| {
-                !parked
-                    && (rig.pose_dirty
-                        || roots_changed.contains(rig.joints_root)
-                        || rig.has_billboard)
-            })
-            .map(|(holder, ..)| holder)
-            .collect()
-    };
+        refresh.extend(
+            rigs.iter()
+                .filter(|(_, rig, _, parked, _)| {
+                    !parked
+                        && (rig.pose_dirty
+                            || roots_changed.contains(rig.joints_root)
+                            || rig.has_billboard)
+                })
+                .map(|(holder, ..)| holder),
+        );
+    }
     if refresh.is_empty() {
         return;
     }
     let cost_t0 = crate::rig_palette::rig_cost_enabled().then(bevy::platform::time::Instant::now);
     let mut globals = worlds_params.p1();
     // As in the entity pass, the re-walk does not enter a nested rig with its own billboard output.
-    let fx_roots: bevy::platform::collections::HashSet<Entity> =
-        hosts.iter().map(|r| r.root()).collect();
-    let mut cascade: Vec<Entity> = Vec::new();
+    fx_roots.clear();
+    fx_roots.extend(hosts.iter().map(|r| r.root()));
+    cascade.clear();
     let mut finalize =
         |rig: &mut RigPose,
          skin: Option<&RigSkin>,
          globals: &mut Query<(&Transform, &mut GlobalTransform), Without<WorldCamera>>,
-         cascade: &mut Vec<Entity>,
+         mut cascade: Option<&mut HashSet<Entity>>,
          root_moved: bool| {
             // A slot-less rig without special bones is done; the caller clears `pose_dirty`.
             if skin.is_none() && !rig.has_special && !root_moved {
@@ -203,7 +222,7 @@ pub fn finalize_rig_worlds(
             }
             // Re-seat the anchors in replaced subtrees, or every anchor when a rider's seat moved
             // after propagation, and re-compose their rigid children.
-            let mut stack: Vec<(Entity, GlobalTransform)> = Vec::new();
+            debug_assert!(stack.is_empty());
             for &(bone, anchor) in &rig.anchors {
                 let b = bone as usize;
                 if !root_moved && !touched.get(b).copied().unwrap_or(false) {
@@ -225,8 +244,10 @@ pub fn finalize_rig_worlds(
                 }
             }
             while let Some((e, parent_g)) = stack.pop() {
-                if let Ok(rf) = frames.get(e) {
-                    cascade.push(rf.0);
+                if let Some(cascade) = cascade.as_deref_mut() {
+                    if let Ok(rf) = frames.get(e) {
+                        cascade.insert(rf.0);
+                    }
                 }
                 let Ok((local, mut global)) = globals.get_mut(e) else {
                     continue;
@@ -238,14 +259,14 @@ pub fn finalize_rig_worlds(
                 }
             }
         };
-    for &holder in &refresh {
+    for &holder in refresh.iter() {
         let Ok((_, rig, skin, _, rider)) = rigs.get_mut(holder) else {
             continue;
         };
         let rig = rig.into_inner();
         // A rider's rows are the rider lane's: no skin, so only the anchors.
         let skin = skin.filter(|_| !rider);
-        finalize(rig, skin, &mut globals, &mut cascade, false);
+        finalize(rig, skin, &mut globals, Some(cascade), false);
         rig.pose_dirty = false;
     }
     // Re-finalize each rig whose seat a patch walk moved; one level deep by construction.
@@ -255,9 +276,8 @@ pub fn finalize_rig_worlds(
                 continue;
             }
             let rig = rig.into_inner();
-            let mut ignore = Vec::new();
             let skin = skin.filter(|_| !rider);
-            finalize(rig, skin, &mut globals, &mut ignore, true);
+            finalize(rig, skin, &mut globals, None, true);
             rig.pose_dirty = false;
         }
     }
