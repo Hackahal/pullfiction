@@ -1,3 +1,4 @@
+import {replayEventOrderSteps} from './replay-event-order.mjs';
 import {hakkarSnapshotPreservations} from './encounters/vanilla-hakkar.mjs';
 import {prepareMovement,movementBetween,runProgress} from './replay-movement.mjs';
 import {reportSource,gameVersion} from './game-versions.mjs';
@@ -25,7 +26,8 @@ export function normalizeReplay(raw, models = {}, reused = new Map()) {
   return finishSteps(normalizeReplaySteps(raw, models, reused));
 }
 
-export function* normalizeReplaySteps(raw, models = {}, reused = new Map()) {
+/** @param {{eventOrder?: Uint32Array}} [cooperative] */
+export function* normalizeReplaySteps(raw, models = {}, reused = new Map(), cooperative = undefined) {
   const { report, fight, actors, events } = raw;
   const ruleset=gameVersion(raw.gameVersion??report?.gameVersion??'vanilla').id;
   if(raw.gameVersion&&report?.gameVersion&&raw.gameVersion!==report.gameVersion)throw new Error('Replay game versions disagree.');
@@ -33,6 +35,8 @@ export function* normalizeReplaySteps(raw, models = {}, reused = new Map()) {
   const raid = requireRaid(fight.gameZone,ruleset);
   if (!Number.isFinite(fight.startTime) || !(fight.endTime > fight.startTime)) throw new Error('Invalid encounter time range.');
   if (events.length > 2500000 || actors.length > 10000) throw new Error('Replay exceeds the prototype import limit.');
+  const eventOrder = cooperative ? yield* replayEventOrderSteps(events) : undefined;
+  if (cooperative) cooperative.eventOrder = eventOrder;
   const catalog = new Map(actors.map(a => [a.id, a]));
   const ownerFriendly = (actor) => {
     let owner=actor;const seen=new Set();
@@ -91,10 +95,10 @@ export function* normalizeReplaySteps(raw, models = {}, reused = new Map()) {
   }
   for (const id of fight.friendlyPlayers ?? []) track(id);
   if(raw.stream)for(const chapter of fight.chapters??[fight])for(const npc of chapter.enemyNPCs??[])track(npc.id);
-  const sorted=chronological ? events : [...events].sort((a,b)=>a.timestamp-b.timestamp);
+  const sorted=!eventOrder&&!chronological ? [...events].sort((a,b)=>a.timestamp-b.timestamp) : events;
   for (let i=0;i<sorted.length;i++) {
     if((i&255)===0)yield;
-    const event=sorted[i];
+    const event=sorted[eventOrder?.[i]??i];
     if (!Number.isFinite(event.timestamp) || event.timestamp < fight.startTime || event.timestamp > fight.endTime) continue;
     const t = event.timestamp - fight.startTime;
     // Current WCL events flatten resources onto the event: 1=source, 2=target.
@@ -290,7 +294,8 @@ export function enrichCombat(replay, itemModels={}, spellMetadata={}, reused = n
   return finishSteps(enrichCombatSteps(replay, itemModels, spellMetadata, reused));
 }
 
-export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reused = new Map()) {
+/** @param {Uint32Array} [eventOrder] */
+export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reused = new Map(), eventOrder = undefined) {
   const {raw}=replay;
   const all=replay.actors, index=new Map(all.map(a=>[a.key,a]));
   const abilities=new Map((raw.abilities??[]).map(a=>[a.gameID,a]));
@@ -304,7 +309,7 @@ export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reus
     if(i&&!(e.timestamp-events[i-1].timestamp>=0))chronological=false;
   }
   // Cast identities use original indices, including for tied timestamps.
-  const order=chronological?null:events.map((_,i)=>i).sort((a,b)=>events[a].timestamp-events[b].timestamp);
+  const order=eventOrder??(chronological?null:events.map((_,i)=>i).sort((a,b)=>events[a].timestamp-events[b].timestamp));
   for(const a of all){
     if(reused.has(a.key))continue;
     combatIndexes.delete(a);
@@ -365,7 +370,7 @@ export function* enrichCombatSteps(replay, itemModels={}, spellMetadata={}, reus
   }
   for(const a of all){yield;if(reused.has(a.key))continue;a.health.sort((a,b)=>a[0]-b[0]);a.power.sort((a,b)=>a[0]-b[0]||Number(a[1].current!==null)-Number(b[1].current!==null));a.resourceChanges.sort((a,b)=>a[0]-b[0]);a.casts.sort((a,b)=>a.start-b.start);a.auras.sort((a,b)=>a[0]-b[0]);}
   replay.combat=combat.sort((a,b)=>a.t-b.t||a.id-b.id);replay.abilities=abilities;
-  yield* reconstructCastSteps(replay,spellMetadata,reused);
+  yield* reconstructCastSteps(replay,spellMetadata,reused,eventOrder);
   for(const actor of all){yield;if(!reused.has(actor.key))prepareMovement(actor);}
   yield;
   for(const [key,events]of encounterJumpEvents(replay)){

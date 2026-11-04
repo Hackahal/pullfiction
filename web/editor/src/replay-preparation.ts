@@ -21,12 +21,12 @@ export async function prepareWholeReplay(
   const yieldTask = () =>
     new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-  async function drain(steps: Generator<unknown, unknown>): Promise<Replay> {
+  async function drain<T>(steps: Generator<unknown, T>): Promise<T> {
     let started = performance.now();
     while (true) {
       signal.throwIfAborted();
       const step = steps.next();
-      if (step.done) return step.value as Replay;
+      if (step.done) return step.value;
       if (performance.now() - started >= SLICE_MS) {
         await yieldTask();
         started = performance.now();
@@ -36,9 +36,14 @@ export async function prepareWholeReplay(
 
   phase("Preparing movement tracks…");
   await yieldTask();
-  const tracks = await drain(trackSteps(raw, models));
+  const ordering: { eventOrder?: Uint32Array } = {};
+  const tracks = (await drain(
+    trackSteps(raw, models, undefined, ordering),
+  )) as Replay;
   signal.throwIfAborted();
   phase("Reconstructing combat events…");
   await yieldTask();
-  return drain(combatSteps(tracks, items, spells));
+  return drain(
+    combatSteps(tracks, items, spells, undefined, ordering.eventOrder),
+  ) as Promise<Replay>;
 }

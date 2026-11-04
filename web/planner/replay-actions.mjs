@@ -8,16 +8,18 @@ const spellOf = (e) => {
   const id = e.abilityGameID ?? e.ability?.guid ?? 0;
   return id === -4 ? 1 : Math.max(0, id);
 };
-export function* reconstructCastSteps(replay, metadata = {}, reused = new Map()) {
+/** @param {Uint32Array} [eventOrder] */
+export function* reconstructCastSteps(replay, metadata = {}, reused = new Map(), eventOrder = undefined) {
   const actors = new Map(replay.actors.map((a) => [a.key, a]));
   const rawEvents=replay.raw.events, events=[];
   const start=replay.raw.fight.startTime;
   let ordered=true;
-  for(let id=0;id<rawEvents.length;id++){
-    if((id&255)===0)yield;
-    const event=rawEvents[id],t=event.timestamp-start;
+  for(let i=0;i<rawEvents.length;i++){
+    if((i&255)===0)yield;
+    const id=eventOrder?.[i]??i,event=rawEvents[id],t=event.timestamp-start;
     if(t>=0&&t<=replay.duration){
-      if(events.length&&events.at(-1).t>t)ordered=false;
+      const previous=events.at(-1);
+      if(previous&&(previous.t>t||(previous.t===t&&previous.id>id)))ordered=false;
       events.push({event,id,t});
     }
   }
