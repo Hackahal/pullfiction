@@ -7,7 +7,7 @@ import { renderToString } from "react-dom/server";
 import { Analysis } from "./Analysis";
 import { EditorController } from "./controller";
 import { normalizeReplay, enrichCombat } from "./domain";
-import type { RawReplay } from "./types";
+import type { RawReplay, RecordedEventDetail } from "./types";
 
 function eventReplay() {
   return enrichCombat(
@@ -104,6 +104,9 @@ test("Combat event details stay in their panel, focus the tray and restore the s
     Object.defineProperty(globalThis, key, { configurable: true, value });
   const controller = new EditorController();
   const seeks: number[] = [];
+  const selections: (RecordedEventDetail | null)[] = [];
+  const onEventSelection = (event: RecordedEventDetail | null) =>
+    selections.push(event);
   const focused: string[] = [];
   controller.focusRecordedActor = (key) => {
     focused.push(key);
@@ -130,6 +133,7 @@ test("Combat event details stay in their panel, focus the tray and restore the s
           controller,
           close() {},
           preset: { view: "events" },
+          onEventSelection,
         }),
       ),
     );
@@ -153,6 +157,8 @@ test("Combat event details stay in their panel, focus the tray and restore the s
     assert.equal(trigger.getAttribute("aria-controls"), tray.id);
     assert.equal(dom.window.document.activeElement, tray);
     assert.match(tray.textContent ?? "", /Fireball.*Mage.*Boss.*100/);
+    assert.equal(selections.at(-1)?.t, 1000);
+    assert.equal(selections.at(-1)?.name, "Fireball");
     assert.deepEqual(seeks, []);
     assert.equal(controller.getSnapshot().detail, null);
     const source = tray.querySelector<HTMLButtonElement>(
@@ -189,6 +195,7 @@ test("Combat event details stay in their panel, focus the tray and restore the s
       null,
     );
     assert.equal(dom.window.document.activeElement, trigger);
+    assert.equal(selections.at(-1), null);
     await act(async () => trigger.click());
     await act(async () =>
       root.render(
@@ -197,6 +204,7 @@ test("Combat event details stay in their panel, focus the tray and restore the s
           controller,
           close() {},
           preset: { view: "events" },
+          onEventSelection,
         }),
       ),
     );
@@ -204,6 +212,7 @@ test("Combat event details stay in their panel, focus the tray and restore the s
       dom.window.document.querySelector('[aria-label="Selected combat event"]'),
       null,
     );
+    assert.equal(selections.at(-1), null);
   } finally {
     await act(async () => root.unmount());
     controller.stop();

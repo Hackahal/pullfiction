@@ -57,7 +57,12 @@ import {
   routeLength,
   time,
 } from "./domain";
-import type { GameVersion, Options, Snapshot } from "./types";
+import type {
+  GameVersion,
+  Options,
+  RecordedEventDetail,
+  Snapshot,
+} from "./types";
 export { GameIcon } from "./GameIcon";
 export function App({ controller }: { controller: EditorController }) {
   useEffect(() => {
@@ -101,6 +106,8 @@ export function App({ controller }: { controller: EditorController }) {
       };
       return { analyse: read("analyse"), plan: read("plan") };
     }),
+    [selectedRunEvent, setSelectedRunEvent] =
+      useState<RecordedEventDetail | null>(null),
     [pageDetails, setPageDetails] = useState(state.workspaceMode === "plan"),
     [timelineRange, setTimelineRange] = useState<[number, number]>([0, 60000]),
     [source, setSource] = useState(
@@ -696,6 +703,12 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       pageDetails={pageDetails && state.planning}
+                      selectedEvent={
+                        state.workspaceMode === "analyse" &&
+                        openPanels.includes("events")
+                          ? selectedRunEvent
+                          : null
+                      }
                       onPageDetails={showPageDetails}
                     />
                   ),
@@ -767,6 +780,7 @@ export function App({ controller }: { controller: EditorController }) {
                       close={() => closePanel("events")}
                       preset={{ view: "events" }}
                       storageKey="pullfiction.events"
+                      onEventSelection={setSelectedRunEvent}
                     />
                   ),
                 },

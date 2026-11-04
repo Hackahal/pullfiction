@@ -5,7 +5,7 @@ import { LayerHeaders, LayerTracks } from "./LayerTracks";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { preciseTime, pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
-import type { Snapshot } from "./types";
+import type { RecordedEventDetail, Snapshot } from "./types";
 import {
   projectRunClip,
   runRange,
@@ -20,11 +20,13 @@ export function RunTimeline({
   state,
   controller,
   pageDetails = false,
+  selectedEvent = null,
   onPageDetails,
 }: {
   state: Snapshot;
   controller: EditorController;
   pageDetails?: boolean;
+  selectedEvent?: RecordedEventDetail | null;
   onPageDetails?: (on: boolean) => void;
 }) {
   const replay = state.replay;
@@ -50,6 +52,10 @@ export function RunTimeline({
   const lastHit = useRef<RunSegment | null>(null);
   const view = runRange(range.start, range.span, duration);
   const fullRange = runRange(0, duration, duration);
+  const eventInView =
+    selectedEvent &&
+    selectedEvent.t >= view.start &&
+    selectedEvent.t <= view.start + view.span;
   const pullRange =
     pull && runRange(pull.start, pull.end - pull.start, duration);
   const sameRange = (range: typeof view) =>
@@ -180,6 +186,19 @@ export function RunTimeline({
   const portrait = (segment: RunSegment) =>
     segment.actor ? controller.portraitUrl(segment.actor) : undefined;
   if (!replay && state.workspaceMode !== "plan") return null;
+  const eventJump =
+    replay && selectedEvent ? (
+      <button
+        type="button"
+        className="run-event-jump"
+        aria-label={`Go to selected event: ${selectedEvent.name} at run time ${preciseTime(selectedEvent.t)}`}
+        title={`${selectedEvent.name} · Run ${preciseTime(selectedEvent.t)}${eventInView ? "" : " · Outside visible range"}`}
+        onClick={() => controller.seek(selectedEvent.t)}
+      >
+        <i aria-hidden="true" />
+        <span>Event {preciseTime(selectedEvent.t)}</span>
+      </button>
+    ) : null;
   return (
     <section
       className="run-navigator"
@@ -267,9 +286,13 @@ export function RunTimeline({
             </button>
           </>
         )}
+        {eventJump}
         <div className="menu-spacer" />
         <PanelSettings title="Timeline options" label="Options" width={320}>
           <div className="run-timeline-options">
+            {eventJump && (
+              <div className="run-event-jump-compact">{eventJump}</div>
+            )}
             {replay && (
               <>
                 <fieldset>
@@ -729,6 +752,23 @@ ${s.names}`}
                     );
                   })}
                 </div>
+                {selectedEvent && eventInView && (
+                  <div
+                    className="run-event-marker"
+                    data-coincident={
+                      (Math.abs(
+                        percent(selectedEvent.t) - percent(state.time),
+                      ) *
+                        width) /
+                        100 <
+                      3
+                    }
+                    style={{ left: `${percent(selectedEvent.t)}%` }}
+                    aria-hidden="true"
+                  >
+                    <i />
+                  </div>
+                )}
                 {state.time >= view.start &&
                   state.time <= view.start + view.span && (
                     <div

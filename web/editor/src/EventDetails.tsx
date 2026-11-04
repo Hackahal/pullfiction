@@ -103,13 +103,13 @@ export function EventDetails({
           <button
             className="event-seek"
             type="button"
-            aria-label={`Jump playhead to run time ${runTime}`}
+            aria-label={`Go to event at run time ${runTime}`}
             onClick={() => seek(event.t)}
             title="Jump playhead to event"
           >
             <EditorIcon name="next" />
             <span>
-              Run <b>{runTime}</b>
+              Go to <b>{runTime}</b>
             </span>
           </button>
         </div>

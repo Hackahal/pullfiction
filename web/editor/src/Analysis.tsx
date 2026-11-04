@@ -143,12 +143,14 @@ export function Analysis({
   close,
   preset = {},
   storageKey = "pullfiction.analysis",
+  onEventSelection,
 }: {
   state: Snapshot;
   controller: EditorController;
   close: () => void;
   preset?: Partial<typeof defaults>;
   storageKey?: string;
+  onEventSelection?: (event: RecordedEventDetail | null) => void;
 }) {
   const [config, setConfig] = useState(() => saved(storageKey, preset)),
     [source, setSource] = useState("*"),
@@ -219,6 +221,10 @@ export function Analysis({
     () => setEventDetail(null),
     [replayIdentity(replay), replay?.raw.fight],
   );
+  useEffect(() => {
+    onEventSelection?.(config.view === "events" ? eventDetail : null);
+  }, [config.view, eventDetail, onEventSelection]);
+  useEffect(() => () => onEventSelection?.(null), [onEventSelection]);
   const clock = state.playing ? Math.floor(state.time / 250) * 250 : state.time;
   const recipientMetric = ["taken", "death", "buff", "debuff"].includes(
     config.metric,
