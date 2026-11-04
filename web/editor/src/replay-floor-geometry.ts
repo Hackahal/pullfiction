@@ -41,33 +41,27 @@ export class ReplayFloorGeometry {
         .filter((a) => Number.isFinite(a.height))
         .map((a) => [a.id, a.height]),
     );
+    const validPoint = (point: Point | undefined) =>
+      point?.length === 3 && point.every(Number.isFinite);
     for (const floor of floors) {
-      for (let i = 0; i < floor.indices.length; i += 3) {
-        const [a, b, c] = floor.indices
-          .slice(i, i + 3)
-          .map((j) => floor.vertices[j]);
-        if (
-          ![a, b, c].every((p) => p?.length === 3 && p.every(Number.isFinite))
-        )
+      const { indices, vertices } = floor;
+      const interior = floor.interior === true,
+        structure = floor.area !== "terrain",
+        room = rooms.get(floor.area);
+      for (let i = 0; i < indices.length; i += 3) {
+        const a = vertices[indices[i]],
+          b = vertices[indices[i + 1]],
+          c = vertices[indices[i + 2]];
+        if (!validPoint(a) || !validPoint(b) || !validPoint(c))
           throw new Error("Invalid replay floor geometry");
-        const ab = b.map((v, j) => v - a[j]) as Point;
-        const ac = c.map((v, j) => v - a[j]) as Point;
-        const n = [
-          ab[1] * ac[2] - ab[2] * ac[1],
-          ab[2] * ac[0] - ab[0] * ac[2],
-          ab[0] * ac[1] - ab[1] * ac[0],
-        ];
-        if (n[2] / Math.hypot(...n) < 0.45 || !n[2]) continue;
+        const ab: Point = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        const ac: Point = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        const nx = ab[1] * ac[2] - ab[2] * ac[1],
+          ny = ab[2] * ac[0] - ab[0] * ac[2],
+          nz = ab[0] * ac[1] - ab[1] * ac[0];
+        if (nz / Math.hypot(nx, ny, nz) < 0.45 || !nz) continue;
         const id =
-          this.triangles.push({
-            a,
-            ab,
-            ac,
-            nz: n[2],
-            interior: floor.interior === true,
-            structure: floor.area !== "terrain",
-            room: rooms.get(floor.area),
-          }) - 1;
+          this.triangles.push({ a, ab, ac, nz, interior, structure, room }) - 1;
         const minX = Math.floor(Math.min(a[0], b[0], c[0]) / CELL),
           maxX = Math.floor(Math.max(a[0], b[0], c[0]) / CELL);
         const minY = Math.floor(Math.min(a[1], b[1], c[1]) / CELL),
@@ -78,10 +72,10 @@ export class ReplayFloorGeometry {
         }
         for (let x = minX; x <= maxX; x++)
           for (let y = minY; y <= maxY; y++) {
-            const key = `${x}:${y}`,
-              list = this.columns.get(key) ?? [];
-            list.push(id);
-            this.columns.set(key, list);
+            const key = `${x}:${y}`;
+            const list = this.columns.get(key);
+            if (list) list.push(id);
+            else this.columns.set(key, [id]);
           }
       }
     }
