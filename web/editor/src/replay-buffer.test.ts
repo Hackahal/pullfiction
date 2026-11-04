@@ -331,6 +331,113 @@ test("complete buffering conserves identical legitimate events and exact boundar
     2,
   );
 });
+test("restored overlaps retain first owners, closed context edges and final events", async () => {
+  const row = (timestamp: number, label: string) => ({ timestamp, label });
+  const header = bufferFixture();
+  header.stream!.contextEvents = [
+    row(150000, "covered-context-end"),
+    row(150001, "header"),
+  ];
+  const parts: ReplayPart[] = [
+    {
+      kind: "full",
+      start: 80000,
+      end: 140000,
+      from: 10000,
+      to: 150000,
+      events: [
+        row(10000, "second-early-context"),
+        row(15000, "duplicate-context"),
+        row(80000, "duplicate-overlap"),
+        row(100000, "new-owner"),
+        row(140000, "full-end-context"),
+        row(150000, "context-end"),
+      ],
+    },
+    {
+      kind: "full",
+      start: 20000,
+      end: 100000,
+      from: 15000,
+      to: 110000,
+      events: [
+        row(15000, "first-context"),
+        row(20000, "first"),
+        row(80000, "tie-a"),
+        row(80000, "tie-b"),
+        row(100000, "not-context"),
+      ],
+    },
+    {
+      kind: "full",
+      start: 220000,
+      end: 240000,
+      from: 215000,
+      to: 240000,
+      events: [row(240000, "final")],
+    },
+    {
+      kind: "state",
+      start: 130000,
+      end: 240000,
+      from: 130000,
+      to: 240000,
+      events: [
+        row(170000, "duplicate-state"),
+        row(180000, "new-state-owner"),
+        row(240000, "duplicate-final"),
+      ],
+    },
+    {
+      kind: "state",
+      start: 0,
+      end: 180000,
+      from: 0,
+      to: 180000,
+      events: [
+        row(80000, "duplicate-full"),
+        row(140000, "first-unowned"),
+        row(170000, "first-state"),
+      ],
+    },
+  ];
+  const buffer = new ReplayBuffer(
+    header,
+    async () => {
+      throw Error("cache should supply parts");
+    },
+    async () => {},
+    {
+      list: async () => parts,
+      put: async () => {},
+    },
+  );
+  await buffer.restore();
+  const snapshot = buffer.snapshot();
+  const labels = (events: unknown[]) =>
+    events.map((e) => (e as { label: string }).label);
+  assert.deepEqual(labels(snapshot.events), [
+    "first",
+    "tie-a",
+    "tie-b",
+    "new-owner",
+    "final",
+  ]);
+  assert.deepEqual(labels(snapshot.stream!.contextEvents), [
+    "first-context",
+    "second-early-context",
+    "full-end-context",
+    "context-end",
+    "header",
+  ]);
+  assert.deepEqual(labels(snapshot.stream!.stateEvents), [
+    "first-unowned",
+    "first-state",
+    "new-state-owner",
+  ]);
+  buffer.close();
+});
+
 test("cached chunks restore a distant seek without fetching; portable coverage does not duplicate cached parts", async () => {
   const parts = new Map<string, ReplayPart>();
   const cache = {

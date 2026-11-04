@@ -393,42 +393,61 @@ export class ReplayBuffer {
     const state = this.parts
       .filter((p) => p.kind === "state")
       .sort((a, b) => a.start - b.start);
-    const fullRanges = this.full();
-    const events = full.flatMap((p, i) =>
-      p.events.filter(
-        (e) =>
-          owns(e.timestamp - origin, p, duration) &&
-          !full
-            .slice(0, i)
-            .some((q) => owns(e.timestamp - origin, q, duration)),
-      ),
-    );
-    const outsideFull = (t: number) => !full.some((p) => owns(t, p, duration));
-    const contextEvents = full.flatMap((p, i) =>
-      p.events.filter((e) => {
-        const t = e.timestamp - origin;
-        return (
-          outsideFull(t) &&
-          !full.slice(0, i).some((q) => t >= q.from && t <= q.to)
-        );
-      }),
-    );
-    contextEvents.push(
-      ...this.header.stream!.contextEvents.filter((e) => {
-        const t = e.timestamp - origin;
-        return outsideFull(t) && !full.some((p) => t >= p.from && t <= p.to);
-      }),
-    );
-    const stateEvents = state.flatMap((p, i) =>
-      p.events.filter((e) => {
-        const t = e.timestamp - origin;
-        return (
-          owns(t, p, duration) &&
-          outsideFull(t) &&
-          !state.slice(0, i).some((q) => owns(t, q, duration))
-        );
-      }),
-    );
+    const fullRanges = ranges(full.map((p) => [p.start, p.end]));
+    const ownedBefore = (t: number, end: number) =>
+      t < end || (t === duration && t === end);
+    const outsideFull = (t: number) => {
+      let lo = 0,
+        hi = fullRanges.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (fullRanges[mid][0] <= t) lo = mid + 1;
+        else hi = mid;
+      }
+      return lo === 0 || !ownedBefore(t, fullRanges[lo - 1][1]);
+    };
+    const withinEarlierContext = (t: number, stop: number) => {
+      for (let i = 0; i < stop; i++) {
+        const part = full[i];
+        if (t >= part.from && t <= part.to) return true;
+      }
+      return false;
+    };
+    const events: any[] = [],
+      contextEvents: any[] = [],
+      stateEvents: any[] = [];
+    let priorEnd = -Infinity;
+    for (let i = 0; i < full.length; i++) {
+      const part = full[i];
+      for (const event of part.events) {
+        const t = event.timestamp - origin;
+        if (owns(t, part, duration)) {
+          // Parts are sorted by start, so any earlier start is at or before t.
+          if (!ownedBefore(t, priorEnd)) events.push(event);
+        } else if (outsideFull(t) && !withinEarlierContext(t, i)) {
+          contextEvents.push(event);
+        }
+      }
+      priorEnd = Math.max(priorEnd, part.end);
+    }
+    for (const event of this.header.stream!.contextEvents) {
+      const t = event.timestamp - origin;
+      if (outsideFull(t) && !withinEarlierContext(t, full.length))
+        contextEvents.push(event);
+    }
+    priorEnd = -Infinity;
+    for (const part of state) {
+      for (const event of part.events) {
+        const t = event.timestamp - origin;
+        if (
+          owns(t, part, duration) &&
+          !ownedBefore(t, priorEnd) &&
+          outsideFull(t)
+        )
+          stateEvents.push(event);
+      }
+      priorEnd = Math.max(priorEnd, part.end);
+    }
     return {
       ...this.header,
       events: events.sort((a, b) => a.timestamp - b.timestamp),
