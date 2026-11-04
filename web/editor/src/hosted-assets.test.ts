@@ -81,6 +81,73 @@ function fixture() {
   };
   return { manifest, calls, fetcher, zipped, hashes };
 }
+test("hosted map consumers share decode and retain only the most recent foreground map", async () => {
+  const f = fixture();
+  const maps = new Map<string, Uint8Array<ArrayBuffer>>();
+  for (const id of [409, 469, 509]) {
+    const raw = new TextEncoder().encode(
+      JSON.stringify({
+        map: id,
+        bounds: [0, 0, 1, 1],
+        floors: [],
+        areas: [],
+        tiles: [],
+      }),
+    );
+    const zipped = new Uint8Array(gzipSync(raw));
+    const hash = sha(zipped);
+    maps.set(hash, zipped);
+    f.manifest.chunks[hash] = { bytes: zipped.length, rawBytes: raw.length };
+    f.manifest.files[`map:${id}`] = {
+      bytes: raw.length,
+      sha256: sha(raw),
+      parts: [{ chunk: hash, offset: 0, length: raw.length }],
+    };
+  }
+  let mapFetches = 0;
+  const fetcher: typeof fetch = async (url, init) => {
+    const key = [...maps.keys()].find((hash) => String(url).includes(hash));
+    if (!key) return f.fetcher(url, init);
+    mapFetches++;
+    return new Response(maps.get(key));
+  };
+  const reader = await openHostedAssets("https://assets.example", undefined, {
+    fetch: fetcher,
+    cache: null,
+  });
+  const [a, b] = await Promise.all([
+    reader.map!(409, ""),
+    reader.map!(409, ""),
+  ]);
+  assert.equal(a, b);
+  assert.equal(await reader.background!.map!(409, ""), a);
+  await reader.background!.map!(509, "");
+  assert.equal(await reader.map!(409, ""), a);
+  await assert.rejects(reader.map!(999, ""), { name: "NotFoundError" });
+  const c = await reader.map!(469, "");
+  assert.equal(await reader.map!(469, ""), c);
+  assert.notEqual(await reader.map!(409, ""), a);
+  reader.close();
+  await assert.rejects(reader.map!(409, ""), { name: "AbortError" });
+  const small = await openHostedAssets("https://assets.example", undefined, {
+    fetch: fetcher,
+    cache: null,
+    memoryBytes: Math.ceil(f.manifest.files["map:409"].bytes * 1.6),
+  });
+  const priorFetches = mapFetches;
+  const retained = await small.map!(409, "");
+  assert.equal(await small.map!(409, ""), retained);
+  assert.equal(mapFetches, priorFetches + 1);
+  await assert.rejects(small.map!(999, ""), { name: "NotFoundError" });
+  await small.map!(409, "");
+  assert.equal(
+    mapFetches,
+    priorFetches + 2,
+    "the decoded map displaced its raw chunk",
+  );
+  small.close();
+});
+
 test("multipart reads verify slices, normalize names and deduplicate concurrent chunk requests", async () => {
   const f = fixture();
   const reader = await openHostedAssets("https://assets.example", undefined, {

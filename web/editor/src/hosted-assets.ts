@@ -197,7 +197,15 @@ export async function openHostedAssets(
   };
   const pending = new Map<string, ChunkJob>();
   let used = 0;
+  let recentMapBytes = 0;
   const budget = options.memoryBytes ?? 64 * 1024 * 1024;
+  const trimMemory = (limit: number) => {
+    while (used > limit && memory.size) {
+      const key = memory.keys().next().value!;
+      used -= memory.get(key)!.length;
+      memory.delete(key);
+    }
+  };
   const attempts = Math.max(1, Math.min(5, (options.retries ?? 2) + 1));
   async function request<T>(
     url: URL,
@@ -490,12 +498,9 @@ export async function openHostedAssets(
       }
     }
     check();
-    if (raw.length <= budget) {
-      while (used + raw.length > budget && memory.size) {
-        const key = memory.keys().next().value!;
-        used -= memory.get(key)!.length;
-        memory.delete(key);
-      }
+    const chunkBudget = budget - recentMapBytes;
+    if (raw.length <= chunkBudget) {
+      trimMemory(chunkBudget - raw.length);
       memory.set(sha, raw);
       used += raw.length;
     }
@@ -674,6 +679,38 @@ export async function openHostedAssets(
   let appearance:
     ((request: Record<string, unknown>) => Promise<any>) | undefined;
   let appearanceModule: Promise<any> | undefined;
+  const pendingMaps = new Map<number, Promise<LocalMap>>();
+  // Geometry and the tactical map share immutable hosted metadata. Keep one
+  // decoded map so opening the tactical view does not decode it again.
+  // Reserve room for other assets; the input allowance also covers estimated
+  // non-geometry metadata. Geometry uses the tactical map's array estimates.
+  const mapCacheLimit = Math.floor((budget * 2) / 3);
+  function estimateMapBytes(value: LocalMap, inputBytes: number) {
+    let bytes = inputBytes;
+    for (const floor of value.floors) {
+      if (!Array.isArray(floor?.vertices) || !Array.isArray(floor?.indices))
+        return Infinity;
+      bytes += floor.vertices.length * 64 + floor.indices.length * 8;
+    }
+    return bytes;
+  }
+  let recentMap: LocalMap | undefined;
+  let requestedMap: number | undefined;
+  async function loadMap(
+    mapId: number,
+    background: boolean,
+  ): Promise<LocalMap> {
+    const value = await json(`map:${mapId}`, background);
+    if (
+      value.map !== mapId ||
+      !Array.isArray(value.bounds) ||
+      value.bounds.length !== 4 ||
+      !value.bounds.every(Number.isFinite) ||
+      ![value.areas, value.floors, value.tiles].every(Array.isArray)
+    )
+      throw new Error("Invalid hosted map");
+    return value;
+  }
   const reads = (
     background: boolean,
   ): NonNullable<ClientReader["background"]> => ({
@@ -694,16 +731,37 @@ export async function openHostedAssets(
     },
     async map(mapId: number): Promise<LocalMap> {
       if (!integer(mapId, 0xffffffff)) throw new Error("Invalid hosted map ID");
-      const value = await json(`map:${mapId}`, background);
-      if (
-        value.map !== mapId ||
-        !Array.isArray(value.bounds) ||
-        value.bounds.length !== 4 ||
-        !value.bounds.every(Number.isFinite) ||
-        ![value.areas, value.floors, value.tiles].every(Array.isArray)
-      )
-        throw new Error("Invalid hosted map");
-      return value;
+      check();
+      if (background)
+        return recentMap?.map === mapId
+          ? recentMap
+          : (pendingMaps.get(mapId) ?? loadMap(mapId, true));
+      requestedMap = mapId;
+      if (recentMap?.map === mapId) return recentMap;
+      recentMap = undefined;
+      recentMapBytes = 0;
+      let request = pendingMaps.get(mapId);
+      if (!request) {
+        request = loadMap(mapId, false)
+          .then((value) => {
+            check();
+            if (requestedMap === mapId) {
+              const bytes = estimateMapBytes(
+                value,
+                manifest.files[`map:${mapId}`].bytes,
+              );
+              if (bytes <= mapCacheLimit) {
+                recentMap = value;
+                recentMapBytes = bytes;
+                trimMemory(budget - bytes);
+              }
+            }
+            return value;
+          })
+          .finally(() => pendingMaps.delete(mapId));
+        pendingMaps.set(mapId, request);
+      }
+      return request;
     },
   });
   return {
@@ -732,6 +790,9 @@ export async function openHostedAssets(
       lifetime.abort(namedError("AbortError", "Hosted reader closed"));
       options.signal?.removeEventListener("abort", abort);
       memory.clear();
+      recentMap = undefined;
+      recentMapBytes = 0;
+      pendingMaps.clear();
       appearance = undefined;
       appearanceModule = undefined;
       used = 0;
