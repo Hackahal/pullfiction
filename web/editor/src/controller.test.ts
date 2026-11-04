@@ -5683,13 +5683,23 @@ test("opening a large saved replay yields before committing and can be cancelled
   await store.putReplay(project.source!.cacheKey, source);
   await store.put(project);
   const c = new EditorController(undefined, { projectStore: store });
+  const internals = c as unknown as {
+    patch(change: { browserAssets: true; clientStatus: "ready" }): void;
+    modernSpells: Record<number, { iconFile: number }>;
+  };
+  internals.patch({ browserAssets: true, clientStatus: "ready" });
+  internals.modernSpells = { 133: { iconFile: 100 } };
+  let catalogReplaced = false;
   let scheduled = false;
   const unsubscribe = c.subscribe(() => {
-    if (
-      c.getSnapshot().replayPreparation?.message ===
-        "Reconstructing combat events…" &&
-      !scheduled
-    ) {
+    const phase = c.getSnapshot().replayPreparation?.message;
+    if (phase === "Finding spell icons…" && scheduled && !catalogReplaced) {
+      catalogReplaced = true;
+      setTimeout(() => {
+        internals.modernSpells = { 133: { iconFile: 200 } };
+      }, 0);
+    }
+    if (phase === "Reconstructing combat events…" && !scheduled) {
       scheduled = true;
       setTimeout(() => c.cancelImport(), 0);
     }
@@ -5702,7 +5712,10 @@ test("opening a large saved replay yields before committing and can be cancelled
     assert.equal(await c.openProject(project.id), true);
     assert.equal(c.getSnapshot().time, 4500);
     assert.equal(c.getSnapshot().workspaceMode, "analyse");
-    assert.equal(c.getSnapshot().replay?.actors[0].id, 1);
+    const replay = c.getSnapshot().replay!;
+    assert.equal(replay.actors[0].id, 1);
+    assert.equal(replay.abilities.get(133)?.icon, "pf_200.blp");
+    assert.equal(replay.raw.abilities?.[0].icon, "spell_fire_flamebolt.jpg");
   } finally {
     unsubscribe();
     c.stop();

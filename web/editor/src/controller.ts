@@ -5451,20 +5451,31 @@ export class EditorController {
       raw.events.length < SLICED_IMPORT_MIN_EVENTS
     )
       return;
+    const phase = (message: string) => {
+      if (current())
+        this.patch({ replayPreparation: { message, completed: 0, total: 0 } });
+    };
+    let inputWithIcons: RawReplay | undefined;
+    if (this.state.browserAssets) {
+      phase("Finding spell icons…");
+      for (;;) {
+        const catalog = this.modernSpells;
+        inputWithIcons = await drainReplayTasks(
+          localSpellReplaySteps(raw, catalog),
+          () => signal.throwIfAborted(),
+        );
+        if (catalog === this.modernSpells) break;
+      }
+    }
     const { input, models, renderModels, itemModels, spells } =
-      this.replayInput(raw);
+      this.replayInput(raw, inputWithIcons);
     const replay = await prepareWholeReplay(
       input,
       renderModels,
       itemModels,
       spells,
       signal,
-      (message) => {
-        if (current())
-          this.patch({
-            replayPreparation: { message, completed: 0, total: 0 },
-          });
-      },
+      phase,
     );
     return this.completeReplayForInstall(raw, replay, models);
   }
