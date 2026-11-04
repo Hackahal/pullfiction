@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MarkEditor, AddPlanPlayer, PageProperties } from "./Planning";
 import { EditorIcon } from "./EditorIcon";
 import { preciseTime } from "./domain";
@@ -27,6 +27,7 @@ export function EditsPanel({
   onPageDetails?: (on: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
   const hasSelection = !!(
     state.selectedMarks.length || state.selectedActors.length
   );
@@ -199,11 +200,23 @@ export function EditsPanel({
       <div className="edits-list-toolbar">
         <input
           className="edits-search"
+          ref={searchInput}
           aria-label="Find edits"
           placeholder="Find edits…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        {query && (
+          <button
+            aria-label="Clear edit search"
+            onClick={() => {
+              setQuery("");
+              searchInput.current?.focus();
+            }}
+          >
+            Clear
+          </button>
+        )}
         <details className="edits-actions">
           <summary aria-label="Edit actions" title="Edit actions">
             <EditorIcon name="more" />

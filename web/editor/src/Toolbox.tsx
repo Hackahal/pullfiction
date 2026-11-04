@@ -4,8 +4,13 @@ import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
 import { PANEL_MIME, type PaneId } from "./dock-model";
 import { EditorIcon as Icon } from "./EditorIcon";
+const runPanel = {
+  id: "run",
+  label: "Run timeline",
+  icon: "timeline",
+} as const;
 export const panelCatalogue: { id: PaneId; label: string; icon: string }[] = [
-  { id: "run", label: "Run timeline", icon: "timeline" },
+  runPanel,
   { id: "inspector", label: "Focus", icon: "person" },
   { id: "analysis", label: "Statistics", icon: "table" },
   { id: "damage", label: "Damage graph", icon: "chart" },
@@ -47,31 +52,35 @@ export function Toolbox({
       <span>{shortLabel}</span>
     </button>
   );
-  const panelButton = (p: (typeof panelCatalogue)[number]) => (
-    <button
-      key={p.id}
-      draggable={p.id !== "inspector"}
-      onDragStart={(e) => {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData(PANEL_MIME, p.id);
-      }}
-      onClick={() => onOpen(p.id)}
-      className={open.includes(p.id) ? "open" : ""}
-      title={
-        p.id === "inspector"
-          ? "Open Focus"
-          : `Drag ${p.label} into the workspace, or click to open`
-      }
-    >
-      <Icon name={p.icon} />
-      <span>{p.label}</span>
-      {p.id !== "inspector" && (
-        <span className="toolbox-grip" aria-hidden="true">
-          <Icon name="grip" />
-        </span>
-      )}
-    </button>
-  );
+  const panelButton = (p: (typeof panelCatalogue)[number]) => {
+    const visible = open.includes(p.id);
+    const available =
+      p.id !== "run" || !!state.replay || state.workspaceMode === "plan";
+    return (
+      <button
+        key={p.id}
+        className="panel-tool"
+        aria-pressed={available && visible}
+        disabled={!available}
+        draggable={available && p.id !== "inspector"}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData(PANEL_MIME, p.id);
+        }}
+        onClick={() => (visible ? onClose(p.id) : onOpen(p.id))}
+        title={`${visible ? "Hide" : "Show"} ${p.label}${p.id !== "inspector" ? " · Drag to dock" : ""}`}
+      >
+        <Icon name={p.icon} />
+        <span className="panel-tool-name">{p.label}</span>
+        <span className="panel-tool-status" aria-hidden="true" />
+        {p.id !== "inspector" && (
+          <span className="toolbox-grip" aria-hidden="true">
+            <Icon name="grip" />
+          </span>
+        )}
+      </button>
+    );
+  };
   return (
     <nav
       className={`toolbox ${state.workspaceMode === "plan" ? "editing" : ""}`}
@@ -92,7 +101,11 @@ export function Toolbox({
         </button>
       </div>
       {state.workspaceMode === "plan" && controller.snapshot() && (
-        <div className="workspace-mode" aria-label="Compare positions">
+        <div
+          className="workspace-mode"
+          role="group"
+          aria-label="Compare positions"
+        >
           <button
             aria-pressed={!state.compareRecorded}
             onClick={() => controller.setCompareRecorded(false)}
@@ -203,12 +216,7 @@ export function Toolbox({
                 : "Click to select · Drag to draw"}
           </p>
           <DrawingDefaults state={state} controller={controller} />
-          {button(
-            "timeline",
-            "Run timeline",
-            () => onOpen("run"),
-            open.includes("run"),
-          )}
+          {panelButton(runPanel)}
         </>
       )}
       {state.workspaceMode === "analyse" && (

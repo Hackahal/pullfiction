@@ -8,10 +8,12 @@ export function PanelSettings({
   width = 400,
   placement = "anchor",
   label,
+  triggerLabel,
 }: {
   title: string;
   icon?: string;
   label?: string;
+  triggerLabel?: string;
   width?: number;
   placement?: "anchor" | "edge";
   children: ReactNode;
@@ -57,7 +59,7 @@ export function PanelSettings({
         ref={trigger}
         type="button"
         className={`panel-settings-trigger${label ? " has-label" : ""}`}
-        aria-label={title}
+        aria-label={triggerLabel ?? title}
         title={title}
         aria-expanded={open}
         aria-controls={id}

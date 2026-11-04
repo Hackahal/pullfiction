@@ -29,6 +29,7 @@ export function Focus({
   inspect?: () => void;
 }) {
   const state = useBufferedView(inputState);
+  const [showAuras, setShowAuras] = useState(false);
   const panel = useRef<HTMLElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     () => {
@@ -158,6 +159,15 @@ export function Focus({
           >
             <EditorIcon name="grip" />
           </span>
+          {actor && (
+            <button
+              className="focus-auras-toggle"
+              aria-pressed={showAuras}
+              onClick={() => setShowAuras((value) => !value)}
+            >
+              Auras
+            </button>
+          )}
           <button aria-label="Close Focus" onClick={close}>
             <EditorIcon name="close" />
           </button>
@@ -169,6 +179,7 @@ export function Focus({
               combat={focusedCombat!}
               reservePower={reservePower}
               reserveCast={reserveCast}
+              showAuras={showAuras}
               state={state}
               controller={controller}
               inspect={inspect}
@@ -179,6 +190,7 @@ export function Focus({
                 combat={targetCombat!}
                 reservePower={reservePower}
                 reserveCast={reserveCast}
+                showAuras={showAuras}
                 state={state}
                 controller={controller}
                 target
@@ -219,6 +231,7 @@ function FocusedUnit({
   combat,
   reservePower,
   reserveCast,
+  showAuras,
   state,
   controller,
   target = false,
@@ -229,6 +242,7 @@ function FocusedUnit({
   combat: ReturnType<typeof combatStateAt>;
   reservePower: boolean;
   reserveCast: boolean;
+  showAuras: boolean;
   state: Snapshot;
   controller: EditorController;
   target?: boolean;
@@ -245,22 +259,24 @@ function FocusedUnit({
       className={`focus-unit-frame${target ? " target" : ""}`}
       aria-label={target ? "Focused target" : "Focused unit"}
     >
-      <div className="focus-unit-auras">
-        <AuraGroup
-          label={target ? "Target debuffs" : "Debuffs"}
-          auras={combat.auras.filter((a) => a.debuff)}
-          state={state}
-          controller={controller}
-          compact
-        />
-        <AuraGroup
-          label={target ? "Target buffs" : "Buffs"}
-          auras={combat.auras.filter((a) => !a.debuff)}
-          state={state}
-          controller={controller}
-          compact
-        />
-      </div>
+      {showAuras && (
+        <div className="focus-unit-auras">
+          <AuraGroup
+            label={target ? "Target debuffs" : "Debuffs"}
+            auras={combat.auras.filter((a) => a.debuff)}
+            state={state}
+            controller={controller}
+            compact
+          />
+          <AuraGroup
+            label={target ? "Target buffs" : "Buffs"}
+            auras={combat.auras.filter((a) => !a.debuff)}
+            state={state}
+            controller={controller}
+            compact
+          />
+        </div>
+      )}
       <div className="focus-unit-identity" style={{ borderColor: color }}>
         <button
           className="focus-unit-name"

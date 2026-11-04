@@ -10,12 +10,17 @@ export function SceneDisplay({
   controller: EditorController;
 }) {
   const options = state.options;
+  const detailed = state.raidFrameSize.height >= 220;
+  const standardNameplates =
+    options.nameplates && options.enemyNameplates && options.bossNameplates;
   const scene =
+    standardNameplates &&
     !options.raidFrames &&
     !options.friendlyNameplates &&
     !options.trashNameplates &&
     !options.auras;
   const raid =
+    standardNameplates &&
     options.raidFrames &&
     !options.friendlyNameplates &&
     !options.trashNameplates &&
@@ -32,10 +37,16 @@ export function SceneDisplay({
         </button>
         <button
           aria-pressed={raid}
-          onClick={() => controller.setScenePresentation("raid")}
+          onClick={() => {
+            if (!raid) controller.setScenePresentation("raid");
+          }}
         >
           <strong>Raid overview</strong>
-          <span>Scan a compact roster</span>
+          <span>
+            {raid && detailed
+              ? "Show all roster details"
+              : "Scan a compact roster"}
+          </span>
         </button>
       </div>
       <fieldset className="scene-display-options">
@@ -68,7 +79,7 @@ export function SceneDisplay({
               <span>Detailed raid frames</span>
               <input
                 type="checkbox"
-                checked={state.raidFrameSize.height >= 220}
+                checked={detailed}
                 onChange={(event) =>
                   controller.setRaidFrameSize(
                     state.raidFrameSize.width,

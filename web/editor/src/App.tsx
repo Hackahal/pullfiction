@@ -1,9 +1,9 @@
+import { PanelSettings } from "./PanelSettings";
 import { ReplayTransport } from "./ReplayTransport";
 import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
 import { ShareDialog, type ShareTarget } from "./ShareDialog";
 import { shareId } from "./share-client";
 import { CommunityLinks } from "./CommunityLinks";
-import { GitHubLink } from "./GitHubLink";
 import { nameplateShortcut } from "./nameplate-model";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
@@ -149,7 +149,7 @@ export function App({ controller }: { controller: EditorController }) {
     state.workspaceMode,
     state.projectId,
   ]);
-  function openLibrary(tab: "projects" | "logs") {
+  function openLibrary(tab: "workspace" | "projects" | "logs") {
     if (state.playing || state.playPreparing) controller.toggle();
     if (state.projectId || state.dirty) void controller.saveProject();
     try {
@@ -474,153 +474,181 @@ export function App({ controller }: { controller: EditorController }) {
         onBlurCapture={() => controller.setTyping(false)}
       >
         <header className="menubar">
-          <button
-            className="brand"
-            onClick={() => openLibrary("projects")}
-            aria-label="Open library"
-          >
-            Pull <span>Fiction</span>
-          </button>
-          <select
-            aria-label="Game version"
-            value={state.gameVersion}
-            disabled={state.busy}
-            onChange={(e) =>
-              controller.setGameVersion(e.target.value as GameVersion)
-            }
-          >
-            {GAME_VERSIONS.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-          <span className="menu-divider" />
-          <input
-            className="plan-name"
-            aria-label="Plan name"
-            maxLength={100}
-            value={state.plan.name}
-            onChange={(e) => controller.rename(e.target.value)}
-          />
-          <span
-            className={`save-dot ${state.dirty ? "dirty" : ""}`}
-            title={state.dirty ? "Unsaved changes" : "Saved"}
-          />
-          <button onClick={() => openLibrary("projects")}>Library</button>
-          <button onClick={() => openLibrary("logs")}>Logs</button>
-          <button disabled={state.busy} onClick={() => setShareTarget({})}>
-            Share
-          </button>
-          {state.projectId && state.sourceStatus === "missing" && (
+          <div className="workspace-navigation">
             <button
-              onClick={() => openLibrary("logs")}
-              title="Reload the log without changing this plan"
+              className="brand"
+              onClick={() => openLibrary("workspace")}
+              aria-label="Open library"
+              title="Open library"
             >
-              Reload source
+              Pull <span>Fiction</span>
+              <small>Library</small>
             </button>
-          )}
-          <button onClick={() => controller.save()} title="Save · ⌘S">
-            Save
-          </button>
-          <span
-            className={`local-save-status ${state.saveStatus}`}
-            role="status"
-          >
-            {state.saveStatus === "saved"
-              ? "Saved locally"
-              : state.saveStatus === "saving"
-                ? "Saving…"
-                : state.saveStatus === "pending"
-                  ? "Unsaved"
-                  : state.saveStatus === "error"
-                    ? "Save failed"
-                    : ""}
-          </span>
-          <details
-            className="file-menu"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                e.currentTarget.removeAttribute("open");
-                e.currentTarget.querySelector("summary")?.focus();
-              }
-            }}
-          >
-            <summary>File</summary>
-            <div
-              className="menu-popover"
-              onClick={(e) => {
-                if ((e.target as Element).closest("button"))
-                  e.currentTarget.closest("details")?.removeAttribute("open");
+            <button onClick={() => openLibrary("logs")}>Logs</button>
+          </div>
+          <div className="document-identity">
+            <input
+              className="plan-name"
+              aria-label="Plan name"
+              title={state.plan.name}
+              maxLength={100}
+              value={state.plan.name}
+              onChange={(e) => controller.rename(e.target.value)}
+            />
+            <span
+              className={`local-save-status ${state.saveStatus}`}
+              role="status"
+            >
+              {state.saveStatus === "saved"
+                ? "Saved locally"
+                : state.saveStatus === "saving"
+                  ? "Saving…"
+                  : state.saveStatus === "pending"
+                    ? "Unsaved"
+                    : state.saveStatus === "error"
+                      ? "Save failed"
+                      : state.dirty
+                        ? "Unsaved"
+                        : ""}
+            </span>
+          </div>
+          <div className="document-actions">
+            <button
+              className="history-button"
+              aria-label="Undo"
+              title="Undo · ⌘Z"
+              disabled={!state.canUndo}
+              onClick={() => controller.undo()}
+            >
+              ↶
+            </button>
+            <button
+              className="history-button"
+              aria-label="Redo"
+              title="Redo · ⇧⌘Z"
+              disabled={!state.canRedo}
+              onClick={() => controller.redo()}
+            >
+              ↷
+            </button>
+
+            <button onClick={() => controller.save()} title="Save · ⌘S">
+              Save
+            </button>
+            <details
+              className="file-menu"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.removeAttribute("open");
+                  e.currentTarget.querySelector("summary")?.focus();
+                }
               }}
             >
-              <button onClick={() => planFile.current?.click()}>
-                Import plan
-              </button>
-              <button onClick={() => controller.exportFile("plan")}>
-                Export plan
-              </button>
-              <button
-                disabled={!state.projectId}
-                onClick={() =>
-                  state.projectId &&
-                  void controller.exportProject(state.projectId)
-                }
+              <summary>File</summary>
+              <div
+                className="menu-popover"
+                onClick={(e) => {
+                  if ((e.target as Element).closest("button"))
+                    e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
               >
-                Export project backup
-              </button>
-              <button
-                disabled={!state.replay}
-                onClick={() => controller.exportFile("replay")}
-              >
-                Export replay
-              </button>
-            </div>
-          </details>
-          <span className="menu-divider" />
-          <button
-            className="history-button"
-            aria-label="Undo"
-            title="Undo · ⌘Z"
-            disabled={!state.canUndo}
-            onClick={() => controller.undo()}
-          >
-            ↶
-          </button>
-          <button
-            className="history-button"
-            aria-label="Redo"
-            title="Redo · ⇧⌘Z"
-            disabled={!state.canRedo}
-            onClick={() => controller.redo()}
-          >
-            ↷
-          </button>
-          <div className="menu-spacer" />
-          <label className="raid-picker">
-            <span>Raid</span>
-            <select
-              className="raid-selector"
-              aria-label="Raid map"
-              value={state.plan.mapId}
-              onChange={(e) => controller.selectRaid(Number(e.target.value))}
+                <button onClick={() => planFile.current?.click()}>
+                  Import plan
+                </button>
+                <button onClick={() => controller.exportFile("plan")}>
+                  Export plan
+                </button>
+                <button
+                  disabled={!state.projectId}
+                  onClick={() =>
+                    state.projectId &&
+                    void controller.exportProject(state.projectId)
+                  }
+                >
+                  Export project backup
+                </button>
+                <button
+                  disabled={!state.replay}
+                  onClick={() => controller.exportFile("replay")}
+                >
+                  Export replay
+                </button>
+              </div>
+            </details>
+
+            <button
+              className="header-share"
+              disabled={state.busy}
+              onClick={() => setShareTarget({})}
             >
-              {raidsForVersion(state.gameVersion).map((raid) => (
-                <option key={raid.map} value={raid.map}>
-                  {raid.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <GitHubLink />
-          {state.clientNeedsFiles && state.clientPromptHidden && (
-            <button onClick={() => controller.showClientSource()}>
-              Load game assets
+              Share
             </button>
-          )}
-          <button onClick={() => setDialog("settings")}>Settings</button>
+            {state.projectId && state.sourceStatus === "missing" && (
+              <button
+                onClick={() => openLibrary("logs")}
+                title="Reload the log without changing this plan"
+              >
+                Reload source
+              </button>
+            )}
+          </div>
+          <div className="workspace-settings">
+            <PanelSettings
+              title="Raid setup"
+              triggerLabel={`Raid setup: ${raidByMap(state.plan.mapId, state.gameVersion)?.name ?? "Raid"}`}
+              label={
+                raidByMap(state.plan.mapId, state.gameVersion)?.name ??
+                "Raid setup"
+              }
+              icon="raid"
+              width={310}
+            >
+              <div className="raid-setup-fields">
+                <label>
+                  <span>Game version</span>
+                  <select
+                    aria-label="Game version"
+                    value={state.gameVersion}
+                    disabled={state.busy}
+                    onChange={(e) =>
+                      controller.setGameVersion(e.target.value as GameVersion)
+                    }
+                  >
+                    {GAME_VERSIONS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Raid map</span>
+                  <select
+                    className="raid-selector"
+                    aria-label="Raid map"
+                    value={state.plan.mapId}
+                    onChange={(e) =>
+                      controller.selectRaid(Number(e.target.value))
+                    }
+                  >
+                    {raidsForVersion(state.gameVersion).map((raid) => (
+                      <option key={raid.map} value={raid.map}>
+                        {raid.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </PanelSettings>
+            {state.clientNeedsFiles && state.clientPromptHidden && (
+              <button onClick={() => controller.showClientSource()}>
+                Load game assets
+              </button>
+            )}
+            <button onClick={() => setDialog("settings")}>Settings</button>
+          </div>
         </header>
         <div className="editor-body">
           <Toolbox

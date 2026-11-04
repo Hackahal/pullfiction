@@ -48,6 +48,8 @@ export function RunTimeline({
     () => (replay ? runSegments(replay) : { bosses: [], mobs: [] }),
     [replay],
   );
+  const activePullName =
+    pull && ("name" in pull ? pull.name : replay?.fight.name);
   const mobs = useMemo(
     () => visibleRunMobs(segments.mobs, view, width),
     [segments, view.start, view.span, width],
@@ -309,7 +311,12 @@ export function RunTimeline({
             {replay && (
               <div className="run-fixed-labels">
                 <span />
-                <span className="run-encounter-label">Pulls</span>
+                <span className="run-encounter-label">
+                  <small>Pulls</small>
+                  {activePullName && (
+                    <strong title={activePullName}>{activePullName}</strong>
+                  )}
+                </span>
                 <span>Mobs</span>
               </div>
             )}
