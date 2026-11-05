@@ -18,6 +18,11 @@ export function ReplayTransport({
   const chapter = state.replay && chapterAt(state.replay, state.time);
   const pull = state.replay && pullAt(state.replay, state.time);
   const duration = controller.duration();
+  const playLabel = state.playPreparing
+    ? "Cancel preparation"
+    : state.playing
+      ? "Pause"
+      : "Play";
   const standalonePull =
     !!state.replay?.fight.encounterID &&
     state.replay.chapters.length === 0 &&
@@ -41,13 +46,8 @@ export function ReplayTransport({
         </button>
         <button
           className="play"
-          aria-label={
-            state.playPreparing
-              ? "Cancel preparation"
-              : state.playing
-                ? "Pause"
-                : "Play"
-          }
+          aria-label={playLabel}
+          title={playLabel}
           disabled={!state.replay && state.workspaceMode !== "plan"}
           onClick={() => controller.toggle()}
         >

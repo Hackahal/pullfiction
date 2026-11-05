@@ -1081,6 +1081,23 @@
 }
 
 @container replay-scene (max-width: 520px) {
+  .editor .focus-units:not([data-empty="true"]):not(:has(.focus-unit-frame.target))
+    .focus-hud-status {
+    display: none;
+  }
+
+  .editor .focus-units:not([data-empty="true"]):not(:has(.focus-unit-frame.target))
+    .focus-unit-tools {
+    justify-content: space-between;
+    gap: 2px;
+  }
+
+  .editor .focus-units:not([data-empty="true"]):not(:has(.focus-unit-frame.target))
+    .focus-unit-tools > :is(button, .focus-move) {
+    min-width: 24px;
+    padding-inline: 3px;
+  }
+
   .editor .focus-unit-tools .focus-combat-toggle {
     display: inline-flex;
     align-items: center;
@@ -1402,7 +1419,7 @@
   }
 }
 
-@container replay-scene (max-width: 540px) {
+@container replay-scene (max-width: 460px) {
   .transport .transport-skip {
     display: none;
   }
@@ -1436,6 +1453,62 @@
 
   .transport .transport-context {
     min-width: 0;
+  }
+}
+
+.editor .transport .play {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #66768a;
+  border-radius: 50%;
+  background: #364252;
+  color: #f0f5fd;
+}
+
+.editor .transport .play:hover:not(:disabled) {
+  background: #4b5d74;
+}
+
+.editor .transport .plan-from-moment {
+  background: #2d3949;
+  border-color: #4d607a;
+  color: #e2edfc;
+}
+
+.editor .transport .plan-from-moment:hover:not(:disabled) {
+  background: #3d4d63;
+  color: #f2f6ff;
+}
+
+.editor .transport .transport-skip {
+  padding-inline: 3px;
+}
+
+.editor .transport :is(.play, .transport-skip, .plan-from-moment, select):focus-visible {
+  outline: 2px solid #f5f7fb;
+  outline-offset: 1px;
+}
+
+@container replay-scene (min-width: 461px) and (max-width: 540px) {
+  .transport .transport-context {
+    min-width: 89px;
+  }
+
+  .transport .transport-core {
+    gap: 2px;
+  }
+
+  .editor .transport .timecode {
+    padding-inline: 0;
+  }
+
+  .transport .transport-options .panel-settings-trigger.has-label {
+    gap: 3px;
+    padding-inline: 4px;
   }
 }
 
