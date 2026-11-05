@@ -11,6 +11,7 @@ import {
   moveDock,
   resizeDock,
   dockGeometry,
+  responsiveDock,
   paneIds,
   type PaneId,
   type Edge,
@@ -18,6 +19,31 @@ import {
 function ids(n: ReturnType<typeof defaultDock>): string[] {
   return "pane" in n ? [n.pane] : [...ids(n.a), ...ids(n.b)];
 }
+test("The stock narrow workspace gives Scene and Run full rows without losing secondary panels", () => {
+  const stock = defaultDock();
+  const visible = new Set<PaneId>(["scene", "run", "events"]);
+  const compact = responsiveDock(stock, visible, 450, 650);
+  assert.deepEqual(ids(compact).sort(), [...paneIds].sort());
+  const { panes, dividers } = dockGeometry(compact, visible, 450, 650);
+  assert.equal(panes.scene!.width, 450);
+  assert.equal(panes.run!.width, 450);
+  assert.ok(panes.events!.y >= panes.run!.y + panes.run!.height);
+  assert.equal(responsiveDock(stock, visible, 511, 650), stock);
+  assert.equal(responsiveDock(stock, visible, 450, 499), stock);
+  assert.equal(
+    responsiveDock(stock, new Set([...visible, "playbook"]), 450, 650),
+    stock,
+  );
+  const edited = resizeDock(compact, dividers[0].path, 0.6);
+  assert.equal(responsiveDock(edited, visible, 450, 650), edited);
+  assert.equal(responsiveDock(edited, visible, 900, 650), edited);
+  assert.equal(
+    responsiveDock(stock, new Set(["scene", "run"]), 450, 650),
+    stock,
+  );
+  const custom = moveDock(stock, "events", "scene", "left");
+  assert.equal(responsiveDock(custom, visible, 450, 650), custom);
+});
 test("Default workspace puts damage left of timeline in an equal lower split", () => {
   const g = dockGeometry(
     defaultDock(),

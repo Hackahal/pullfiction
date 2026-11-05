@@ -2422,13 +2422,13 @@
   }
 }
 
-@container run-dock (max-width: 440px) and (max-height: 140px) {
+@container run-dock (max-width: 500px) and (max-height: 140px) {
   .editor .run-navigator-tools > .panel-settings-trigger.has-label {
     padding-inline: 5px;
   }
 
   .editor .run-navigator-tools > .panel-settings-trigger.has-label > span,
-  .editor .run-navigator[data-workspace="analyse"] .run-navigator-tools > strong {
+  .editor .run-navigator-tools > strong {
     display: none;
   }
 
@@ -2692,5 +2692,29 @@
 
   .edit-property-notes > .edit-property-label {
     padding-top: 0;
+  }
+}
+
+.dock-content:has(> .edits-panel) {
+  container: edits-dock / size;
+}
+
+@container edits-dock (max-height: 220px) {
+  .edits-browser-view:not([hidden]) {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .edits-browser-view > :is(.edits-properties, .edits-outline) {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+
+  .edits-properties .planning-section:first-child {
+    position: static;
   }
 }
