@@ -2,12 +2,39 @@ import { PanelSettings } from "./PanelSettings";
 import type { Snapshot, Options } from "./types";
 import type { EditorController } from "./controller";
 
-export function SceneDisplay({
+export function CameraDistanceControl({
   state,
   controller,
 }: {
   state: Snapshot;
   controller: EditorController;
+}) {
+  return (
+    <select
+      aria-label="Maximum camera distance"
+      title="Maximum camera distance"
+      value={state.cameraMaxDistance}
+      onChange={(event) =>
+        controller.setCameraDistance(Number(event.target.value))
+      }
+    >
+      {[20, 30, 40, 50, 60].map((distance) => (
+        <option key={distance} value={distance}>
+          {distance} yd max
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function SceneDisplay({
+  state,
+  controller,
+  cameraDistance = false,
+}: {
+  state: Snapshot;
+  controller: EditorController;
+  cameraDistance?: boolean;
 }) {
   const options = state.options;
   const detailed = state.raidFrameSize.height >= 220;
@@ -49,6 +76,12 @@ export function SceneDisplay({
           </span>
         </button>
       </div>
+      {cameraDistance && (
+        <label className="scene-display-camera-distance">
+          Camera distance
+          <CameraDistanceControl state={state} controller={controller} />
+        </label>
+      )}
       <fieldset className="scene-display-options">
         <legend>Overlays</legend>
         {(

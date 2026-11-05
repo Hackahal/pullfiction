@@ -17,7 +17,7 @@ import {
 } from "./interaction-policy";
 import { SceneToolbar } from "./SceneToolbar";
 import { ReplayLoading } from "./ReplayLoading";
-import { SceneDisplay } from "./SceneDisplay";
+import { CameraDistanceControl, SceneDisplay } from "./SceneDisplay";
 import { SceneEventContext } from "./SceneEventContext";
 import { RaidFrameResize } from "./RaidFrameResize";
 import { BrowserClient } from "./BrowserClient";
@@ -1362,6 +1362,10 @@ function Viewport({
     controller.setMapView(map);
     return () => controller.setMapView(false);
   }, [map, controller]);
+  const showCameraDistance =
+    !map &&
+    ((!!state.replay && state.options.followRaid) ||
+      state.cameraMode === "orbit");
   const eventContext =
     sceneEvent && state.replay && !map && state.sceneReady ? (
       <SceneEventContext
@@ -1424,26 +1428,15 @@ function Viewport({
               <EditorIcon name="focus" />
               <span>Frame selection</span>
             </button>
-            {!map &&
-              ((state.replay && state.options.followRaid) ||
-                state.cameraMode === "orbit") && (
-                <select
-                  aria-label="Maximum camera distance"
-                  title="Maximum camera distance"
-                  value={state.cameraMaxDistance}
-                  onChange={(e) =>
-                    controller.setCameraDistance(Number(e.target.value))
-                  }
-                >
-                  {[20, 30, 40, 50, 60].map((v) => (
-                    <option key={v} value={v}>
-                      {v} yd max
-                    </option>
-                  ))}
-                </select>
-              )}
+            {showCameraDistance && (
+              <CameraDistanceControl state={state} controller={controller} />
+            )}
           </div>
-          <SceneDisplay state={state} controller={controller} />
+          <SceneDisplay
+            state={state}
+            controller={controller}
+            cameraDistance={showCameraDistance}
+          />
           <div className="studio-segment" role="group" aria-label="View type">
             <button aria-pressed={!map} onClick={() => setMap(false)}>
               3D

@@ -528,14 +528,108 @@
   outline-offset: -2px;
 }
 
-@container replay-scene (max-width: 395px) {
-  .editor .viewport-modes > .panel-settings-trigger.has-label > span {
+.scene-display-camera-distance {
+  display: none;
+}
+
+@container replay-scene (max-width: 500px) {
+  .editor .scene-chrome > :is(.scene-editor-toolbar, .viewport-modes) {
+    flex-basis: 100%;
+  }
+
+  .editor .viewport-modes {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+
+  .editor .viewport-modes > .scene-camera-controls {
+    flex: 0 1 auto;
+  }
+
+  .editor .scene-camera-controls > select:first-child {
+    flex: 0 1 auto;
+    max-width: 132px;
+    text-overflow: ellipsis;
+  }
+
+  .editor .viewport-modes > .studio-segment {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    margin-inline-start: auto;
+  }
+
+  .editor .scene-editor-toolbar [role="group"] {
+    gap: 2px;
+  }
+}
+
+@container replay-scene (max-width: 410px) {
+  .editor .scene-editor-toolbar button {
+    width: 29px;
+    justify-content: center;
+    padding-inline: 3px;
+  }
+
+  .editor .scene-editor-toolbar button > span {
     display: none;
   }
 
+  .editor .viewport-modes > .panel-settings-trigger.has-label > span {
+    display: none;
+  }
+}
+
+@container replay-scene (max-width: 345px) {
+  .editor .viewport-modes {
+    gap: 3px;
+  }
+
+  .editor .viewport-modes > .panel-settings-trigger.has-label {
+    width: 26px;
+    justify-content: center;
+    padding-inline: 2px;
+  }
+
+  .editor .scene-camera-controls > select[aria-label="Maximum camera distance"] {
+    display: none;
+  }
+
+  .editor .scene-camera-controls > select:first-child {
+    max-width: 112px;
+  }
+
+  .scene-display-camera-distance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-block: 0 10px;
+  }
+}
+
+@container replay-scene (max-width: 395px) {
   .editor .scene-camera-controls > :is(select, button),
   .editor .viewport-modes .studio-segment > button {
     padding-inline: 5px;
+  }
+}
+
+@container replay-scene (max-width: 205px) {
+  .editor .viewport-modes,
+  .editor .scene-editor-toolbar [role="group"] {
+    flex-wrap: wrap;
+  }
+
+  .editor .viewport-modes > .scene-camera-controls {
+    flex-basis: 100%;
+  }
+
+  .editor .scene-camera-controls > select:first-child {
+    flex: 1 1 0;
+  }
+
+  .editor .scene-editor-toolbar select {
+    max-width: 100%;
   }
 }
 

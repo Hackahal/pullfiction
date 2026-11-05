@@ -16,11 +16,13 @@ export function SceneToolbar({
           {(["move", "rotate", "scale"] as const).map((tool, i) => (
             <button
               key={tool}
+              aria-label={["Move", "Rotate", "Resize"][i]}
+              title={["Move", "Rotate", "Resize"][i]}
               aria-pressed={state.transformActive && state.transform === tool}
               onClick={() => controller.setTransform(tool)}
             >
               <EditorIcon name={tool} />
-              {["Move", "Rotate", "Resize"][i]}
+              <span>{["Move", "Rotate", "Resize"][i]}</span>
             </button>
           ))}
         </div>
