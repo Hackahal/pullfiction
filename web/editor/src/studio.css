@@ -769,6 +769,55 @@
   outline-offset: 1px;
 }
 
+@media (max-width: 760px) {
+  .editor {
+    --toolbox-width: 154px;
+  }
+
+  .editor:has(.toolbox.editing) {
+    --toolbox-width: 168px;
+  }
+
+  .editor .toolbox {
+    padding-inline: 5px;
+  }
+
+  .editor .toolbox .workspace-mode button {
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  .editor .toolbox .panel-tool {
+    gap: 5px;
+    padding-inline: 5px;
+    font-size: 12px;
+  }
+
+  .editor .toolbox .panel-tool-name {
+    white-space: normal;
+  }
+
+  .editor .toolbox .toolbox-grip svg {
+    width: 11px;
+  }
+
+  .editor .toolbox .editor-tools button {
+    min-height: 32px;
+    gap: 3px;
+    padding-inline: 2px;
+    font-size: 11px;
+  }
+
+  .editor .toolbox .raid-marker-palette {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .editor .toolbox .raid-marker-palette button {
+    min-width: 0;
+    padding-inline: 3px;
+  }
+}
+
 .editor .run-fixed-labels .run-encounter-label {
   flex-direction: row;
   justify-content: flex-start;
