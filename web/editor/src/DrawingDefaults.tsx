@@ -114,7 +114,7 @@ export function DrawingDefaults({
           </label>
         </div>
       )}
-      {controller.numericDrawingAvailable() && (
+      {controller.numericDrawingAvailable() && !controller.pathDraftId && (
         <div className="drawing-dimension">
           <label>
             {["circle", "cone"].includes(state.tool) ? "Radius" : "Distance"}

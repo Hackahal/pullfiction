@@ -32,12 +32,18 @@ export function EditsPanel({
     state.selectedMarks.length || state.selectedActors.length
   );
   const pageView = pageDetails && state.workspaceMode === "plan";
+  const draftId = controller.pathDraftId;
+  const draft = draftId
+    ? state.plan.steps
+        .find((page) => page.id === state.activeStep)
+        ?.annotations.find((edit) => edit.id === draftId)
+    : undefined;
   const search = query.trim().toLowerCase();
   const matches = (name: string) => name.toLowerCase().includes(search);
   const outline = (
     <div
       className={`edits-outline${search ? " searching" : ""}`}
-      aria-label="Saved edits"
+      aria-label={draft ? "Page edits" : "Saved edits"}
     >
       {state.plan.steps.map((page, pageIndex) => {
         const marks = page.annotations.filter((a) =>
@@ -110,6 +116,7 @@ export function EditsPanel({
                 <button
                   className="edit-select"
                   aria-pressed={state.selectedMarks.includes(edit.id)}
+                  disabled={edit.id === draftId}
                   onClick={(e) => {
                     if (e.shiftKey || e.ctrlKey || e.metaKey)
                       controller.selectMark(edit.id, "toggle");
@@ -120,30 +127,37 @@ export function EditsPanel({
                     name={edit.type === "marker" ? "pin" : edit.type}
                   />
                   <span>{edit.name}</span>
+                  {edit.id === draftId && (
+                    <small className="edit-draft-label">Draft</small>
+                  )}
                   {edit.actor && <EditorIcon name="actors" />}
                 </button>
-                <button
-                  title={edit.hidden ? "Show edit" : "Hide edit"}
-                  aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
-                  aria-pressed={!edit.hidden}
-                  onClick={() => {
-                    controller.revealEdit(edit.id);
-                    controller.updateMark({ hidden: !edit.hidden });
-                  }}
-                >
-                  <EditorIcon name="eye" />
-                </button>
-                <button
-                  title={edit.locked ? "Unlock edit" : "Lock edit"}
-                  aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
-                  aria-pressed={edit.locked}
-                  onClick={() => {
-                    controller.revealEdit(edit.id);
-                    controller.updateMark({ locked: !edit.locked });
-                  }}
-                >
-                  <EditorIcon name="lock" />
-                </button>
+                {edit.id !== draftId && (
+                  <>
+                    <button
+                      title={edit.hidden ? "Show edit" : "Hide edit"}
+                      aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
+                      aria-pressed={!edit.hidden}
+                      onClick={() => {
+                        controller.revealEdit(edit.id);
+                        controller.updateMark({ hidden: !edit.hidden });
+                      }}
+                    >
+                      <EditorIcon name="eye" />
+                    </button>
+                    <button
+                      title={edit.locked ? "Unlock edit" : "Lock edit"}
+                      aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
+                      aria-pressed={edit.locked}
+                      onClick={() => {
+                        controller.revealEdit(edit.id);
+                        controller.updateMark({ locked: !edit.locked });
+                      }}
+                    >
+                      <EditorIcon name="lock" />
+                    </button>
+                  </>
+                )}
               </div>
             ))}
             {edits.map(placement)}
@@ -283,7 +297,16 @@ export function EditsPanel({
         {!search && state.workspaceMode === "plan" && (
           <AddPlanPlayer controller={controller} />
         )}
-        {hasSelection ? (
+        {draft ? (
+          <div className="edits-draft-summary">
+            <EditorIcon name={draft.type} />
+            <div>
+              <strong>{draft.name}</strong>
+              <p>Finish in Scene to edit properties.</p>
+            </div>
+            <small className="edit-draft-label">Draft</small>
+          </div>
+        ) : hasSelection ? (
           <div className="edits-properties">
             <MarkEditor state={state} controller={controller} />
           </div>

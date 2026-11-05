@@ -1301,15 +1301,42 @@ function Viewport({
           : hovered?.id || hovered?.actor
             ? "pointer"
             : "default";
-  const selectedPlanMark =
-    editing && state.selectedMark
-      ? state.plan.steps
-          .find((page) => page.id === state.activeStep)
-          ?.annotations.find((mark) => mark.id === state.selectedMark)
-      : undefined;
+  const planMarks = editing
+    ? state.plan.steps.find((page) => page.id === state.activeStep)?.annotations
+    : undefined;
+  const selectedPlanMark = planMarks?.find(
+    (mark) => mark.id === state.selectedMark,
+  );
   const selectedEditHint = selectedPlanMark
     ? `${selectedPlanMark.name} selected${selectedPlanMark.hidden ? " · Hidden" : selectedPlanMark.locked ? " · Locked" : ""}`
     : null;
+  const pathDraftId = editing ? controller.pathDraftId : null;
+  const pathDraft = planMarks?.find((mark) => mark.id === pathDraftId);
+  const sceneFocus = useRef<HTMLDivElement>(null);
+  const returnDraftFocus = useRef(false);
+  useEffect(() => {
+    if (!pathDraftId && returnDraftFocus.current) {
+      returnDraftFocus.current = false;
+      if (document.activeElement === document.body) {
+        const target = map
+          ? sceneFocus.current?.querySelector<HTMLCanvasElement>(
+              ".tactical-map canvas",
+            )
+          : canvas.current;
+        (target ?? sceneFocus.current)?.focus({ preventScroll: true });
+      }
+    }
+  }, [pathDraftId, map]);
+  const finishPathDraft = () => {
+    returnDraftFocus.current = true;
+    if (controller.getSnapshot().dimensionInput)
+      controller.confirmDrawingDimension();
+    else controller.finishDrawing("select");
+  };
+  const cancelPathDraft = () => {
+    returnDraftFocus.current = true;
+    controller.cancelDrawing();
+  };
   const hint = !editing
     ? ""
     : hovered?.id && state.tool === "explore"
@@ -1454,7 +1481,12 @@ function Viewport({
         </div>
       </div>
       {eventContext && <div className="scene-event-band">{eventContext}</div>}
-      <div className="viewport" data-input-context="scene">
+      <div
+        className="viewport"
+        data-input-context="scene"
+        ref={sceneFocus}
+        tabIndex={-1}
+      >
         <canvas
           id="benilla"
           ref={canvas}
@@ -1882,7 +1914,7 @@ function Viewport({
           )}
         {boxRect && <div className="selection-box" style={boxRect} />}
         {map && <MapView state={state} controller={controller} />}
-        {editing && (
+        {editing && !pathDraftId && (
           <div className="scene-edit-hint" aria-live="polite">
             {state.drawing
               ? (() => {
@@ -1971,6 +2003,79 @@ function Viewport({
             />
           )}
       </div>
+      {pathDraftId && (
+        <div
+          className="scene-path-draft"
+          role="group"
+          aria-label="Path draft"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target instanceof HTMLButtonElement)
+              e.stopPropagation();
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelPathDraft();
+            }
+          }}
+        >
+          <div className="scene-path-summary">
+            <strong>
+              {state.tool === "route" ? "Route draft" : "Area draft"}
+            </strong>
+            <span>
+              {pathDraft?.points.length ?? 0}{" "}
+              {(pathDraft?.points.length ?? 0) === 1 ? "point" : "points"}
+              {state.tool === "route" && pathDraft
+                ? ` · ${routeLength(pathDraft.points).toFixed(1)} yd`
+                : ""}
+            </span>
+          </div>
+          {controller.numericDrawingAvailable() && (
+            <label className="scene-path-distance">
+              <input
+                aria-label="Drawing dimension"
+                inputMode="decimal"
+                value={state.dimensionInput}
+                placeholder="Distance"
+                onChange={(e) => controller.setDrawingDimension(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    finishPathDraft();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (state.dimensionInput)
+                      controller.cancelDrawingDimension();
+                    else cancelPathDraft();
+                  }
+                }}
+              />
+              <span aria-hidden="true">yd</span>
+            </label>
+          )}
+          <div className="scene-path-actions">
+            <button
+              type="button"
+              title="Cancel drawing (Esc)"
+              onClick={cancelPathDraft}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="scene-path-finish"
+              aria-label="Finish drawing"
+              title="Finish drawing (Enter)"
+              onClick={finishPathDraft}
+            >
+              Finish
+            </button>
+          </div>
+        </div>
+      )}
       {playback}
     </div>
   );

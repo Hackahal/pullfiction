@@ -1944,6 +1944,14 @@ export class EditorController {
       ["circle", "cone", "arrow", "route", "polygon"].includes(this.state.tool)
     );
   }
+  get pathDraftId(): string | null {
+    return this.state.drawing &&
+      !this.markDrag &&
+      !this.actorDrag &&
+      ["route", "polygon"].includes(this.state.tool)
+      ? this.draftMark
+      : null;
+  }
   setDrawingDimension(value: string) {
     if (
       !this.state.drawing ||
@@ -1970,7 +1978,7 @@ export class EditorController {
       return;
     }
     this.applyDrawingDimension();
-    this.finishDrawing();
+    this.finishDrawing(this.pathDraftId ? "select" : "keep");
   }
   private dimensioned(mark: Annotation): Annotation {
     const n = Number(this.state.dimensionInput);

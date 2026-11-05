@@ -175,6 +175,7 @@ export function Toolbox({
               </div>
             ))}
             {state.drawing &&
+              !controller.pathDraftId &&
               button(
                 "pointer",
                 "Finish drawing",
@@ -183,21 +184,23 @@ export function Toolbox({
                 "Finish",
               )}
           </div>
-          <p className="toolbox-gesture">
-            {["route", "polygon"].includes(state.tool)
-              ? state.drawing
-                ? "Add waypoints · Finish or Enter"
-                : state.tool === "route"
-                  ? "Click to start a route"
-                  : "Click to start an area"
-              : state.tool === "marker"
-                ? "Click to place · Shift-click to select"
-                : state.tool === "label"
-                  ? "Drag to place text"
-                  : state.tool === "explore"
-                    ? "Click to select · Drag a selection box"
-                    : "Drag to draw · Esc to cancel"}
-          </p>
+          {!controller.pathDraftId && (
+            <p className="toolbox-gesture">
+              {["route", "polygon"].includes(state.tool)
+                ? state.drawing
+                  ? "Add waypoints · Finish or Enter"
+                  : state.tool === "route"
+                    ? "Click to start a route"
+                    : "Click to start an area"
+                : state.tool === "marker"
+                  ? "Click to place · Shift-click to select"
+                  : state.tool === "label"
+                    ? "Drag to place text"
+                    : state.tool === "explore"
+                      ? "Click to select · Drag a selection box"
+                      : "Drag to draw · Esc to cancel"}
+            </p>
+          )}
           <DrawingDefaults state={state} controller={controller} />
           {panelButton(runPanel)}
         </>
