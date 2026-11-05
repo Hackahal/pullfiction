@@ -163,7 +163,32 @@ test("Combat event details stay in their panel, focus the tray and restore the s
     assert.deepEqual(seeks.splice(0), [1000]);
     assert.equal(
       dom.window.document.activeElement?.getAttribute("aria-label"),
-      "Recorded event list",
+      "Analysis",
+    );
+    await act(async () =>
+      root.render(
+        createElement(Analysis, {
+          state: {
+            ...state,
+            replay: {
+              ...prePullReplay,
+              raw: {
+                ...prePullReplay.raw,
+                events: structuredClone(prePullReplay.raw.events),
+              },
+            },
+            time: 1000,
+          },
+          controller,
+          close() {},
+          preset: { view: "events" },
+          onEventSelection,
+        }),
+      ),
+    );
+    assert.equal(
+      dom.window.document.activeElement,
+      dom.window.document.querySelector(".combat-event-ability button"),
     );
     await act(async () =>
       root.render(

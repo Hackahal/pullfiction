@@ -166,6 +166,11 @@ export function Analysis({
   const eventList = useRef<HTMLDivElement>(null);
   const analysisPanel = useRef<HTMLElement>(null);
   const eventTray = useRef<HTMLElement>(null);
+  const pendingMatchFocus = useRef<{
+    id: number;
+    event: AnalysisEvent;
+    fight: NonNullable<typeof replay>["raw"]["fight"];
+  } | null>(null);
   const selectedEventButton = () =>
     eventList.current?.querySelector<HTMLElement>(
       '.combat-event-ability [aria-expanded="true"]',
@@ -340,6 +345,46 @@ export function Analysis({
     events,
     eventQuery,
   ]);
+  useLayoutEffect(() => {
+    const pending = pendingMatchFocus.current;
+    const panel = analysisPanel.current;
+    if (!pending || !panel) return;
+    if (
+      replay?.raw.fight !== pending.fight ||
+      config.view !== "events" ||
+      panel.ownerDocument.activeElement !== panel
+    ) {
+      pendingMatchFocus.current = null;
+      return;
+    }
+    if (state.time !== pending.event.t || !dataReady || state.buffering) return;
+    pendingMatchFocus.current = null;
+    const list = eventList.current;
+    const exact = list?.querySelector<HTMLButtonElement>(
+      `[data-recorded-event="${pending.id}"] .combat-event-ability button`,
+    );
+    // A newly downloaded overlapping chunk can replace the raw event object.
+    const match = exact
+      ? undefined
+      : filtered.find(
+          (e) =>
+            e.t === pending.event.t &&
+            e.kind === pending.event.kind &&
+            e.source === pending.event.source &&
+            e.target === pending.event.target &&
+            e.spell === pending.event.spell &&
+            e.amountRecorded === pending.event.amountRecorded &&
+            e.amount === pending.event.amount &&
+            e.hitType === pending.event.hitType,
+        );
+    const destination =
+      exact ??
+      (match &&
+        list?.querySelector<HTMLButtonElement>(
+          `[data-event-index="${match.id}"] .combat-event-ability button`,
+        ));
+    destination?.focus();
+  });
   const rows = useMemo(
     () =>
       replay
@@ -561,6 +606,10 @@ export function Analysis({
       data-view={config.view}
       ref={analysisPanel}
       tabIndex={-1}
+      onBlur={(event) => {
+        if (event.target === event.currentTarget)
+          pendingMatchFocus.current = null;
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && eventDetail) {
           event.preventDefault();
@@ -1006,11 +1055,14 @@ export function Analysis({
                     {nextPullEvent ? (
                       <button
                         type="button"
+                        className="combat-events-first-match"
                         onClick={() => {
-                          (replay.raw.stream
-                            ? analysisPanel
-                            : eventList
-                          ).current?.focus({
+                          pendingMatchFocus.current = {
+                            id: recordedEventDetail(replay, nextPullEvent).id,
+                            event: nextPullEvent,
+                            fight: replay.raw.fight,
+                          };
+                          analysisPanel.current?.focus({
                             preventScroll: true,
                           });
                           controller.seek(nextPullEvent.t);
@@ -1042,12 +1094,17 @@ export function Analysis({
                     .slice(-250)
                     .reverse()
                     .map((e) => {
+                      const recordedId = recordedEventId(replay, e);
                       const selected =
-                        !!eventDetail &&
-                        eventDetail.id === recordedEventId(replay, e);
+                        !!eventDetail && eventDetail.id === recordedId;
                       const actors = `${actorMap.get(e.source)?.name ?? "Environment"} → ${actorMap.get(e.target)?.name ?? "Unknown"}`;
                       return (
-                        <li key={e.id} data-selected={selected || undefined}>
+                        <li
+                          key={e.id}
+                          data-selected={selected || undefined}
+                          data-event-index={e.id}
+                          data-recorded-event={recordedId}
+                        >
                           <button
                             className="combat-event-time"
                             onClick={() => controller.seek(e.t)}

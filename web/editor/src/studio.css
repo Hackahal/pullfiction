@@ -1524,6 +1524,20 @@
   font-size: 11px;
 }
 
+.analysis-panel[data-view="events"] {
+  container: combat-events / inline-size;
+}
+
+@container combat-events (max-width: 180px) {
+  .analysis-header[data-view="events"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .analysis-header[data-view="events"] > select[aria-label="Metric"] {
+    grid-column: 1 / -1;
+  }
+}
+
 .page-timecode-field {
   min-width: 0;
 }
@@ -2151,7 +2165,17 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 27px;
   margin-top: 2px;
   font-size: 11px;
+  text-align: left;
+  white-space: normal;
+}
+
+.editor .combat-events-empty .combat-events-first-match {
+  border-color: #506581;
+  background: #2e3c50;
+  color: #e6f0ff;
 }
