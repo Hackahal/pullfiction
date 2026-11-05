@@ -1972,6 +1972,64 @@
   padding: 0;
 }
 
+.editor .edits-properties .mark-selection-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
+  background: var(--studio-panel);
+}
+
+.mark-selection-icon {
+  display: grid;
+  flex: 0 0 29px;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid #675738;
+  border-radius: 4px;
+  background: #312a20;
+  color: #f2d394;
+}
+
+.mark-selection-icon :is(svg, img, .plan-raid-icon) {
+  width: 16px;
+  height: 16px;
+}
+
+.mark-selection-identity {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.editor .edits-properties .mark-selection-heading strong {
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.mark-selection-context {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.mark-selection-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 3px;
+}
+
+.editor .mark-selection-actions button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+}
+
 .page-inspector-title {
   margin: 0 0 8px;
   color: var(--text);

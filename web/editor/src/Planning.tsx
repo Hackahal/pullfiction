@@ -8,7 +8,7 @@ import { EditorIcon } from "./EditorIcon";
 import { useState, useEffect } from "react";
 import type { EditorController } from "./controller";
 import type { Annotation, PlanStep, Snapshot } from "./types";
-import { preciseTime } from "./domain";
+import { preciseTime, routeLength } from "./domain";
 import { RAID_ICONS } from "./annotation-model";
 export function MarkIcon({ icon }: { icon: string }) {
   if (/^[1-8]$/.test(icon)) {
@@ -303,117 +303,186 @@ export function MarkEditor({
   const multi = state.selectedMarks.length > 1;
   const update = (patch: Partial<Annotation>) =>
     selected ? controller.updateMark(patch) : controller.setMarkStyle(patch);
+  const transformFields = (
+    <details className="planning-advanced">
+      <summary>Position and transform</summary>
+      {selectedActor && state.compareRecorded && (
+        <p className="placement-source">
+          {selectedActor.name}:{" "}
+          {selectedActor.recorded
+            ? "recorded position"
+            : "no recorded position · showing planned placement"}
+        </p>
+      )}
+      {selectedActor && (
+        <div className="plan-form-row">
+          {([0, 1] as const).map((axis) => (
+            <label key={axis}>
+              {axis === 0 ? "X" : "Y"} yd
+              <ExactNumber
+                label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
+                value={
+                  (state.compareRecorded
+                    ? selectedActor.recorded
+                    : undefined)?.[axis] ?? selectedActor.position[axis]
+                }
+                onCommit={(n) => controller.positionActors(axis, n)}
+                disabled={state.compareRecorded}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {selected && !multi && (
+        <div className="plan-form-row">
+          {([0, 1] as const).map((axis) => (
+            <label key={axis}>
+              {axis === 0 ? "X" : "Y"} yd
+              <ExactNumber
+                label={`${axis === 0 ? "X" : "Y"} yards`}
+                value={selected.points[0][axis]}
+                disabled={selected.locked}
+                onCommit={(n) =>
+                  controller.nudgeMarks(
+                    axis === 0 ? n - selected.points[0][0] : 0,
+                    axis === 1 ? n - selected.points[0][1] : 0,
+                  )
+                }
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {(state.selectedMarks.length > 0 || state.selectedActors.length > 0) && (
+        <div className="plan-form-row">
+          <label>
+            Rotate °
+            <input
+              aria-label="Rotate selection degrees"
+              type="number"
+              defaultValue="0"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  controller.transformSelection(Number(e.currentTarget.value));
+                  e.currentTarget.value = "0";
+                }
+              }}
+            />
+          </label>
+          <label>
+            Scale ×
+            <input
+              aria-label="Scale selection"
+              type="number"
+              min=".05"
+              max="20"
+              step=".1"
+              defaultValue="1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  controller.transformSelection(
+                    0,
+                    Number(e.currentTarget.value),
+                  );
+                  e.currentTarget.value = "1";
+                }
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </details>
+  );
+  const primaryMark = selected && !multi ? selected : undefined;
+  const pageNumber = state.plan.steps.indexOf(step) + 1;
+  const typeName = primaryMark
+    ? {
+        route: "Route",
+        arrow: "Arrow",
+        circle: "Radius",
+        cone: "Cone",
+        polygon: "Area",
+        drawing: "Freehand",
+        marker: "Raid marker",
+        label: "Text",
+      }[primaryMark.type]
+    : undefined;
+  const markVisible =
+    primaryMark &&
+    !primaryMark.hidden &&
+    controller.visiblePages().some((page) => page.id === step.id);
   return (
     <section className="mark-editor planning-scroll" aria-label="Mark editor">
-      <div className="planning-section">
-        <strong>
-          {multi
-            ? `${state.selectedMarks.length} selected`
-            : selected
-              ? selected.name
-              : selectedActor
-                ? state.selectedActors.length > 1
-                  ? `${state.selectedActors.length} actors selected`
-                  : selectedActor.name
-                : "Drawing style"}
-        </strong>
+      <div className="planning-section mark-selection-heading">
+        {primaryMark && (
+          <span className="mark-selection-icon" aria-hidden="true">
+            {primaryMark.type === "marker" ? (
+              <MarkIcon icon={primaryMark.icon} />
+            ) : (
+              <EditorIcon name={primaryMark.type} />
+            )}
+          </span>
+        )}
+        <div className="mark-selection-identity">
+          {primaryMark && (
+            <span className="mark-selection-context" title={step.name}>
+              {typeName} · Page {pageNumber} · {step.name}
+            </span>
+          )}
+          <strong>
+            {multi
+              ? `${state.selectedMarks.length} selected`
+              : selected
+                ? selected.name
+                : selectedActor
+                  ? state.selectedActors.length > 1
+                    ? `${state.selectedActors.length} actors selected`
+                    : selectedActor.name
+                  : "Drawing style"}
+          </strong>
+          {primaryMark?.type === "route" && (
+            <span className="mark-selection-context">
+              {primaryMark.points.length} waypoints ·{" "}
+              {routeLength(primaryMark.points).toFixed(1)} yd
+            </span>
+          )}
+          {primaryMark && !markVisible && (
+            <span className="mark-selection-context">
+              {primaryMark.hidden
+                ? "Hidden in Scene"
+                : "Not visible at the playhead"}
+            </span>
+          )}
+        </div>
         {selected && (
-          <button onClick={() => controller.selectMark(null)}>Deselect</button>
+          <div className="mark-selection-actions">
+            {primaryMark && state.selectedActors.length === 0 && (
+              <button
+                type="button"
+                aria-label="Locate selected edit in Scene"
+                title={
+                  markVisible
+                    ? "Locate selected edit in Scene"
+                    : "This edit is not visible at the playhead"
+                }
+                disabled={!markVisible}
+                onClick={() => controller.frameSelection()}
+              >
+                <EditorIcon name="focus" />
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Deselect edit"
+              title="Deselect edit"
+              onClick={() => controller.selectMark(null)}
+            >
+              <EditorIcon name="close" />
+            </button>
+          </div>
         )}
       </div>
-      {(selected || selectedActor || multi) && (
-        <details className="planning-advanced">
-          <summary>Position and transform</summary>
-          {selectedActor && state.compareRecorded && (
-            <p className="placement-source">
-              {selectedActor.name}:{" "}
-              {selectedActor.recorded
-                ? "recorded position"
-                : "no recorded position · showing planned placement"}
-            </p>
-          )}
-          {selectedActor && (
-            <div className="plan-form-row">
-              {([0, 1] as const).map((axis) => (
-                <label key={axis}>
-                  {axis === 0 ? "X" : "Y"} yd
-                  <ExactNumber
-                    label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
-                    value={
-                      (state.compareRecorded
-                        ? selectedActor.recorded
-                        : undefined)?.[axis] ?? selectedActor.position[axis]
-                    }
-                    onCommit={(n) => controller.positionActors(axis, n)}
-                    disabled={state.compareRecorded}
-                  />
-                </label>
-              ))}
-            </div>
-          )}
-          {selected && !multi && (
-            <div className="plan-form-row">
-              {([0, 1] as const).map((axis) => (
-                <label key={axis}>
-                  {axis === 0 ? "X" : "Y"} yd
-                  <ExactNumber
-                    label={`${axis === 0 ? "X" : "Y"} yards`}
-                    value={selected.points[0][axis]}
-                    disabled={selected.locked}
-                    onCommit={(n) =>
-                      controller.nudgeMarks(
-                        axis === 0 ? n - selected.points[0][0] : 0,
-                        axis === 1 ? n - selected.points[0][1] : 0,
-                      )
-                    }
-                  />
-                </label>
-              ))}
-            </div>
-          )}
-          {(state.selectedMarks.length > 0 ||
-            state.selectedActors.length > 0) && (
-            <div className="plan-form-row">
-              <label>
-                Rotate °
-                <input
-                  aria-label="Rotate selection degrees"
-                  type="number"
-                  defaultValue="0"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      controller.transformSelection(
-                        Number(e.currentTarget.value),
-                      );
-                      e.currentTarget.value = "0";
-                    }
-                  }}
-                />
-              </label>
-              <label>
-                Scale ×
-                <input
-                  aria-label="Scale selection"
-                  type="number"
-                  min=".05"
-                  max="20"
-                  step=".1"
-                  defaultValue="1"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      controller.transformSelection(
-                        0,
-                        Number(e.currentTarget.value),
-                      );
-                      e.currentTarget.value = "1";
-                    }
-                  }}
-                />
-              </label>
-            </div>
-          )}
-        </details>
-      )}
+      {(!selected || multi) && (selectedActor || multi) && transformFields}
       {multi && (
         <div className="planning-actions">
           <button onClick={() => controller.duplicateMark()}>
@@ -500,6 +569,7 @@ export function MarkEditor({
               Hidden
             </label>
           </div>
+          {transformFields}
           <div className="planning-section">
             <strong>Comments</strong>
             <span>{selected.comments.length}</span>
