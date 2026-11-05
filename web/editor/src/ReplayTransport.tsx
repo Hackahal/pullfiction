@@ -27,6 +27,12 @@ export function ReplayTransport({
     !!state.replay?.fight.encounterID &&
     state.replay.chapters.length === 0 &&
     duration === state.replay.duration;
+  const chapterNameCounts = new Map<string, number>();
+  for (const item of state.replay?.chapters ?? [])
+    chapterNameCounts.set(
+      item.name,
+      (chapterNameCounts.get(item.name) ?? 0) + 1,
+    );
   return (
     <div
       className="transport"
@@ -36,16 +42,8 @@ export function ReplayTransport({
     >
       <div className="transport-core">
         <button
-          className="transport-skip"
-          aria-label="Previous encounter"
-          title="Previous encounter"
-          disabled={!state.replay}
-          onClick={() => controller.stepChapter(-1)}
-        >
-          <EditorIcon name="previous" />
-        </button>
-        <button
           className="play"
+          data-paused={!state.playing && !state.playPreparing}
           aria-label={playLabel}
           title={playLabel}
           disabled={!state.replay && state.workspaceMode !== "plan"}
@@ -55,22 +53,7 @@ export function ReplayTransport({
             name={state.playing || state.playPreparing ? "pause" : "play"}
           />
         </button>
-        <button
-          className="transport-skip"
-          aria-label="Next encounter"
-          title="Next encounter"
-          disabled={!state.replay}
-          onClick={() => controller.stepChapter(1)}
-        >
-          <EditorIcon name="next" />
-        </button>
         <div className="playback-clocks">
-          {!standalonePull && (
-            <span className="timecode pull-timecode">
-              <span>Pull</span>{" "}
-              <b>{pull ? preciseTime(state.time - pull.start) : "—"}</b>
-            </span>
-          )}
           <span className="timecode">
             <span>
               {state.replay && duration > state.replay.duration
@@ -82,13 +65,37 @@ export function ReplayTransport({
             <b>{preciseTime(state.time)}</b>
             <span className="transport-duration"> / {time(duration)}</span>
           </span>
+          {!standalonePull && (
+            <span className="timecode pull-timecode">
+              <span>Pull</span>{" "}
+              <b>{pull ? preciseTime(state.time - pull.start) : "—"}</b>
+            </span>
+          )}
         </div>
       </div>
-      <div className="transport-context">
+      <div
+        className="transport-context"
+        role="group"
+        aria-label="Encounter navigation"
+      >
+        <button
+          className="transport-skip"
+          aria-label="Previous encounter"
+          title="Previous encounter"
+          disabled={!state.replay}
+          onClick={() => controller.stepChapter(-1)}
+        >
+          <EditorIcon name="previous" />
+        </button>
         {state.replay?.chapters.length ? (
           <select
             className="chapter-select"
             aria-label="Encounter"
+            title={
+              chapter
+                ? `${chapter.name} · ${time(chapter.start)}`
+                : "Between pulls"
+            }
             value={chapter?.id ?? ""}
             onChange={(e) => controller.jump(e.target.value)}
           >
@@ -97,7 +104,10 @@ export function ReplayTransport({
             </option>
             {state.replay.chapters.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} · {time(c.start)}
+                {c.name}
+                {(chapterNameCounts.get(c.name) ?? 0) > 1
+                  ? ` · ${time(c.start)}`
+                  : ""}
               </option>
             ))}
           </select>
@@ -106,6 +116,15 @@ export function ReplayTransport({
             {state.replay?.fight.name ?? "No replay"}
           </span>
         )}
+        <button
+          className="transport-skip"
+          aria-label="Next encounter"
+          title="Next encounter"
+          disabled={!state.replay}
+          onClick={() => controller.stepChapter(1)}
+        >
+          <EditorIcon name="next" />
+        </button>
       </div>
       <div className="transport-actions">
         {state.busy && <span className="busy-dot" />}

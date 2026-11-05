@@ -1463,14 +1463,53 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  border: 1px solid #66768a;
-  border-radius: 50%;
-  background: #364252;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   color: #f0f5fd;
 }
 
 .editor .transport .play:hover:not(:disabled) {
-  background: #4b5d74;
+  background: #ffffff15;
+}
+
+.editor .transport .play[data-paused="true"] svg {
+  fill: currentColor;
+  stroke-width: 1;
+}
+
+.editor .transport .transport-core {
+  gap: 0;
+  padding-inline: 2px;
+  border: 1px solid #3a4049;
+  border-radius: 5px;
+  background: #1b1d21;
+}
+
+.editor .transport .transport-core .playback-clocks {
+  background: transparent;
+}
+
+.editor .transport .playback-clocks .pull-timecode {
+  padding-inline-start: 5px;
+  border-inline-start: 1px solid #48515c;
+  color: #c3cbd6;
+}
+
+.editor .transport .playback-clocks .timecode:not(.pull-timecode) b {
+  font-weight: 650;
+}
+
+.transport .transport-context {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.transport .transport-context .chapter-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .editor .transport .plan-from-moment {
@@ -1495,7 +1534,7 @@
 
 @container replay-scene (min-width: 461px) and (max-width: 540px) {
   .transport .transport-context {
-    min-width: 89px;
+    min-width: 133px;
   }
 
   .transport .transport-core {
