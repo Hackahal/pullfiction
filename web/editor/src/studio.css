@@ -1562,9 +1562,13 @@
   }
 }
 
-@container replay-scene (max-width: 460px) {
+@container replay-scene (max-width: 500px) {
   .transport .transport-skip {
     display: none;
+  }
+
+  .transport .transport-context {
+    min-width: min(96px, 100%);
   }
 
   .playback-encounter-actions {
@@ -1626,9 +1630,7 @@
 .editor .transport .transport-core {
   gap: 0;
   padding-inline: 2px;
-  border: 1px solid #3a4049;
-  border-radius: 5px;
-  background: #1b1d21;
+  border: 1px solid transparent;
 }
 
 .editor .transport .transport-core .playback-clocks {
@@ -1636,13 +1638,37 @@
 }
 
 .editor .transport .playback-clocks .pull-timecode {
-  padding-inline-start: 5px;
-  border-inline-start: 1px solid #48515c;
-  color: #c3cbd6;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid #404751;
+  color: #b7c0cd;
+}
+
+.editor .transport .playback-clocks .pull-timecode b {
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .editor .transport .playback-clocks .timecode:not(.pull-timecode) b {
-  font-weight: 650;
+  color: #f0f4fa;
+  font-size: 17px;
+  font-weight: 550;
+}
+
+@container replay-scene (max-width: 375px) {
+  .editor .transport .playback-clocks .timecode:not(.pull-timecode) b {
+    font-size: 15px;
+  }
+}
+
+@container replay-scene (max-width: 210px) {
+  .editor .transport .transport-core {
+    flex-wrap: wrap;
+  }
+
+  .editor .transport .playback-clocks {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
 }
 
 .transport .transport-context {
@@ -1677,7 +1703,7 @@
   outline-offset: 1px;
 }
 
-@container replay-scene (min-width: 461px) and (max-width: 540px) {
+@container replay-scene (width > 500px) and (max-width: 540px) {
   .transport .transport-context {
     min-width: 133px;
   }
