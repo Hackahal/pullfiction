@@ -1,5 +1,6 @@
 import { EditorIcon } from "./EditorIcon";
 import { PanelSettings } from "./PanelSettings";
+import { useRef } from "react";
 import { chapterAt, preciseTime, pullAt, time } from "./domain";
 import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
@@ -15,6 +16,7 @@ export function ReplayTransport({
   onOpenLog: () => void;
   onPlan: () => void;
 }) {
+  const transport = useRef<HTMLDivElement>(null);
   const chapter = state.replay && chapterAt(state.replay, state.time);
   const pull = state.replay && pullAt(state.replay, state.time);
   const duration = controller.duration();
@@ -36,6 +38,7 @@ export function ReplayTransport({
   return (
     <div
       className="transport"
+      ref={transport}
       role="group"
       aria-label="Replay playback"
       hidden={!state.replay}
@@ -144,7 +147,8 @@ export function ReplayTransport({
             title="Playback options"
             triggerLabel={`Playback options: ${state.rate}×${state.loop ? ", looping" : ""}`}
             label={`${state.rate}×`}
-            width={260}
+            width={234}
+            anchorBoundary={transport}
           >
             <div className="playback-option-fields">
               <label>
@@ -171,11 +175,17 @@ export function ReplayTransport({
                 Loop current encounter
               </label>
               <div className="playback-encounter-actions">
-                <button onClick={() => controller.stepChapter(-1)}>
-                  <EditorIcon name="previous" /> Previous encounter
+                <button
+                  aria-label="Previous encounter"
+                  onClick={() => controller.stepChapter(-1)}
+                >
+                  <EditorIcon name="previous" /> Previous
                 </button>
-                <button onClick={() => controller.stepChapter(1)}>
-                  <EditorIcon name="next" /> Next encounter
+                <button
+                  aria-label="Next encounter"
+                  onClick={() => controller.stepChapter(1)}
+                >
+                  <EditorIcon name="next" /> Next
                 </button>
               </div>
               <button

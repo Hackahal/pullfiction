@@ -1,4 +1,12 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { EditorIcon } from "./EditorIcon";
 
 export function PanelSettings({
@@ -7,6 +15,7 @@ export function PanelSettings({
   icon = "settings",
   width = 400,
   placement = "anchor",
+  anchorBoundary,
   label,
   triggerLabel,
 }: {
@@ -16,6 +25,7 @@ export function PanelSettings({
   triggerLabel?: string;
   width?: number;
   placement?: "anchor" | "edge";
+  anchorBoundary?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }) {
   const id = useId(),
@@ -28,7 +38,7 @@ export function PanelSettings({
     bottom?: number;
     maxHeight: number;
   }>({ left: 8, top: 8, maxHeight: 500 });
-  function anchor() {
+  const anchor = useCallback(() => {
     const rect = trigger.current?.getBoundingClientRect();
     if (!rect) return;
     const actualWidth = Math.min(width, window.innerWidth - 16);
@@ -40,19 +50,39 @@ export function PanelSettings({
       });
       return;
     }
-    const below = window.innerHeight - rect.bottom - 12;
-    const above = rect.top - 12;
+    const boundary = anchorBoundary?.current?.getBoundingClientRect() ?? rect;
+    const roomOutsideBoundary = Math.max(
+      boundary.top - 12,
+      window.innerHeight - boundary.bottom - 12,
+    );
+    const box = roomOutsideBoundary >= 80 ? boundary : rect;
+    const below = window.innerHeight - box.bottom - 12;
+    const above = box.top - 12;
     const useBelow = below >= Math.min(360, above);
     setPosition({
       left: Math.max(
         8,
         Math.min(window.innerWidth - actualWidth - 8, rect.right - actualWidth),
       ),
-      top: useBelow ? rect.bottom + 6 : undefined,
-      bottom: useBelow ? undefined : window.innerHeight - rect.top + 6,
-      maxHeight: Math.max(120, useBelow ? below : above),
+      top: useBelow ? box.bottom + 6 : undefined,
+      bottom: useBelow ? undefined : window.innerHeight - box.top + 6,
+      maxHeight: Math.max(
+        box === boundary && boundary !== rect ? 0 : 120,
+        useBelow ? below : above,
+      ),
     });
-  }
+  }, [anchorBoundary, placement, width]);
+  useEffect(() => {
+    const node = anchorBoundary?.current;
+    if (!open || !node) return;
+    const observer = new ResizeObserver(anchor);
+    observer.observe(node);
+    window.addEventListener("resize", anchor);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", anchor);
+    };
+  }, [anchor, anchorBoundary, open]);
   return (
     <>
       <button
