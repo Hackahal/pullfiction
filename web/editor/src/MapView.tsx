@@ -1,4 +1,7 @@
 import { useBufferedView } from "./ReplayLoading";
+import { createPortal } from "react-dom";
+import type { RefObject } from "react";
+import { PanelSettings } from "./PanelSettings";
 import { RANGE_COLORS } from "./range-check";
 import { getLocalIcons, subscribeLocalIcons } from "./local-icons";
 import { getLocalUiArt, subscribeLocalUiArt } from "./local-ui-art";
@@ -53,9 +56,13 @@ import {
 export function MapView({
   state: inputState,
   controller,
+  controlsHost,
+  controlsBoundary,
 }: {
   state: Snapshot;
   controller: EditorController;
+  controlsHost: HTMLElement | null;
+  controlsBoundary: RefObject<HTMLElement | null>;
 }) {
   const state = useBufferedView(inputState);
   const host = useRef<HTMLDivElement>(null),
@@ -1429,42 +1436,62 @@ export function MapView({
           {editHover.label} · drag
         </div>
       )}
-      <div className="map-controls">
-        {mapNote && <span title="Prepared raid assets">{mapNote}</span>}
-        <span className="map-detail-note">
-          {camera.scale / fitScale.current < 2
-            ? "Overview · zoom for units"
-            : "Unit detail"}
-        </span>
-        <button
-          onClick={() => {
-            controller.setOption("followRaid", false);
-            fit();
-          }}
-        >
-          Fit raid
-        </button>
-        <button
-          aria-pressed={healthBars}
-          disabled={camera.scale / fitScale.current < 2}
-          title="Health bars appear at unit detail zoom"
-          onClick={() => setHealthBars((v) => !v)}
-        >
-          Health bars
-        </button>
-        <select
-          aria-label="Map area"
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
-        >
-          <option value="*">All areas</option>
-          {manifest?.areas.map((a, i) => (
-            <option key={a.id} value={a.id}>
-              {a.name} · {i + 1}
-            </option>
-          ))}
-        </select>
-      </div>
+      {controlsHost &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="map-fit-raid"
+              aria-label="Fit raid"
+              title="Fit raid"
+              onClick={() => {
+                controller.setOption("followRaid", false);
+                fit();
+              }}
+            >
+              Fit<span> raid</span>
+            </button>
+            <PanelSettings
+              title="Map options"
+              width={280}
+              anchorBoundary={controlsBoundary}
+            >
+              <div className="map-options">
+                <label>
+                  Area
+                  <select
+                    aria-label="Map area"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                  >
+                    <option value="*">All areas</option>
+                    {manifest?.areas.map((a, i) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} · {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  aria-pressed={healthBars}
+                  disabled={camera.scale / fitScale.current < 2}
+                  title="Health bars appear at unit detail zoom"
+                  onClick={() => setHealthBars((v) => !v)}
+                >
+                  Health bars
+                </button>
+                <p>
+                  {camera.scale / fitScale.current < 2
+                    ? "Zoom in to show units and health bars."
+                    : "Unit detail"}
+                  {mapNote && <small>{mapNote}</small>}
+                </p>
+              </div>
+            </PanelSettings>
+          </>,
+          controlsHost,
+        )}
       {!manifest &&
         (state.browserAssets && state.clientStatus !== "ready" ? (
           <BrowserClient state={state} controller={controller} />

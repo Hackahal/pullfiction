@@ -2015,25 +2015,6 @@ a {
   border: 0;
   background: none;
 }
-.map-controls {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 5px;
-  max-width: calc(100% - 20px);
-  padding: 4px;
-  border-radius: 4px;
-  background: #1c2226;
-  border: 1px solid var(--border);
-}
-.map-controls > span {
-  padding: 0 6px;
-  font-size: 11px;
-  color: var(--muted);
-}
 .viewport-modes button[aria-pressed="true"] {
   color: #f0d69e;
   background: #665632;
@@ -2054,9 +2035,6 @@ a {
 }
 .tactical-map > canvas:active {
   cursor: grabbing;
-}
-.map-controls select {
-  max-width: 260px;
 }
 .map-message {
   position: absolute;
@@ -4324,11 +4302,6 @@ a.inspect-rune-entry:focus-visible {
 .share-owned span {
   flex: 1;
   overflow-wrap: anywhere;
-}
-
-.map-controls .map-detail-note {
-  color: #b9c9c8;
-  font-size: 11px;
 }
 
 /* Keep chart series available when a dock is shorter than its contents. */

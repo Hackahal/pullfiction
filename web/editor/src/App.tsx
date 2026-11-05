@@ -1193,6 +1193,8 @@ function Viewport({
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [map, setMap] = useState(false);
+  const [mapControls, setMapControls] = useState<HTMLDivElement | null>(null);
+  const sceneChrome = useRef<HTMLDivElement>(null);
   const [inspectionOpen, setInspectionOpen] = useState(false);
   const focusedActor = state.replay?.actors.find(
     (a) => a.key === state.selected,
@@ -1403,8 +1405,8 @@ function Viewport({
       />
     ) : null;
   return (
-    <div className="viewport-shell">
-      <div className="scene-chrome">
+    <div className="viewport-shell" data-map={map || undefined}>
+      <div className="scene-chrome" ref={sceneChrome}>
         {editing && <SceneToolbar state={state} controller={controller} />}
         {editing && state.compareRecorded && (
           <span className="recorded-view-label">
@@ -1464,6 +1466,7 @@ function Viewport({
             controller={controller}
             cameraDistance={showCameraDistance}
           />
+          {map && <div className="map-chrome-actions" ref={setMapControls} />}
           <div className="studio-segment" role="group" aria-label="View type">
             <button aria-pressed={!map} onClick={() => setMap(false)}>
               3D
@@ -1913,7 +1916,14 @@ function Viewport({
             </div>
           )}
         {boxRect && <div className="selection-box" style={boxRect} />}
-        {map && <MapView state={state} controller={controller} />}
+        {map && (
+          <MapView
+            state={state}
+            controller={controller}
+            controlsHost={mapControls}
+            controlsBoundary={sceneChrome}
+          />
+        )}
         {editing && !pathDraftId && (
           <div className="scene-edit-hint" aria-live="polite">
             {state.drawing

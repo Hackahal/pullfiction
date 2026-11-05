@@ -2718,3 +2718,70 @@
     position: static;
   }
 }
+
+.map-chrome-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding-inline-start: 4px;
+  border-inline-start: 1px solid var(--studio-edge);
+}
+
+.editor .map-chrome-actions > button {
+  min-height: 26px;
+  padding-inline: 6px;
+  white-space: nowrap;
+}
+
+.editor .map-chrome-actions > button:not([aria-expanded="true"]) {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.editor .map-chrome-actions > button:hover {
+  background-color: #ffffff12;
+}
+
+.map-options,
+.map-options > label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.map-options > button {
+  justify-self: start;
+}
+
+.map-options p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.map-options small {
+  display: block;
+  margin-top: 3px;
+}
+
+@container replay-scene (max-width: 500px) {
+  .map-fit-raid > span {
+    display: none;
+  }
+}
+
+@container replay-scene (max-width: 150px) {
+  .map-chrome-actions {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+.editor .viewport-shell[data-map] .scene-frame-selection > span {
+  display: none;
+}
+
+.editor .viewport-shell[data-map] .scene-frame-selection > svg {
+  display: block;
+}
