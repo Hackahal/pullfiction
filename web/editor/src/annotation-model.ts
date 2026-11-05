@@ -61,6 +61,7 @@ const at = (p: Point, dx: number, dy: number): Point => [
 export function annotationGeometry(
   a: Annotation,
   selected = false,
+  previewRouteEndpoint = false,
 ): MarkGeometry {
   const p = a.points[0],
     q = a.points.at(-1) ?? p,
@@ -113,8 +114,26 @@ export function annotationGeometry(
     g.fill = a.points.length > 2 ? a.points : [];
     g.paths = [a.points.length > 2 ? [...a.points, p] : a.points];
   } else if (["route", "arrow", "drawing"].includes(a.type)) {
-    g.paths = [a.points];
-    if (a.type !== "drawing" && a.points.length > 1) {
+    const route = a.type === "route";
+    const hasPreview = route && previewRouteEndpoint && a.points.length > 1;
+    const committed = hasPreview ? a.points.slice(0, -1) : a.points;
+    g.paths = [committed];
+    if (route) {
+      if (hasPreview) {
+        const start = committed[committed.length - 1];
+        const length = Math.hypot(q[0] - start[0], q[1] - start[1]);
+        if (length > 0.1) {
+          const count = Math.max(2, Math.min(32, Math.ceil(length / 2)));
+          const pointAt = (fraction: number): Point => [
+            start[0] + (q[0] - start[0]) * fraction,
+            start[1] + (q[1] - start[1]) * fraction,
+            start[2] + (q[2] - start[2]) * fraction,
+          ];
+          for (let i = 0; i < count; i++)
+            g.paths.push([pointAt(i / count), pointAt((i + 0.58) / count)]);
+        }
+      }
+    } else if (a.type === "arrow" && a.points.length > 1) {
       for (let i = 1; i < a.points.length; i++) {
         const b = a.points[i],
           start = a.points[i - 1],
@@ -209,6 +228,13 @@ export function markHit(
   tolerance = 8,
 ) {
   const anchor = screen(mark.anchor);
+  if (
+    mark.type === "route" &&
+    mark.paths.length === 1 &&
+    mark.paths[0].length === 1 &&
+    Math.hypot(p[0] - anchor[0], p[1] - anchor[1]) <= tolerance
+  )
+    return true;
   if (
     ["marker", "label"].includes(mark.type) &&
     Math.hypot(p[0] - anchor[0], p[1] - anchor[1]) < 16

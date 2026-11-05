@@ -127,6 +127,7 @@ export function MapView({
     height: number;
   } | null>(null);
   const [pointer, setPointer] = useState("default");
+  const annotationPreview = controller.annotationPreview;
 
   const marks = useMemo(
     () =>
@@ -147,6 +148,7 @@ export function MapView({
       state.compareRecorded,
       state.time,
       state.replay,
+      annotationPreview,
       controller,
     ],
   );
@@ -509,27 +511,46 @@ export function MapView({
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      for (const path of mark.paths) {
+      for (const [index, path] of mark.paths.entries()) {
+        const previewDash = mark.type === "route" && index > 0;
+        ctx.lineCap = previewDash ? "butt" : "round";
         drawPath(path);
         ctx.strokeStyle = mark.selected ? "#fff4cd" : "#090c10cc";
         ctx.lineWidth = mark.width + (mark.selected ? 4 : 2);
         ctx.stroke();
         ctx.shadowColor = mark.color;
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = previewDash ? 0 : 5;
         ctx.strokeStyle = mark.color;
         ctx.lineWidth = mark.width;
         ctx.stroke();
         ctx.shadowBlur = 0;
-        if (
-          (mark.type === "route" || mark.type === "arrow") &&
-          path === mark.paths[0]
-        ) {
+        if (mark.type === "arrow" && path === mark.paths[0]) {
           ctx.setLineDash([5, 27]);
           ctx.lineDashOffset = -performance.now() * 0.018;
           ctx.strokeStyle = "#fff2ce99";
           ctx.lineWidth = Math.max(1, mark.width * 0.5);
           ctx.stroke();
           ctx.setLineDash([]);
+        }
+      }
+      if (mark.type === "route" && mark.paths[0]) {
+        const waypoints = mark.paths[0];
+        const stride = Math.max(1, Math.ceil(waypoints.length / 96));
+        const radius = Math.max(3, Math.min(6, mark.width + 1));
+        for (const [index, waypoint] of waypoints.entries()) {
+          if (index % stride !== 0 && index !== waypoints.length - 1) continue;
+          const [x, y] = screen(mapPoint(waypoint[0], waypoint[1]));
+          ctx.beginPath();
+          ctx.moveTo(x - radius, y);
+          ctx.lineTo(x, y - radius);
+          ctx.lineTo(x + radius, y);
+          ctx.lineTo(x, y + radius);
+          ctx.closePath();
+          ctx.fillStyle = "#141820";
+          ctx.fill();
+          ctx.strokeStyle = mark.color;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
         }
       }
       const [x, y] = screen(mapPoint(mark.anchor[0], mark.anchor[1]));

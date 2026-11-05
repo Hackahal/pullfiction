@@ -931,7 +931,11 @@ export class EditorController {
   }
   markGeometry(a: Annotation): MarkGeometry {
     const selected = this.state.selectedMarks.includes(a.id);
-    const g = annotationGeometry(a, selected);
+    const g = annotationGeometry(
+      a,
+      selected,
+      a.type === "route" && a.id === this.draftMark && !!this.pathPreview,
+    );
     if (
       this.state.workspaceMode === "plan" &&
       !this.state.compareRecorded &&
@@ -980,6 +984,9 @@ export class EditorController {
       g.paths = [...g.paths, ring];
     } else g.paths = [...g.paths, [g.handles[1], pivot, g.handles[2]]];
     return g;
+  }
+  get annotationPreview(): Readonly<Point> | null {
+    return this.pathPreview;
   }
   handleKind(id: string, index: number | null): string {
     if (index === null) return "move";

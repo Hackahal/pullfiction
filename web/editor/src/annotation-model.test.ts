@@ -54,6 +54,30 @@ test("Concave area triangles preserve the polygon area instead of filling across
   assert.equal(area, 7);
   assert.equal(ts.length, 12);
 });
+test("Routes keep a plain committed trunk and dash only the preview segment", () => {
+  const points: [number, number, number][] = [
+    [0, 0, 0],
+    [10, 0, 1],
+    [20, 0, 3],
+  ];
+  const route = { ...newAnnotation("route", points[0]), points };
+  const saved = annotationGeometry(route);
+  const draft = annotationGeometry(route, true, true);
+  assert.deepEqual(saved.paths[0], points);
+  assert.equal(saved.paths.length, 1);
+  assert.deepEqual(draft.paths[0], points.slice(0, 2));
+  assert.deepEqual(draft.paths[1][0], points[1]);
+  assert.ok(draft.paths.at(-1)!.at(-1)![0] < points[2][0]);
+  assert.equal(
+    markHit(saved, [5, 0], (p) => [p[0], p[1]], 0.2),
+    true,
+  );
+  const singleton = annotationGeometry({ ...route, points: points.slice(0, 1) });
+  const screen = ([x, y]: [number, number, number]): [number, number] => [x, y];
+  assert.equal(markHit(singleton, [0, 0], screen, 2), true);
+  assert.equal(markHit(singleton, [3, 0], screen, 2), false);
+});
+
 test("Arrow heads terminate at the recorded endpoint and path picking avoids selecting an entire filled area", () => {
   const g = annotationGeometry({
     ...newAnnotation("arrow", [0, 0, 0]),
