@@ -126,6 +126,45 @@ test("Combat event details stay in their panel, focus the tray and restore the s
       playing: false,
       workspaceMode: "analyse" as const,
     };
+    const prePullReplay = {
+      ...replay,
+      chapters: [{ id: 1, name: "Boss", start: 1000, end: 10000 }],
+      raw: {
+        ...replay.raw,
+        events: [
+          {
+            timestamp: 500,
+            type: "damage",
+            sourceID: 1,
+            targetID: 2,
+            abilityGameID: 133,
+            amount: 100,
+          },
+          ...replay.raw.events,
+        ],
+      },
+    };
+    await act(async () =>
+      root.render(
+        createElement(Analysis, {
+          state: { ...state, replay: prePullReplay, time: 0 },
+          controller,
+          close() {},
+          preset: { view: "events" },
+          onEventSelection,
+        }),
+      ),
+    );
+    const firstMatch = Array.from(
+      dom.window.document.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Go to first match"));
+    assert.ok(firstMatch);
+    await act(async () => firstMatch.click());
+    assert.deepEqual(seeks.splice(0), [1000]);
+    assert.equal(
+      dom.window.document.activeElement?.getAttribute("aria-label"),
+      "Recorded event list",
+    );
     await act(async () =>
       root.render(
         createElement(Analysis, {

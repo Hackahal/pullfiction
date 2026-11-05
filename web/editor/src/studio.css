@@ -2047,3 +2047,38 @@
     height: 23px;
   }
 }
+
+.combat-events-empty {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  padding: 14px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.combat-events-empty > .editor-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
+}
+
+.combat-events-empty strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.combat-events-empty p {
+  max-width: 34ch;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.editor .combat-events-empty button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  margin-top: 2px;
+  font-size: 11px;
+}

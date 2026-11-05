@@ -268,30 +268,20 @@ export function Analysis({
   const dataReady =
     !replay ||
     neededRanges.every(([a, b]) => analysisIntervalsAvailable(replay, a, b));
-  const filtered = useMemo(
-    () =>
-      replay
-        ? queryEvents(
-            events,
-            {
-              metric: config.metric,
-              source,
-              target,
-              spell,
-              pets: includePets,
-              ownerPets: config.mergePets,
-              hostility:
-                config.hostility === "default" ? undefined : config.hostility,
-              start,
-              end,
-              intervals: range.intervals,
-            },
-            replay,
-          )
-        : [],
+  const eventQuery = useMemo(
+    () => ({
+      metric: config.metric,
+      source,
+      target,
+      spell,
+      pets: includePets,
+      ownerPets: config.mergePets,
+      hostility: config.hostility === "default" ? undefined : config.hostility,
+      start,
+      end,
+      intervals: range.intervals,
+    }),
     [
-      events,
-      replay,
       config.metric,
       source,
       target,
@@ -304,6 +294,52 @@ export function Analysis({
       range.intervals,
     ],
   );
+  const filtered = useMemo(
+    () => (replay ? queryEvents(events, eventQuery, replay) : []),
+    [events, eventQuery, replay],
+  );
+  const beforePullEnd =
+    config.window === "encounter" && !fight && end < displayEnd;
+  const lookaheadStart = Math.max(start, end);
+  const nextPullEvent = useMemo(() => {
+    if (
+      !replay ||
+      !dataReady ||
+      config.view !== "events" ||
+      recap ||
+      filtered.length ||
+      !beforePullEnd ||
+      state.playing
+    )
+      return undefined;
+    const nextPullStart = replay.chapters.reduce(
+      (next, chapter) =>
+        chapter.start > start ? Math.min(next, chapter.start) : next,
+      Infinity,
+    );
+    const lookaheadEnd = Math.min(displayEnd, nextPullStart);
+    if (!analysisIntervalsAvailable(replay, lookaheadStart, lookaheadEnd))
+      return undefined;
+    return queryEvents(
+      events,
+      { ...eventQuery, start: lookaheadStart, end: lookaheadEnd },
+      replay,
+    ).find((event) => event.t > end && event.t < nextPullStart);
+  }, [
+    replay,
+    dataReady,
+    config.view,
+    recap,
+    filtered.length,
+    beforePullEnd,
+    state.playing,
+    start,
+    end,
+    lookaheadStart,
+    displayEnd,
+    events,
+    eventQuery,
+  ]);
   const rows = useMemo(
     () =>
       replay
@@ -952,6 +988,55 @@ export function Analysis({
                 tabIndex={-1}
                 aria-label="Recorded event list"
               >
+                {!recap && !filtered.length && (
+                  <div className="combat-events-empty">
+                    <EditorIcon name="timeline" />
+                    <strong>
+                      {beforePullEnd
+                        ? "No matching events yet"
+                        : "No matching events"}
+                    </strong>
+                    <p>
+                      {nextPullEvent
+                        ? `The first match in this pull is at ${preciseTime(nextPullEvent.t)} run time.`
+                        : beforePullEnd
+                          ? "The list shows matching events up to the playhead. Play or scrub forward to see more."
+                          : "Try another event type or check the filters."}
+                    </p>
+                    {nextPullEvent ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          (replay.raw.stream
+                            ? analysisPanel
+                            : eventList
+                          ).current?.focus({
+                            preventScroll: true,
+                          });
+                          controller.seek(nextPullEvent.t);
+                        }}
+                      >
+                        <EditorIcon name="next" />
+                        Go to first match
+                      </button>
+                    ) : (
+                      (config.window !== "full" || fight) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            analysisPanel.current?.focus({
+                              preventScroll: true,
+                            });
+                            setFight("");
+                            set({ window: "full" });
+                          }}
+                        >
+                          Show full run
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
                 <ol className="combat-event-list" aria-label="Combat events">
                   {(recap ? deathRecap(events, recap) : filtered)
                     .slice(-250)
