@@ -412,3 +412,172 @@
   max-width: 320px;
   white-space: normal;
 }
+
+/* Narrow analysis docks retain all event and resource information. */
+.resource-list {
+  padding: 12px;
+}
+.analysis-data-note {
+  margin: 0 0 12px;
+  color: #bdb5a6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.resource-card {
+  padding: 12px 0;
+  border-top: 1px solid #ffffff12;
+}
+.resource-player {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+  align-items: baseline;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+}
+.resource-player span {
+  margin-left: auto;
+  color: #bdb5a6;
+  font-size: 11px;
+  font-weight: 400;
+}
+.resource-bars {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.analysis-v2 .resource-bars .focus-bar {
+  min-width: 0;
+  height: 25px;
+  font-size: 11px;
+}
+.resource-detail {
+  margin: 7px 0 0;
+  color: #c8c0b2;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.combat-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px;
+}
+.combat-event-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid #ffffff14;
+}
+.combat-event-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.combat-event-time {
+  color: #c1b8a7;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.combat-event-ability {
+  margin-top: 5px;
+  font-size: 13px;
+  color: #e7ce92;
+  overflow-wrap: anywhere;
+}
+.combat-event-actors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 5px 0 0;
+  color: #c8c0b2;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.dock-actions {
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+}
+.dock-actions form {
+  display: grid;
+  gap: 12px;
+}
+.dock-actions label {
+  display: grid;
+  gap: 6px;
+}
+.dock-actions button {
+  min-height: 32px;
+  text-align: left;
+}
+.dock-actions .dock-reset {
+  border-top: 1px solid #ffffff24;
+  padding-top: 12px;
+  color: #c6bdad;
+}
+
+.dock-header .dock-actions button {
+  width: 100%;
+  height: auto;
+  min-height: 34px;
+  padding: 8px 10px;
+  justify-content: flex-start;
+}
+.dock-header .panel-settings-heading button {
+  width: 28px;
+  height: 28px;
+}
+
+/* Settings stay bounded; long chart forms use the full available viewport. */
+.panel-settings {
+  box-sizing: border-box;
+  overflow: hidden;
+  font-size: 13px;
+}
+.panel-settings:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+.panel-settings-heading {
+  flex: 0 0 auto;
+  min-height: 42px;
+}
+.panel-settings-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.analysis-header > select {
+  font-size: 12px;
+  padding: 5px 6px;
+}
+.analysis-header > strong {
+  font-size: 13px;
+}
+.analysis-context,
+.analysis-breadcrumb {
+  font-size: 12px;
+  color: #bec4c4;
+}
+.meter-name,
+.meter-value,
+.meter-rate {
+  font-size: 13px;
+}
+.meter-rank {
+  font-size: 11px;
+}
+.meter-row small {
+  font-size: 11px;
+  line-height: 14px;
+}
+.resource-card {
+  padding: 9px 0;
+}
+.resource-bars {
+  gap: 4px;
+  margin-top: 6px;
+}

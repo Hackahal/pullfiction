@@ -610,7 +610,7 @@ export function Timeline({
                               />
                             </CanvasGroup>
                           ))}
-                        {casts.map(({ cast, index, actor: source }) => {
+                        {casts.map(({ cast, index, actor: source }, i) => {
                           const caster = source ?? actor;
                           const active =
                             state.detail?.actorKey === caster.key &&
@@ -618,6 +618,15 @@ export function Timeline({
                           const width = cast.instant
                             ? 3
                             : Math.max(3, (cast.end - cast.start) * scale - 1);
+                          const room = Math.max(
+                            0,
+                            (Math.min(
+                              casts[i + 1]?.cast.start ?? Infinity,
+                              start + span,
+                            ) -
+                              cast.start) *
+                              scale,
+                          );
                           return (
                             <TimelineCast
                               key={`${caster.key}:${index}`}
@@ -629,11 +638,8 @@ export function Timeline({
                               x={x(cast.start)}
                               y={y}
                               width={width}
-                              color={
-                                aggregate
-                                  ? (CLASS_COLORS[caster.class] ?? color)
-                                  : color
-                              }
+                              room={room}
+                              color={abilityColor(cast.spell)}
                               active={active}
                             />
                           );
@@ -697,8 +703,8 @@ export function Timeline({
                     height={size.height}
                     fill="#ffffff00"
                   />
-                  <Line points={[0, 0, 0, size.height]} stroke="#e5c67e" />
-                  <Line points={[-5, 0, 5, 0, 0, 7]} closed fill="#e5c67e" />
+                  <Line points={[0, 0, 0, size.height]} stroke="#81b9ff" />
+                  <Line points={[-5, 0, 5, 0, 0, 7]} closed fill="#81b9ff" />
                 </CanvasGroup>
               )}
           </Layer>
@@ -889,6 +895,7 @@ const TimelineCast = memo(function TimelineCast({
   x,
   y,
   width,
+  room,
   color,
   active,
 }: {
@@ -900,6 +907,7 @@ const TimelineCast = memo(function TimelineCast({
   x: number;
   y: number;
   width: number;
+  room: number;
   color: string;
   active: boolean;
 }) {
@@ -909,38 +917,48 @@ const TimelineCast = memo(function TimelineCast({
   );
   return (
     <CanvasGroup {...handlers}>
-      <Rect
-        x={x}
-        y={y + 11}
-        width={width}
-        height={6}
-        fill={color}
-        opacity={active ? 1 : 0.65}
-        listening={false}
-      />
-      <Rect
-        x={x}
-        y={y + 4}
-        width={20}
-        height={20}
-        fill="#101214"
-        stroke={active ? "#ffe2a4" : cast.interrupted ? "#d34e43" : "#62676b"}
-        strokeWidth={active ? 2 : 1}
-      />
-      <AbilityIcon
-        icon={cast.icon}
-        spell={cast.spell}
-        x={x + 1}
-        y={y + 5}
-        size={18}
-      />
-      <Rect
-        x={x}
-        y={y + 3}
-        width={Math.max(20, width)}
-        height={22}
-        fill="#ffffff00"
-      />
+      {cast.instant ? (
+        <Line
+          points={[x, y + 9, x + 4, y + 14, x, y + 19, x - 4, y + 14]}
+          closed
+          fill={color}
+          stroke={active ? "#e6f1ff" : undefined}
+        />
+      ) : (
+        <Rect
+          x={x}
+          y={y + 8}
+          width={width}
+          height={12}
+          cornerRadius={2}
+          fill={cast.interrupted ? "#c76465" : color}
+          stroke={active ? "#e6f1ff" : undefined}
+          opacity={active ? 1 : 0.76}
+        />
+      )}
+      {room >= 24 && (
+        <AbilityIcon
+          icon={cast.icon}
+          spell={cast.spell}
+          x={x + 3}
+          y={y + 5}
+          size={17}
+          showPlaceholder={false}
+          interactive
+        />
+      )}
+      {room >= 95 && (
+        <Text
+          x={x + 24}
+          y={y + 9}
+          width={room - 27}
+          wrap="none"
+          ellipsis
+          text={cast.name}
+          fontSize={11}
+          fill="#f1f3f7"
+        />
+      )}
     </CanvasGroup>
   );
 });
@@ -951,14 +969,19 @@ function AbilityIcon({
   x,
   y,
   size = 19,
+  showPlaceholder = true,
+  interactive = false,
 }: {
   icon?: string;
   spell?: number;
   x: number;
   y: number;
   size?: number;
+  showPlaceholder?: boolean;
+  interactive?: boolean;
 }) {
-  const image = useGameIconImage({ icon, spell });
+  const image = useGameIconImage({ icon, spell }, showPlaceholder);
+  if (!image) return null;
   return (
     <CanvasImage
       image={image}
@@ -966,7 +989,7 @@ function AbilityIcon({
       y={y}
       width={size}
       height={size}
-      listening={false}
+      listening={interactive}
     />
   );
 }

@@ -74,7 +74,7 @@ export function defaultDock(): DockNode {
     b: {
       axis: "row",
       ratio: 0.72,
-      a: { axis: "column", ratio: 0.74, a: coreDock(), b: { pane: "run" } },
+      a: { axis: "column", ratio: 0.76, a: coreDock(), b: { pane: "run" } },
       b: { pane: "speedrun" },
     },
   };
@@ -180,6 +180,46 @@ function remove(n: DockNode, id: PaneId): DockNode | null {
   const a = remove(n.a, id),
     b = remove(n.b, id);
   return a && b ? { ...n, a, b } : (a ?? b);
+}
+
+function sameDock(a: DockNode, b: DockNode): boolean {
+  if ("pane" in a || "pane" in b)
+    return "pane" in a && "pane" in b && a.pane === b.pane;
+  return (
+    a.axis === b.axis &&
+    a.ratio === b.ratio &&
+    sameDock(a.a, b.a) &&
+    sameDock(a.b, b.b)
+  );
+}
+
+export function responsiveDock(
+  root: DockNode,
+  visible: ReadonlySet<PaneId>,
+  width: number,
+  height: number,
+): DockNode {
+  if (
+    width > 510 ||
+    height < 500 ||
+    !visible.has("scene") ||
+    [...visible].filter((id) => id !== "scene" && id !== "run").length !== 1 ||
+    !sameDock(root, defaultDock())
+  )
+    return root;
+  const withoutScene = remove(root, "scene")!;
+  const secondary = remove(withoutScene, "run")!;
+  return {
+    axis: "column",
+    ratio: 0.54,
+    a: { pane: "scene" },
+    b: {
+      axis: "column",
+      ratio: 0.46,
+      a: { pane: "run" },
+      b: secondary,
+    },
+  };
 }
 export function moveDock(
   root: DockNode,

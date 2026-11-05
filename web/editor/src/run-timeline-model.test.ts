@@ -1,6 +1,9 @@
+import { pullAt } from "./domain";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  projectRunClip,
+  runOverviewLandmarks,
   runRange,
   runTimeAt,
   zoomRunRange,
@@ -8,6 +11,21 @@ import {
   visibleRunMobs,
 } from "./run-timeline-model";
 import type { Actor, Replay } from "./types";
+
+test("Overview favors the current portrait without overlapping other badges or detailed clips", () => {
+  const clips = [
+    { key: "edge", left: 0, width: 0.5 },
+    { key: "near", left: 10, width: 2 },
+    { key: "current", left: 13, width: 2 },
+    { key: "open", left: 25, width: 2 },
+    { key: "crowded", left: 48, width: 2 },
+    { key: "detail", left: 50, width: 15 },
+  ];
+  assert.deepEqual(
+    [...runOverviewLandmarks(clips, 300, "current")],
+    ["current", "open"],
+  );
+});
 const npc = (
   key: string,
   name: string,
@@ -127,4 +145,62 @@ test("Zooming separates crowded mob portraits without losing names or mutating s
     2,
   );
   assert.equal(mobs[0].count, 1);
+});
+
+test("Pull context covers a standalone encounter and does not fill full-run gaps", () => {
+  const standalone = replay([]);
+  assert.deepEqual(pullAt(standalone, 5000), { start: 0, end: 120000 });
+  assert.equal(pullAt(standalone, 120001), null);
+  const chapter = {
+    id: 2,
+    name: "Boss",
+    start: 5000,
+    end: 10000,
+    encounterID: 1,
+  };
+  const trash = {
+    id: 3,
+    name: "Trash",
+    start: 10000,
+    end: 20000,
+    encounterID: 0,
+  };
+  const full = replay([], [chapter, trash]);
+  assert.equal(pullAt(full, 6000), chapter);
+  assert.equal(pullAt(full, 4999), null);
+  assert.equal(pullAt(full, 10000), null);
+  assert.equal(pullAt(full, 12000), null);
+});
+
+test("Boss clips show recorded duration and clip to the visible time window", () => {
+  const view = { start: 1000, span: 10000 };
+  assert.deepEqual(projectRunClip({ start: 0, end: 2000 }, view), {
+    left: 0,
+    width: 10,
+  });
+  assert.deepEqual(projectRunClip({ start: 10500, end: 12000 }, view), {
+    left: 95,
+    width: 5,
+  });
+  assert.deepEqual(projectRunClip({ start: 10100, end: 10200 }, view), {
+    left: 91,
+    width: 1,
+  });
+  assert.equal(projectRunClip({ start: 0, end: 1000 }, view), null);
+  assert.equal(projectRunClip({ start: 11000, end: 12000 }, view), null);
+});
+
+test("Nearby mobs from different encounters remain separate in the overview", () => {
+  const mobs = [
+    { key: "a", name: "Hound", start: 10000, end: 12000, count: 2, scope: "1" },
+    { key: "b", name: "Giant", start: 13000, end: 14000, count: 4, scope: "2" },
+  ];
+  const visible = visibleRunMobs(mobs, { start: 0, span: 60000 }, 300);
+  assert.deepEqual(
+    visible.map(({ count, start, end }) => [count, start, end]),
+    [
+      [2, 10000, 12000],
+      [4, 13000, 14000],
+    ],
+  );
 });

@@ -1,3 +1,4 @@
+import { useId, useRef } from "react";
 import type { EditorController } from "./controller";
 import type { Annotation, Snapshot } from "./types";
 export function AttachmentControl({
@@ -16,54 +17,90 @@ export function AttachmentControl({
         Number(b.type === "Player") - Number(a.type === "Player") ||
         a.name.localeCompare(b.name),
     );
+  const plannedActor =
+    state.workspaceMode === "plan"
+      ? controller
+          .displaySnapshot()
+          ?.actors.find((actor) => actor.key === edit.actor)
+      : undefined;
+  const replayActor =
+    edit.actorReport === (state.replay?.report.code ?? "")
+      ? actors.find((actor) => actor.key === edit.actor)
+      : undefined;
+  const attachedActor = plannedActor ?? replayActor;
+  const unavailable = "__unavailable-attachment__";
+  const statusId = useId();
+  const selectId = `${statusId}-select`;
+  const selectRef = useRef<HTMLSelectElement>(null);
   return (
-    <fieldset className="edit-attachment">
-      <legend>Follow an actor</legend>
-      <select
-        aria-label="Attach edit to actor"
-        disabled={edit.locked}
-        value={edit.actor ?? ""}
-        onChange={(e) => controller.attachEdit(edit.id, e.target.value || null)}
-      >
-        <option value="">Fixed to terrain</option>
-        {edit.actor && !actors.some((a) => a.key === edit.actor) && (
-          <option value={edit.actor}>Actor unavailable · {edit.actor}</option>
-        )}
-        {["Player", "Pet", "NPC"].map((type) => (
-          <optgroup
-            label={
-              type === "Player"
-                ? "Players"
-                : type === "Pet"
-                  ? "Pets"
-                  : "Enemies"
-            }
-            key={type}
-          >
-            {actors
-              .filter((a) => a.type === type)
-              .map((a) => (
-                <option key={a.key} value={a.key}>
-                  {a.name}
-                  {a.type === "NPC" &&
-                  actors.filter((other) => other.name === a.name).length > 1
-                    ? ` · ${actors.filter((other) => other.name === a.name).findIndex((other) => other.key === a.key) + 1}`
-                    : ""}
-                </option>
-              ))}
-          </optgroup>
-        ))}
-      </select>
-      <div className="planning-actions">
+    <div className="edit-property edit-attachment">
+      <label className="edit-property-label" htmlFor={selectId}>
+        Attachment
+      </label>
+      <div className="edit-attachment-value">
+        <select
+          id={selectId}
+          ref={selectRef}
+          aria-describedby={edit.actor ? statusId : undefined}
+          disabled={edit.locked}
+          value={
+            edit.actor && !attachedActor ? unavailable : (edit.actor ?? "")
+          }
+          onChange={(e) =>
+            controller.attachEdit(edit.id, e.target.value || null)
+          }
+        >
+          <option value="">Fixed to terrain</option>
+          {edit.actor && !attachedActor && (
+            <option value={unavailable} disabled>
+              Actor unavailable · {edit.actor}
+            </option>
+          )}
+          {["Player", "Pet", "NPC"].map((type) => (
+            <optgroup
+              label={
+                type === "Player"
+                  ? "Players"
+                  : type === "Pet"
+                    ? "Pets"
+                    : "Enemies"
+              }
+              key={type}
+            >
+              {actors
+                .filter((a) => a.type === type)
+                .map((a) => (
+                  <option key={a.key} value={a.key}>
+                    {a.name}
+                    {a.type === "NPC" &&
+                    actors.filter((other) => other.name === a.name).length > 1
+                      ? ` · ${actors.filter((other) => other.name === a.name).findIndex((other) => other.key === a.key) + 1}`
+                      : ""}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </select>
         {edit.actor && (
           <button
+            type="button"
             disabled={edit.locked}
-            onClick={() => controller.attachEdit(edit.id, null)}
+            onClick={() => {
+              controller.attachEdit(edit.id, null);
+              selectRef.current?.focus({ preventScroll: true });
+            }}
           >
             Detach
           </button>
         )}
       </div>
-    </fieldset>
+      {edit.actor && (
+        <span className="edit-attachment-status" id={statusId}>
+          {attachedActor
+            ? `Attached to ${attachedActor.name}${!plannedActor && replayActor && !controller.actorPose(replayActor) ? " · no position at playhead" : ""}`
+            : "Attached actor unavailable"}
+        </span>
+      )}
+    </div>
   );
 }

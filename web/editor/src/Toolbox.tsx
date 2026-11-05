@@ -4,16 +4,21 @@ import type { EditorController } from "./controller";
 import type { Snapshot } from "./types";
 import { PANEL_MIME, type PaneId } from "./dock-model";
 import { EditorIcon as Icon } from "./EditorIcon";
+const runPanel = {
+  id: "run",
+  label: "Run timeline",
+  icon: "timeline",
+} as const;
 export const panelCatalogue: { id: PaneId; label: string; icon: string }[] = [
-  { id: "speedrun", label: "Speedrun timer", icon: "timeline" },
-  { id: "run", label: "Run timeline", icon: "timeline" },
+  runPanel,
+  { id: "inspector", label: "Focus", icon: "person" },
+  { id: "analysis", label: "Statistics", icon: "table" },
   { id: "damage", label: "Damage graph", icon: "chart" },
+  { id: "events", label: "Combat events", icon: "events" },
   { id: "healing", label: "Healing graph", icon: "heal" },
   { id: "timeline", label: "Cast timeline", icon: "timeline" },
-  { id: "analysis", label: "Statistics", icon: "table" },
   { id: "resources", label: "Resources", icon: "resource" },
-  { id: "events", label: "Combat events", icon: "events" },
-  { id: "inspector", label: "Focus", icon: "person" },
+  { id: "speedrun", label: "Speedrun timer", icon: "timeline" },
 ];
 export function Toolbox({
   state,
@@ -47,6 +52,37 @@ export function Toolbox({
       <span>{shortLabel}</span>
     </button>
   );
+  const panelButton = (
+    p: (typeof panelCatalogue)[number],
+    visible = open.includes(p.id),
+  ) => {
+    const available =
+      p.id !== "run" || !!state.replay || state.workspaceMode === "plan";
+    return (
+      <button
+        key={p.id}
+        className="panel-tool"
+        aria-pressed={available && visible}
+        disabled={!available}
+        draggable={available && p.id !== "inspector"}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData(PANEL_MIME, p.id);
+        }}
+        onClick={() => (visible ? onClose(p.id) : onOpen(p.id))}
+        title={`${visible ? "Hide" : "Show"} ${p.label}${p.id !== "inspector" ? " · Drag to dock" : ""}`}
+      >
+        <Icon name={p.icon} />
+        <span className="panel-tool-name">{p.label}</span>
+        <span className="panel-tool-status" aria-hidden="true" />
+        {p.id !== "inspector" && (
+          <span className="toolbox-grip" aria-hidden="true">
+            <Icon name="grip" />
+          </span>
+        )}
+      </button>
+    );
+  };
   return (
     <nav
       className={`toolbox ${state.workspaceMode === "plan" ? "editing" : ""}`}
@@ -66,17 +102,12 @@ export function Toolbox({
           Plan
         </button>
       </div>
-      {state.replay && state.workspaceMode === "analyse" && (
-        <button
-          className="plan-from-moment"
-          onClick={() => controller.planFromMoment()}
-        >
-          <Icon name="pin" />
-          <span>Plan from this moment</span>
-        </button>
-      )}
       {state.workspaceMode === "plan" && controller.snapshot() && (
-        <div className="workspace-mode" aria-label="Compare positions">
+        <div
+          className="workspace-mode"
+          role="group"
+          aria-label="Compare positions"
+        >
           <button
             aria-pressed={!state.compareRecorded}
             onClick={() => controller.setCompareRecorded(false)}
@@ -92,38 +123,14 @@ export function Toolbox({
           </button>
         </div>
       )}
-      {(
-        [
-          {
-            id: "playbook",
-            label: "Edits",
-            icon: "pointer",
-            visible: state.planning,
-          },
-        ] as const
-      ).map((panel) => (
-        <button
-          key={panel.id}
-          className={panel.visible ? "active" : ""}
-          aria-pressed={panel.visible}
-          draggable
-          title={`Show or hide ${panel.label} · Drag to dock`}
-          onClick={() => (panel.visible ? onClose(panel.id) : onOpen(panel.id))}
-          onDragStart={(e) => {
-            e.dataTransfer.setData(PANEL_MIME, panel.id);
-            e.dataTransfer.effectAllowed = "move";
-          }}
-        >
-          <Icon name={panel.icon} />
-          <span>{panel.label}</span>
-          <span className="toolbox-grip" aria-hidden="true">
-            <Icon name="grip" />
-          </span>
-        </button>
-      ))}
+      {state.workspaceMode === "plan" &&
+        panelButton(
+          { id: "playbook", label: "Edits", icon: "plan" },
+          state.planning,
+        )}
       {state.workspaceMode === "plan" && (
         <>
-          <div className="toolbox-label">Marking</div>
+          <div className="toolbox-label">Drawing tools</div>
           <div className="editor-tools">
             {button(
               "pointer",
@@ -168,102 +175,49 @@ export function Toolbox({
               </div>
             ))}
             {state.drawing &&
+              !controller.pathDraftId &&
               button(
                 "pointer",
                 "Finish drawing",
-                () => controller.finishDrawing(),
+                () => controller.finishDrawing("select"),
                 undefined,
                 "Finish",
               )}
           </div>
-          <p className="toolbox-gesture">
-            {["route", "polygon"].includes(state.tool)
-              ? "Click waypoints · Finish to end"
-              : state.tool === "marker"
-                ? "Click to place · Shift-click to select"
-                : "Click to select · Drag to draw"}
-          </p>
-          <DrawingDefaults state={state} controller={controller} />
-          {button(
-            "timeline",
-            "Run timeline",
-            () => onOpen("run"),
-            open.includes("run"),
+          {!controller.pathDraftId && (
+            <p className="toolbox-gesture">
+              {["route", "polygon"].includes(state.tool)
+                ? state.drawing
+                  ? "Add waypoints · Finish or Enter"
+                  : state.tool === "route"
+                    ? "Click to start a route"
+                    : "Click to start an area"
+                : state.tool === "marker"
+                  ? "Click to place · Shift-click to select"
+                  : state.tool === "label"
+                    ? "Drag to place text"
+                    : state.tool === "explore"
+                      ? "Click to select · Drag a selection box"
+                      : "Drag to draw · Esc to cancel"}
+            </p>
           )}
+          <DrawingDefaults state={state} controller={controller} />
+          {panelButton(runPanel)}
         </>
       )}
       {state.workspaceMode === "analyse" && (
         <>
-          <RangeCheck state={state} controller={controller} />
-          <div className="toolbox-label">Panels</div>
-          {panelCatalogue.map((p) => (
-            <button
-              key={p.id}
-              draggable={p.id !== "inspector"}
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData(PANEL_MIME, p.id);
-              }}
-              onClick={() => onOpen(p.id)}
-              className={open.includes(p.id) ? "open" : ""}
-              title={
-                p.id === "inspector"
-                  ? "Open Focus"
-                  : `Drag ${p.label} into the workspace, or click to open`
-              }
-            >
-              <Icon name={p.icon} />
-              <span>{p.label}</span>
-              {p.id !== "inspector" && (
-                <span className="toolbox-grip" aria-hidden="true">
-                  <Icon name="grip" />
-                </span>
-              )}
-            </button>
-          ))}
+          <div className="toolbox-label">Replay tools</div>
+          <div className="primary-replay-tools">
+            {panelCatalogue.slice(0, 5).map((panel) => panelButton(panel))}
+          </div>
+          <details className="analysis-tools">
+            <summary>More analysis tools</summary>
+            <RangeCheck state={state} controller={controller} />
+            {panelCatalogue.slice(5).map((panel) => panelButton(panel))}
+          </details>
         </>
       )}
-      <details className="toolbox-view">
-        <summary>View</summary>
-        {button("home", "Entrance", () => controller.home())}
-        {button(
-          "person",
-          "Friendly nameplates (Shift+V)",
-          () =>
-            controller.setOption(
-              "friendlyNameplates",
-              !state.options.friendlyNameplates,
-            ),
-          state.options.friendlyNameplates,
-        )}
-        {button(
-          "raid",
-          "Enemy nameplates (V)",
-          () =>
-            controller.setOption(
-              "enemyNameplates",
-              !state.options.enemyNameplates,
-            ),
-          state.options.enemyNameplates,
-        )}
-        {(["trashNameplates", "bossNameplates"] as const).map((option) =>
-          button(
-            "raid",
-            option === "trashNameplates"
-              ? "Trash nameplates"
-              : "Boss nameplates",
-            () => controller.setOption(option, !state.options[option]),
-            state.options[option],
-          ),
-        )}
-        {button(
-          "raid",
-          "Raid frames",
-          () => controller.setOption("raidFrames", !state.options.raidFrames),
-          state.options.raidFrames,
-        )}
-        {button("focus", "Focus raid", () => controller.focusCurrent())}
-      </details>
     </nav>
   );
 }

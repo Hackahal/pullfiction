@@ -54,6 +54,30 @@ test("Concave area triangles preserve the polygon area instead of filling across
   assert.equal(area, 7);
   assert.equal(ts.length, 12);
 });
+test("Routes keep a plain committed trunk and dash only the preview segment", () => {
+  const points: [number, number, number][] = [
+    [0, 0, 0],
+    [10, 0, 1],
+    [20, 0, 3],
+  ];
+  const route = { ...newAnnotation("route", points[0]), points };
+  const saved = annotationGeometry(route);
+  const draft = annotationGeometry(route, true, true);
+  assert.deepEqual(saved.paths[0], points);
+  assert.equal(saved.paths.length, 1);
+  assert.deepEqual(draft.paths[0], points.slice(0, 2));
+  assert.deepEqual(draft.paths[1][0], points[1]);
+  assert.ok(draft.paths.at(-1)!.at(-1)![0] < points[2][0]);
+  assert.equal(
+    markHit(saved, [5, 0], (p) => [p[0], p[1]], 0.2),
+    true,
+  );
+  const singleton = annotationGeometry({ ...route, points: points.slice(0, 1) });
+  const screen = ([x, y]: [number, number, number]): [number, number] => [x, y];
+  assert.equal(markHit(singleton, [0, 0], screen, 2), true);
+  assert.equal(markHit(singleton, [3, 0], screen, 2), false);
+});
+
 test("Arrow heads terminate at the recorded endpoint and path picking avoids selecting an entire filled area", () => {
   const g = annotationGeometry({
     ...newAnnotation("arrow", [0, 0, 0]),
@@ -102,13 +126,15 @@ test("Steps follow half-open replay intervals, preserve manual gaps and filter h
 });
 test("Map icons and health bar scale factors increase with zoom and remain bounded", () => {
   const actor = { type: "NPC", class: "NPC", icon: null };
-  const normal = mapActorToken(actor, 1),
-    near = mapActorToken(actor, 4),
+  const normal = mapActorToken(actor, 2),
+    near = mapActorToken(actor, 8),
     far = mapActorToken(actor, 0.01);
   assert.equal(near.radius, normal.radius * 2);
-  assert.equal(far.radius, normal.radius * 0.75);
+  assert.ok(far.radius < normal.radius);
+  assert.equal(far.detail, false);
+  assert.equal(normal.detail, true);
   assert.equal(mapActorToken(actor, 10000).radius, near.radius);
-  assert.ok(mapActorToken({ ...actor, class: "Boss" }, 4).radius > near.radius);
+  assert.ok(mapActorToken({ ...actor, class: "Boss" }, 8).radius > near.radius);
   assert.equal(near.factor, 2);
 });
 

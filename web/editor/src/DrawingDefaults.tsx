@@ -1,3 +1,4 @@
+import { tacticalMarker } from "./icon-fallbacks";
 import { MarkIcon } from "./Planning";
 import { MARK_ICONS, RAID_ICONS } from "./annotation-model";
 import type { Annotation } from "./types";
@@ -32,7 +33,9 @@ export function DrawingDefaults({
       : undefined;
   return (
     <div className="drawing-defaults">
-      <div className="toolbox-label">{edit ? edit.name : "Markings"}</div>
+      <div className="toolbox-label">
+        {edit ? edit.name : "Markers and style"}
+      </div>
       {actor && (
         <div className="drawing-anchor-context">
           <EditorIcon name="actors" />
@@ -62,10 +65,12 @@ export function DrawingDefaults({
           {MARK_ICONS.filter((icon) => !/^\d$/.test(icon)).map((icon) => (
             <button
               key={icon}
-              title={icon.replaceAll("_", " ")}
+              title={tacticalMarker(icon)?.label ?? "Marker"}
+              aria-label={tacticalMarker(icon)?.label ?? "Marker"}
               onClick={() => controller.applyMarker(icon)}
             >
               <MarkIcon icon={icon} />
+              <span>{tacticalMarker(icon)?.label}</span>
             </button>
           ))}
         </div>
@@ -109,7 +114,7 @@ export function DrawingDefaults({
           </label>
         </div>
       )}
-      {controller.numericDrawingAvailable() && (
+      {controller.numericDrawingAvailable() && !controller.pathDraftId && (
         <div className="drawing-dimension">
           <label>
             {["circle", "cone"].includes(state.tool) ? "Radius" : "Distance"}

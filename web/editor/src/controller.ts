@@ -180,7 +180,12 @@ const API = BROWSER_ASSETS
     : "http://127.0.0.1:8091";
 const initialStep = (plan: Plan) =>
   plan.steps.find(
-    (s) => s.snapshot || s.annotations.length || s.notes || s.start !== null,
+    (s) =>
+      s.snapshot ||
+      s.annotations.length ||
+      s.notes ||
+      s.start !== null ||
+      s.end !== null,
   )?.id ?? plan.steps[0].id;
 type StoragePort = Pick<Storage, "getItem" | "setItem">;
 export class EditorController {
@@ -251,7 +256,7 @@ export class EditorController {
   private pendingPicks = 0;
   private mapPickQueue: [number, number, number, boolean, boolean, boolean][] =
     [];
-  private finishRequested = false;
+  private finishRequested: "keep" | "select" | null = null;
   private saveWhenReady = false;
   private undoStack: Plan[] = [];
   private redoStack: Plan[] = [];
@@ -730,12 +735,12 @@ export class EditorController {
       detail: null,
       options: {
         nameplates: true,
-        friendlyNameplates: true,
+        friendlyNameplates: false,
         enemyNameplates: true,
-        trashNameplates: true,
+        trashNameplates: false,
         bossNameplates: true,
-        raidFrames: true,
-        auras: true,
+        raidFrames: false,
+        auras: false,
         spells: true,
         smoothGaps: true,
         followPulls: true,
@@ -926,7 +931,11 @@ export class EditorController {
   }
   markGeometry(a: Annotation): MarkGeometry {
     const selected = this.state.selectedMarks.includes(a.id);
-    const g = annotationGeometry(a, selected);
+    const g = annotationGeometry(
+      a,
+      selected,
+      a.type === "route" && a.id === this.draftMark && !!this.pathPreview,
+    );
     if (
       this.state.workspaceMode === "plan" &&
       !this.state.compareRecorded &&
@@ -975,6 +984,9 @@ export class EditorController {
       g.paths = [...g.paths, ring];
     } else g.paths = [...g.paths, [g.handles[1], pivot, g.handles[2]]];
     return g;
+  }
+  get annotationPreview(): Readonly<Point> | null {
+    return this.pathPreview;
   }
   handleKind(id: string, index: number | null): string {
     if (index === null) return "move";
@@ -1075,6 +1087,7 @@ export class EditorController {
   undo() {
     this.pendingPicks = 0;
     this.mapPickQueue = [];
+    this.finishRequested = null;
     this.finishDrawing();
     this.pickEpoch++;
     const plan = this.undoStack.pop();
@@ -1931,6 +1944,14 @@ export class EditorController {
       ["circle", "cone", "arrow", "route", "polygon"].includes(this.state.tool)
     );
   }
+  get pathDraftId(): string | null {
+    return this.state.drawing &&
+      !this.markDrag &&
+      !this.actorDrag &&
+      ["route", "polygon"].includes(this.state.tool)
+      ? this.draftMark
+      : null;
+  }
   setDrawingDimension(value: string) {
     if (
       !this.state.drawing ||
@@ -1957,7 +1978,7 @@ export class EditorController {
       return;
     }
     this.applyDrawingDimension();
-    this.finishDrawing();
+    this.finishDrawing(this.pathDraftId ? "select" : "keep");
   }
   private dimensioned(mark: Annotation): Annotation {
     const n = Number(this.state.dimensionInput);
@@ -2142,9 +2163,9 @@ export class EditorController {
     this.engine?.hover_annotation?.(-1, -1, false);
     this.pendingPicks = 0;
     this.mapPickQueue = [];
+    this.finishRequested = null;
     this.finishDrawing();
     this.pickEpoch++;
-    this.finishRequested = false;
     this.patch({
       tool,
       transformActive: false,
@@ -2714,10 +2735,10 @@ export class EditorController {
       this.notify(
         "Wait for this replay section to load before creating a plan.",
       );
-      return;
+      return false;
     }
     const replay = this.state.replay;
-    if (!replay) return;
+    if (!replay) return false;
     if (this.state.playing) this.toggle();
     const floorHints = this.replayFloors(replay);
     const actors = replay.actors.flatMap((a) => {
@@ -2783,11 +2804,14 @@ export class EditorController {
       ...this.state.plan,
       steps: [...this.state.plan.steps, step],
     });
+    if (!this.state.plan.steps.some((page) => page.id === step.id))
+      return false;
     this.setWorkspaceMode("plan");
     this.setActiveStep(step.id, false);
     this.setStepView({ followSteps: true });
     this.setOption("followRaid", false);
     this.render();
+    return true;
   }
   setCompareRecorded(compareRecorded: boolean) {
     this.cancelDrawing();
@@ -3103,7 +3127,10 @@ export class EditorController {
     )
       this.focus(this.state.selected, false);
     else if (!this.focusCurrent()) this.engine?.home();
-    this.patch({ frameRequest: this.state.frameRequest + 1 });
+    this.patch({
+      frameRequest: this.state.frameRequest + 1,
+      recordedMapFramePoint: undefined,
+    });
   }
   cameraPresentation(map = this.mapView) {
     const actor = this.orbitCandidate();
@@ -3198,11 +3225,10 @@ export class EditorController {
     if (!page) return;
     if (
       this.state.replay &&
-      page.start !== null &&
-      (this.clockTime < page.start ||
+      (this.clockTime < (page.start ?? 0) ||
         (page.end !== null && this.clockTime >= page.end))
     )
-      this.seek(page.start);
+      this.seek(page.start ?? 0);
     this.selectMark(id);
   }
   revealActorEdit(key: string, pageId: string, toggle = false) {
@@ -3213,11 +3239,10 @@ export class EditorController {
     if (page.id !== this.state.activeStep) this.setActiveStep(page.id, false);
     if (
       this.state.replay &&
-      page.start !== null &&
-      (this.clockTime < page.start ||
+      (this.clockTime < (page.start ?? 0) ||
         (page.end !== null && this.clockTime >= page.end))
     )
-      this.seek(page.start);
+      this.seek(page.start ?? 0);
     this.selectActor(key, toggle);
   }
   // Resolve the release hit instead of using the throttled scene-hover snapshot.
@@ -3613,7 +3638,8 @@ export class EditorController {
     this.sendPositions();
     this.sendAnnotations();
     const step = this.state.plan.steps.find((s) => s.id === id);
-    if (seek && step && step.start !== null) this.seek(step!.start!);
+    if (seek && step && (step.start !== null || step.end !== null))
+      this.seek(step.start ?? 0);
   }
   updateStep(change: Partial<PlanStep>) {
     this.editPlan({
@@ -3704,7 +3730,8 @@ export class EditorController {
           },
         ];
     const existing = this.state.plan.steps.filter(
-      (s) => s.annotations.length || s.notes || s.start !== null,
+      (s) =>
+        s.annotations.length || s.notes || s.start !== null || s.end !== null,
     );
     const steps = chapters.slice(0, 128 - existing.length).map((c) => ({
       ...newStep(c.name, c.encounterID ? "boss" : "pull"),
@@ -3723,18 +3750,19 @@ export class EditorController {
     this.patch(change);
     this.sendAnnotations();
   }
-  finishDrawing() {
+  finishDrawing(nextTool: "keep" | "select" = "keep") {
+    const finishMode = this.finishRequested === "select" ? "select" : nextTool;
     if (this.pendingPicks) {
-      this.finishRequested = true;
+      this.finishRequested = finishMode;
       return;
     }
+    this.finishRequested = null;
     this.dimensionBefore = null;
     this.pathPreview = null;
     if (this.state.dimensionInput) this.patch({ dimensionInput: "" });
     if (this.actorDrag) {
       const base = this.actorDrag.base;
       this.actorDrag = null;
-      this.finishRequested = false;
       if (JSON.stringify(base) !== JSON.stringify(this.state.plan)) {
         this.undoStack.push(base);
         this.redoStack = [];
@@ -3744,6 +3772,9 @@ export class EditorController {
       return;
     }
     if (this.draftBase) {
+      const selectCompletedPath =
+        finishMode === "select" &&
+        (this.state.tool === "route" || this.state.tool === "polygon");
       if (JSON.stringify(this.draftBase) !== JSON.stringify(this.state.plan)) {
         this.undoStack.push(this.draftBase);
         if (this.undoStack.length > 100) this.undoStack.shift();
@@ -3754,8 +3785,8 @@ export class EditorController {
       this.markDrag = null;
       this.patch({ drawing: false });
       this.planState(this.state.plan);
+      if (selectCompletedPath) this.setTool("explore");
     }
-    this.finishRequested = false;
   }
   cancelDrawing() {
     this.dimensionBefore = null;
@@ -3770,7 +3801,7 @@ export class EditorController {
     this.pendingMarkerClicks = [];
     this.pendingPicks = 0;
     this.mapPickQueue = [];
-    this.finishRequested = false;
+    this.finishRequested = null;
     this.saveWhenReady = false;
     this.patch({ drawing: false });
     if (base) this.planState(base);
@@ -4077,7 +4108,7 @@ export class EditorController {
     this.mapView = on;
     if (on && this.state.cameraMode === "orbit") this.setCameraMode("free");
     this.syncKeyboardCapture();
-    if (changed) this.patch({});
+    if (changed) this.patch(on ? {} : { recordedMapFramePoint: undefined });
   }
   setTyping(on: boolean) {
     this.typing = on;
@@ -4237,6 +4268,7 @@ export class EditorController {
     this.engine?.home();
   }
   pick(x: number, y: number, constrain = false, preview = false) {
+    if (this.finishRequested === "select") return;
     if (this.markDrag) this.markDrag.constrain = constrain;
     if (this.actorDrag) this.actorDrag.constrain = constrain;
     if (
@@ -4260,6 +4292,17 @@ export class EditorController {
     constrain = false,
     preview = false,
     grounded = false,
+  ) {
+    if (this.finishRequested === "select") return;
+    this.applyMapPick(x, y, height, constrain, preview, grounded);
+  }
+  private applyMapPick(
+    x: number,
+    y: number,
+    height: number,
+    constrain: boolean,
+    preview: boolean,
+    grounded: boolean,
   ) {
     if (![x, y, height].every(Number.isFinite)) return;
     // A resolved local point must not overtake an earlier asynchronous native pick.
@@ -4298,6 +4341,23 @@ export class EditorController {
       } else this.engine?.pick_map(x, y, height);
     }
   }
+  setScenePresentation(preset: "scene" | "raid") {
+    this.patch({
+      options: {
+        ...this.state.options,
+        nameplates: true,
+        friendlyNameplates: false,
+        enemyNameplates: true,
+        bossNameplates: true,
+        trashNameplates: false,
+        raidFrames: preset === "raid",
+        auras: preset === "raid",
+      },
+    });
+    if (preset === "raid") this.setRaidFrameSize(724, 186);
+    this.resetEvents = true;
+    this.render();
+  }
   setOption(key: keyof Options, value: boolean) {
     if (key === "followRaid" && value && this.state.cameraMode === "orbit")
       this.setCameraMode("free");
@@ -4327,7 +4387,11 @@ export class EditorController {
     if (!this.state.replay || !this.state.rangeCheck.enabled) return [];
     return withReplayPoses((lookup) => {
       const floors = this.replayFloors(this.state.replay!, lookup);
-      return rangeCircles(this.state.replay, this.state.rangeCheck, (actor) => {
+      const settings =
+        this.state.rangeCheck.group === "selected"
+          ? { ...this.state.rangeCheck, players: this.state.selectedActors }
+          : this.state.rangeCheck;
+      return rangeCircles(this.state.replay, settings, (actor) => {
         const pose = this.actorPose(actor, lookup);
         return pose
           ? {
@@ -4490,8 +4554,41 @@ export class EditorController {
     this.focus(key, false);
     this.render();
   }
-  focus(key: string, select = true) {
+  private liveRecordedActorPose(key: string) {
+    if (this.state.workspaceMode !== "analyse" || this.state.buffering)
+      return null;
+    const actor = this.state.replay?.actors.find(
+      (candidate) => candidate.key === key,
+    );
+    const pose = actor ? this.actorPose(actor) : null;
+    return pose && !pose.dead ? pose : null;
+  }
+  canFocusRecordedActor(key: string) {
+    return this.liveRecordedActorPose(key) !== null;
+  }
+  focusRecordedActor(key: string) {
+    const pose = this.liveRecordedActorPose(key);
+    if (!pose) return false;
+    this.setOption("followRaid", false);
+    this.select(key);
+    if (this.mapView)
+      this.patch({
+        frameRequest: this.state.frameRequest + 1,
+        recordedMapFramePoint: [pose.pos[0], pose.pos[1]],
+      });
+    else this.centerReplayActor(key, pose.pos);
+    return true;
+  }
+  private centerReplayActor(key: string, pos: readonly (number | null)[]) {
     const replay = this.state.replay;
+    const hint = replay ? this.replayFloors(replay).get(key) : undefined;
+    this.engine?.focus_replay(
+      pos[0]!,
+      pos[1]!,
+      pos[2] ?? hint ?? raidByMap(this.state.plan.mapId)?.spawn[2] ?? 0,
+    );
+  }
+  focus(key: string, select = true) {
     const actor = this.sceneActors().find((a) => a.key === key);
     if (!actor) return;
     if (select) {
@@ -4500,14 +4597,8 @@ export class EditorController {
     }
     const pose = this.actorPose(actor);
     const pos = pose?.pos ?? actor.samples[0]?.slice(1);
-    if (pos) {
-      const hint = replay ? this.replayFloors(replay).get(key) : undefined;
-      this.engine?.focus_replay(
-        pos[0]!,
-        pos[1]!,
-        pos[2] ?? hint ?? raidByMap(this.state.plan.mapId)?.spawn[2] ?? 0,
-      );
-    } else this.notify("No recorded position");
+    if (pos) this.centerReplayActor(key, pos);
+    else this.notify("No recorded position");
   }
   focusCurrent() {
     const replay = this.state.replay;
@@ -4892,7 +4983,8 @@ export class EditorController {
                   step.snapshot ||
                   step.annotations.length ||
                   step.notes ||
-                  step.start !== null,
+                  step.start !== null ||
+                  step.end !== null,
               ),
             });
           } else this.setWorkspaceMode("analyse");
@@ -5402,8 +5494,10 @@ export class EditorController {
         );
         this.installReplay(raw, prepared);
       }
+      return true;
     } catch (e) {
       this.notify(message(e));
+      return false;
     }
   }
   exportFile(kind: "plan" | "replay") {
@@ -5697,7 +5791,7 @@ export class EditorController {
         this.notify(message(e));
       }
       while (!this.pendingPicks && this.mapPickQueue.length) {
-        this.pickMap(...this.mapPickQueue.shift()!);
+        this.applyMapPick(...this.mapPickQueue.shift()!);
       }
       if (this.finishRequested && !this.pendingPicks) this.finishDrawing();
       if (!this.pendingPicks && this.saveWhenReady) {

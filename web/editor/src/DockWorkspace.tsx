@@ -12,6 +12,7 @@ import {
   parseDock,
   moveDock,
   resizeDock,
+  responsiveDock,
   dockGeometry,
   dockDropAt,
   migrateFullHeightLeft,
@@ -23,6 +24,7 @@ import {
   type Edge,
   type DockNode,
 } from "./dock-model";
+import { PanelSettings } from "./PanelSettings";
 import { EditorIcon } from "./EditorIcon";
 export const DOCK_STORAGE = "pullfiction.workspace.layout.v2";
 const LEGACY_DOCK_STORAGE = "pullfiction.workspace.layout.v1";
@@ -114,7 +116,12 @@ export function DockWorkspace({
   const visible = new Set(
       panels.filter((p) => p.visible !== false).map((p) => p.id),
     ),
-    geometry = dockGeometry(layout, visible, size.width, size.height);
+    renderedLayout = responsiveDock(layout, visible, size.width, size.height),
+    geometry = dockGeometry(renderedLayout, visible, size.width, size.height);
+  const editLayout = (update: (base: DockNode) => DockNode) =>
+    setLayout((old) =>
+      update(responsiveDock(old, visible, size.width, size.height)),
+    );
   const dropAt = (source: PaneId | null, clientX: number, clientY: number) => {
     const bounds = host.current!.getBoundingClientRect();
     return dockDropAt(
@@ -126,7 +133,7 @@ export function DockWorkspace({
     );
   };
   const commitDrop = (source: PaneId, target: DockDropTarget) => {
-    setLayout((old) => applyDockDrop(old, source, target));
+    editLayout((old) => applyDockDrop(old, source, target));
     onOpen(source);
   };
   return (
@@ -195,11 +202,14 @@ export function DockWorkspace({
                 tabIndex={0}
                 aria-label={`Move ${panel.title} panel`}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
+                    e.stopPropagation();
                     e.currentTarget.parentElement
-                      ?.querySelector("details")
-                      ?.setAttribute("open", "");
+                      ?.querySelector<HTMLButtonElement>(
+                        ".panel-settings-trigger",
+                      )
+                      ?.click();
                   }
                 }}
                 onPointerDown={(e) => {
@@ -264,21 +274,19 @@ export function DockWorkspace({
                 <EditorIcon name="grip" />
                 <span>{panel.title}</span>
               </span>
-              <details>
-                <summary
-                  aria-label={`${panel.title} panel actions`}
-                  title={`${panel.title} panel actions`}
-                >
-                  <EditorIcon name="more" />
-                </summary>
-                <div className="dock-menu">
+              <PanelSettings
+                title={`${panel.title} panel actions`}
+                icon="more"
+                width={280}
+              >
+                <div className="dock-actions">
                   <p className="dock-menu-title">Move {panel.title}</p>
                   <button
                     onClick={(e) => {
-                      setLayout((old) => dockLeft(old, id));
+                      editLayout((old) => dockLeft(old, id));
                       e.currentTarget
-                        .closest("details")
-                        ?.removeAttribute("open");
+                        .closest<HTMLElement>("[popover]")
+                        ?.hidePopover();
                     }}
                   >
                     Dock in left zone
@@ -295,10 +303,10 @@ export function DockWorkspace({
                           visible.has(target) &&
                           ["left", "right", "top", "bottom"].includes(edge)
                         ) {
-                          setLayout((old) => moveDock(old, id, target, edge));
+                          editLayout((old) => moveDock(old, id, target, edge));
                           e.currentTarget
-                            .closest("details")
-                            ?.removeAttribute("open");
+                            .closest<HTMLElement>("[popover]")
+                            ?.hidePopover();
                         }
                       }}
                     >
@@ -339,14 +347,14 @@ export function DockWorkspace({
                       setLayout(defaultDock());
                       onReset();
                       e.currentTarget
-                        .closest("details")
-                        ?.removeAttribute("open");
+                        .closest<HTMLElement>("[popover]")
+                        ?.hidePopover();
                     }}
                   >
                     Reset workspace layout
                   </button>
                 </div>
-              </details>
+              </PanelSettings>
               {panel.close && (
                 <button
                   aria-label={`Close ${panel.title}`}
@@ -356,7 +364,15 @@ export function DockWorkspace({
                 </button>
               )}
             </header>
-            <div className="dock-content">{box ? panel.content : null}</div>
+            <div className="dock-content">
+              {box ? (
+                panel.content
+              ) : (
+                <div className="dock-preparing" role="status">
+                  Preparing {panel.title.toLowerCase()}…
+                </div>
+              )}
+            </div>
             {drop?.pane === id && !drop.workspace && (
               <div className={`dock-drop-preview ${drop.edge}`} />
             )}
@@ -370,7 +386,7 @@ export function DockWorkspace({
             left: 0,
             top: 0,
             bottom: 0,
-            width: Math.max(0, size.width - 5) * leftDockRatio(layout),
+            width: Math.max(0, size.width - 5) * leftDockRatio(renderedLayout),
           }}
         >
           <span>Dock left</span>
@@ -393,7 +409,7 @@ export function DockWorkspace({
               forward = d.axis === "row" ? "ArrowRight" : "ArrowDown";
             if (e.key === back || e.key === forward) {
               e.preventDefault();
-              setLayout((old) =>
+              editLayout((old) =>
                 resizeDock(
                   old,
                   d.path,
@@ -408,15 +424,16 @@ export function DockWorkspace({
             const initial = d.axis === "row" ? e.clientX : e.clientY,
               ratio = d.ratio;
             const node = e.currentTarget;
+            let resized = false;
             const move = (event: PointerEvent) => {
               const at = d.axis === "row" ? event.clientX : event.clientY;
-              setLayout((old) =>
-                resizeDock(
-                  old,
-                  d.path,
-                  ratio + (at - initial) / Math.max(1, d.extent),
-                ),
+              const next = Math.max(
+                0.1,
+                Math.min(0.9, ratio + (at - initial) / Math.max(1, d.extent)),
               );
+              if (!resized && next === ratio) return;
+              resized = true;
+              editLayout((old) => resizeDock(old, d.path, next));
             };
             const end = () => {
               node.removeEventListener("pointermove", move);

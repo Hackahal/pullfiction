@@ -18,6 +18,10 @@ pub struct Mark {
     pub anchor: [f32; 3],
     #[serde(default)]
     pub paths: Vec<Vec<[f32; 3]>>,
+    #[serde(skip)]
+    waypoint_paths: Vec<Vec<[f32; 3]>>,
+    #[serde(skip)]
+    single_waypoint: Option<[f32; 3]>,
     #[serde(default)]
     pub triangles: Vec<[f32; 3]>,
     pub color: String,
@@ -115,6 +119,8 @@ impl Annotations {
                 kind: "marker".into(),
                 anchor: point,
                 paths: vec![],
+                waypoint_paths: vec![],
+                single_waypoint: None,
                 triangles: vec![],
                 color: "#edc66d".into(),
                 width: 3.,
@@ -135,6 +141,8 @@ impl Annotations {
                 kind: "route".into(),
                 anchor: p.route[0],
                 paths: vec![p.route],
+                waypoint_paths: vec![],
+                single_waypoint: None,
                 triangles: vec![],
                 color: "#65c6b4".into(),
                 width: 3.,
@@ -169,6 +177,30 @@ impl Annotations {
                     .entry(p.map(f32::to_bits))
                     .or_insert_with(|| ground_sample(p, world))
             };
+            if mark.kind == "route" {
+                if let Some(trunk) = mark.paths.first() {
+                    if let [point] = trunk.as_slice() {
+                        mark.single_waypoint = sample(*point);
+                    }
+                    let stride = trunk.len().div_ceil(96).max(1);
+                    let size = (mark.width * 0.21).clamp(0.45, 1.1);
+                    let diamonds = trunk
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| i % stride == 0 || i + 1 == trunk.len())
+                        .map(|(_, &[x, y, z])| {
+                            vec![
+                                [x - size, y, z],
+                                [x, y - size, z],
+                                [x + size, y, z],
+                                [x, y + size, z],
+                                [x - size, y, z],
+                            ]
+                        })
+                        .collect::<Vec<_>>();
+                    mark.waypoint_paths = crate::surface_geometry::paths(&diamonds, &mut sample);
+                }
+            }
             mark.paths = crate::surface_geometry::paths(&mark.paths, &mut sample);
             let original = std::mem::take(&mut mark.triangles);
             for tri in original.chunks_exact(3) {
@@ -278,6 +310,14 @@ impl Annotations {
                 .ok()
         };
         for mark in self.marks.iter().rev().filter(|m| !m.inert) {
+            if mark
+                .single_waypoint
+                .and_then(|point| screen(point, ANNOTATION_LIFT))
+                .is_some_and(|q| q.distance(p) <= 8.)
+            {
+                hits.push(mark.id.as_str());
+                continue;
+            }
             if ["marker", "label"].contains(&mark.kind.as_str())
                 && screen(
                     mark.anchor,
@@ -643,7 +683,15 @@ fn rebuild(
                 Transform::default(),
             ));
         }
-        if ["route", "arrow"].contains(&mark.kind.as_str()) {
+        if let Some(stroke) = strip(&mark.waypoint_paths, 0.16, ANNOTATION_LIFT + 0.03) {
+            commands.spawn((
+                Visual,
+                Mesh3d(meshes.add(stroke)),
+                MeshMaterial3d(material(&mut materials, color(&mark.color, 0.95))),
+                Transform::default(),
+            ));
+        }
+        if mark.kind == "arrow" {
             if let Some(path) = mark.paths.first() {
                 let path: Vec<Vec3> = path
                     .iter()

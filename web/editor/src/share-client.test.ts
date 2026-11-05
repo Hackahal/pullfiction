@@ -111,3 +111,37 @@ test("deletion records handle unavailable or corrupt storage without losing exis
     /full/,
   );
 });
+
+test("WCL pet icon paths become portable identifiers without changing the local plan", () => {
+  const project = newProject(emptyPlan());
+  project.plan.steps[0].snapshot = {
+    report: "reference-run",
+    time: 1000,
+    actors: [
+      {
+        key: "pet:1",
+        name: "Athena",
+        type: "Pet",
+        class: "Pet",
+        position: [1, 2, 3],
+        facing: 0,
+        icon: "abilities/ability_hunter_beastcall.jpg",
+        scale: 0.009999999776482582,
+      },
+    ],
+  };
+  const before = structuredClone(project);
+  const shared = shareSnapshot(project);
+  assert.equal(
+    shared.plan.steps[0].snapshot!.actors[0].icon,
+    "ability_hunter_beastcall.jpg",
+  );
+  assert.equal(
+    shared.plan.steps[0].snapshot!.actors[0].scale,
+    0.009999999776482582,
+  );
+  assert.deepEqual(project, before);
+  project.plan.steps[0].snapshot.actors[0].icon =
+    "https://example.com/private.jpg";
+  assert.throws(() => shareSnapshot(project), /Invalid actor icon/);
+});

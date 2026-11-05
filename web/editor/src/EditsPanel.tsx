@@ -1,8 +1,20 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MarkEditor, AddPlanPlayer, PageProperties } from "./Planning";
 import { EditorIcon } from "./EditorIcon";
+import { preciseTime } from "./domain";
 import type { EditorController } from "./controller";
-import type { Snapshot } from "./types";
+import type { PlannedActor, Snapshot } from "./types";
+function placementStatus(actor: PlannedActor) {
+  if (!actor.recorded) return "Added";
+  if (
+    actor.recorded.some((value, axis) => value !== actor.position[axis]) ||
+    (actor.recordedFacing !== undefined &&
+      actor.recordedFacing !== actor.facing)
+  )
+    return "Adjusted";
+  return "Captured";
+}
+
 export function EditsPanel({
   state,
   controller,
@@ -15,177 +27,295 @@ export function EditsPanel({
   onPageDetails?: (on: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
   const hasSelection = !!(
     state.selectedMarks.length || state.selectedActors.length
   );
-  const matches = (name: string) =>
-    name.toLowerCase().includes(query.trim().toLowerCase());
+  const pageView = pageDetails && state.workspaceMode === "plan";
+  const draftId = controller.pathDraftId;
+  const draft = draftId
+    ? state.plan.steps
+        .find((page) => page.id === state.activeStep)
+        ?.annotations.find((edit) => edit.id === draftId)
+    : undefined;
+  const search = query.trim().toLowerCase();
+  const matches = (name: string) => name.toLowerCase().includes(search);
+  const outline = (
+    <div
+      className={`edits-outline${search ? " searching" : ""}`}
+      aria-label={draft ? "Page edits" : "Saved edits"}
+    >
+      {state.plan.steps.map((page, pageIndex) => {
+        const marks = page.annotations.filter((a) =>
+            matches(`${a.name} ${a.label} ${a.type}`),
+          ),
+          actors = (page.snapshot?.actors ?? []).filter((a) => matches(a.name));
+        if (!marks.length && !actors.length) return null;
+        const captured = actors.filter(
+          (actor) => placementStatus(actor) === "Captured",
+        );
+        const edits = actors.filter(
+          (actor) => placementStatus(actor) !== "Captured",
+        );
+        const placement = (actor: PlannedActor) => {
+          const selected =
+            page.id === state.activeStep &&
+            state.selectedActors.includes(actor.key);
+          return (
+            <button
+              key={actor.key}
+              className={`edit-outline-row actor-edit ${selected ? "active" : ""}`}
+              aria-pressed={selected}
+              onClick={(e) => {
+                controller.revealActorEdit(
+                  actor.key,
+                  page.id,
+                  e.shiftKey || e.ctrlKey || e.metaKey,
+                );
+              }}
+            >
+              <EditorIcon
+                name={
+                  actor.class === "Boss"
+                    ? "skull"
+                    : actor.type === "Player"
+                      ? "person"
+                      : "creature"
+                }
+              />
+              <span>{actor.name}</span>
+              <small>{placementStatus(actor)}</small>
+            </button>
+          );
+        };
+        return (
+          <section key={page.id}>
+            <div className="edits-page-heading">
+              <span>
+                Page {pageIndex + 1}
+                {page.snapshot && (
+                  <> · Captured {preciseTime(page.snapshot.time)}</>
+                )}
+                {page.id === state.activeStep && <> · Current page</>}
+              </span>
+              <button
+                aria-label={`Open page ${pageIndex + 1}: ${page.name}`}
+                onClick={() => {
+                  controller.setActiveStep(page.id);
+                  onPageDetails?.(true);
+                }}
+              >
+                {page.name}
+              </button>
+            </div>
+            {marks.map((edit) => (
+              <div
+                className={`edit-outline-row ${state.selectedMarks.includes(edit.id) ? "active" : ""}`}
+                key={edit.id}
+              >
+                <button
+                  className="edit-select"
+                  aria-pressed={state.selectedMarks.includes(edit.id)}
+                  disabled={edit.id === draftId}
+                  onClick={(e) => {
+                    if (e.shiftKey || e.ctrlKey || e.metaKey)
+                      controller.selectMark(edit.id, "toggle");
+                    else controller.revealEdit(edit.id);
+                  }}
+                >
+                  <EditorIcon
+                    name={edit.type === "marker" ? "pin" : edit.type}
+                  />
+                  <span>{edit.name}</span>
+                  {edit.id === draftId && (
+                    <small className="edit-draft-label">Draft</small>
+                  )}
+                  {edit.actor && <EditorIcon name="actors" />}
+                </button>
+                {edit.id !== draftId && (
+                  <>
+                    <button
+                      title={edit.hidden ? "Show edit" : "Hide edit"}
+                      aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
+                      aria-pressed={!edit.hidden}
+                      onClick={() => {
+                        controller.revealEdit(edit.id);
+                        controller.updateMark({ hidden: !edit.hidden });
+                      }}
+                    >
+                      <EditorIcon name="eye" />
+                    </button>
+                    <button
+                      title={edit.locked ? "Unlock edit" : "Lock edit"}
+                      aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
+                      aria-pressed={edit.locked}
+                      onClick={() => {
+                        controller.revealEdit(edit.id);
+                        controller.updateMark({ locked: !edit.locked });
+                      }}
+                    >
+                      <EditorIcon name="lock" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {edits.map(placement)}
+            {search
+              ? captured.map(placement)
+              : captured.length > 0 && (
+                  <details
+                    className="captured-placements"
+                    open={
+                      page.id === state.activeStep &&
+                      captured.some((actor) =>
+                        state.selectedActors.includes(actor.key),
+                      )
+                        ? true
+                        : undefined
+                    }
+                  >
+                    <summary>
+                      Captured positions <span>{captured.length}</span>
+                    </summary>
+                    {captured.map(placement)}
+                  </details>
+                )}
+          </section>
+        );
+      })}
+      {search &&
+        !state.plan.steps.some(
+          (page) =>
+            page.annotations.some((edit) =>
+              matches(`${edit.name} ${edit.label} ${edit.type}`),
+            ) || page.snapshot?.actors.some((actor) => matches(actor.name)),
+        ) && (
+          <p className="edits-empty" role="status">
+            No edits match “{query.trim()}”.
+          </p>
+        )}
+      {!search &&
+        !state.plan.steps.some(
+          (s) => s.annotations.length || s.snapshot?.actors.length,
+        ) && (
+          <p className="edits-empty">
+            Choose Route to draw a path, or Marker to place a raid marker in the
+            scene.
+          </p>
+        )}
+    </div>
+  );
   return (
     <section
       className="edits-panel"
       aria-label="Edits panel"
       data-input-context="edits"
     >
-      <div className="edits-list-toolbar">
-        <input
-          className="edits-search"
-          aria-label="Find edits"
-          placeholder="Find edits…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <details className="edits-actions">
-          <summary aria-label="Edit actions" title="Edit actions">
-            <EditorIcon name="more" />
-          </summary>
-          <div>
-            <button
-              onClick={(e) => {
-                controller.selectAllMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Select all
-            </button>
-            <button
-              disabled={!state.selectedMarks.length}
-              onClick={(e) => {
-                controller.copyMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Copy drawings
-            </button>
-            <button
-              onClick={(e) => {
-                controller.pasteMarks();
-                e.currentTarget.closest("details")?.removeAttribute("open");
-              }}
-            >
-              Paste drawings
-            </button>
-          </div>
-        </details>
-      </div>
       {state.workspaceMode === "plan" && (
-        <AddPlanPlayer controller={controller} />
+        <div
+          className="edits-view-switch"
+          role="group"
+          aria-label="Edits panel view"
+        >
+          <button
+            aria-pressed={pageView}
+            onClick={() => {
+              if (!pageView) onPageDetails?.(true);
+            }}
+          >
+            Page
+          </button>
+          <button
+            aria-pressed={!pageView}
+            onClick={() => onPageDetails?.(false)}
+          >
+            Edits
+          </button>
+        </div>
       )}
-      {pageDetails && state.workspaceMode === "plan" ? (
-        <div className="edits-properties">
+      {pageView && (
+        <div className="edits-properties edits-page-view">
           <PageProperties state={state} controller={controller} />
         </div>
-      ) : hasSelection ? (
-        <div className="edits-properties">
-          <MarkEditor state={state} controller={controller} />
-        </div>
-      ) : (
-        <p className="edits-selection-hint">
-          Select an edit to change its properties.
-        </p>
       )}
-      <div className="edits-outline" aria-label="Saved edits">
-        {state.plan.steps.map((page) => {
-          const marks = page.annotations.filter((a) =>
-              matches(`${a.name} ${a.label} ${a.type}`),
-            ),
-            actors = (page.snapshot?.actors ?? []).filter((a) =>
-              matches(a.name),
-            );
-          if (!marks.length && !actors.length) return null;
-          return (
-            <section key={page.id}>
-              <div className="edits-page-heading">
-                <span>
-                  {state.plan.layers.find((l) => l.id === page.layerId)?.name}
-                </span>
-                <button
-                  onClick={() => {
-                    controller.setActiveStep(page.id);
-                    onPageDetails?.(true);
-                  }}
-                >
-                  {page.name}
-                </button>
-              </div>
-              {marks.map((edit) => (
-                <div
-                  className={`edit-outline-row ${state.selectedMarks.includes(edit.id) ? "active" : ""}`}
-                  key={edit.id}
-                >
-                  <button
-                    className="edit-select"
-                    aria-pressed={state.selectedMarks.includes(edit.id)}
-                    onClick={(e) => {
-                      if (e.shiftKey || e.ctrlKey || e.metaKey)
-                        controller.selectMark(edit.id, "toggle");
-                      else controller.revealEdit(edit.id);
-                    }}
-                  >
-                    <EditorIcon
-                      name={edit.type === "marker" ? "pin" : edit.type}
-                    />
-                    <span>{edit.name}</span>
-                    {edit.actor && <EditorIcon name="actors" />}
-                  </button>
-                  <button
-                    title={edit.hidden ? "Show edit" : "Hide edit"}
-                    aria-label={`${edit.hidden ? "Show" : "Hide"} ${edit.name}`}
-                    aria-pressed={!edit.hidden}
-                    onClick={() => {
-                      controller.revealEdit(edit.id);
-                      controller.updateMark({ hidden: !edit.hidden });
-                    }}
-                  >
-                    <EditorIcon name="eye" />
-                  </button>
-                  <button
-                    title={edit.locked ? "Unlock edit" : "Lock edit"}
-                    aria-label={`${edit.locked ? "Unlock" : "Lock"} ${edit.name}`}
-                    aria-pressed={edit.locked}
-                    onClick={() => {
-                      controller.revealEdit(edit.id);
-                      controller.updateMark({ locked: !edit.locked });
-                    }}
-                  >
-                    <EditorIcon name="lock" />
-                  </button>
-                </div>
-              ))}
-              {actors.map((actor) => (
-                <button
-                  key={actor.key}
-                  className={`edit-outline-row actor-edit ${state.selectedActors.includes(actor.key) ? "active" : ""}`}
-                  onClick={(e) => {
-                    controller.revealActorEdit(
-                      actor.key,
-                      page.id,
-                      e.shiftKey || e.ctrlKey || e.metaKey,
-                    );
-                  }}
-                >
-                  <EditorIcon
-                    name={
-                      actor.class === "Boss"
-                        ? "skull"
-                        : actor.type === "Player"
-                          ? "person"
-                          : "creature"
-                    }
-                  />
-                  <span>{actor.name}</span>
-                  <small>Placement</small>
-                </button>
-              ))}
-            </section>
-          );
-        })}
-        {!state.plan.steps.some(
-          (s) => s.annotations.length || s.snapshot?.actors.length,
-        ) && (
-          <p className="edits-empty">
-            Draw in the scene or capture a moment to start a plan.
+      <div className="edits-browser-view" hidden={pageView}>
+        <div className="edits-list-toolbar">
+          <input
+            className="edits-search"
+            ref={searchInput}
+            aria-label="Find edits"
+            placeholder="Find edits…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button
+              aria-label="Clear edit search"
+              onClick={() => {
+                setQuery("");
+                searchInput.current?.focus();
+              }}
+            >
+              Clear
+            </button>
+          )}
+          <details className="edits-actions">
+            <summary aria-label="Edit actions" title="Edit actions">
+              <EditorIcon name="more" />
+            </summary>
+            <div>
+              <button
+                onClick={(e) => {
+                  controller.selectAllMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Select all
+              </button>
+              <button
+                disabled={!state.selectedMarks.length}
+                onClick={(e) => {
+                  controller.copyMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Copy drawings
+              </button>
+              <button
+                onClick={(e) => {
+                  controller.pasteMarks();
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+              >
+                Paste drawings
+              </button>
+            </div>
+          </details>
+        </div>
+        {search && outline}
+        {!search && state.workspaceMode === "plan" && (
+          <AddPlanPlayer controller={controller} />
+        )}
+        {draft ? (
+          <div className="edits-draft-summary">
+            <EditorIcon name={draft.type} />
+            <div>
+              <strong>{draft.name}</strong>
+              <p>Finish in Scene to edit properties.</p>
+            </div>
+            <small className="edit-draft-label">Draft</small>
+          </div>
+        ) : hasSelection ? (
+          <div className="edits-properties">
+            <MarkEditor state={state} controller={controller} />
+          </div>
+        ) : (
+          <p className="edits-selection-hint">
+            Select an edit to change its properties.
           </p>
         )}
+        {!search && outline}
       </div>
     </section>
   );

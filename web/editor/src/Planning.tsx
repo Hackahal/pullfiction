@@ -1,11 +1,14 @@
+import { tacticalMarker } from "./icon-fallbacks";
 import { GameIcon } from "./GameIcon";
 import { AttachmentControl } from "./AttachmentControl";
 import { ExactNumber } from "./ExactNumber";
+import { PlanTimecodeInput } from "./PlanTimecodeInput";
+import { planRangeLabel } from "./plan-timecode";
 import { EditorIcon } from "./EditorIcon";
 import { useState, useEffect } from "react";
 import type { EditorController } from "./controller";
 import type { Annotation, PlanStep, Snapshot } from "./types";
-import { preciseTime } from "./domain";
+import { preciseTime, routeLength } from "./domain";
 import { RAID_ICONS } from "./annotation-model";
 export function MarkIcon({ icon }: { icon: string }) {
   if (/^[1-8]$/.test(icon)) {
@@ -20,7 +23,13 @@ export function MarkIcon({ icon }: { icon: string }) {
       />
     );
   }
-  return <GameIcon className="plan-game-icon" name={icon} />;
+  return (
+    <GameIcon
+      className="plan-game-icon"
+      name={icon}
+      fallbackSrc={tacticalMarker(icon)?.fallback}
+    />
+  );
 }
 export function PageProperties({
   state,
@@ -38,150 +47,161 @@ export function PageProperties({
       data-input-context="playbook"
       aria-label="Page properties"
     >
-      <label className="page-layer-picker">
-        Page
-        <select
-          aria-label="Plan page"
-          value={step.id}
-          onChange={(e) => controller.setActiveStep(e.target.value, false)}
-        >
-          {state.plan.layers.map((layer) => (
-            <optgroup key={layer.id} label={layer.name}>
-              {state.plan.steps
-                .filter((page) => page.layerId === layer.id)
-                .map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
-      <label className="page-layer-picker">
-        Layer
-        <select
-          aria-label="Page layer"
-          value={step.layerId}
-          onChange={(e) => controller.updateStep({ layerId: e.target.value })}
-        >
-          {state.plan.layers.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="plan-form-row">
-        <input
-          aria-label="Step name"
-          value={step.name}
-          maxLength={100}
-          onChange={(e) => controller.updateStep({ name: e.target.value })}
-        />
-        <select
-          aria-label="Step type"
-          value={step.kind}
-          onChange={(e) =>
-            controller.updateStep({
-              kind: e.target.value as PlanStep["kind"],
-            })
-          }
-        >
-          {["pull", "boss", "phase", "route", "note"].map((k) => (
-            <option key={k}>{k}</option>
-          ))}
-        </select>
+      <header className="page-identity">
+        <h3 className="page-inspector-title">{step.name || "Untitled page"}</h3>
+        {step.snapshot && (
+          <dl className="page-source-facts" aria-label="Recorded capture">
+            <div>
+              <dt>Captured at</dt>
+              <dd>
+                <time>{preciseTime(step.snapshot.time)}</time>
+              </dd>
+            </div>
+            <div>
+              <dt>Recorded placements</dt>
+              <dd>{step.snapshot.actors.length.toLocaleString()}</dd>
+            </div>
+          </dl>
+        )}
+        {state.plan.steps.length > 1 && (
+          <details className="page-switch">
+            <summary>Switch page</summary>
+            <select
+              aria-label="Switch page"
+              value={step.id}
+              onChange={(e) => controller.setActiveStep(e.target.value, false)}
+            >
+              {state.plan.layers.map((layer) => (
+                <optgroup key={layer.id} label={layer.name}>
+                  {state.plan.steps
+                    .filter((page) => page.layerId === layer.id)
+                    .map((page) => (
+                      <option key={page.id} value={page.id}>
+                        {page.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </details>
+        )}
+      </header>
+      <div className="page-name-fields">
+        <label>
+          Page name
+          <input
+            aria-label="Step name"
+            value={step.name}
+            maxLength={100}
+            onChange={(e) => controller.updateStep({ name: e.target.value })}
+          />
+        </label>
+        <label>
+          Type
+          <select
+            aria-label="Step type"
+            value={step.kind}
+            onChange={(e) =>
+              controller.updateStep({
+                kind: e.target.value as PlanStep["kind"],
+              })
+            }
+          >
+            {["pull", "boss", "phase", "route", "note"].map((k) => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Layer
+          <select
+            aria-label="Page layer"
+            value={step.layerId}
+            onChange={(e) => controller.updateStep({ layerId: e.target.value })}
+          >
+            {state.plan.layers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       {state.replay && (
-        <>
-          <div className="plan-form-row">
-            <button
-              title="Set step start to playhead"
-              disabled={!state.replay}
-              onClick={() =>
-                controller.updateStep({
-                  start: state.time,
-                  end:
-                    step.end !== null && step.end <= state.time
-                      ? null
-                      : step.end,
-                })
-              }
-            >
-              Start {step.start === null ? "—" : preciseTime(step.start)}
-            </button>
-            <button
-              title="Set step end to playhead"
-              disabled={!state.replay || state.time <= (step.start ?? 0)}
-              onClick={() => controller.updateStep({ end: state.time })}
-            >
-              End {step.end === null ? "—" : preciseTime(step.end)}
-            </button>
-            <button
-              title="Remove time link"
-              onClick={() => controller.updateStep({ start: null, end: null })}
-            >
-              Unlink
-            </button>
-          </div>
-          <div className="plan-form-row">
-            <label>
-              Start · seconds
-              <input
-                aria-label="Step start seconds"
-                type="number"
-                min="0"
-                step=".1"
-                value={step.start === null ? "" : step.start / 1000}
-                onChange={(e) => {
-                  const n = Number(e.target.value) * 1000;
-                  if (
-                    Number.isFinite(n) &&
-                    n >= 0 &&
-                    (step.end === null || n < step.end)
-                  )
-                    controller.updateStep({
-                      start: e.target.value === "" ? null : n,
-                    });
-                }}
+        <details className="page-timing">
+          <summary>
+            <span>
+              <strong>Replay timing</strong>
+              <span className="page-timing-range">
+                {planRangeLabel(step.start, step.end)}
+              </span>
+            </span>
+            <EditorIcon name="down" />
+          </summary>
+          <div className="page-timing-editor">
+            <div className="page-timing-fields" key={step.id}>
+              <PlanTimecodeInput
+                edge="start"
+                value={step.start}
+                opposite={step.end}
+                onCommit={(start) => controller.updateStep({ start })}
               />
-            </label>
-            <label>
-              End · seconds
-              <input
-                aria-label="Step end seconds"
-                type="number"
-                min="0"
-                step=".1"
-                value={step.end === null ? "" : step.end / 1000}
-                onChange={(e) => {
-                  const n = Number(e.target.value) * 1000;
-                  if (Number.isFinite(n) && n > (step.start ?? 0))
-                    controller.updateStep({
-                      end: e.target.value === "" ? null : n,
-                    });
-                }}
+              <PlanTimecodeInput
+                edge="end"
+                value={step.end}
+                opposite={step.start}
+                onCommit={(end) => controller.updateStep({ end })}
               />
-            </label>
+            </div>
+            <small className="page-timing-hint">
+              Use m:ss.mmm. Leave a field blank for an open bound.
+            </small>
+            <div className="page-timing-actions">
+              <button
+                title="Set step start to playhead"
+                disabled={!state.replay}
+                onClick={() =>
+                  controller.updateStep({
+                    start: state.time,
+                    end:
+                      step.end !== null && step.end <= state.time
+                        ? null
+                        : step.end,
+                  })
+                }
+              >
+                Set start at playhead
+              </button>
+              <button
+                title="Set step end to playhead"
+                disabled={!state.replay || state.time <= (step.start ?? 0)}
+                onClick={() => controller.updateStep({ end: state.time })}
+              >
+                Set end at playhead
+              </button>
+              <button
+                title="Remove time link"
+                disabled={step.start === null && step.end === null}
+                onClick={() =>
+                  controller.updateStep({ start: null, end: null })
+                }
+              >
+                Clear timing
+              </button>
+            </div>
           </div>
-        </>
+        </details>
       )}
-      {step.snapshot && (
-        <div className="snapshot-source">
-          <span>
-            {step.snapshot.actors.length} actors ·{" "}
-            {preciseTime(step.snapshot.time)}
-          </span>
-        </div>
-      )}
-      <textarea
-        aria-label="Step notes"
-        placeholder="Pull instructions, assignments…"
-        value={step.notes}
-        maxLength={4000}
-        onChange={(e) => controller.updateStep({ notes: e.target.value })}
-      />
+      <label className="page-notes">
+        Notes
+        <textarea
+          aria-label="Step notes"
+          placeholder="Pull instructions, assignments…"
+          value={step.notes}
+          maxLength={4000}
+          onChange={(e) => controller.updateStep({ notes: e.target.value })}
+        />
+      </label>
       <div className="planning-actions">
         <button
           title="Move step earlier"
@@ -283,24 +303,17 @@ export function MarkEditor({
   const multi = state.selectedMarks.length > 1;
   const update = (patch: Partial<Annotation>) =>
     selected ? controller.updateMark(patch) : controller.setMarkStyle(patch);
-  return (
-    <section className="mark-editor planning-scroll" aria-label="Mark editor">
-      <div className="planning-section">
-        <strong>
-          {multi
-            ? `${state.selectedMarks.length} selected`
-            : selected
-              ? "Mark properties"
-              : selectedActor
-                ? state.selectedActors.length > 1
-                  ? `${state.selectedActors.length} actors selected`
-                  : selectedActor.name
-                : "Drawing style"}
-        </strong>
-        {selected && (
-          <button onClick={() => controller.selectMark(null)}>Deselect</button>
-        )}
-      </div>
+  const transformFields = (
+    <details className="planning-advanced">
+      <summary>Position and transform</summary>
+      {selectedActor && state.compareRecorded && (
+        <p className="placement-source">
+          {selectedActor.name}:{" "}
+          {selectedActor.recorded
+            ? "recorded position"
+            : "no recorded position · showing planned placement"}
+        </p>
+      )}
       {selectedActor && (
         <div className="plan-form-row">
           {([0, 1] as const).map((axis) => (
@@ -308,7 +321,11 @@ export function MarkEditor({
               {axis === 0 ? "X" : "Y"} yd
               <ExactNumber
                 label={`Actor ${axis === 0 ? "X" : "Y"} yards`}
-                value={selectedActor.position[axis]}
+                value={
+                  (state.compareRecorded
+                    ? selectedActor.recorded
+                    : undefined)?.[axis] ?? selectedActor.position[axis]
+                }
                 onCommit={(n) => controller.positionActors(axis, n)}
                 disabled={state.compareRecorded}
               />
@@ -374,6 +391,98 @@ export function MarkEditor({
           </label>
         </div>
       )}
+    </details>
+  );
+  const primaryMark = selected && !multi ? selected : undefined;
+  const pageNumber = state.plan.steps.indexOf(step) + 1;
+  const typeName = primaryMark
+    ? {
+        route: "Route",
+        arrow: "Arrow",
+        circle: "Radius",
+        cone: "Cone",
+        polygon: "Area",
+        drawing: "Freehand",
+        marker: "Raid marker",
+        label: "Text",
+      }[primaryMark.type]
+    : undefined;
+  const markVisible =
+    primaryMark &&
+    !primaryMark.hidden &&
+    controller.visiblePages().some((page) => page.id === step.id);
+  return (
+    <section className="mark-editor planning-scroll" aria-label="Mark editor">
+      <div className="planning-section mark-selection-heading">
+        {primaryMark && (
+          <span className="mark-selection-icon" aria-hidden="true">
+            {primaryMark.type === "marker" ? (
+              <MarkIcon icon={primaryMark.icon} />
+            ) : (
+              <EditorIcon name={primaryMark.type} />
+            )}
+          </span>
+        )}
+        <div className="mark-selection-identity">
+          {primaryMark && (
+            <span className="mark-selection-context" title={step.name}>
+              {typeName} · Page {pageNumber} · {step.name}
+            </span>
+          )}
+          <strong>
+            {multi
+              ? `${state.selectedMarks.length} selected`
+              : selected
+                ? selected.name
+                : selectedActor
+                  ? state.selectedActors.length > 1
+                    ? `${state.selectedActors.length} actors selected`
+                    : selectedActor.name
+                  : "Drawing style"}
+          </strong>
+          {primaryMark?.type === "route" && (
+            <span className="mark-selection-context">
+              {primaryMark.points.length} waypoints ·{" "}
+              {routeLength(primaryMark.points).toFixed(1)} yd
+            </span>
+          )}
+          {primaryMark && !markVisible && (
+            <span className="mark-selection-context">
+              {primaryMark.hidden
+                ? "Hidden in Scene"
+                : "Not visible at the playhead"}
+            </span>
+          )}
+        </div>
+        {selected && (
+          <div className="mark-selection-actions">
+            {primaryMark && state.selectedActors.length === 0 && (
+              <button
+                type="button"
+                aria-label="Locate selected edit in Scene"
+                title={
+                  markVisible
+                    ? "Locate selected edit in Scene"
+                    : "This edit is not visible at the playhead"
+                }
+                disabled={!markVisible}
+                onClick={() => controller.frameSelection()}
+              >
+                <EditorIcon name="focus" />
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Deselect edit"
+              title="Deselect edit"
+              onClick={() => controller.selectMark(null)}
+            >
+              <EditorIcon name="close" />
+            </button>
+          </div>
+        )}
+      </div>
+      {(!selected || multi) && (selectedActor || multi) && transformFields}
       {multi && (
         <div className="planning-actions">
           <button onClick={() => controller.duplicateMark()}>
@@ -392,37 +501,47 @@ export function MarkEditor({
       )}
       {selected && !multi && (
         <>
-          <label>
-            Edit name
-            <input
-              aria-label="Edit name"
-              value={selected.name}
-              maxLength={120}
-              onChange={(e) => update({ name: e.target.value })}
+          <div className="edit-property-list">
+            <label className="edit-property">
+              <span className="edit-property-label">Name</span>
+              <input
+                value={selected.name}
+                maxLength={120}
+                onChange={(e) => update({ name: e.target.value })}
+              />
+            </label>
+            <AttachmentControl
+              edit={selected}
+              state={state}
+              controller={controller}
             />
-          </label>
-          <AttachmentControl
-            edit={selected}
-            state={state}
-            controller={controller}
-          />
-          <input
-            aria-label="Mark label"
-            placeholder="Label / assignment"
-            disabled={selected.locked}
-            value={selected.label}
-            maxLength={120}
-            onChange={(e) => update({ label: e.target.value })}
-          />
-          <textarea
-            aria-label="Mark notes"
-            placeholder="Notes"
-            disabled={selected.locked}
-            value={selected.notes}
-            maxLength={4000}
-            onChange={(e) => update({ notes: e.target.value })}
-          />
-          <div className="planning-actions edit-actions">
+            <label className="edit-property">
+              <span className="edit-property-label">Assignment</span>
+              <input
+                placeholder="Add assignment"
+                disabled={selected.locked}
+                value={selected.label}
+                maxLength={120}
+                onChange={(e) => update({ label: e.target.value })}
+              />
+            </label>
+            <label className="edit-property edit-property-notes">
+              <span className="edit-property-label">Notes</span>
+              <textarea
+                placeholder="Add notes"
+                rows={2}
+                disabled={selected.locked}
+                value={selected.notes}
+                maxLength={4000}
+                onChange={(e) => update({ notes: e.target.value })}
+              />
+            </label>
+          </div>
+          <div
+            className="edit-action-row"
+            role="group"
+            aria-label="Edit actions"
+          >
             <button
               disabled={selected.locked}
               onClick={() => controller.setTransform("move")}
@@ -439,7 +558,7 @@ export function MarkEditor({
               Delete
             </button>
           </div>
-          <div className="plan-step-options">
+          <div className="edit-state-row" role="group" aria-label="Edit state">
             <label>
               <input
                 type="checkbox"
@@ -460,6 +579,7 @@ export function MarkEditor({
               Hidden
             </label>
           </div>
+          {transformFields}
           <div className="planning-section">
             <strong>Comments</strong>
             <span>{selected.comments.length}</span>

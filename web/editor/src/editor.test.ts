@@ -26,7 +26,7 @@ test("Timeline page details can select empty and notes-only pages", () => {
     }),
   );
   const selector = markup.match(
-    /<select[^>]*aria-label="Plan page"[^>]*>[\s\S]*?<\/select>/,
+    /<select[^>]*aria-label="Switch page"[^>]*>[\s\S]*?<\/select>/,
   )?.[0];
   assert.ok(selector);
   assert.match(selector, />Empty page<\/option>/);
@@ -70,7 +70,7 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
   const markup = renderToString(createElement(App, { controller }));
   const nav = markup.slice(markup.indexOf("<nav"), markup.indexOf("</nav>"));
   assert.match(nav, /Place marker/);
-  assert.match(nav, /Markings/);
+  assert.match(nav, /Markers and style/);
   assert.match(nav, /Raid markers|Default stroke/);
   assert.doesNotMatch(nav, /aria-label="Mark editor"|Move handles/);
   assert.doesNotMatch(nav, /Step notes|Follow replay|Damage graph/);
@@ -80,8 +80,14 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
       p.startsWith('<section data-pane="playbook"'),
     )!;
   assert.match(edits, /^<section[^>]*display:flex/);
-  assert.match(edits, /aria-label="Saved edits"/);
-  assert.doesNotMatch(edits, /aria-label="Page layer"|aria-label="Pages"/);
+  assert.match(edits, /aria-label="Edits panel view"/);
+  assert.match(edits, /aria-pressed="true">Page<\/button>/);
+  assert.match(edits, /aria-label="Page layer"/);
+  assert.match(
+    edits,
+    /class="edits-browser-view" hidden=""[\s\S]*aria-label="Saved edits"/,
+  );
+  assert.doesNotMatch(edits, /aria-label="Pages"/);
   const properties = renderToString(
     createElement(PageProperties, {
       state: controller.getSnapshot(),
@@ -110,10 +116,10 @@ test("Drawing defaults stay left, Edits docks independently, and page details be
 
   assert.match(markup, /aria-label="Saved edits"/);
   assert.match(markup, /aria-label="Scene editing controls"/);
-  assert.match(markup, /Click to select · Drag to draw/);
+  assert.match(markup, /Click to select · Drag a selection box/);
   assert.doesNotMatch(markup, /Alt-drag to draw|Alt-click to place/);
   assert.doesNotMatch(markup, /Select underneath|scene-selection-menu/);
-  assert.match(markup, /Frame<\/button>/);
+  assert.match(markup, /aria-label="Frame selection"/);
   assert.match(markup, /editor-canvas/);
   assert.match(markup, /data-cursor="default"/);
   controller.stop();
@@ -142,7 +148,8 @@ test("Planning without a log displays ordered layer pages on the run navigator a
   assert.match(markup, /aria-label="Plan steps"/);
   assert.match(markup, /Layer 1 name/);
   assert.match(markup, /Layer 2 name/);
-  assert.match(markup, /\+ Layer/);
+  assert.match(markup, /aria-label="Timeline options"/);
+  assert.match(markup, />Add layer<\/button>/);
   assert.doesNotMatch(
     markup,
     /class="plan-timeline"|class="run-ruler"|Step start seconds/,

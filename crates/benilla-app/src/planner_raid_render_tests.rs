@@ -36,6 +36,13 @@ fn raid_widgets_skip_unchanged_mutations_but_follow_data_and_layout_changes() {
             power=100,maxpower=100,powertype=0,powerknown=true,selected=false,auras={}}}
         PullFictionRaid_Update(UNITS,true,1,5,1)
         assert((COUNTS.ClearAllPoints or 0)>0)
+        local frame=PullFictionRaid[1]
+        assert(frame.health.last.SetHeight[1]<frame.name.last.SetHeight[1],'health is a separate strip')
+        assert(frame.health.last.SetPoint[5]-frame.health.last.SetHeight[1]>=frame.power.last.SetPoint[5],
+            'detailed health and power do not overlap')
+        local aura=frame.icons[1]
+        assert(aura.last.SetPoint[5]+aura.edge.last.SetPoint[5]-aura.edge.last.SetHeight[1]>=frame.health.last.SetPoint[5],
+            'detailed aura border does not overlap health')
         COUNTS={}
         -- Mutate the same row table, as the persistent native serialization path does.
         UNITS[1].hp=99
@@ -67,6 +74,27 @@ fn raid_widgets_skip_unchanged_mutations_but_follow_data_and_layout_changes() {
         COUNTS={}
         PullFictionRaid_Update(UNITS,true,1,1,.75)
         assert((COUNTS.SetFont or 0)==0,'only successful font loads are cached')
+        COUNTS={}
+        PullFictionRaid_Update(UNITS,true,1,5,1,true)
+        assert(PullFictionRaid[1].last.SetHeight[1]==32,'compact frame height')
+        assert(frame.health.last.SetPoint[5]-frame.health.last.SetHeight[1]>=frame.power.last.SetPoint[5],
+            'compact health and power do not overlap')
+        assert((COUNTS.Hide or 0)>0,'compact hides detailed overlays')
+        assert(PullFictionRaid[1].castfill.last.SetHeight[1]==2,'compact keeps cast progress')
+        UNITS[1].known=false;UNITS[1].hp=0
+        PullFictionRaid_Update(UNITS,true,1,5,1,true)
+        assert(PullFictionRaid[1].hp.last.SetText[1]=='?','unrecorded is not dead')
+        assert(frame.name.last.SetPoint[4]+frame.name.last.SetWidth[1]<=frame.hp.last.SetPoint[4],
+            'unrecorded status keeps its own space beside the name')
+        UNITS[1].dead=true
+        PullFictionRaid_Update(UNITS,true,1,5,1,true)
+        assert(PullFictionRaid[1].hp.last.SetText[1]=='Dead','recorded death needs no health sample')
+        assert(PullFictionRaid[1].last.SetAlpha[1]==.5,'known death is dimmed')
+        UNITS[1].dead=false
+        UNITS[1].known=true
+        PullFictionRaid_Update(UNITS,true,1,5,1,false)
+        assert(PullFictionRaid[1].last.SetHeight[1]==52,'detailed height is restored')
+        assert(PullFictionRaid[1].icons[1].aura==UNITS[1].auras[1],'detailed aura restored')
         UNITS[1].hp=0;UNITS[1].cast=nil;UNITS[1].auras={}
         PullFictionRaid_Update(UNITS,true,1,1,.5)
         assert(PullFictionRaid[1].hp.last.SetText[1]=='Dead')

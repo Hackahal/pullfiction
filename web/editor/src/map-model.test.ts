@@ -131,13 +131,19 @@ test("Interior source-image edges meet their actual neighbouring MC grid cells",
 
 test("Map tokens use WCL boss classification for larger portraits and strip custom icon prefixes", async () => {
   const { mapActorToken } = await import("./map-model");
-  const boss = mapActorToken({
-    type: "NPC",
-    class: "Boss",
-    icon: "custom-icon-spell_fire_flametounge.jpg",
-  });
-  const mob = mapActorToken({ type: "NPC", class: "NPC", icon: "NPC" });
-  const player = mapActorToken({ type: "Player", class: "Mage", icon: null });
+  const boss = mapActorToken(
+    {
+      type: "NPC",
+      class: "Boss",
+      icon: "custom-icon-spell_fire_flametounge.jpg",
+    },
+    2,
+  );
+  const mob = mapActorToken({ type: "NPC", class: "NPC", icon: "NPC" }, 2);
+  const player = mapActorToken(
+    { type: "Player", class: "Mage", icon: null },
+    2,
+  );
   assert.equal(boss.boss, true);
   assert.equal(mob.boss, false);
   assert.ok(boss.radius > mob.radius);
@@ -166,4 +172,28 @@ test("Frame selection fits a range, retains actor context and includes multiple 
     const [x, y] = mapScreen(point, camera, 900, 650);
     assert.ok(x >= 20 && x <= 880 && y >= 40 && y <= 610);
   }
+});
+
+test("raid overview uses compact tokens and encounter zoom restores portraits", async () => {
+  const { mapActorToken } = await import("./map-model");
+  const boss = { type: "NPC", class: "Boss", icon: null } as const;
+  const mob = { type: "NPC", class: "NPC", icon: null } as const;
+  const overview = mapActorToken(boss, 1);
+  const encounter = mapActorToken(boss, 2);
+  assert.equal(overview.detail, false);
+  assert.equal(encounter.detail, true);
+  assert.ok(overview.radius <= 7, "overview keeps terrain visible");
+  assert.ok(
+    overview.radius > mapActorToken(mob, 1).radius,
+    "bosses stay recognizable",
+  );
+  assert.ok(
+    encounter.radius > overview.radius,
+    "encounter zoom restores portrait detail",
+  );
+  assert.ok(mapActorToken(boss, 100).radius <= 24, "deep zoom stays bounded");
+  assert.ok(
+    mapActorToken(mob, 0.01).radius >= 3,
+    "zoomed-out units remain visible",
+  );
 });

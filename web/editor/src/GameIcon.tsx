@@ -42,13 +42,14 @@ export function useGameIcon(request: IconRequest, enabled = true) {
     ? result.url
     : schematicIcon;
 }
-export function useGameIconImage(request: IconRequest) {
+export function useGameIconImage(request: IconRequest, showPlaceholder = true) {
   const url = useGameIcon(request);
   const [result, setResult] = useState<{
     url: string;
     image: HTMLImageElement;
   }>();
   useEffect(() => {
+    if (!showPlaceholder && url === schematicIcon) return;
     let active = true;
     const image = new Image();
     image.onload = () => {
@@ -64,8 +65,10 @@ export function useGameIconImage(request: IconRequest) {
       image.onload = null;
       image.onerror = null;
     };
-  }, [url]);
-  return result?.url === url ? result.image : undefined;
+  }, [url, showPlaceholder]);
+  return result?.url === url && (showPlaceholder || url !== schematicIcon)
+    ? result.image
+    : undefined;
 }
 export function GameIcon({
   name,
@@ -73,6 +76,7 @@ export function GameIcon({
   item,
   iconFile,
   source,
+  fallbackSrc,
   ...props
 }: {
   name?: string;
@@ -80,6 +84,7 @@ export function GameIcon({
   item?: number;
   iconFile?: number;
   source?: string;
+  fallbackSrc?: string;
 } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "onError">) {
   const local = useGameIcon({ icon: name, spell, item, iconFile }, !source);
   return (
@@ -87,9 +92,11 @@ export function GameIcon({
       draggable={false}
       alt=""
       {...props}
-      src={source ?? local}
+      src={
+        source ?? (local === schematicIcon && fallbackSrc ? fallbackSrc : local)
+      }
       onError={(event) => {
-        const fallback = iconUrl();
+        const fallback = fallbackSrc ?? iconUrl();
         if (event.currentTarget.getAttribute("src") !== fallback)
           event.currentTarget.src = fallback;
       }}

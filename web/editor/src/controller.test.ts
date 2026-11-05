@@ -1,3 +1,8 @@
+import {
+  indexEvents,
+  recordedEventDetail,
+  recordedEventId,
+} from "./analysis-model";
 import { ReplayFloorGeometry } from "./replay-floor-geometry";
 import test, { type TestContext } from "node:test";
 import assert from "node:assert/strict";
@@ -363,6 +368,7 @@ test("native channel snapshots use only the recorded cast target and clear it on
 });
 test("native self aura provenance follows active snapshots, rewinds and the aura visibility option", () => {
   const f = fixture();
+  f.c.setOption("auras", true);
   f.c.seek(6500);
   assert.deepEqual(f.frame.find((a) => a.key === "1:1")!.self_auras, [133]);
   f.c.seek(5000);
@@ -377,6 +383,7 @@ test("native self aura provenance follows active snapshots, rewinds and the aura
 
 test("Playback, pause, casts, aura rewind and native selection share controller state", () => {
   const f = fixture();
+  f.c.setOption("auras", true);
   f.c.seek(4800);
   assert.equal(
     f.frame.find((a) => a.key === "1:1")!.plate_cast?.name,
@@ -529,6 +536,75 @@ test("Inspecting a cast selects its player, seeks to its timestamp and retains s
   assert.equal(f.c.getSnapshot().detail?.castIndex, index);
   f.c.inspectSpell(20589);
   assert.equal(f.c.getSnapshot().detail?.spell, 20589);
+  f.c.stop();
+});
+
+test("Event actor focus uses the current living pose and frames the map without seeking", () => {
+  const f = fixture();
+  f.c.setWorkspaceMode("analyse");
+  f.c.seek(4000);
+  assert.equal(f.c.canFocusRecordedActor("2:1"), true);
+  assert.equal(f.c.focusRecordedActor("2:1"), true);
+  assert.deepEqual(
+    f.focus.at(-1)?.slice(0, 2),
+    f.c
+      .actorPose(
+        f.c.getSnapshot().replay!.actors.find((actor) => actor.key === "2:1")!,
+      )
+      ?.pos.slice(0, 2),
+  );
+  assert.equal(f.c.getSnapshot().time, 4000);
+  f.c.setMapView(true);
+  const frameRequest = f.c.getSnapshot().frameRequest;
+  const sceneCalls = f.focus.length;
+  assert.equal(f.c.focusRecordedActor("1:1"), true);
+  assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);
+  const sampledPoint = f.c.getSnapshot().recordedMapFramePoint;
+  assert.deepEqual(
+    sampledPoint,
+    f.c
+      .actorPose(
+        f.c.getSnapshot().replay!.actors.find((actor) => actor.key === "1:1")!,
+      )
+      ?.pos.slice(0, 2),
+  );
+  assert.equal(f.focus.length, sceneCalls);
+  f.c.seek(9000);
+  assert.deepEqual(f.c.getSnapshot().recordedMapFramePoint, sampledPoint);
+  assert.equal(f.c.focusRecordedActor("2:1"), false);
+  assert.equal(f.c.getSnapshot().selected, "1:1");
+  assert.equal(f.c.getSnapshot().frameRequest, frameRequest + 1);
+  assert.equal(f.c.getSnapshot().time, 9000);
+  f.c.stop();
+});
+
+test("Recorded combat row identity survives buffering and preserves missing facts", () => {
+  const f = fixture();
+  const replay = f.c.getSnapshot().replay!;
+  const indexed = indexEvents(replay).find(
+    (row) => row.kind === "damage" && row.amount === 200,
+  )!;
+  assert.ok(indexed);
+  const event = recordedEventDetail(replay, indexed);
+  const missing = {
+    timestamp: replay.fight.startTime,
+    type: "cast",
+    abilityGameID: 1,
+  };
+  const expanded = {
+    ...replay,
+    raw: { ...replay.raw, events: [missing, ...replay.raw.events] },
+  };
+  const shifted = indexEvents(expanded).find(
+    (row) => row.id === indexed.id + 1,
+  )!;
+  assert.equal(recordedEventId(expanded, shifted), event.id);
+  const missingDetail = recordedEventDetail(
+    expanded,
+    indexEvents(expanded).find((row) => row.id === 0)!,
+  );
+  assert.equal(missingDetail.source, undefined);
+  assert.equal(missingDetail.amount, undefined);
   f.c.stop();
 });
 
@@ -917,6 +993,30 @@ test("Timed page visibility follows replay boundaries while editor selection and
   assert.equal(f.c.getSnapshot().plan.steps.length, 3);
   f.c.deleteStep();
   assert.equal(f.c.getSnapshot().plan.steps.length, 2);
+  f.c.stop();
+});
+
+test("An end-only page remains timed, seekable and retained when adding log pages", () => {
+  const f = fixture();
+  f.c.addStep();
+  f.c.updateStep({ name: "Opening", start: null, end: 2000 });
+  const page = f.c.getSnapshot().activeStep;
+  f.c.setStepView({ followSteps: true });
+  f.c.seek(5000);
+  assert.ok(!f.c.visiblePages().some((step) => step.id === page));
+  f.c.setActiveStep(page, false);
+  assert.equal(f.c.getSnapshot().time, 5000);
+  f.c.setActiveStep(page);
+  assert.equal(f.c.getSnapshot().time, 0);
+  assert.ok(f.c.visiblePages().some((step) => step.id === page));
+  f.c.stepsFromLog();
+  assert.ok(
+    f.c
+      .getSnapshot()
+      .plan.steps.some(
+        (step) => step.id === page && step.start === null && step.end === 2000,
+      ),
+  );
   f.c.stop();
 });
 
@@ -1589,6 +1689,27 @@ test("Plan from this moment freezes poses, saves source context and never change
   stored.stop();
 });
 
+test("Rejected replay capture keeps the current page and workspace", () => {
+  const f = fixture();
+  const plan = f.c.getSnapshot().plan;
+  f.c.editPlan({
+    ...plan,
+    steps: Array.from({ length: 2048 }, (_, i) => ({
+      ...plan.steps[0],
+      id: `capture-limit-${i}`,
+    })),
+  });
+  const before = f.c.getSnapshot();
+  assert.equal(before.plan.steps.length, 2048);
+  assert.equal(f.c.planFromMoment(), false);
+  const after = f.c.getSnapshot();
+  assert.equal(after.plan, before.plan);
+  assert.equal(after.activeStep, before.activeStep);
+  assert.equal(after.workspaceMode, "analyse");
+  assert.match(after.notice, /2048/);
+  f.c.stop();
+});
+
 test("Actor drag previews make one undo operation; Escape restores all positions", () => {
   const f = fixture();
   f.c.seek(5000);
@@ -1684,6 +1805,41 @@ test("Standalone planning can add player placeholders and restore native model i
   c.nudgeActors(6, 0);
   assert.equal(c.snapshot()!.actors[0].position[0], a.position[0] + 5);
   c.stop();
+});
+
+test("Finishing a route returns to Select after its last native waypoint", () => {
+  const f = fixture();
+  let token = 0;
+  let requests = 0;
+  f.c.attachEngine({
+    ...f.engine,
+    pick_for_annotation(_x: number, _y: number, requestToken: number) {
+      token = requestToken;
+      requests++;
+    },
+  } as unknown as Engine);
+  f.c.setTool("route");
+  f.c.pick(10, 20);
+  f.c.receive("plan-point", JSON.stringify({ token, point: [10, 20, 3] }));
+  f.c.pick(30, 20);
+  f.c.finishDrawing("select");
+  assert.equal(f.c.getSnapshot().tool, "route");
+  f.c.pick(50, 20);
+  f.c.pickMap(60, 20, 3, false, false, true);
+  assert.equal(requests, 2);
+  f.c.receive("plan-point", JSON.stringify({ token, point: [30, 20, 3] }));
+  const state = f.c.getSnapshot();
+  const mark = state.plan.steps[0].annotations[0];
+  assert.equal(state.tool, "explore");
+  assert.equal(state.drawing, false);
+  assert.equal(state.selectedMark, mark.id);
+  assert.deepEqual(mark.points, [
+    [10, 20, 3],
+    [30, 20, 3],
+  ]);
+  f.c.undo();
+  assert.equal(f.c.getSnapshot().plan.steps[0].annotations.length, 0);
+  f.c.stop();
 });
 
 test("Planned actor drags wait for the last native ground response before committing", () => {
@@ -2952,6 +3108,12 @@ test("Analyse ranges update on paused seek, never become plan edits, and clear i
     ).ranges;
   f.c.seek(2000);
   f.c.setRangeCheck({ enabled: true, radius: 20 });
+  assert.deepEqual(
+    lastRanges(),
+    [],
+    "selected mode starts without raid-wide clutter",
+  );
+  f.c.selectActor("1:1");
   assert.equal(f.c.getSnapshot().playing, false);
   assert.deepEqual(lastRanges(), [{ key: "1:1", radius: 20, status: "clear" }]);
   f.c.setRangeCheck({ group: "individuals", players: [] });
@@ -5217,4 +5379,58 @@ test("rejected selected trajectories terminate preparation and invalidate late r
     }
     f.c.stop();
   }
+});
+
+test("Plan from a replay moment preserves small authored creature scale and pose", () => {
+  const f = fixture();
+  const actor = f.c.getSnapshot().replay!.actors.find((a) => a.type === "NPC")!;
+  actor.scale = 0.009999999776482582;
+  f.c.seek(5000);
+  const pose = f.c.actorPose(actor)!;
+  f.c.planFromMoment();
+  const snapshot = f.c.snapshot();
+  assert.ok(snapshot, f.c.getSnapshot().notice);
+  const captured = snapshot.actors.find((a) => a.key === actor.key)!;
+  assert.equal(captured.scale, actor.scale);
+  assert.deepEqual(captured.position.slice(0, 2), pose.pos.slice(0, 2));
+  assert.ok(
+    Number.isFinite(captured.position[2]),
+    "snapshot resolves the replay floor",
+  );
+  const portable = parsePlan(JSON.stringify(f.c.getSnapshot().plan));
+  assert.deepEqual(portable.steps.find((s) => s.snapshot)!.snapshot, snapshot);
+  f.c.stop();
+});
+
+test("Scene presentation presets keep overlays deliberate without editing the plan", () => {
+  const f = fixture();
+  const plan = f.c.getSnapshot().plan;
+  assert.equal(f.c.getSnapshot().options.raidFrames, false);
+  assert.equal(f.c.getSnapshot().options.friendlyNameplates, false);
+  f.c.setScenePresentation("raid");
+  assert.equal(f.c.getSnapshot().options.raidFrames, true);
+  assert.equal(f.c.getSnapshot().options.friendlyNameplates, false);
+  assert.equal(f.c.getSnapshot().options.auras, true);
+  assert.deepEqual(f.c.getSnapshot().raidFrameSize, {
+    width: 724,
+    height: 186,
+  });
+  f.c.setScenePresentation("scene");
+  assert.equal(f.c.getSnapshot().options.raidFrames, false);
+  assert.equal(f.c.getSnapshot().options.auras, false);
+  assert.equal(f.c.getSnapshot().options.bossNameplates, true);
+  assert.equal(f.c.getSnapshot().plan, plan);
+  f.c.stop();
+});
+
+test("A failed replay import reports failure and preserves the open replay", async () => {
+  const f = fixture();
+  const before = f.c.getSnapshot();
+  const invalid = new File(["not JSON"], "bad-replay.json", {
+    type: "application/json",
+  });
+  assert.equal(await f.c.importFile(invalid, "replay"), false);
+  assert.equal(f.c.getSnapshot().replay, before.replay);
+  assert.equal(f.c.getSnapshot().workspaceMode, before.workspaceMode);
+  f.c.stop();
 });

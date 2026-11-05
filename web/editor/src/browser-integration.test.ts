@@ -397,6 +397,8 @@ test("Unknown raid resources stay unknown and finite values clamp safely", () =>
 
 test("Browser nameplates bind projected units, class colors, health and independent filters", () => {
   const c = new EditorController(undefined, { browserAssets: true });
+  c.setOption("friendlyNameplates", true);
+  c.setOption("trashNameplates", true);
   c.installReplay(raw);
   const plates = [
     {

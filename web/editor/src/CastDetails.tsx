@@ -1,5 +1,6 @@
 import { castEvents, castDuration, castOutcome } from "./timeline-model";
 import { CLASS_COLORS, preciseTime, time } from "./domain";
+import { GameIcon } from "./GameIcon";
 import { WowheadReference } from "./WidgetReference";
 import { useMemo } from "react";
 import type { Snapshot } from "./types";
@@ -25,18 +26,15 @@ export function CastDetails({
   const target = cast?.target
     ? replay.actors.find((a) => a.key === cast.target)
     : null;
+  const ability = replay.abilities.get(detail.spell);
   return (
     <section className="cast-details">
-      <div className="panel-heading">
-        <strong>
-          {cast?.name ?? replay.abilities.get(detail.spell)?.name ?? "Spell"}
-        </strong>
-        <button
-          aria-label="Close spell details"
-          onClick={() => controller.closeDetail()}
-        >
-          ×
-        </button>
+      <div className="ability-heading">
+        <GameIcon
+          name={ability?.icon}
+          spell={detail.spell > 0 ? detail.spell : undefined}
+        />
+        <h3>{cast?.name ?? ability?.name ?? "Spell"}</h3>
       </div>
       {actor && cast && (
         <>
@@ -94,7 +92,7 @@ export function CastDetails({
           </div>
         </>
       )}
-      <WowheadReference kind="spell" id={detail.spell} />
+      {detail.spell > 0 && <WowheadReference kind="spell" id={detail.spell} />}
       {!!events.length && (
         <section className="inspector-section">
           <h3>Recorded events</h3>

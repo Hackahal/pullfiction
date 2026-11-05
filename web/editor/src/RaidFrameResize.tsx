@@ -14,6 +14,8 @@ export function RaidFrameResize({
       y: number;
       width: number;
       height: number;
+      requestedWidth: number;
+      requestedHeight: number;
     } | null>(null);
   const [bounds, setBounds] = useState({ width: 2000, height: 1200 }),
     [resizing, setResizing] = useState(false),
@@ -53,9 +55,34 @@ export function RaidFrameResize({
       80,
       Math.min(state.raidFrameSize.height, bounds.height - 24),
     );
-  useEffect(() => {
-    controller.setRaidFrameSize(width, height, false);
-  }, [width, height, controller]);
+  // The native renderer clamps its own bounds. Do not replace the requested
+  // size here: a temporary dock resize must not discard the user's settings.
+  function resizeDrag(
+    start: NonNullable<typeof drag.current>,
+    x: number,
+    y: number,
+    persist: boolean,
+  ) {
+    const dx = x - start.x,
+      dy = y - start.y;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+      controller.setRaidFrameSize(
+        start.requestedWidth,
+        start.requestedHeight,
+        false,
+      );
+      return;
+    }
+    controller.setRaidFrameSize(
+      Math.abs(dx) < 1
+        ? start.requestedWidth
+        : Math.max(80, Math.min(bounds.width - 24, start.width + dx)),
+      Math.abs(dy) < 1
+        ? start.requestedHeight
+        : Math.max(80, Math.min(bounds.height - 24, start.height + dy)),
+      persist,
+    );
+  }
   return (
     <div
       ref={root}
@@ -72,41 +99,28 @@ export function RaidFrameResize({
           if (e.button !== 0) return;
           e.preventDefault();
           e.stopPropagation();
-          drag.current = { x: e.clientX, y: e.clientY, width, height };
+          drag.current = {
+            x: e.clientX,
+            y: e.clientY,
+            width,
+            height,
+            requestedWidth: state.raidFrameSize.width,
+            requestedHeight: state.raidFrameSize.height,
+          };
           setResizing(true);
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
           const d = drag.current;
           if (!d) return;
-          controller.setRaidFrameSize(
-            Math.max(
-              80,
-              Math.min(bounds.width - 24, d.width + e.clientX - d.x),
-            ),
-            Math.max(
-              80,
-              Math.min(bounds.height - 24, d.height + e.clientY - d.y),
-            ),
-            false,
-          );
+          resizeDrag(d, e.clientX, e.clientY, false);
         }}
         onPointerUp={(e) => {
           if (!drag.current) return;
           const d = drag.current;
           drag.current = null;
           setResizing(false);
-          controller.setRaidFrameSize(
-            Math.max(
-              80,
-              Math.min(bounds.width - 24, d.width + e.clientX - d.x),
-            ),
-            Math.max(
-              80,
-              Math.min(bounds.height - 24, d.height + e.clientY - d.y),
-            ),
-            true,
-          );
+          resizeDrag(d, e.clientX, e.clientY, true);
           if (e.currentTarget.hasPointerCapture(e.pointerId))
             e.currentTarget.releasePointerCapture(e.pointerId);
         }}
@@ -114,7 +128,12 @@ export function RaidFrameResize({
           const d = drag.current;
           drag.current = null;
           setResizing(false);
-          if (d) controller.setRaidFrameSize(d.width, d.height, false);
+          if (d)
+            controller.setRaidFrameSize(
+              d.requestedWidth,
+              d.requestedHeight,
+              false,
+            );
         }}
         onKeyDown={(e) => {
           if (
@@ -123,19 +142,14 @@ export function RaidFrameResize({
             e.preventDefault();
             e.stopPropagation();
             const delta = e.shiftKey ? 40 : 10;
+            const horizontal = e.key === "ArrowRight" || e.key === "ArrowLeft";
             controller.setRaidFrameSize(
-              width +
-                (e.key === "ArrowRight"
-                  ? delta
-                  : e.key === "ArrowLeft"
-                    ? -delta
-                    : 0),
-              height +
-                (e.key === "ArrowDown"
-                  ? delta
-                  : e.key === "ArrowUp"
-                    ? -delta
-                    : 0),
+              horizontal
+                ? width + (e.key === "ArrowRight" ? delta : -delta)
+                : state.raidFrameSize.width,
+              horizontal
+                ? state.raidFrameSize.height
+                : height + (e.key === "ArrowDown" ? delta : -delta),
             );
           }
         }}

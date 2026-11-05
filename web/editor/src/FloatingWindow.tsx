@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { EditorIcon } from "./EditorIcon";
 import { clampFocus } from "./focus-model";
+
 export function FloatingWindow({
   title,
   label,
@@ -73,7 +74,12 @@ export function FloatingWindow({
       }}
       style={
         position
-          ? { left: position.x, top: position.y, transform: "none" }
+          ? {
+              left: position.x,
+              top: position.y,
+              right: "auto",
+              transform: "none",
+            }
           : undefined
       }
     >

@@ -24,7 +24,29 @@ const OWNED_KEY = "pullfiction.shares.v1";
 export function shareSnapshot(project: LocalProject): SharedSnapshot {
   return validateShare({
     version: 1,
-    plan: project.plan,
+    plan: {
+      ...project.plan,
+      steps: project.plan.steps.map((step) => ({
+        ...step,
+        ...(step.snapshot
+          ? {
+              snapshot: {
+                ...step.snapshot,
+                actors: step.snapshot.actors.map((actor) => ({
+                  ...actor,
+                  // Warcraft Logs pet icons use this relative directory. Shares keep identifiers only.
+                  ...(actor.icon &&
+                  /^abilities[\\/][A-Za-z0-9_-]{1,160}\.(?:blp|png|jpe?g)$/i.test(
+                    actor.icon,
+                  )
+                    ? { icon: actor.icon.replace(/^abilities[\\/]/i, "") }
+                    : {}),
+                })),
+              },
+            }
+          : {}),
+      })),
+    },
     source: project.source,
     time: project.time,
     mode: project.mode,

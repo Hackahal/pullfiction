@@ -118,6 +118,16 @@ export const chapterAt = data.chapterAt as unknown as (
   replay: Replay,
   t: number,
 ) => Replay["chapters"][number] | null;
+/** Standalone encounters have replay bounds but no chapter list. */
+export function pullAt(replay: Replay, t: number) {
+  if (replay.chapters.length) {
+    const chapter = chapterAt(replay, t);
+    return chapter?.encounterID ? chapter : null;
+  }
+  if (replay.fight.encounterID && t >= 0 && t <= replay.duration)
+    return { start: 0, end: replay.duration };
+  return null;
+}
 export const time = (ms: number) =>
   `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
 export const preciseTime = (ms: number) =>

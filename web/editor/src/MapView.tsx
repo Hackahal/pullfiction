@@ -1,4 +1,7 @@
 import { useBufferedView } from "./ReplayLoading";
+import { createPortal } from "react-dom";
+import type { RefObject } from "react";
+import { PanelSettings } from "./PanelSettings";
 import { RANGE_COLORS } from "./range-check";
 import { getLocalIcons, subscribeLocalIcons } from "./local-icons";
 import { getLocalUiArt, subscribeLocalUiArt } from "./local-ui-art";
@@ -33,7 +36,7 @@ import {
   projectedFloor,
   localFloorHeight,
 } from "./local-map";
-import { combatStateAt, poseAt, raidByMap } from "./domain";
+import { CLASS_COLORS, combatStateAt, poseAt, raidByMap } from "./domain";
 import type { Actor, Snapshot } from "./types";
 import type { EditorController } from "./controller";
 import {
@@ -53,9 +56,13 @@ import {
 export function MapView({
   state: inputState,
   controller,
+  controlsHost,
+  controlsBoundary,
 }: {
   state: Snapshot;
   controller: EditorController;
+  controlsHost: HTMLElement | null;
+  controlsBoundary: RefObject<HTMLElement | null>;
 }) {
   const state = useBufferedView(inputState);
   const host = useRef<HTMLDivElement>(null),
@@ -127,6 +134,7 @@ export function MapView({
     height: number;
   } | null>(null);
   const [pointer, setPointer] = useState("default");
+  const annotationPreview = controller.annotationPreview;
 
   const marks = useMemo(
     () =>
@@ -147,6 +155,7 @@ export function MapView({
       state.compareRecorded,
       state.time,
       state.replay,
+      annotationPreview,
       controller,
     ],
   );
@@ -168,6 +177,15 @@ export function MapView({
   }, [controller]);
   useEffect(() => {
     if (!state.frameRequest) return;
+    if (state.recordedMapFramePoint) {
+      const next = frameMapSelection(
+        [mapPoint(...state.recordedMapFramePoint)],
+        size.width,
+        size.height,
+      );
+      if (next) setCamera(next);
+      return;
+    }
     const selectedMarks = controller
       .displayMarks()
       .filter(
@@ -500,27 +518,46 @@ export function MapView({
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      for (const path of mark.paths) {
+      for (const [index, path] of mark.paths.entries()) {
+        const previewDash = mark.type === "route" && index > 0;
+        ctx.lineCap = previewDash ? "butt" : "round";
         drawPath(path);
         ctx.strokeStyle = mark.selected ? "#fff4cd" : "#090c10cc";
         ctx.lineWidth = mark.width + (mark.selected ? 4 : 2);
         ctx.stroke();
         ctx.shadowColor = mark.color;
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = previewDash ? 0 : 5;
         ctx.strokeStyle = mark.color;
         ctx.lineWidth = mark.width;
         ctx.stroke();
         ctx.shadowBlur = 0;
-        if (
-          (mark.type === "route" || mark.type === "arrow") &&
-          path === mark.paths[0]
-        ) {
+        if (mark.type === "arrow" && path === mark.paths[0]) {
           ctx.setLineDash([5, 27]);
           ctx.lineDashOffset = -performance.now() * 0.018;
           ctx.strokeStyle = "#fff2ce99";
           ctx.lineWidth = Math.max(1, mark.width * 0.5);
           ctx.stroke();
           ctx.setLineDash([]);
+        }
+      }
+      if (mark.type === "route" && mark.paths[0]) {
+        const waypoints = mark.paths[0];
+        const stride = Math.max(1, Math.ceil(waypoints.length / 96));
+        const radius = Math.max(3, Math.min(6, mark.width + 1));
+        for (const [index, waypoint] of waypoints.entries()) {
+          if (index % stride !== 0 && index !== waypoints.length - 1) continue;
+          const [x, y] = screen(mapPoint(waypoint[0], waypoint[1]));
+          ctx.beginPath();
+          ctx.moveTo(x - radius, y);
+          ctx.lineTo(x, y - radius);
+          ctx.lineTo(x + radius, y);
+          ctx.lineTo(x, y + radius);
+          ctx.closePath();
+          ctx.fillStyle = "#141820";
+          ctx.fill();
+          ctx.strokeStyle = mark.color;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
         }
       }
       const [x, y] = screen(mapPoint(mark.anchor[0], mark.anchor[1]));
@@ -626,8 +663,10 @@ export function MapView({
     for (const actor of ordered) {
       const pose = controller.actorPose(actor);
       if (!pose || (pose.dead && actor.type !== "Player")) continue;
-      const token = mapActorToken(actor, camera.scale / fitScale.current),
-        r = token.radius;
+      const token = mapActorToken(actor, camera.scale / fitScale.current);
+      const selected = state.selectedActors.includes(actor.key);
+      const portraitDetail = token.detail && (selected || token.boss);
+      const r = token.detail && !portraitDetail ? 6 : token.radius;
       const [x, y] = screen(mapPoint(pose.pos[0], pose.pos[1]));
       if (x < -r || y < -r || x > size.width + r || y > size.height + r)
         continue;
@@ -654,7 +693,28 @@ export function MapView({
         ctx.stroke();
       }
       const cell = CLASS_CELLS[actor.class];
-      if (
+      if (!portraitDetail) {
+        ctx.fillStyle =
+          actor.type === "Player"
+            ? (CLASS_COLORS[actor.class] ?? "#b7d5e4")
+            : token.boss
+              ? "#e6bf72"
+              : actor.type === "Pet"
+                ? "#8eb5c4"
+                : "#c1936e";
+        ctx.strokeStyle = "#10181b";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (token.boss) {
+          ctx.moveTo(x, y - r);
+          ctx.lineTo(x + r, y);
+          ctx.lineTo(x, y + r);
+          ctx.lineTo(x - r, y);
+          ctx.closePath();
+        } else ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else if (
         actor.type === "Player" &&
         cell &&
         atlas?.complete &&
@@ -742,7 +802,7 @@ export function MapView({
           }
         }
       }
-      if (actor.key === state.selected || pose.estimated) {
+      if (actor.key === state.selected || (pose.estimated && portraitDetail)) {
         ctx.strokeStyle = actor.key === state.selected ? "#ffe09a" : "#c1d8e2";
         ctx.lineWidth = 2;
         if (pose.estimated) ctx.setLineDash([3, 3]);
@@ -790,6 +850,36 @@ export function MapView({
         ctx.fillStyle = "#f0e8d6";
         ctx.fillText(label, box.x + 6, box.y + 15, box.width - 12);
       }
+    }
+    // Labels use free screen space; actual actor positions and hit targets stay exact.
+    for (const {
+      actor,
+      point: [x, y],
+      radius,
+    } of [...dots.current].reverse()) {
+      const selected = state.selectedActors.includes(actor.key);
+      const token = mapActorToken(actor, camera.scale / fitScale.current);
+      if (!selected && (!token.detail || actor.type !== "Player")) continue;
+      ctx.font = "12px sans-serif";
+      const width = Math.min(150, ctx.measureText(actor.name).width + 14);
+      const box = labels.place(
+        { x: x - width / 2, y: y - radius - 25, width, height: 22 },
+        selected,
+        [x, y],
+      );
+      if (!box) continue;
+      ctx.strokeStyle = selected ? "#e2c17d" : "#8a9a9d88";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(box.x + box.width / 2, box.y + box.height / 2);
+      ctx.stroke();
+      ctx.fillStyle = "#11181bf0";
+      ctx.fillRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = CLASS_COLORS[actor.class] ?? "#eee2c5";
+      ctx.fillRect(box.x, box.y, 2, box.height);
+      ctx.textAlign = "left";
+      ctx.fillText(actor.name, box.x + 7, box.y + 15, box.width - 12);
     }
     for (const mark of marks) {
       if (mark.selected && !mark.locked)
@@ -1315,7 +1405,7 @@ export function MapView({
         }}
         onDoubleClick={() => {
           if (state.tool === "route" || state.tool === "polygon")
-            controller.finishDrawing();
+            controller.finishDrawing("select");
         }}
         onPointerCancel={() => {
           if (["draw", "shape", "mark"].includes(drag.current?.mode ?? ""))
@@ -1346,35 +1436,62 @@ export function MapView({
           {editHover.label} · drag
         </div>
       )}
-      <div className="map-controls">
-        {mapNote && <span title="Prepared raid assets">{mapNote}</span>}
-        <button
-          onClick={() => {
-            controller.setOption("followRaid", false);
-            fit();
-          }}
-        >
-          Fit
-        </button>
-        <button
-          aria-pressed={healthBars}
-          onClick={() => setHealthBars((v) => !v)}
-        >
-          Health bars
-        </button>
-        <select
-          aria-label="Map area"
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
-        >
-          <option value="*">All areas</option>
-          {manifest?.areas.map((a, i) => (
-            <option key={a.id} value={a.id}>
-              {a.name} · {i + 1}
-            </option>
-          ))}
-        </select>
-      </div>
+      {controlsHost &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="map-fit-raid"
+              aria-label="Fit raid"
+              title="Fit raid"
+              onClick={() => {
+                controller.setOption("followRaid", false);
+                fit();
+              }}
+            >
+              Fit<span> raid</span>
+            </button>
+            <PanelSettings
+              title="Map options"
+              width={280}
+              anchorBoundary={controlsBoundary}
+            >
+              <div className="map-options">
+                <label>
+                  Area
+                  <select
+                    aria-label="Map area"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                  >
+                    <option value="*">All areas</option>
+                    {manifest?.areas.map((a, i) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} · {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  aria-pressed={healthBars}
+                  disabled={camera.scale / fitScale.current < 2}
+                  title="Health bars appear at unit detail zoom"
+                  onClick={() => setHealthBars((v) => !v)}
+                >
+                  Health bars
+                </button>
+                <p>
+                  {camera.scale / fitScale.current < 2
+                    ? "Zoom in to show units and health bars."
+                    : "Unit detail"}
+                  {mapNote && <small>{mapNote}</small>}
+                </p>
+              </div>
+            </PanelSettings>
+          </>,
+          controlsHost,
+        )}
       {!manifest &&
         (state.browserAssets && state.clientStatus !== "ready" ? (
           <BrowserClient state={state} controller={controller} />

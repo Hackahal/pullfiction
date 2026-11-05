@@ -1,6 +1,6 @@
 import { useBufferedView } from "./ReplayLoading";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useId, useRef, useState } from "react";
+import { FloatingWindow } from "./FloatingWindow";
 import { EditorIcon } from "./EditorIcon";
 import { GameIcon } from "./GameIcon";
 import { CastDetails } from "./CastDetails";
@@ -29,7 +29,10 @@ export function Focus({
   inspect?: () => void;
 }) {
   const state = useBufferedView(inputState);
+  const [showAuras, setShowAuras] = useState(false);
+  const [showCombatDetails, setShowCombatDetails] = useState(false);
   const panel = useRef<HTMLElement>(null);
+  const aurasId = useId();
   const [position, setPosition] = useState<{ x: number; y: number } | null>(
     () => {
       try {
@@ -43,7 +46,7 @@ export function Focus({
   useEffect(() => {
     const node = panel.current,
       parent = node?.parentElement;
-    if (!node || !parent) return;
+    if (!node || !parent || state.detail) return;
     const observer = new ResizeObserver(() =>
       setPosition((old) =>
         old
@@ -61,7 +64,7 @@ export function Focus({
     observer.observe(node);
     observer.observe(parent);
     return () => observer.disconnect();
-  }, []);
+  }, [Boolean(state.detail)]);
   useEffect(() => {
     if (position)
       try {
@@ -83,8 +86,11 @@ export function Focus({
   return (
     <>
       <aside
+        hidden={Boolean(state.detail)}
         ref={panel}
         className="focus-units"
+        data-empty={!actor}
+        data-combat-expanded={showCombatDetails}
         aria-label="Focus"
         style={position ? { left: position.x, top: position.y } : undefined}
       >
@@ -157,17 +163,49 @@ export function Focus({
           >
             <EditorIcon name="grip" />
           </span>
+          <span className="focus-hud-status">
+            {actor ? "Focus" : "Select a player or mob"}
+          </span>
+          {actor && (
+            <button
+              className="focus-combat-toggle"
+              aria-label="Combat details"
+              aria-expanded={showCombatDetails}
+              title="Show or hide power and casts"
+              onClick={() => setShowCombatDetails((value) => !value)}
+            >
+              <EditorIcon name={showCombatDetails ? "up" : "down"} />
+              Combat
+            </button>
+          )}
+          {actor && (
+            <button
+              className="focus-auras-toggle"
+              aria-expanded={showAuras}
+              aria-controls={
+                showAuras
+                  ? `${aurasId}-unit${target ? ` ${aurasId}-target` : ""}`
+                  : undefined
+              }
+              onClick={() => setShowAuras((value) => !value)}
+            >
+              <EditorIcon name={showAuras ? "up" : "down"} />
+              Auras
+            </button>
+          )}
           <button aria-label="Close Focus" onClick={close}>
             <EditorIcon name="close" />
           </button>
         </div>
-        {actor ? (
+        {actor && (
           <>
             <FocusedUnit
               actor={actor}
               combat={focusedCombat!}
               reservePower={reservePower}
               reserveCast={reserveCast}
+              showAuras={showAuras}
+              aurasId={`${aurasId}-unit`}
               state={state}
               controller={controller}
               inspect={inspect}
@@ -178,6 +216,8 @@ export function Focus({
                 combat={targetCombat!}
                 reservePower={reservePower}
                 reserveCast={reserveCast}
+                showAuras={showAuras}
+                aurasId={`${aurasId}-target`}
                 state={state}
                 controller={controller}
                 target
@@ -189,27 +229,19 @@ export function Focus({
               />
             )}
           </>
-        ) : (
-          <div className="focus-empty">Select a player or mob.</div>
         )}
       </aside>
-      {state.detail &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <aside className="focus-ability-window" aria-label="Ability details">
-            <header>
-              <strong>Ability details</strong>
-              <button
-                aria-label="Close ability details"
-                onClick={() => controller.closeDetail()}
-              >
-                <EditorIcon name="close" />
-              </button>
-            </header>
-            <CastDetails state={state} controller={controller} />
-          </aside>,
-          document.body,
-        )}
+      {state.detail && (
+        <FloatingWindow
+          title="Ability details"
+          label="ability details"
+          positionKey="pullfiction.ability-details.position.v1"
+          className="ability-inspector"
+          close={() => controller.closeDetail()}
+        >
+          <CastDetails state={state} controller={controller} />
+        </FloatingWindow>
+      )}
     </>
   );
 }
@@ -218,6 +250,8 @@ function FocusedUnit({
   combat,
   reservePower,
   reserveCast,
+  showAuras,
+  aurasId,
   state,
   controller,
   target = false,
@@ -228,6 +262,8 @@ function FocusedUnit({
   combat: ReturnType<typeof combatStateAt>;
   reservePower: boolean;
   reserveCast: boolean;
+  showAuras: boolean;
+  aurasId: string;
   state: Snapshot;
   controller: EditorController;
   target?: boolean;
@@ -244,28 +280,40 @@ function FocusedUnit({
       className={`focus-unit-frame${target ? " target" : ""}`}
       aria-label={target ? "Focused target" : "Focused unit"}
     >
-      <div className="focus-unit-auras">
-        <AuraGroup
-          label={target ? "Target debuffs" : "Debuffs"}
-          auras={combat.auras.filter((a) => a.debuff)}
-          state={state}
-          controller={controller}
-          compact
-        />
-        <AuraGroup
-          label={target ? "Target buffs" : "Buffs"}
-          auras={combat.auras.filter((a) => !a.debuff)}
-          state={state}
-          controller={controller}
-          compact
-        />
-      </div>
+      {showAuras && (
+        <div className="focus-unit-auras" id={aurasId}>
+          {!combat.auras.length && (
+            <span className="focus-aura-label">No active auras</span>
+          )}
+          <AuraGroup
+            label={target ? "Target debuffs" : "Debuffs"}
+            auras={combat.auras.filter((a) => a.debuff)}
+            state={state}
+            controller={controller}
+            compact
+          />
+          <AuraGroup
+            label={target ? "Target buffs" : "Buffs"}
+            auras={combat.auras.filter((a) => !a.debuff)}
+            state={state}
+            controller={controller}
+            compact
+          />
+        </div>
+      )}
       <div className="focus-unit-identity" style={{ borderColor: color }}>
+        <span className="focus-unit-role">
+          {target ? "Target" : actor.type === "Player" ? "Player" : "Unit"}
+        </span>
         <button
           className="focus-unit-name"
           style={{ color: actor.type === "NPC" ? "#efc075" : color }}
           aria-label={target ? `Focus target: ${actor.name}` : undefined}
-          title={target ? evidence : "Center camera on focused unit"}
+          title={
+            target
+              ? [actor.name, evidence].filter(Boolean).join(" · ")
+              : `${actor.name} · Center camera on focused unit`
+          }
           onClick={() =>
             target ? controller.select(actor.key) : controller.focus(actor.key)
           }
@@ -277,9 +325,10 @@ function FocusedUnit({
             className="focus-inspect"
             onClick={inspect}
             title="Inspect equipment and talents"
+            aria-label="Inspect"
           >
             <EditorIcon name="inspect" />
-            Inspect
+            <span>Inspect</span>
           </button>
         )}
       </div>
@@ -293,6 +342,7 @@ function FocusedUnit({
       />
       {combat.power ? (
         <div
+          className="focus-unit-power"
           title={
             [
               combat.power.current === null

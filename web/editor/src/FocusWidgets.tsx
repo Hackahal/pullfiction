@@ -1,3 +1,4 @@
+import { gearSlotIcon } from "./icon-fallbacks";
 import { GameIcon } from "./GameIcon";
 import { EditorIcon } from "./EditorIcon";
 import { BROWSER_ASSETS } from "./browser-mode";
@@ -81,8 +82,8 @@ export function Bar({
             : known
               ? `${current!.toLocaleString()} / ${max!.toLocaleString()} · ${Math.round(percent)}%`
               : max
-                ? `? / ${max.toLocaleString()}`
-                : "--")}
+                ? `Unknown / ${max.toLocaleString()}`
+                : "Not recorded")}
       </strong>
     </div>
   );
@@ -111,6 +112,11 @@ export function AuraGroup({
           {label}
           <span>{auras.length}</span>
         </h3>
+      )}
+      {compact && (
+        <span className="focus-aura-label">
+          {label} · {auras.length}
+        </span>
       )}
       <div className="focus-auras">
         {auras.length ? (
@@ -205,7 +211,11 @@ export function GearIcon({
         style={{ borderColor: color }}
       >
         {BROWSER_ASSETS ? (
-          <GameIcon name={gear.icon} item={gear.id} />
+          <GameIcon
+            name={gear.icon ?? data?.icon}
+            item={gear.id}
+            fallbackSrc={gearSlotIcon(gear.slot)}
+          />
         ) : icon ? (
           <img
             alt=""

@@ -1,8 +1,9 @@
+import { PanelSettings } from "./PanelSettings";
+import { ReplayTransport } from "./ReplayTransport";
 import { initialLibraryTab, libraryNavigationUrl } from "./library-navigation";
 import { ShareDialog, type ShareTarget } from "./ShareDialog";
 import { shareId } from "./share-client";
 import { CommunityLinks } from "./CommunityLinks";
-import { GitHubLink } from "./GitHubLink";
 import { nameplateShortcut } from "./nameplate-model";
 import { GameIcon } from "./GameIcon";
 import { handleCursor, handleLabel, rotateCursor } from "./edit-affordances";
@@ -16,6 +17,8 @@ import {
 } from "./interaction-policy";
 import { SceneToolbar } from "./SceneToolbar";
 import { ReplayLoading } from "./ReplayLoading";
+import { CameraDistanceControl, SceneDisplay } from "./SceneDisplay";
+import { SceneEventContext } from "./SceneEventContext";
 import { RaidFrameResize } from "./RaidFrameResize";
 import { BrowserClient } from "./BrowserClient";
 import { EditorIcon } from "./EditorIcon";
@@ -52,12 +55,15 @@ import {
   raidByMap,
   raidForZone,
   reportRaids,
-  chapterAt,
-  preciseTime,
   routeLength,
   time,
 } from "./domain";
-import type { GameVersion, Options, Snapshot } from "./types";
+import type {
+  GameVersion,
+  Options,
+  RecordedEventDetail,
+  Snapshot,
+} from "./types";
 export { GameIcon } from "./GameIcon";
 export function App({ controller }: { controller: EditorController }) {
   useEffect(() => {
@@ -101,7 +107,9 @@ export function App({ controller }: { controller: EditorController }) {
       };
       return { analyse: read("analyse"), plan: read("plan") };
     }),
-    [pageDetails, setPageDetails] = useState(false),
+    [selectedRunEvent, setSelectedRunEvent] =
+      useState<RecordedEventDetail | null>(null),
+    [pageDetails, setPageDetails] = useState(state.workspaceMode === "plan"),
     [timelineRange, setTimelineRange] = useState<[number, number]>([0, 60000]),
     [source, setSource] = useState(
       "https://vanilla.warcraftlogs.com/reports/DyN7vF94QR8aj1Lc",
@@ -136,6 +144,21 @@ export function App({ controller }: { controller: EditorController }) {
     }
     setPageDetails(on);
   }
+  const previousProject = useRef(state.projectId);
+  useEffect(() => {
+    setPageDetails(state.workspaceMode === "plan");
+  }, [state.workspaceMode]);
+  useEffect(() => {
+    const previous = previousProject.current;
+    previousProject.current = state.projectId;
+    // Acquiring a project ID on the first save does not change the active view.
+    if (
+      previous &&
+      previous !== state.projectId &&
+      state.workspaceMode === "plan"
+    )
+      setPageDetails(true);
+  }, [state.projectId, state.workspaceMode]);
   useEffect(() => {
     if (
       state.selectedMarks.length ||
@@ -149,7 +172,7 @@ export function App({ controller }: { controller: EditorController }) {
     state.workspaceMode,
     state.projectId,
   ]);
-  function openLibrary(tab: "projects" | "logs") {
+  function openLibrary(tab: "workspace" | "projects" | "logs") {
     if (state.playing || state.playPreparing) controller.toggle();
     if (state.projectId || state.dirty) void controller.saveProject();
     try {
@@ -236,8 +259,7 @@ export function App({ controller }: { controller: EditorController }) {
   }, [state.time, state.replay, openPanels]);
   const planFile = useRef<HTMLInputElement>(null),
     logFile = useRef<HTMLInputElement>(null);
-  const selected = state.replay?.actors.find((a) => a.key === state.selected),
-    chapter = state.replay && chapterAt(state.replay, state.time);
+  const selected = state.replay?.actors.find((a) => a.key === state.selected);
   useEffect(() => {
     if (state.selectedMark) setInspector(false);
   }, [state.selectedMark]);
@@ -311,6 +333,11 @@ export function App({ controller }: { controller: EditorController }) {
       }
       if (context === "timeline" && !command) {
         if (event.code === "Space") {
+          if (
+            event.target instanceof Element &&
+            event.target.closest("button, summary, a[href], [role=button]")
+          )
+            return;
           event.preventDefault();
           if (!state.replay) controller.stepPage(1);
           else controller.toggle();
@@ -389,12 +416,13 @@ export function App({ controller }: { controller: EditorController }) {
         } else if (state.selectedMarks.length || state.selectedActors.length) {
           controller.selectMark(null);
           controller.clearActorSelection();
-        } else if (inspector) setInspector(false);
+        } else if (state.detail) controller.closeDetail();
+        else if (inspector) setInspector(false);
         return;
       }
       if (scene && event.key === "Enter" && state.drawing) {
         event.preventDefault();
-        controller.finishDrawing();
+        controller.finishDrawing("select");
       }
       if (
         scene &&
@@ -452,9 +480,14 @@ export function App({ controller }: { controller: EditorController }) {
     state.replay,
     state.transform,
     state.transformActive,
+    state.detail,
     dialog,
     inspector,
   ]);
+  const sceneEvent =
+    state.workspaceMode === "analyse" && openPanels.includes("events")
+      ? selectedRunEvent
+      : null;
   return (
     <GameVersionContext.Provider value={state.gameVersion}>
       <div
@@ -470,153 +503,181 @@ export function App({ controller }: { controller: EditorController }) {
         onBlurCapture={() => controller.setTyping(false)}
       >
         <header className="menubar">
-          <button
-            className="brand"
-            onClick={() => openLibrary("projects")}
-            aria-label="Open library"
-          >
-            Pull <span>Fiction</span>
-          </button>
-          <select
-            aria-label="Game version"
-            value={state.gameVersion}
-            disabled={state.busy}
-            onChange={(e) =>
-              controller.setGameVersion(e.target.value as GameVersion)
-            }
-          >
-            {GAME_VERSIONS.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-          <span className="menu-divider" />
-          <input
-            className="plan-name"
-            aria-label="Plan name"
-            maxLength={100}
-            value={state.plan.name}
-            onChange={(e) => controller.rename(e.target.value)}
-          />
-          <span
-            className={`save-dot ${state.dirty ? "dirty" : ""}`}
-            title={state.dirty ? "Unsaved changes" : "Saved"}
-          />
-          <button onClick={() => openLibrary("projects")}>Library</button>
-          <button onClick={() => openLibrary("logs")}>Logs</button>
-          <button disabled={state.busy} onClick={() => setShareTarget({})}>
-            Share
-          </button>
-          {state.projectId && state.sourceStatus === "missing" && (
+          <div className="workspace-navigation">
             <button
-              onClick={() => openLibrary("logs")}
-              title="Reload the log without changing this plan"
+              className="brand"
+              onClick={() => openLibrary("workspace")}
+              aria-label="Open library"
+              title="Open library"
             >
-              Reload source
+              Pull <span>Fiction</span>
+              <small>Library</small>
             </button>
-          )}
-          <button onClick={() => controller.save()} title="Save · ⌘S">
-            Save
-          </button>
-          <span
-            className={`local-save-status ${state.saveStatus}`}
-            role="status"
-          >
-            {state.saveStatus === "saved"
-              ? "Saved locally"
-              : state.saveStatus === "saving"
-                ? "Saving…"
-                : state.saveStatus === "pending"
-                  ? "Unsaved"
-                  : state.saveStatus === "error"
-                    ? "Save failed"
-                    : ""}
-          </span>
-          <details
-            className="file-menu"
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                e.stopPropagation();
-                e.currentTarget.removeAttribute("open");
-                e.currentTarget.querySelector("summary")?.focus();
-              }
-            }}
-          >
-            <summary>File</summary>
-            <div
-              className="menu-popover"
-              onClick={(e) => {
-                if ((e.target as Element).closest("button"))
-                  e.currentTarget.closest("details")?.removeAttribute("open");
+            <button onClick={() => openLibrary("logs")}>Logs</button>
+          </div>
+          <div className="document-identity">
+            <input
+              className="plan-name"
+              aria-label="Plan name"
+              title={state.plan.name}
+              maxLength={100}
+              value={state.plan.name}
+              onChange={(e) => controller.rename(e.target.value)}
+            />
+            <span
+              className={`local-save-status ${state.saveStatus}`}
+              role="status"
+            >
+              {state.saveStatus === "saved"
+                ? "Saved locally"
+                : state.saveStatus === "saving"
+                  ? "Saving…"
+                  : state.saveStatus === "pending"
+                    ? "Unsaved"
+                    : state.saveStatus === "error"
+                      ? "Save failed"
+                      : state.dirty
+                        ? "Unsaved"
+                        : ""}
+            </span>
+          </div>
+          <div className="document-actions">
+            <button
+              className="history-button"
+              aria-label="Undo"
+              title="Undo · ⌘Z"
+              disabled={!state.canUndo}
+              onClick={() => controller.undo()}
+            >
+              ↶
+            </button>
+            <button
+              className="history-button"
+              aria-label="Redo"
+              title="Redo · ⇧⌘Z"
+              disabled={!state.canRedo}
+              onClick={() => controller.redo()}
+            >
+              ↷
+            </button>
+
+            <button onClick={() => controller.save()} title="Save · ⌘S">
+              Save
+            </button>
+            <details
+              className="file-menu"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.removeAttribute("open");
+                  e.currentTarget.querySelector("summary")?.focus();
+                }
               }}
             >
-              <button onClick={() => planFile.current?.click()}>
-                Import plan
-              </button>
-              <button onClick={() => controller.exportFile("plan")}>
-                Export plan
-              </button>
-              <button
-                disabled={!state.projectId}
-                onClick={() =>
-                  state.projectId &&
-                  void controller.exportProject(state.projectId)
-                }
+              <summary>File</summary>
+              <div
+                className="menu-popover"
+                onClick={(e) => {
+                  if ((e.target as Element).closest("button"))
+                    e.currentTarget.closest("details")?.removeAttribute("open");
+                }}
               >
-                Export project backup
-              </button>
-              <button
-                disabled={!state.replay}
-                onClick={() => controller.exportFile("replay")}
-              >
-                Export replay
-              </button>
-            </div>
-          </details>
-          <span className="menu-divider" />
-          <button
-            className="history-button"
-            aria-label="Undo"
-            title="Undo · ⌘Z"
-            disabled={!state.canUndo}
-            onClick={() => controller.undo()}
-          >
-            ↶
-          </button>
-          <button
-            className="history-button"
-            aria-label="Redo"
-            title="Redo · ⇧⌘Z"
-            disabled={!state.canRedo}
-            onClick={() => controller.redo()}
-          >
-            ↷
-          </button>
-          <div className="menu-spacer" />
-          <label className="raid-picker">
-            <span>Raid</span>
-            <select
-              className="raid-selector"
-              aria-label="Raid map"
-              value={state.plan.mapId}
-              onChange={(e) => controller.selectRaid(Number(e.target.value))}
+                <button onClick={() => planFile.current?.click()}>
+                  Import plan
+                </button>
+                <button onClick={() => controller.exportFile("plan")}>
+                  Export plan
+                </button>
+                <button
+                  disabled={!state.projectId}
+                  onClick={() =>
+                    state.projectId &&
+                    void controller.exportProject(state.projectId)
+                  }
+                >
+                  Export project backup
+                </button>
+                <button
+                  disabled={!state.replay}
+                  onClick={() => controller.exportFile("replay")}
+                >
+                  Export replay
+                </button>
+              </div>
+            </details>
+
+            <button
+              className="header-share"
+              disabled={state.busy}
+              onClick={() => setShareTarget({})}
             >
-              {raidsForVersion(state.gameVersion).map((raid) => (
-                <option key={raid.map} value={raid.map}>
-                  {raid.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <GitHubLink />
-          {state.clientNeedsFiles && state.clientPromptHidden && (
-            <button onClick={() => controller.showClientSource()}>
-              Load game assets
+              Share
             </button>
-          )}
-          <button onClick={() => setDialog("settings")}>Settings</button>
+            {state.projectId && state.sourceStatus === "missing" && (
+              <button
+                onClick={() => openLibrary("logs")}
+                title="Reload the log without changing this plan"
+              >
+                Reload source
+              </button>
+            )}
+          </div>
+          <div className="workspace-settings">
+            <PanelSettings
+              title="Raid setup"
+              triggerLabel={`Raid setup: ${raidByMap(state.plan.mapId, state.gameVersion)?.name ?? "Raid"}`}
+              label={
+                raidByMap(state.plan.mapId, state.gameVersion)?.name ??
+                "Raid setup"
+              }
+              icon="raid"
+              width={310}
+            >
+              <div className="raid-setup-fields">
+                <label>
+                  <span>Game version</span>
+                  <select
+                    aria-label="Game version"
+                    value={state.gameVersion}
+                    disabled={state.busy}
+                    onChange={(e) =>
+                      controller.setGameVersion(e.target.value as GameVersion)
+                    }
+                  >
+                    {GAME_VERSIONS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Raid map</span>
+                  <select
+                    className="raid-selector"
+                    aria-label="Raid map"
+                    value={state.plan.mapId}
+                    onChange={(e) =>
+                      controller.selectRaid(Number(e.target.value))
+                    }
+                  >
+                    {raidsForVersion(state.gameVersion).map((raid) => (
+                      <option key={raid.map} value={raid.map}>
+                        {raid.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </PanelSettings>
+            {state.clientNeedsFiles && state.clientPromptHidden && (
+              <button onClick={() => controller.showClientSource()}>
+                Load game assets
+              </button>
+            )}
+            <button onClick={() => setDialog("settings")}>Settings</button>
+          </div>
         </header>
         <div className="editor-body">
           <Toolbox
@@ -647,6 +708,7 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       pageDetails={pageDetails && state.planning}
+                      selectedEvent={sceneEvent}
                       onPageDetails={showPageDetails}
                     />
                   ),
@@ -718,6 +780,7 @@ export function App({ controller }: { controller: EditorController }) {
                       close={() => closePanel("events")}
                       preset={{ view: "events" }}
                       storageKey="pullfiction.events"
+                      onEventSelection={setSelectedRunEvent}
                     />
                   ),
                 },
@@ -729,6 +792,18 @@ export function App({ controller }: { controller: EditorController }) {
                       state={state}
                       controller={controller}
                       focus={inspector}
+                      sceneEvent={sceneEvent}
+                      playback={
+                        <ReplayTransport
+                          state={state}
+                          controller={controller}
+                          onOpenLog={() => setDialog("import")}
+                          onPlan={() => {
+                            if (controller.planFromMoment())
+                              showPageDetails(true);
+                          }}
+                        />
+                      }
                       closeFocus={() => setInspector(false)}
                     />
                   ),
@@ -786,90 +861,6 @@ export function App({ controller }: { controller: EditorController }) {
               ]}
             />
             <ReplayLoading state={state} controller={controller} />
-            <div className="transport" hidden={!state.replay}>
-              <button
-                aria-label="Previous encounter"
-                title="Previous encounter"
-                disabled={!state.replay}
-                onClick={() => controller.stepChapter(-1)}
-              >
-                <EditorIcon name="previous" />
-              </button>
-              <button
-                className="play"
-                aria-label={
-                  state.playPreparing
-                    ? "Cancel preparation"
-                    : state.playing
-                      ? "Pause"
-                      : "Play"
-                }
-                disabled={!state.replay && state.workspaceMode !== "plan"}
-                onClick={() => controller.toggle()}
-              >
-                <EditorIcon
-                  name={state.playing || state.playPreparing ? "pause" : "play"}
-                />
-              </button>
-              <button
-                aria-label="Next encounter"
-                title="Next encounter"
-                disabled={!state.replay}
-                onClick={() => controller.stepChapter(1)}
-              >
-                <EditorIcon name="next" />
-              </button>
-              <span className="timecode">
-                {preciseTime(state.time)}
-                <span> / {time(controller.duration())}</span>
-              </span>
-              <select
-                aria-label="Playback speed"
-                value={state.rate}
-                onChange={(e) => controller.setRate(Number(e.target.value))}
-              >
-                {[0.5, 1, 2, 4].map((v) => (
-                  <option key={v} value={v}>
-                    {v}×
-                  </option>
-                ))}
-              </select>
-              <button
-                className={state.loop ? "active" : ""}
-                title="Loop current encounter"
-                disabled={!state.replay}
-                onClick={() => controller.toggleLoop()}
-              >
-                Loop
-              </button>
-              <span className="menu-divider" />
-              {state.replay?.chapters.length ? (
-                <select
-                  className="chapter-select"
-                  aria-label="Encounter"
-                  value={chapter?.id ?? ""}
-                  onChange={(e) => controller.jump(e.target.value)}
-                >
-                  <option value="" disabled>
-                    Between pulls
-                  </option>
-                  {state.replay.chapters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {time(c.start)} · {c.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="current-encounter">
-                  {state.replay?.fight.name ?? "No replay"}
-                </span>
-              )}
-              <div className="menu-spacer" />
-              {state.busy && <span className="busy-dot" />}
-              <button onClick={() => setDialog("import")}>
-                {state.replay?.report.title ?? "Open log"}
-              </button>
-            </div>
           </div>
         </div>
         <footer className="statusbar">
@@ -1126,28 +1117,56 @@ export function App({ controller }: { controller: EditorController }) {
               <div className="settings-list">
                 {(
                   [
-                    ["raidFrames", "Raid frames"],
-                    ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
-                    ["enemyNameplates", "Enemy nameplates (V)"],
-                    ["trashNameplates", "Trash nameplates"],
-                    ["bossNameplates", "Boss nameplates"],
-                    ["auras", "Buffs and debuffs"],
-                    ["spells", "Spell effects"],
-                    ["smoothGaps", "Smooth gaps as wisps"],
-                    ["followPulls", "Follow encounters"],
-                    ["actors", "Replay actors"],
-                  ] as [keyof Options, string][]
-                ).map(([key, label]) => (
-                  <label key={key}>
-                    <span>{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={state.options[key]}
-                      onChange={(e) =>
-                        controller.setOption(key, e.target.checked)
-                      }
-                    />
-                  </label>
+                    {
+                      title: "Raid and nameplates",
+                      options: [
+                        ["raidFrames", "Raid frames"],
+                        ["friendlyNameplates", "Friendly nameplates (Shift+V)"],
+                        ["enemyNameplates", "Enemy nameplates (V)"],
+                        ["trashNameplates", "Trash nameplates"],
+                        ["bossNameplates", "Boss nameplates"],
+                        ["auras", "Buffs and debuffs"],
+                      ],
+                    },
+                    {
+                      title: "Visual effects",
+                      options: [
+                        ["spells", "Spell effects"],
+                        ["smoothGaps", "Smooth gaps as wisps"],
+                      ],
+                    },
+                    {
+                      title: "Playback",
+                      options: [
+                        ["followPulls", "Follow encounters"],
+                        ["actors", "Replay actors"],
+                      ],
+                    },
+                  ] as { title: string; options: [keyof Options, string][] }[]
+                ).map((group) => (
+                  <fieldset key={group.title}>
+                    <legend>{group.title}</legend>
+                    {group.options.map(([key, label]) => (
+                      <label key={key}>
+                        <span>
+                          {label}
+                          {key === "smoothGaps" && (
+                            <small>
+                              Show inferred positions as wisps when recorded
+                              positions are missing.
+                            </small>
+                          )}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={state.options[key]}
+                          onChange={(e) =>
+                            controller.setOption(key, e.target.checked)
+                          }
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
                 ))}
               </div>
             )}
@@ -1161,15 +1180,21 @@ function Viewport({
   state,
   controller,
   focus,
+  playback,
   closeFocus,
+  sceneEvent,
 }: {
   state: Snapshot;
   controller: EditorController;
   focus: boolean;
+  playback: React.ReactNode;
   closeFocus: () => void;
+  sceneEvent: RecordedEventDetail | null;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [map, setMap] = useState(false);
+  const [mapControls, setMapControls] = useState<HTMLDivElement | null>(null);
+  const sceneChrome = useRef<HTMLDivElement>(null);
   const [inspectionOpen, setInspectionOpen] = useState(false);
   const focusedActor = state.replay?.actors.find(
     (a) => a.key === state.selected,
@@ -1278,6 +1303,42 @@ function Viewport({
           : hovered?.id || hovered?.actor
             ? "pointer"
             : "default";
+  const planMarks = editing
+    ? state.plan.steps.find((page) => page.id === state.activeStep)?.annotations
+    : undefined;
+  const selectedPlanMark = planMarks?.find(
+    (mark) => mark.id === state.selectedMark,
+  );
+  const selectedEditHint = selectedPlanMark
+    ? `${selectedPlanMark.name} selected${selectedPlanMark.hidden ? " · Hidden" : selectedPlanMark.locked ? " · Locked" : ""}`
+    : null;
+  const pathDraftId = editing ? controller.pathDraftId : null;
+  const pathDraft = planMarks?.find((mark) => mark.id === pathDraftId);
+  const sceneFocus = useRef<HTMLDivElement>(null);
+  const returnDraftFocus = useRef(false);
+  useEffect(() => {
+    if (!pathDraftId && returnDraftFocus.current) {
+      returnDraftFocus.current = false;
+      if (document.activeElement === document.body) {
+        const target = map
+          ? sceneFocus.current?.querySelector<HTMLCanvasElement>(
+              ".tactical-map canvas",
+            )
+          : canvas.current;
+        (target ?? sceneFocus.current)?.focus({ preventScroll: true });
+      }
+    }
+  }, [pathDraftId, map]);
+  const finishPathDraft = () => {
+    returnDraftFocus.current = true;
+    if (controller.getSnapshot().dimensionInput)
+      controller.confirmDrawingDimension();
+    else controller.finishDrawing("select");
+  };
+  const cancelPathDraft = () => {
+    returnDraftFocus.current = true;
+    controller.cancelDrawing();
+  };
   const hint = !editing
     ? ""
     : hovered?.id && state.tool === "explore"
@@ -1287,9 +1348,10 @@ function Viewport({
           ? "Drag point"
           : "Click to select · Use handles to transform"
       : state.tool === "explore"
-        ? state.cameraMode === "orbit"
-          ? "Right-drag to orbit · Drag empty space to select"
-          : "WASD to move · Right-drag to look · Drag empty space to select"
+        ? (selectedEditHint ??
+          (state.cameraMode === "orbit"
+            ? "Right-drag to orbit · Drag empty space to select"
+            : "WASD to move · Right-drag to look · Drag empty space to select"))
         : state.tool === "marker" && hovered?.actor
           ? "Click to attach marker to actor"
           : !hovered?.point
@@ -1329,77 +1391,105 @@ function Viewport({
     controller.setMapView(map);
     return () => controller.setMapView(false);
   }, [map, controller]);
+  const showCameraDistance =
+    !map &&
+    ((!!state.replay && state.options.followRaid) ||
+      state.cameraMode === "orbit");
+  const eventContext =
+    sceneEvent && state.replay && !map && state.sceneReady ? (
+      <SceneEventContext
+        event={sceneEvent}
+        replay={state.replay}
+        selected={state.selected}
+        controller={controller}
+      />
+    ) : null;
   return (
-    <div className="viewport-shell">
-      <div className="scene-chrome">
+    <div className="viewport-shell" data-map={map || undefined}>
+      <div className="scene-chrome" ref={sceneChrome}>
         {editing && <SceneToolbar state={state} controller={controller} />}
+        {editing && state.compareRecorded && (
+          <span className="recorded-view-label">
+            Recorded comparison{" "}
+            <span>· Added actors keep planned positions</span>
+          </span>
+        )}
         <div className="viewport-modes" role="group" aria-label="Scene view">
-          <select
-            aria-label="Camera mode"
-            title="Free camera: right-drag to look; WASD to move"
-            value={controller.cameraPresentation(map).value}
-            onChange={(e) => {
-              const mode = e.target.value;
-              if (mode === "orbit") controller.setCameraMode("orbit");
-              else {
-                controller.setCameraMode("free");
-                controller.setOption("lockCamera", mode === "player");
-                controller.setOption("followRaid", mode !== "free");
-              }
-            }}
+          <div
+            className="scene-camera-controls"
+            role="group"
+            aria-label="Camera"
           >
-            <option value="free">Free camera</option>
-            {state.replay && <option value="raid">Follow raid</option>}
-            {!map && state.replay && controller.orbitCandidate() && (
-              <option value="player">
-                Follow {controller.orbitCandidate()?.name ?? "selected player"}
-              </option>
-            )}
-            {!map && controller.orbitCandidate() && (
-              <option value="orbit">
-                Orbit {controller.orbitCandidate()?.name}
-              </option>
-            )}
-          </select>
-          <button
-            onClick={() => controller.frameSelection()}
-            title="Frame selection (F)"
-          >
-            Frame
-          </button>
-          {!map &&
-            ((state.replay && state.options.followRaid) ||
-              state.cameraMode === "orbit") && (
-              <select
-                aria-label="Maximum camera distance"
-                title="Maximum camera distance"
-                value={state.cameraMaxDistance}
-                onChange={(e) =>
-                  controller.setCameraDistance(Number(e.target.value))
+            <select
+              aria-label="Camera mode"
+              title="Free camera: right-drag to look; WASD to move"
+              value={controller.cameraPresentation(map).value}
+              onChange={(e) => {
+                const mode = e.target.value;
+                if (mode === "orbit") controller.setCameraMode("orbit");
+                else {
+                  controller.setCameraMode("free");
+                  controller.setOption("lockCamera", mode === "player");
+                  controller.setOption("followRaid", mode !== "free");
                 }
-              >
-                {[20, 30, 40, 50, 60].map((v) => (
-                  <option key={v} value={v}>
-                    {v} yd max
-                  </option>
-                ))}
-              </select>
+              }}
+            >
+              <option value="free">Free camera</option>
+              {state.replay && <option value="raid">Follow raid</option>}
+              {!map && state.replay && controller.orbitCandidate() && (
+                <option value="player">
+                  Follow{" "}
+                  {controller.orbitCandidate()?.name ?? "selected player"}
+                </option>
+              )}
+              {!map && controller.orbitCandidate() && (
+                <option value="orbit">
+                  Orbit {controller.orbitCandidate()?.name}
+                </option>
+              )}
+            </select>
+            <button
+              className="scene-frame-selection"
+              aria-label="Frame selection"
+              onClick={() => controller.frameSelection()}
+              title="Frame selection (F)"
+            >
+              <EditorIcon name="focus" />
+              <span>Frame selection</span>
+            </button>
+            {showCameraDistance && (
+              <CameraDistanceControl state={state} controller={controller} />
             )}
-          <button aria-pressed={!map} onClick={() => setMap(false)}>
-            3D
-          </button>
-          <button
-            aria-pressed={map}
-            onClick={() => {
-              controller.setNavigationTool("select");
-              setMap(true);
-            }}
-          >
-            Map
-          </button>
+          </div>
+          <SceneDisplay
+            state={state}
+            controller={controller}
+            cameraDistance={showCameraDistance}
+          />
+          {map && <div className="map-chrome-actions" ref={setMapControls} />}
+          <div className="studio-segment" role="group" aria-label="View type">
+            <button aria-pressed={!map} onClick={() => setMap(false)}>
+              3D
+            </button>
+            <button
+              aria-pressed={map}
+              onClick={() => {
+                controller.setNavigationTool("select");
+                setMap(true);
+              }}
+            >
+              Map
+            </button>
+          </div>
         </div>
       </div>
-      <div className="viewport" data-input-context="scene">
+      {eventContext && <div className="scene-event-band">{eventContext}</div>}
+      <div
+        className="viewport"
+        data-input-context="scene"
+        ref={sceneFocus}
+        tabIndex={-1}
+      >
         <canvas
           id="benilla"
           ref={canvas}
@@ -1766,7 +1856,7 @@ function Viewport({
           }}
           onDoubleClick={() => {
             if (state.tool === "route" || state.tool === "polygon")
-              controller.finishDrawing();
+              controller.finishDrawing("select");
           }}
           onLostPointerCapture={() => {
             if (
@@ -1826,8 +1916,15 @@ function Viewport({
             </div>
           )}
         {boxRect && <div className="selection-box" style={boxRect} />}
-        {map && <MapView state={state} controller={controller} />}
-        {editing && (
+        {map && (
+          <MapView
+            state={state}
+            controller={controller}
+            controlsHost={mapControls}
+            controlsBoundary={sceneChrome}
+          />
+        )}
+        {editing && !pathDraftId && (
           <div className="scene-edit-hint" aria-live="polite">
             {state.drawing
               ? (() => {
@@ -1852,7 +1949,11 @@ function Viewport({
               : map
                 ? state.tool === "marker"
                   ? "Right-drag to pan · Scroll to zoom · Click to place · Shift-click to select"
-                  : "Right-drag to pan · Scroll to zoom · Click to select"
+                  : state.tool === "explore" && selectedEditHint
+                    ? selectedEditHint
+                    : state.tool === "route" || state.tool === "polygon"
+                      ? "Click to start · Right-drag to pan"
+                      : "Right-drag to pan · Scroll to zoom · Click to select"
                 : hint}
           </div>
         )}
@@ -1912,6 +2013,80 @@ function Viewport({
             />
           )}
       </div>
+      {pathDraftId && (
+        <div
+          className="scene-path-draft"
+          role="group"
+          aria-label="Path draft"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target instanceof HTMLButtonElement)
+              e.stopPropagation();
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              cancelPathDraft();
+            }
+          }}
+        >
+          <div className="scene-path-summary">
+            <strong>
+              {state.tool === "route" ? "Route draft" : "Area draft"}
+            </strong>
+            <span>
+              {pathDraft?.points.length ?? 0}{" "}
+              {(pathDraft?.points.length ?? 0) === 1 ? "point" : "points"}
+              {state.tool === "route" && pathDraft
+                ? ` · ${routeLength(pathDraft.points).toFixed(1)} yd`
+                : ""}
+            </span>
+          </div>
+          {controller.numericDrawingAvailable() && (
+            <label className="scene-path-distance">
+              <input
+                aria-label="Drawing dimension"
+                inputMode="decimal"
+                value={state.dimensionInput}
+                placeholder="Distance"
+                onChange={(e) => controller.setDrawingDimension(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    finishPathDraft();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (state.dimensionInput)
+                      controller.cancelDrawingDimension();
+                    else cancelPathDraft();
+                  }
+                }}
+              />
+              <span aria-hidden="true">yd</span>
+            </label>
+          )}
+          <div className="scene-path-actions">
+            <button
+              type="button"
+              title="Cancel drawing (Esc)"
+              onClick={cancelPathDraft}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="scene-path-finish"
+              aria-label="Finish drawing"
+              title="Finish drawing (Enter)"
+              onClick={finishPathDraft}
+            >
+              Finish
+            </button>
+          </div>
+        </div>
+      )}
+      {playback}
     </div>
   );
 }

@@ -34,7 +34,9 @@ local function make(index)
  f:SetFrameStrata('MEDIUM');f:SetFrameLevel(18);f:EnableMouse(true);f:RegisterForClicks('LeftButtonUp','RightButtonUp')
  f:SetScript('OnClick',function() if arg1=='RightButton' then PullFictionRaidFocus=this.guid else PullFictionPlateClick=this.guid end end)
  f:SetScript('OnDoubleClick',function() if arg1=='LeftButton' then PullFictionPlateClick=this.guid;PullFictionRaidFocus=this.guid else PullFictionRaidFocus=this.guid end end)
- f.edge=texture(f,'BACKGROUND',0,0,0,1);f.background=texture(f,'BORDER',.07,.08,.09,1)
+ f.edge=texture(f,'BACKGROUND',0,0,0,1);f.background=texture(f,'BORDER',.075,.085,.10,.96)
+ f.classbar=texture(f,'ARTWORK',.5,.5,.5,1)
+ f.healthbg=texture(f,'ARTWORK',.17,.19,.22,1)
  f.health=CreateFrame('StatusBar',nil,f);f.health:SetFrameLevel(19);f.health:SetStatusBarTexture(white)
  -- Overlay text and aura children above the actual health status bar.
  f.overlay=CreateFrame('Frame',nil,f);f.overlay:SetAllPoints(f);f.overlay:SetFrameLevel(20);f.overlay:EnableMouse(false)
@@ -53,42 +55,53 @@ local function make(index)
  end
  return f
 end
-function PullFictionRaid_Update(units,enabled,u,rowcount,scale)
+function PullFictionRaid_Update(units,enabled,u,rowcount,scale,compact)
  local origin=u;rowcount=rowcount or 5;u=u*(scale or 1)
+ local pitch=compact and 36 or 56;local cell=compact and 32 or 52
  for _,f in pairs(PullFictionRaid) do f.seen=nil end
  if enabled then
   for i,d in ipairs(units) do
    local f=PullFictionRaid[i];if not f then f=make(i);PullFictionRaid[i]=f end
    f.seen=true;f.guid=d.guid
-   rect(f,WorldFrame,12*origin+math.floor((i-1)/rowcount)*91*u,12*origin+math.mod(i-1,rowcount)*56*u,87*u,52*u)
-   rect(f.edge,f,0,0,87*u,52*u);f.edge:SetVertexColor(d.selected and 1 or .02,d.selected and .82 or .02,d.selected and .35 or .02,1)
-   rect(f.background,f,u,u,85*u,50*u)
+   rect(f,WorldFrame,12*origin+math.floor((i-1)/rowcount)*91*u,12*origin+math.mod(i-1,rowcount)*pitch*u,87*u,cell*u)
+   rect(f.edge,f,0,0,87*u,cell*u);f.edge:SetVertexColor(d.selected and 1 or .02,d.selected and .82 or .02,d.selected and .35 or .02,1)
+   rect(f.background,f,u,u,85*u,(cell-2)*u)
    local c=colors[d.class] or {.6,.6,.6}
-   rect(f.health,f,2*u,2*u,83*u,32*u);f.health:SetMinMaxValues(0,d.max);f.health:SetValue(d.hp);f.health:SetStatusBarColor(c[1],c[2],c[3])
-   rect(f.powerbg,f,2*u,34*u,83*u,8*u)
-   rect(f.power,f,2*u,34*u,83*u,8*u);f.power:SetMinMaxValues(0,math.max(1,d.maxpower));f.power:SetValue(d.power)
+   -- Keep class identity in a short spine; reserve the horizontal strip for health.
+   rect(f.classbar,f,2*u,4*u,2*u,11*u);f.classbar:SetVertexColor(c[1],c[2],c[3],1)
+   local healthY=compact and 20 or 30
+   rect(f.healthbg,f,2*u,healthY*u,83*u,4*u)
+   rect(f.health,f,2*u,healthY*u,83*u,4*u);f.health:SetMinMaxValues(0,d.max);f.health:SetValue(d.known==false and 0 or d.hp);f.health:SetStatusBarColor(.19+c[1]*.56,.21+c[2]*.56,.24+c[3]*.56)
+   local powerY=compact and 25 or 34;local powerH=compact and 4 or 8
+   rect(f.powerbg,f,2*u,powerY*u,83*u,powerH*u)
+   rect(f.power,f,2*u,powerY*u,83*u,powerH*u);f.power:SetMinMaxValues(0,math.max(1,d.maxpower));f.power:SetValue(d.power)
    local pc=powercolors[d.powertype or 0] or powercolors[0];f.power:SetStatusBarColor(pc[1],pc[2],pc[3])
+   if compact then f.powertext:Hide() else f.powertext:Show() end
    rect(f.powertext,f,4*u,33*u,79*u,10*u);setfont(f.powertext,7*u);f.powertext:SetJustifyH('CENTER');settext(f.powertext,d.maxpower>0 and ((d.powerknown==false and '?' or tostring(math.floor(d.power)))..' / '..tostring(math.floor(d.maxpower))) or '--')
-   rect(f.name,f,5*u,4*u,77*u,12*u);setfont(f.name,10*u);settext(f.name,d.name)
-   rect(f.hp,f,5*u,19*u,77*u,11*u);setfont(f.hp,9*u);settext(f.hp,d.hp==0 and 'Dead' or '')
+   local dead=d.dead==true or (d.known~=false and d.hp==0)
+   local healthLabel=dead and 'Dead' or d.known==false and '?' or ''
+   rect(f.name,f,6*u,3*u,(healthLabel=='' and 77 or 54)*u,12*u);setfont(f.name,10*u);settext(f.name,d.name)
+   rect(f.hp,f,61*u,4*u,22*u,10*u);setfont(f.hp,8*u);settext(f.hp,healthLabel)
    if d.cast then
-    rect(f.castbg,f,2*u,44*u,83*u,6*u);rect(f.castfill,f,2*u,44*u,83*u*d.cast.progress,6*u)
+    local castY=compact and 29 or 44;local castH=compact and 2 or 6
+    rect(f.castbg,f,2*u,castY*u,83*u,castH*u);rect(f.castfill,f,2*u,castY*u,83*u*d.cast.progress,castH*u)
     rect(f.castname,f,4*u,43*u,80*u,8*u);setfont(f.castname,7*u);settext(f.castname,d.cast.name)
-    f.castbg:Show();f.castfill:Show();f.castname:Show()
+    f.castbg:Show();f.castfill:Show()
+    if compact then f.castname:Hide() else f.castname:Show() end
    else f.castbg:Hide();f.castfill:Hide();f.castname:Hide() end
    local visible={};local debuffs=0;local buffs=0
    for _,a in ipairs(d.auras) do if a.debuff and debuffs<3 then table.insert(visible,a);debuffs=debuffs+1 end end
    for _,a in ipairs(d.auras) do if not a.debuff and buffs<3 then table.insert(visible,a);buffs=buffs+1 end end
    for n=1,6 do
     local icon=f.icons[n];local a=visible[n];icon.aura=a
-    if a then
+    if a and not compact then
      local x=a.debuff and (4+(n-1)*12) or (83-(n-debuffs)*12)
-     rect(icon,f,x*u,20*u,10*u,10*u);rect(icon.edge,icon,-u,-u,12*u,12*u)
+     rect(icon,f,x*u,19*u,10*u,10*u);rect(icon.edge,icon,-u,-u,12*u,12*u)
      icon.edge:SetVertexColor(a.debuff and .8 or .04,a.debuff and .12 or .04,a.debuff and .08 or .04,1)
      icon.image:SetTexture(a.icon);icon.image:SetTexCoord(.07,.93,.07,.93);setfont(icon.stack,7*u);settext(icon.stack,a.stack>1 and tostring(a.stack) or '');icon:Show()
     else icon:Hide() end
    end
-   f:SetAlpha(d.hp==0 and .5 or 1);f:Show()
+   f:SetAlpha(dead and .5 or 1);f:Show()
   end
  end
  for _,f in pairs(PullFictionRaid) do if not f.seen then f:Hide() end end

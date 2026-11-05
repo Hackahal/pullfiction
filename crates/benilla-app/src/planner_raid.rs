@@ -88,13 +88,13 @@ fn drive(
         let sources=serialized.sources(guid.0,name,body.plate_auras.iter().map(|a|AuraInput{spell:a.spell,name:&a.name,icon:&a.icon,stack:a.stack,debuff:a.debuff}));
         let auras=&sources.auras;
         let cast=body.plate_cast.as_ref().map(|c|format!("{{name={},progress={:.4},remaining={}}}",quote(&c.name),c.progress.clamp(0.,1.),quote(&format!("{:.1}",c.remaining.max(0.))))).unwrap_or("nil".into());
-        format!("{{guid={},name={},class={},hp={hp},max={max},known={},power={},maxpower={},powertype={},powerknown={},selected={},cast={cast},auras={{{auras}}}}}",sources.guid,sources.name,store.0.unit_class().unwrap_or(0),body.health_known,store.0.unit_power(store.0.unit_power_type()).unwrap_or(0),store.0.unit_max_power(store.0.unit_power_type()).unwrap_or(0),store.0.unit_power_type(),body.power_known,world.selection.guid==Some(guid.0))
+        format!("{{guid={},name={},class={},hp={hp},max={max},known={},dead={},power={},maxpower={},powertype={},powerknown={},selected={},cast={cast},auras={{{auras}}}}}",sources.guid,sources.name,store.0.unit_class().unwrap_or(0),body.health_known,body.dead,store.0.unit_power(store.0.unit_power_type()).unwrap_or(0),store.0.unit_max_power(store.0.unit_power_type()).unwrap_or(0),store.0.unit_power_type(),body.power_known,world.selection.guid==Some(guid.0))
     }).collect::<Vec<_>>().join(",");
     let (width,height)=world.windows.single().map(|w|(w.width(),w.height())).unwrap_or((1200.,900.));let seam=crate::ui_script::seam_scale(height);
     let bounds=world.control.raid_frame_size;
     let w=if bounds[0]>0. {bounds[0]}else{724.};let h=if bounds[1]>0. {bounds[1]}else{276.};
-    let layout=crate::planner_raid_layout::layout(units.len(),w.min((width-24.).max(80.)),h.min((height-24.).max(80.)));
-    let update=format!("PullFictionRaid_Update({{{rows}}},{},{:.5},{},{:.5})",world.control.raid_frames,1./seam,layout.rows,layout.scale);
+    let (layout,compact)=crate::planner_raid_layout::viewport_layout(units.len(),w.min((width-24.).max(80.)),h.min((height-24.).max(80.)));
+    let update=format!("PullFictionRaid_Update({{{rows}}},{},{:.5},{},{:.5},{compact})",world.control.raid_frames,1./seam,layout.rows,layout.scale);
     // Keep the complete, quantized payload as the memo key. It includes fields the Lua
     // consumer currently ignores, so a later visual change cannot silently miss an update.
     // Only a changed payload allocates Lua tables; data is never compiled as source.
@@ -107,6 +107,7 @@ fn drive(
             row.set("hp",store.0.unit_health().unwrap_or(0))?;
             row.set("max",store.0.unit_max_health().unwrap_or(1).max(1))?;
             row.set("known",body.health_known)?;
+            row.set("dead",body.dead)?;
             row.set("power",store.0.unit_power(store.0.unit_power_type()).unwrap_or(0))?;
             row.set("maxpower",store.0.unit_max_power(store.0.unit_power_type()).unwrap_or(0))?;
             row.set("powertype",store.0.unit_power_type())?;
@@ -122,7 +123,7 @@ fn drive(
             rows.set(i+1,row)?;
         }
         let function=lua.globals().get::<benilla_ui::mlua::Function>("PullFictionRaid_Update")?;
-        script.call_function::<()>(&function,(rows,world.control.raid_frames,decimal(1./seam,5),layout.rows,decimal(layout.scale,5)))
+        script.call_function::<()>(&function,(rows,world.control.raid_frames,decimal(1./seam,5),layout.rows,decimal(layout.scale,5),compact))
     }){serialized.clear();warn!("raid update: {e}");}
  });
 }
