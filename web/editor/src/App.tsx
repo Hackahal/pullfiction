@@ -422,7 +422,7 @@ export function App({ controller }: { controller: EditorController }) {
       }
       if (scene && event.key === "Enter" && state.drawing) {
         event.preventDefault();
-        controller.finishDrawing();
+        controller.finishDrawing("select");
       }
       if (
         scene &&
@@ -1301,6 +1301,15 @@ function Viewport({
           : hovered?.id || hovered?.actor
             ? "pointer"
             : "default";
+  const selectedPlanMark =
+    editing && state.selectedMark
+      ? state.plan.steps
+          .find((page) => page.id === state.activeStep)
+          ?.annotations.find((mark) => mark.id === state.selectedMark)
+      : undefined;
+  const selectedEditHint = selectedPlanMark
+    ? `${selectedPlanMark.name} selected${selectedPlanMark.hidden ? " · Hidden" : selectedPlanMark.locked ? " · Locked" : ""}`
+    : null;
   const hint = !editing
     ? ""
     : hovered?.id && state.tool === "explore"
@@ -1310,9 +1319,10 @@ function Viewport({
           ? "Drag point"
           : "Click to select · Use handles to transform"
       : state.tool === "explore"
-        ? state.cameraMode === "orbit"
-          ? "Right-drag to orbit · Drag empty space to select"
-          : "WASD to move · Right-drag to look · Drag empty space to select"
+        ? (selectedEditHint ??
+          (state.cameraMode === "orbit"
+            ? "Right-drag to orbit · Drag empty space to select"
+            : "WASD to move · Right-drag to look · Drag empty space to select"))
         : state.tool === "marker" && hovered?.actor
           ? "Click to attach marker to actor"
           : !hovered?.point
@@ -1818,7 +1828,7 @@ function Viewport({
           }}
           onDoubleClick={() => {
             if (state.tool === "route" || state.tool === "polygon")
-              controller.finishDrawing();
+              controller.finishDrawing("select");
           }}
           onLostPointerCapture={() => {
             if (
@@ -1904,7 +1914,11 @@ function Viewport({
               : map
                 ? state.tool === "marker"
                   ? "Right-drag to pan · Scroll to zoom · Click to place · Shift-click to select"
-                  : "Right-drag to pan · Scroll to zoom · Click to select"
+                  : state.tool === "explore" && selectedEditHint
+                    ? selectedEditHint
+                    : state.tool === "route" || state.tool === "polygon"
+                      ? "Click to start · Right-drag to pan"
+                      : "Right-drag to pan · Scroll to zoom · Click to select"
                 : hint}
           </div>
         )}

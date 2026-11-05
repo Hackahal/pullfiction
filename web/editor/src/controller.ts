@@ -256,7 +256,7 @@ export class EditorController {
   private pendingPicks = 0;
   private mapPickQueue: [number, number, number, boolean, boolean, boolean][] =
     [];
-  private finishRequested = false;
+  private finishRequested: "keep" | "select" | null = null;
   private saveWhenReady = false;
   private undoStack: Plan[] = [];
   private redoStack: Plan[] = [];
@@ -1080,6 +1080,7 @@ export class EditorController {
   undo() {
     this.pendingPicks = 0;
     this.mapPickQueue = [];
+    this.finishRequested = null;
     this.finishDrawing();
     this.pickEpoch++;
     const plan = this.undoStack.pop();
@@ -2147,9 +2148,9 @@ export class EditorController {
     this.engine?.hover_annotation?.(-1, -1, false);
     this.pendingPicks = 0;
     this.mapPickQueue = [];
+    this.finishRequested = null;
     this.finishDrawing();
     this.pickEpoch++;
-    this.finishRequested = false;
     this.patch({
       tool,
       transformActive: false,
@@ -3734,18 +3735,19 @@ export class EditorController {
     this.patch(change);
     this.sendAnnotations();
   }
-  finishDrawing() {
+  finishDrawing(nextTool: "keep" | "select" = "keep") {
+    const finishMode = this.finishRequested === "select" ? "select" : nextTool;
     if (this.pendingPicks) {
-      this.finishRequested = true;
+      this.finishRequested = finishMode;
       return;
     }
+    this.finishRequested = null;
     this.dimensionBefore = null;
     this.pathPreview = null;
     if (this.state.dimensionInput) this.patch({ dimensionInput: "" });
     if (this.actorDrag) {
       const base = this.actorDrag.base;
       this.actorDrag = null;
-      this.finishRequested = false;
       if (JSON.stringify(base) !== JSON.stringify(this.state.plan)) {
         this.undoStack.push(base);
         this.redoStack = [];
@@ -3755,6 +3757,9 @@ export class EditorController {
       return;
     }
     if (this.draftBase) {
+      const selectCompletedPath =
+        finishMode === "select" &&
+        (this.state.tool === "route" || this.state.tool === "polygon");
       if (JSON.stringify(this.draftBase) !== JSON.stringify(this.state.plan)) {
         this.undoStack.push(this.draftBase);
         if (this.undoStack.length > 100) this.undoStack.shift();
@@ -3765,8 +3770,8 @@ export class EditorController {
       this.markDrag = null;
       this.patch({ drawing: false });
       this.planState(this.state.plan);
+      if (selectCompletedPath) this.setTool("explore");
     }
-    this.finishRequested = false;
   }
   cancelDrawing() {
     this.dimensionBefore = null;
@@ -3781,7 +3786,7 @@ export class EditorController {
     this.pendingMarkerClicks = [];
     this.pendingPicks = 0;
     this.mapPickQueue = [];
-    this.finishRequested = false;
+    this.finishRequested = null;
     this.saveWhenReady = false;
     this.patch({ drawing: false });
     if (base) this.planState(base);
@@ -4248,6 +4253,7 @@ export class EditorController {
     this.engine?.home();
   }
   pick(x: number, y: number, constrain = false, preview = false) {
+    if (this.finishRequested === "select") return;
     if (this.markDrag) this.markDrag.constrain = constrain;
     if (this.actorDrag) this.actorDrag.constrain = constrain;
     if (
@@ -4271,6 +4277,17 @@ export class EditorController {
     constrain = false,
     preview = false,
     grounded = false,
+  ) {
+    if (this.finishRequested === "select") return;
+    this.applyMapPick(x, y, height, constrain, preview, grounded);
+  }
+  private applyMapPick(
+    x: number,
+    y: number,
+    height: number,
+    constrain: boolean,
+    preview: boolean,
+    grounded: boolean,
   ) {
     if (![x, y, height].every(Number.isFinite)) return;
     // A resolved local point must not overtake an earlier asynchronous native pick.
@@ -5759,7 +5776,7 @@ export class EditorController {
         this.notify(message(e));
       }
       while (!this.pendingPicks && this.mapPickQueue.length) {
-        this.pickMap(...this.mapPickQueue.shift()!);
+        this.applyMapPick(...this.mapPickQueue.shift()!);
       }
       if (this.finishRequested && !this.pendingPicks) this.finishDrawing();
       if (!this.pendingPicks && this.saveWhenReady) {

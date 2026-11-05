@@ -1807,6 +1807,41 @@ test("Standalone planning can add player placeholders and restore native model i
   c.stop();
 });
 
+test("Finishing a route returns to Select after its last native waypoint", () => {
+  const f = fixture();
+  let token = 0;
+  let requests = 0;
+  f.c.attachEngine({
+    ...f.engine,
+    pick_for_annotation(_x: number, _y: number, requestToken: number) {
+      token = requestToken;
+      requests++;
+    },
+  } as unknown as Engine);
+  f.c.setTool("route");
+  f.c.pick(10, 20);
+  f.c.receive("plan-point", JSON.stringify({ token, point: [10, 20, 3] }));
+  f.c.pick(30, 20);
+  f.c.finishDrawing("select");
+  assert.equal(f.c.getSnapshot().tool, "route");
+  f.c.pick(50, 20);
+  f.c.pickMap(60, 20, 3, false, false, true);
+  assert.equal(requests, 2);
+  f.c.receive("plan-point", JSON.stringify({ token, point: [30, 20, 3] }));
+  const state = f.c.getSnapshot();
+  const mark = state.plan.steps[0].annotations[0];
+  assert.equal(state.tool, "explore");
+  assert.equal(state.drawing, false);
+  assert.equal(state.selectedMark, mark.id);
+  assert.deepEqual(mark.points, [
+    [10, 20, 3],
+    [30, 20, 3],
+  ]);
+  f.c.undo();
+  assert.equal(f.c.getSnapshot().plan.steps[0].annotations.length, 0);
+  f.c.stop();
+});
+
 test("Planned actor drags wait for the last native ground response before committing", () => {
   const f = fixture();
   f.c.seek(5000);

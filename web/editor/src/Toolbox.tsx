@@ -178,14 +178,18 @@ export function Toolbox({
               button(
                 "pointer",
                 "Finish drawing",
-                () => controller.finishDrawing(),
+                () => controller.finishDrawing("select"),
                 undefined,
                 "Finish",
               )}
           </div>
           <p className="toolbox-gesture">
             {["route", "polygon"].includes(state.tool)
-              ? "Click waypoints · Finish to end"
+              ? state.drawing
+                ? "Add waypoints · Finish or Enter"
+                : state.tool === "route"
+                  ? "Click to start a route"
+                  : "Click to start an area"
               : state.tool === "marker"
                 ? "Click to place · Shift-click to select"
                 : state.tool === "label"

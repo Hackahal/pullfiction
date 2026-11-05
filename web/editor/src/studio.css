@@ -2065,6 +2065,12 @@
   overflow-wrap: anywhere;
 }
 
+.edit-attachment-status {
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .mark-selection-actions {
   display: flex;
   flex: 0 0 auto;

@@ -1377,7 +1377,7 @@ export function MapView({
         }}
         onDoubleClick={() => {
           if (state.tool === "route" || state.tool === "polygon")
-            controller.finishDrawing();
+            controller.finishDrawing("select");
         }}
         onPointerCancel={() => {
           if (["draw", "shape", "mark"].includes(drag.current?.mode ?? ""))
