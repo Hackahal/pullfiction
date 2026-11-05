@@ -1794,20 +1794,26 @@
 }
 
 .editor .run-bosses .run-segment.boss {
+  top: 3px;
+  height: calc(100% - 6px);
   min-width: 0;
-}
-
-.editor .run-bosses .run-segment[data-detail="bar"] {
-  top: 8px;
-  height: 24px;
   border: 0;
   border-radius: 2px;
-  background: #587089;
+  background: #3e586f;
+  box-shadow: inset 0 0 0 1px #698398;
 }
 
-.editor .run-bosses .run-segment[data-detail="bar"].current {
-  background: #68849d;
-  box-shadow: inset 0 2px #bdc9d6;
+.editor .run-bosses .run-segment.boss.current {
+  background: #4a647b;
+  box-shadow: inset 0 0 0 1px #e2bd76;
+}
+
+.editor .run-bosses .run-segment.boss > img {
+  width: auto;
+  height: calc(100% - 4px);
+  flex: 0 0 auto;
+  aspect-ratio: 1;
+  margin-inline-start: 2px;
 }
 
 .run-encounter-label > img {
@@ -1831,9 +1837,11 @@
 }
 
 @container run-dock (max-height: 140px) {
-  .editor .run-bosses .run-segment[data-detail="bar"] {
-    top: 3px;
-    height: 17px;
+  .editor .run-navigator .run-bosses[data-overview="true"],
+  .editor
+    .run-navigator:has(.run-bosses[data-overview="true"])
+    .run-encounter-label {
+    height: 29px;
   }
 
   .run-encounter-label > img {
@@ -1872,37 +1880,51 @@
   font-weight: 650;
 }
 
-.editor .run-bosses[data-overview="true"] .run-segment[data-detail="bar"] {
-  top: auto;
-  bottom: 1px;
-  height: 5px;
+.editor .run-bosses[data-overview="true"] .run-segment.boss {
+  top: 17px;
+  height: min(14px, calc(100% - 18px));
+  gap: 3px;
+}
+
+.run-bosses[data-overview="true"] .run-boss-caption {
+  top: 1px;
+  transform: none;
+}
+
+.editor .run-bosses[data-overview="true"] .run-segment.boss span {
+  font-size: 10px;
+  line-height: 1;
 }
 
 .run-boss-landmark {
   position: absolute;
-  top: 1px;
-  width: 18px;
-  height: 18px;
+  z-index: 1;
+  top: 0;
+  width: 16px;
+  height: 16px;
   transform: translateX(-50%);
   box-sizing: border-box;
   display: grid;
   place-items: center;
   overflow: hidden;
   border: 1px solid #566375;
-  border-radius: 4px;
+  border-radius: 3px;
   background: #27323d;
   cursor: pointer;
 }
 
 .run-boss-landmark img {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   object-fit: cover;
 }
 
-.run-boss-landmark:hover,
-.run-boss-landmark[data-current="true"] {
+.run-boss-landmark:hover {
   border-color: #d2dce9;
+}
+
+.run-boss-landmark[data-current="true"] {
+  border-color: #e2bd76;
 }
 
 .editor .combat-event-list .combat-event-actors {
