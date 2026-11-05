@@ -1097,6 +1097,9 @@ export function Analysis({
                       const recordedId = recordedEventId(replay, e);
                       const selected =
                         !!eventDetail && eventDetail.id === recordedId;
+                      const amount = e.amountRecorded
+                        ? e.amount.toLocaleString()
+                        : undefined;
                       const actors = `${actorMap.get(e.source)?.name ?? "Environment"} → ${actorMap.get(e.target)?.name ?? "Unknown"}`;
                       return (
                         <li
@@ -1111,8 +1114,11 @@ export function Analysis({
                           >
                             {preciseTime(e.t)}
                           </button>
-                          <strong className="combat-event-amount">
-                            {e.amountRecorded ? e.amount.toLocaleString() : ""}
+                          <strong
+                            className="combat-event-amount"
+                            title={amount}
+                          >
+                            {amount}
                           </strong>
                           <div className="combat-event-ability">
                             {e.kind === "death" ? (
@@ -1126,6 +1132,7 @@ export function Analysis({
                               </button>
                             ) : (
                               <button
+                                title={e.name}
                                 aria-expanded={selected}
                                 aria-controls={
                                   selected ? eventDetailId : undefined

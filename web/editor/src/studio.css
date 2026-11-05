@@ -1275,8 +1275,8 @@
 }
 
 .analysis-v2[data-view="events"] {
-  --event-selection: #b4cbfb;
-  --event-selection-fill: #26354b;
+  --event-selection: #dab7f5;
+  --event-selection-fill: #30283c;
 }
 
 .editor .combat-event-list li[data-selected="true"] {
@@ -1575,6 +1575,39 @@
   .analysis-header[data-view="events"] > select[aria-label="Metric"] {
     grid-column: 1 / -1;
   }
+
+  .analysis-header[data-view="events"] > select[aria-label="Analysis time range"] {
+    padding-inline-start: 3px;
+    font-size: 10.5px;
+  }
+}
+
+@container combat-events (max-width: 208px) {
+  .editor .combat-event-list li {
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-areas: "time amount" "ability ability" "actors actors";
+    column-gap: 4px;
+    row-gap: 1px;
+  }
+
+  .editor .combat-event-list .combat-event-ability button {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .editor .combat-event-list .combat-event-ability button:focus-visible {
+    outline-offset: -1px;
+  }
+
+  .editor .combat-event-list .combat-event-amount {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .page-timecode-field {
@@ -1747,7 +1780,7 @@
   max-height: 48%;
   overflow: hidden;
   background: var(--studio-panel);
-  border-top: 1px solid #52759e;
+  border-top: 1px solid #655276;
   border-left: 2px solid var(--event-selection);
 }
 
