@@ -2592,3 +2592,105 @@
 .editor .edit-select:disabled:has(.edit-draft-label) {
   opacity: 1;
 }
+
+.edits-properties {
+  container: edit-inspector / inline-size;
+}
+
+.edit-property-list {
+  --edit-label-width: 92px;
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.editor .edit-property-list .edit-property {
+  display: grid;
+  grid-template-columns: var(--edit-label-width) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+  padding-block: 5px;
+  border-bottom: 1px solid #ffffff0b;
+}
+
+.edit-property-label {
+  color: #b9bec8;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.edit-attachment-value {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.editor .edit-property :is(input, textarea) {
+  width: 100%;
+  min-width: 0;
+}
+
+.editor .edit-attachment-value select {
+  flex: 1 1 10ch;
+  width: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.edit-attachment-value button {
+  flex: 0 0 auto;
+}
+
+.edit-attachment-status {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+}
+
+.editor .edit-property-list .edit-property-notes {
+  align-items: start;
+}
+
+.edit-property-notes > .edit-property-label {
+  padding-top: 5px;
+}
+
+.editor .edit-property-notes textarea {
+  min-height: 44px;
+  resize: vertical;
+}
+
+.edit-action-row,
+.edit-state-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.editor .edit-action-row > button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.editor .edit-state-row > label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  padding-inline: 3px 9px;
+}
+
+@container edit-inspector (max-width: 230px) {
+  .editor .edit-property-list .edit-property {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .edit-attachment-status {
+    grid-column: 1;
+  }
+
+  .edit-property-notes > .edit-property-label {
+    padding-top: 0;
+  }
+}

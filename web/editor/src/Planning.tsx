@@ -501,37 +501,47 @@ export function MarkEditor({
       )}
       {selected && !multi && (
         <>
-          <label>
-            Edit name
-            <input
-              aria-label="Edit name"
-              value={selected.name}
-              maxLength={120}
-              onChange={(e) => update({ name: e.target.value })}
+          <div className="edit-property-list">
+            <label className="edit-property">
+              <span className="edit-property-label">Name</span>
+              <input
+                value={selected.name}
+                maxLength={120}
+                onChange={(e) => update({ name: e.target.value })}
+              />
+            </label>
+            <AttachmentControl
+              edit={selected}
+              state={state}
+              controller={controller}
             />
-          </label>
-          <AttachmentControl
-            edit={selected}
-            state={state}
-            controller={controller}
-          />
-          <input
-            aria-label="Mark label"
-            placeholder="Label / assignment"
-            disabled={selected.locked}
-            value={selected.label}
-            maxLength={120}
-            onChange={(e) => update({ label: e.target.value })}
-          />
-          <textarea
-            aria-label="Mark notes"
-            placeholder="Notes"
-            disabled={selected.locked}
-            value={selected.notes}
-            maxLength={4000}
-            onChange={(e) => update({ notes: e.target.value })}
-          />
-          <div className="planning-actions edit-actions">
+            <label className="edit-property">
+              <span className="edit-property-label">Assignment</span>
+              <input
+                placeholder="Add assignment"
+                disabled={selected.locked}
+                value={selected.label}
+                maxLength={120}
+                onChange={(e) => update({ label: e.target.value })}
+              />
+            </label>
+            <label className="edit-property edit-property-notes">
+              <span className="edit-property-label">Notes</span>
+              <textarea
+                placeholder="Add notes"
+                rows={2}
+                disabled={selected.locked}
+                value={selected.notes}
+                maxLength={4000}
+                onChange={(e) => update({ notes: e.target.value })}
+              />
+            </label>
+          </div>
+          <div
+            className="edit-action-row"
+            role="group"
+            aria-label="Edit actions"
+          >
             <button
               disabled={selected.locked}
               onClick={() => controller.setTransform("move")}
@@ -548,7 +558,7 @@ export function MarkEditor({
               Delete
             </button>
           </div>
-          <div className="plan-step-options">
+          <div className="edit-state-row" role="group" aria-label="Edit state">
             <label>
               <input
                 type="checkbox"

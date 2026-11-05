@@ -2127,13 +2127,6 @@ a {
 .planning-actions {
   flex-wrap: wrap;
 }
-.planning-actions.edit-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.planning-actions.edit-actions > :first-child {
-  grid-column: 1 / -1;
-}
 .plan-step-list {
   padding: 0;
   margin: 0;
@@ -3093,20 +3086,10 @@ a {
   overflow: visible;
   padding: 10px;
 }
-.edits-properties label,
-.edit-attachment {
+.edits-properties label {
   display: flex;
   flex-direction: column;
   gap: 5px;
-}
-.edit-attachment {
-  border: 1px solid var(--line);
-  padding: 8px;
-  margin: 8px 0;
-  min-width: 0;
-}
-.edit-attachment select {
-  width: 100%;
 }
 .edits-empty {
   color: #9da6a1;
